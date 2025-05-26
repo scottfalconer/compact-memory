@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.sqlite
+*.db
+*.log
+venv/
+.env
+*.egg-info/
+# ignore database
+/gist_memory_db/
