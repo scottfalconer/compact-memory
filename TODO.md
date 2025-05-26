@@ -12,8 +12,6 @@ This file tracks outstanding work based on `AGENTS.md`.
 
 ## Memory creation and embeddings
 - Support pluggable memory creation engines (LLM summary, chunking, extractive).
-- Replace random embeddings with real local or remote models.
-- Allow locally runnable models as an option.
 
 ## Research and evaluation
 - Benchmark prototype-based retrieval vs raw memory retrieval.

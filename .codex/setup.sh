@@ -12,3 +12,9 @@ if [ -f requirements.txt ]; then
     pip3 install --no-cache-dir -r requirements.txt
 fi
 
+# Pre-download the default local embedding model so it is available offline
+python3 - <<'EOF'
+from sentence_transformers import SentenceTransformer
+SentenceTransformer("all-MiniLM-L6-v2")
+EOF
+
