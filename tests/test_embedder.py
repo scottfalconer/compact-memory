@@ -34,7 +34,14 @@ def test_local_embedder(monkeypatch):
         def encode(self, text):
             return [0.3, 0.4, 0.5]
 
-    monkeypatch.setattr(emb, "SentenceTransformer", lambda name: DummyModel())
+    called_kwargs = {}
+
+    def fake_sentence_transformer(name, **kwargs):
+        called_kwargs.update(kwargs)
+        return DummyModel()
+
+    monkeypatch.setattr(emb, "SentenceTransformer", fake_sentence_transformer)
     e = emb.LocalEmbedder(model_name="dummy")
     vec = e.embed("hi")
     assert np.allclose(vec, np.array([0.3, 0.4, 0.5], dtype=np.float32))
+    assert called_kwargs.get("local_files_only") is True
