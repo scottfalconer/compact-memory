@@ -34,6 +34,10 @@ Query memories:
 python -m gist_memory query "search text" --top 5 --embedder local --model-name all-MiniLM-L6-v2
 ```
 
+The local embedder loads the model from the Hugging Face cache only and will not
+attempt any network downloads. Ensure the model is pre-cached using the commands
+in the installation section or via `.codex/setup.sh`.
+
 Data is stored in `gist_memory_db` in the current working directory.
 
 ## Running Tests

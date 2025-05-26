@@ -42,12 +42,32 @@ class OpenAIEmbedder(Embedder):
 class LocalEmbedder(Embedder):
     """Embed text using a locally runnable SentenceTransformer model."""
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+    def __init__(
+        self,
+        model_name: str = "all-MiniLM-L6-v2",
+        *,
+        local_files_only: bool = True,
+    ):
+        """Create a local embedder.
+
+        Parameters
+        ----------
+        model_name:
+            Name or path of the model to load.
+        local_files_only:
+            If ``True`` (the default), disable any network calls and only use
+            locally cached model files. This allows the embedder to function in
+            fully offline environments.
+        """
+
         if SentenceTransformer is None:
             raise ImportError(
                 "sentence-transformers is required for LocalEmbedder"
             )
-        self.model = SentenceTransformer(model_name)
+        self.model = SentenceTransformer(
+            model_name,
+            local_files_only=local_files_only,
+        )
 
     def embed(self, text: str) -> np.ndarray:
         vec = self.model.encode(text)
