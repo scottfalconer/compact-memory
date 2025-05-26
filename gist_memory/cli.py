@@ -1,4 +1,5 @@
 import click
+from pathlib import Path
 
 from .memory_creation import (
     IdentityMemoryCreator,
@@ -43,15 +44,32 @@ def cli(ctx, embedder, model_name, memory_creator, threshold):
 
 
 @cli.command()
-@click.argument("text", nargs=-1)
+@click.argument("source", nargs=-1)
 @click.pass_obj
-def ingest(obj, text):
-    """Ingest a memory from TEXT."""
-    content = " ".join(text)
+def ingest(obj, source):
+    """Ingest text or contents of a file/directory."""
     creator = obj["memory_creator"]
     store = PrototypeStore(
         embedder=obj["embedder"], threshold=obj["threshold"]
     )
+
+    if len(source) == 1:
+        path = Path(source[0])
+        if path.exists():
+            texts: list[str] = []
+            if path.is_file():
+                texts.append(path.read_text())
+            elif path.is_dir():
+                for f in sorted(path.glob("*.txt")):
+                    texts.append(f.read_text())
+            for text in texts:
+                mem = store.add_memory(creator.create(text))
+                click.echo(
+                    f"Stored memory {mem.id} in prototype {mem.prototype_id}"
+                )
+            return
+
+    content = " ".join(source)
     mem = store.add_memory(creator.create(content))
     click.echo(f"Stored memory {mem.id} in prototype {mem.prototype_id}")
 
