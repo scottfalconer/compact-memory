@@ -6,7 +6,7 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 
 - CLI interface with `ingest` and `query` commands.
 - Uses ChromaDB for persistent storage of prototypes and memories.
-- Simple identity memory creation engine (pluggable).
+- Pluggable memory creation engines (identity or simple extractive summary).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
 
 ## Usage
@@ -25,13 +25,15 @@ EOF
 Ingest a memory:
 
 ```bash
-python -m gist_memory ingest "Some text to remember" --embedder openai
+python -m gist_memory ingest "Some text to remember" \
+    --embedder openai --memory-creator extractive --threshold 0.3
 ```
 
 Query memories:
 
 ```bash
-python -m gist_memory query "search text" --top 5 --embedder local --model-name all-MiniLM-L6-v2
+python -m gist_memory query "search text" --top 5 \
+    --embedder local --model-name all-MiniLM-L6-v2 --threshold 0.3
 ```
 
 The local embedder loads the model from the Hugging Face cache only and will not

@@ -64,16 +64,24 @@ class PrototypeStore:
 
     def query(self, text: str, n: int = 5) -> List[Memory]:
         embed = np.array(self.embedder.embed(text))
-        res = self.proto_collection.query(query_embeddings=[embed], n_results=n)
-        if not res["ids"]:
+        proto_res = self.proto_collection.query(query_embeddings=[embed], n_results=n)
+        if not proto_res["ids"]:
             return []
-        proto_ids = [pid for pid in res["ids"][0]]
-        results = []
+
+        proto_ids = [pid for pid in proto_res["ids"][0]]
+        scored: list[tuple[float, Memory]] = []
         for pid in proto_ids:
-            mem_res = self.memory_collection.get(where={"prototype_id": pid})
-            for mid, doc in zip(mem_res["ids"], mem_res["documents"]):
-                results.append(Memory(id=mid, text=doc, prototype_id=pid))
-        return results
+            mem_res = self.memory_collection.get(
+                where={"prototype_id": pid}, include=["embeddings", "documents"]
+            )
+            for mid, doc, memb in zip(
+                mem_res["ids"], mem_res["documents"], mem_res["embeddings"]
+            ):
+                dist = float(np.linalg.norm(embed - np.array(memb)))
+                scored.append((dist, Memory(id=mid, text=doc, prototype_id=pid)))
+
+        scored.sort(key=lambda x: x[0])
+        return [m for _, m in scored[:n]]
 
     def _create_prototype(self, embed: np.ndarray) -> str:
         pid = str(uuid.uuid4())
