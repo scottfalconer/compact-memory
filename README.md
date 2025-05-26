@@ -4,7 +4,7 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 
 ## Features
 
-- CLI interface with `ingest` and `query` commands.
+ - CLI interface with `ingest`, `query`, `decode`, and `dump` commands.
 - Uses ChromaDB for persistent storage of prototypes and memories.
 - Pluggable memory creation engines (identity or simple extractive summary).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
@@ -34,6 +34,18 @@ Query memories:
 ```bash
 python -m gist_memory query "search text" --top 5 \
     --embedder local --model-name all-MiniLM-L6-v2 --threshold 0.3
+```
+
+Decode a prototype to see example memories:
+
+```bash
+python -m gist_memory decode <prototype_id> --top 2
+```
+
+Dump all memories (optionally filter by prototype):
+
+```bash
+python -m gist_memory dump --prototype-id <prototype_id>
 ```
 
 The local embedder loads the model from the Hugging Face cache only and will not

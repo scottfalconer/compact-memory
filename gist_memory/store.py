@@ -83,6 +83,49 @@ class PrototypeStore:
         scored.sort(key=lambda x: x[0])
         return [m for _, m in scored[:n]]
 
+    def decode_prototype(self, pid: str, n: int = 1) -> List[Memory]:
+        """Return up to ``n`` example memories from a prototype."""
+        proto = self.proto_collection.get(ids=[pid], include=["embeddings"])
+        if not proto["ids"]:
+            return []
+
+        if proto.get("embeddings") is None:
+            return []
+
+        embed = np.array(proto["embeddings"][0])
+        mem_res = self.memory_collection.get(
+            where={"prototype_id": pid}, include=["embeddings", "documents"]
+        )
+
+        if not mem_res["ids"]:
+            return []
+
+        scored: list[tuple[float, Memory]] = []
+        for mid, doc, memb in zip(
+            mem_res["ids"], mem_res["documents"], mem_res["embeddings"]
+        ):
+            dist = float(np.linalg.norm(embed - np.array(memb)))
+            scored.append((dist, Memory(id=mid, text=doc, prototype_id=pid)))
+
+        scored.sort(key=lambda x: x[0])
+        return [m for _, m in scored[:n]]
+
+    def dump_memories(self, prototype_id: str | None = None) -> List[Memory]:
+        """Return all memories, optionally filtered by ``prototype_id``."""
+        where = {"prototype_id": prototype_id} if prototype_id else None
+        mem_res = self.memory_collection.get(
+            where=where, include=["metadatas", "documents"]
+        )
+        memories: list[Memory] = []
+        for mid, doc, meta in zip(
+            mem_res.get("ids", []),
+            mem_res.get("documents", []),
+            mem_res.get("metadatas", []),
+        ):
+            pid = meta.get("prototype_id") if meta else None
+            memories.append(Memory(id=mid, text=doc, prototype_id=pid))
+        return memories
+
     def _create_prototype(self, embed: np.ndarray) -> str:
         pid = str(uuid.uuid4())
         self.proto_collection.add(ids=[pid], embeddings=[embed])
