@@ -1,0 +1,6 @@
+chromadb
+openai
+tiktoken
+numpy
+faiss-cpu
+click
