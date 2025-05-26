@@ -29,3 +29,12 @@ python -m gist_memory query "search text" --top 5
 ```
 
 Data is stored in `gist_memory_db` in the current working directory.
+
+## Running Tests
+
+Install development dependencies and run `pytest`:
+
+```bash
+pip install -r requirements.txt
+pytest
+```
