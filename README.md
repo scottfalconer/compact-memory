@@ -29,6 +29,14 @@ python -m gist_memory ingest "Some text to remember" \
     --embedder openai --memory-creator extractive --threshold 0.3
 ```
 
+You can also pass a path to a text file or a directory containing ``*.txt``
+files:
+
+```bash
+python -m gist_memory ingest notes.txt
+python -m gist_memory ingest docs/
+```
+
 Query memories:
 
 ```bash
