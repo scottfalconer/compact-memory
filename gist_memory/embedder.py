@@ -1,4 +1,12 @@
+from __future__ import annotations
+
 import numpy as np
+import openai
+
+try:  # optional dependency used for local embeddings
+    from sentence_transformers import SentenceTransformer
+except Exception:  # pragma: no cover - library may not be installed during tests
+    SentenceTransformer = None
 
 
 class Embedder:
@@ -17,3 +25,40 @@ class RandomEmbedder(Embedder):
 
     def embed(self, text: str) -> np.ndarray:
         return self.rng.random(self.dim)
+
+
+class OpenAIEmbedder(Embedder):
+    """Embed text using the OpenAI API."""
+
+    def __init__(self, model: str = "text-embedding-ada-002"):
+        self.model = model
+
+    def embed(self, text: str) -> np.ndarray:
+        resp = openai.Embedding.create(input=[text], model=self.model)
+        data = resp["data"][0]["embedding"]
+        return np.array(data, dtype=np.float32)
+
+
+class LocalEmbedder(Embedder):
+    """Embed text using a locally runnable SentenceTransformer model."""
+
+    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+        if SentenceTransformer is None:
+            raise ImportError(
+                "sentence-transformers is required for LocalEmbedder"
+            )
+        self.model = SentenceTransformer(model_name)
+
+    def embed(self, text: str) -> np.ndarray:
+        vec = self.model.encode(text)
+        return np.array(vec, dtype=np.float32)
+
+
+def get_embedder(kind: str = "random", model_name: str | None = None) -> Embedder:
+    """Utility to create an embedder by name."""
+
+    if kind == "openai":
+        return OpenAIEmbedder(model=model_name or "text-embedding-ada-002")
+    if kind == "local":
+        return LocalEmbedder(model_name=model_name or "all-MiniLM-L6-v2")
+    return RandomEmbedder()

@@ -5,3 +5,4 @@ numpy
 faiss-cpu
 click
 pytest
+sentence-transformers

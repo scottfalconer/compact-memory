@@ -8,7 +8,7 @@ from typing import List, Optional
 import chromadb
 import numpy as np
 
-from .embedder import RandomEmbedder
+from .embedder import Embedder, RandomEmbedder
 
 
 def default_chroma_client() -> chromadb.Client:
@@ -31,17 +31,21 @@ class Prototype:
 
 
 class PrototypeStore:
-    def __init__(self, client: Optional[chromadb.Client] = None, threshold: float = 0.4):
+    def __init__(
+        self,
+        client: Optional[chromadb.Client] = None,
+        threshold: float = 0.4,
+        embedder: Embedder | None = None,
+    ):
         self.client = client or default_chroma_client()
         self.base_threshold = threshold
         self.threshold = threshold
         self.proto_collection = self.client.get_or_create_collection("prototypes")
         self.memory_collection = self.client.get_or_create_collection("memories")
-        # Using a local random embedder to avoid network downloads in this prototype
-        self.emb_func = RandomEmbedder().embed
+        self.embedder = embedder or RandomEmbedder()
 
     def add_memory(self, text: str) -> Memory:
-        embed = np.array(self.emb_func(text))
+        embed = np.array(self.embedder.embed(text))
         # find nearest prototype
         if self.proto_collection.count() > 0:
             res = self.proto_collection.query(query_embeddings=[embed], n_results=1)
@@ -59,7 +63,7 @@ class PrototypeStore:
         return Memory(id=mid, text=text, prototype_id=pid)
 
     def query(self, text: str, n: int = 5) -> List[Memory]:
-        embed = np.array(self.emb_func(text))
+        embed = np.array(self.embedder.embed(text))
         res = self.proto_collection.query(query_embeddings=[embed], n_results=n)
         if not res["ids"]:
             return []
