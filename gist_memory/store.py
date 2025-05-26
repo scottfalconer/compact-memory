@@ -33,6 +33,7 @@ class Prototype:
 class PrototypeStore:
     def __init__(self, client: Optional[chromadb.Client] = None, threshold: float = 0.4):
         self.client = client or default_chroma_client()
+        self.base_threshold = threshold
         self.threshold = threshold
         self.proto_collection = self.client.get_or_create_collection("prototypes")
         self.memory_collection = self.client.get_or_create_collection("memories")
@@ -54,6 +55,7 @@ class PrototypeStore:
             pid = self._create_prototype(embed)
         mid = str(uuid.uuid4())
         self.memory_collection.add(ids=[mid], embeddings=[embed], metadatas=[{"prototype_id": pid}], documents=[text])
+        self._adapt_threshold()
         return Memory(id=mid, text=text, prototype_id=pid)
 
     def query(self, text: str, n: int = 5) -> List[Memory]:
@@ -82,3 +84,11 @@ class PrototypeStore:
         old = np.array(proto["embeddings"][0])
         new = (1 - alpha) * old + alpha * embed
         self.proto_collection.update(ids=[pid], embeddings=[new])
+
+    def _adapt_threshold(self) -> None:
+        """Simple heuristic to adjust the prototype assignment threshold."""
+        count = self.proto_collection.count()
+        if count <= 1:
+            self.threshold = self.base_threshold
+        else:
+            self.threshold = max(0.05, self.base_threshold / np.sqrt(count))

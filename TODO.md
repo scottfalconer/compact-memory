@@ -3,8 +3,7 @@
 This file tracks outstanding work based on `AGENTS.md`.
 
 ## Prototype memory system
-- Implement adaptive threshold (τ) logic for prototype assignment.
-- Update prototypes via EMA and add health checks for splitting or merging.
+ - Update prototypes via EMA and add health checks for splitting or merging.
 - Implement memory/prototype decay and conflict resolution flows.
 
 ## Retrieval pipeline
@@ -24,5 +23,6 @@ This file tracks outstanding work based on `AGENTS.md`.
 
 ## CLI and usability
 - Expose configuration options (threshold, embedding model, memory creator).
+- Allow configuration of adaptive threshold parameters.
 - Improve documentation and installation instructions.
 
