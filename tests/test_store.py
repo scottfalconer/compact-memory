@@ -60,3 +60,24 @@ def test_query_ranking():
     results = store.query("hello", n=1)
     assert len(results) == 1
     assert results[0].text == "hello world"
+
+
+def test_decode_prototype():
+    client = chromadb.EphemeralClient()
+    store = PrototypeStore(client=client)
+    mem = store.add_memory("alpha bravo")
+    mems = store.decode_prototype(mem.prototype_id, n=1)
+    assert mems
+    assert mems[0].text == "alpha bravo"
+
+
+def test_dump_memories():
+    client = chromadb.EphemeralClient()
+    store = PrototypeStore(client=client)
+    mem1 = store.add_memory("foo")
+    mem2 = store.add_memory("bar")
+    all_mems = store.dump_memories()
+    texts = {m.text for m in all_mems}
+    assert {"foo", "bar"}.issubset(texts)
+    filtered = store.dump_memories(prototype_id=mem1.prototype_id)
+    assert any(m.text == "foo" for m in filtered)

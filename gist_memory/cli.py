@@ -71,5 +71,35 @@ def query(obj, text, top):
         click.echo(f"[{mem.prototype_id}] {mem.text}")
 
 
+@cli.command(name="decode")
+@click.argument("prototype_id")
+@click.option("--top", default=1, help="Number of memories to show")
+@click.pass_obj
+def decode_prototype(obj, prototype_id, top):
+    """Show example memories for a prototype."""
+    store = PrototypeStore(
+        embedder=obj["embedder"], threshold=obj["threshold"]
+    )
+    memories = store.decode_prototype(prototype_id, n=top)
+    if not memories:
+        click.echo("Prototype not found")
+        return
+    for mem in memories:
+        click.echo(f"{mem.id}: {mem.text}")
+
+
+@cli.command(name="dump")
+@click.option("--prototype-id", default=None, help="Only dump memories for this prototype")
+@click.pass_obj
+def dump_memories(obj, prototype_id):
+    """Dump all memories, optionally for a given prototype."""
+    store = PrototypeStore(
+        embedder=obj["embedder"], threshold=obj["threshold"]
+    )
+    memories = store.dump_memories(prototype_id=prototype_id)
+    for mem in memories:
+        click.echo(f"[{mem.prototype_id}] {mem.text}")
+
+
 if __name__ == "__main__":
     cli()
