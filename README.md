@@ -9,10 +9,10 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 - Pluggable memory creation engines (identity or simple extractive summary).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
 
-## Usage
+## Setup
 
-Install dependencies (the provided `.codex/setup.sh` script will also install
-them and download the default local embedding model for offline use):
+This project requires **Python 3.11+**.  Install the dependencies and pre-cache
+the default local embedding model:
 
 ```bash
 pip install -r requirements.txt
@@ -20,7 +20,11 @@ python - <<'EOF'
 from sentence_transformers import SentenceTransformer
 SentenceTransformer("all-MiniLM-L6-v2")
 EOF
+
+You can alternatively run `.codex/setup.sh` which performs the same steps.
 ```
+
+## Usage
 
 Ingest a memory:
 
@@ -28,6 +32,9 @@ Ingest a memory:
 python -m gist_memory ingest "Some text to remember" \
     --embedder openai --memory-creator extractive --threshold 0.3
 ```
+
+When using the OpenAI embedder, set the ``OPENAI_API_KEY`` environment
+variable so the library can authenticate.
 
 You can also pass a path to a text file or a directory containing ``*.txt``
 files:
@@ -58,7 +65,7 @@ python -m gist_memory dump --prototype-id <prototype_id>
 
 The local embedder loads the model from the Hugging Face cache only and will not
 attempt any network downloads. Ensure the model is pre-cached using the commands
-in the installation section or via `.codex/setup.sh`.
+in the setup section or via `.codex/setup.sh`.
 
 Data is stored in `gist_memory_db` in the current working directory.
 
