@@ -173,7 +173,8 @@ class PrototypeStore:
         return pid
 
     def _update_prototype(self, pid: str, embed: np.ndarray, alpha: float = 0.1):
-        proto = self.proto_collection.get(ids=[pid])
+        # Ensure the embedding is fetched since Chroma does not return it by default
+        proto = self.proto_collection.get(ids=[pid], include=["embeddings"])
         if not proto["ids"]:
             self.proto_collection.add(ids=[pid], embeddings=[embed])
             return
