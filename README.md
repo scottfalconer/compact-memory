@@ -33,9 +33,10 @@ pip install .
 Ingest a memory:
 
 ```bash
-python -m gist_memory ingest "Some text to remember" \
+python -m gist_memory \
     --embedder openai --memory-creator extractive --threshold 0.3 \
-    --min-threshold 0.05 --decay-exponent 0.5
+    --min-threshold 0.05 --decay-exponent 0.5 \
+    ingest "Some text to remember"
 ```
 
 When using the OpenAI embedder, set the ``OPENAI_API_KEY`` environment
@@ -52,8 +53,9 @@ python -m gist_memory ingest docs/
 Query memories:
 
 ```bash
-python -m gist_memory query "search text" --top 5 \
-    --embedder local --model-name all-MiniLM-L6-v2 --threshold 0.3
+python -m gist_memory \
+    --embedder local --model-name all-MiniLM-L6-v2 --threshold 0.3 \
+    query "search text" --top 5
 ```
 
 Decode a prototype to see example memories:
