@@ -7,9 +7,19 @@ apt-get update
 # Install Python and pip if not already installed
 apt-get install -y --no-install-recommends python3 python3-pip git
 
+# Install Node.js and npm for the interactive TUI
+apt-get install -y --no-install-recommends nodejs npm
+
 # Install Python dependencies if requirements.txt is present
 if [ -f requirements.txt ]; then
     pip3 install --no-cache-dir -r requirements.txt
+fi
+
+# Install Node dependencies for the TUI if present
+if [ -f tui/package.json ]; then
+    pushd tui >/dev/null
+    npm install --omit=dev
+    popd >/dev/null
 fi
 
 # Pre-download the default local embedding model so it is available offline
