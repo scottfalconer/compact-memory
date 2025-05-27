@@ -6,7 +6,7 @@ from .memory_creation import (
     ExtractiveSummaryCreator,
 )
 from .store import PrototypeStore
-from .embedder import get_embedder
+from .embedder import get_embedder, LocalEmbedder
 
 
 @click.group()
@@ -117,6 +117,22 @@ def dump_memories(obj, prototype_id):
     memories = store.dump_memories(prototype_id=prototype_id)
     for mem in memories:
         click.echo(f"[{mem.prototype_id}] {mem.text}")
+
+
+@cli.command(name="download-model")
+@click.option(
+    "--model-name",
+    default="all-MiniLM-L6-v2",
+    show_default=True,
+    help="Embedding model to pre-download",
+)
+def download_model(model_name: str) -> None:
+    """Pre-fetch a local embedding model."""
+    try:
+        LocalEmbedder(model_name=model_name, local_files_only=False)
+    except Exception as exc:  # pragma: no cover - passthrough
+        raise click.ClickException(str(exc))
+    click.echo(f"Downloaded model '{model_name}'")
 
 
 if __name__ == "__main__":
