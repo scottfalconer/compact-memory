@@ -3,15 +3,15 @@
 This file tracks outstanding work based on `AGENTS.md`.
 
 ## Prototype memory system
- - Update prototypes via EMA and add health checks for splitting or merging.
-- Implement memory/prototype decay and conflict resolution flows.
+ - Update prototypes via EMA and add health checks for splitting or merging. *(partial: EMA implemented, health checks pending)*
+- Implement memory/prototype decay and conflict resolution flows. *(pending)*
 
 ## Retrieval pipeline
-- Add two-tier retrieval with fine re-ranking or raw memory lookup.
-- Provide decoding of prototypes into human-readable summaries.
+- Add two-tier retrieval with fine re-ranking or raw memory lookup. *(done)*
+- Provide decoding of prototypes into human-readable summaries. *(done)*
 
 ## Memory creation and embeddings
-- Support pluggable memory creation engines (LLM summary, chunking, extractive).
+- Support pluggable memory creation engines (LLM summary, chunking, extractive). *(done)*
 
 ## Research and evaluation
 - Benchmark prototype-based retrieval vs raw memory retrieval.
@@ -20,7 +20,7 @@ This file tracks outstanding work based on `AGENTS.md`.
 - Evaluate methods for decoding prototype meaning.
 
 ## CLI and usability
-- Expose configuration options (threshold, embedding model, memory creator).
-- Allow configuration of adaptive threshold parameters.
-- Improve documentation and installation instructions.
+- Expose configuration options (threshold, embedding model, memory creator). *(done)*
+- Allow configuration of adaptive threshold parameters. *(done)*
+- Improve documentation and installation instructions. *(done)*
 

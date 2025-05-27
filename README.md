@@ -4,9 +4,9 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 
 ## Features
 
- - CLI interface with `ingest`, `query`, `decode`, and `dump` commands.
-- Uses ChromaDB for persistent storage of prototypes and memories.
-- Pluggable memory creation engines (identity or simple extractive summary).
+ - CLI interface with `ingest`, `query`, `decode`, `summarize`, and `dump` commands.
+ - Uses ChromaDB for persistent storage of prototypes and memories.
+ - Pluggable memory creation engines (identity, extractive, chunk, or LLM summary).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
 
 ## Setup
@@ -34,7 +34,8 @@ Ingest a memory:
 
 ```bash
 python -m gist_memory ingest "Some text to remember" \
-    --embedder openai --memory-creator extractive --threshold 0.3
+    --embedder openai --memory-creator extractive --threshold 0.3 \
+    --min-threshold 0.05 --decay-exponent 0.5
 ```
 
 When using the OpenAI embedder, set the ``OPENAI_API_KEY`` environment
@@ -59,6 +60,12 @@ Decode a prototype to see example memories:
 
 ```bash
 python -m gist_memory decode <prototype_id> --top 2
+```
+
+Summarize a prototype:
+
+```bash
+python -m gist_memory summarize <prototype_id> --max-words 20
 ```
 
 Dump all memories (optionally filter by prototype):

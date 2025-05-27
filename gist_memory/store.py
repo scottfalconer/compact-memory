@@ -39,6 +39,9 @@ class PrototypeStore:
         self,
         client: Optional[chromadb.Client] = None,
         threshold: float = 0.4,
+        *,
+        min_threshold: float = 0.05,
+        decay_exponent: float = 0.5,
         embedder: Embedder | None = None,
     ):
         """Create a store instance.
@@ -51,11 +54,18 @@ class PrototypeStore:
             directory is created.
         threshold:
             Distance threshold for assigning a memory to an existing prototype.
+        min_threshold:
+            Lower bound for the adaptive threshold.
+        decay_exponent:
+            Exponent controlling how quickly the threshold decays as prototypes
+            are added.
         embedder:
             Embedding backend used to convert text to vectors.
         """
         self.client = client or default_chroma_client()
         self.base_threshold = threshold
+        self.min_threshold = min_threshold
+        self.decay_exponent = decay_exponent
         self.threshold = threshold
         self.proto_collection = self.client.get_or_create_collection("prototypes")
         self.memory_collection = self.client.get_or_create_collection("memories")
@@ -132,6 +142,15 @@ class PrototypeStore:
         scored.sort(key=lambda x: x[0])
         return [m for _, m in scored[:n]]
 
+    def summarize_prototype(self, pid: str, max_words: int = 50) -> str | None:
+        """Return a simple summary for a prototype."""
+        mems = self.decode_prototype(pid, n=5)
+        if not mems:
+            return None
+        text = " ".join(m.text for m in mems)
+        words = text.split()
+        return " ".join(words[:max_words])
+
     def dump_memories(self, prototype_id: str | None = None) -> List[Memory]:
         """Return all memories, optionally filtered by ``prototype_id``."""
         where = {"prototype_id": prototype_id} if prototype_id else None
@@ -168,7 +187,8 @@ class PrototypeStore:
         if count <= 1:
             self.threshold = self.base_threshold
         else:
-            self.threshold = max(0.05, self.base_threshold / np.sqrt(count))
+            adjusted = self.base_threshold / (count ** self.decay_exponent)
+            self.threshold = max(self.min_threshold, adjusted)
 
 
 __all__ = [
@@ -176,4 +196,5 @@ __all__ = [
     "Prototype",
     "PrototypeStore",
     "default_chroma_client",
+    "summarize_prototype",
 ]

@@ -4,6 +4,8 @@ from pathlib import Path
 from .memory_creation import (
     IdentityMemoryCreator,
     ExtractiveSummaryCreator,
+    ChunkMemoryCreator,
+    LLMSummaryCreator,
 )
 from .store import PrototypeStore
 from .embedder import get_embedder, LocalEmbedder
@@ -19,7 +21,7 @@ from .embedder import get_embedder, LocalEmbedder
 @click.option("--model-name", default=None, help="Model name for the embedder")
 @click.option(
     "--memory-creator",
-    type=click.Choice(["identity", "extractive"]),
+    type=click.Choice(["identity", "extractive", "chunk", "llm"]),
     default="identity",
     help="Memory creation strategy",
 )
@@ -30,16 +32,34 @@ from .embedder import get_embedder, LocalEmbedder
     show_default=True,
     help="Prototype assignment threshold",
 )
+@click.option(
+    "--min-threshold",
+    default=0.05,
+    type=float,
+    show_default=True,
+    help="Minimum adaptive threshold",
+)
+@click.option(
+    "--decay-exponent",
+    default=0.5,
+    type=float,
+    show_default=True,
+    help="Exponent controlling threshold decay",
+)
 @click.pass_context
-def cli(ctx, embedder, model_name, memory_creator, threshold):
+def cli(ctx, embedder, model_name, memory_creator, threshold, min_threshold, decay_exponent):
     """Gist Memory Agent CLI."""
     ctx.obj = {
         "embedder": get_embedder(embedder, model_name),
         "memory_creator": {
             "identity": IdentityMemoryCreator,
             "extractive": ExtractiveSummaryCreator,
+            "chunk": ChunkMemoryCreator,
+            "llm": LLMSummaryCreator,
         }[memory_creator](),
         "threshold": threshold,
+        "min_threshold": min_threshold,
+        "decay_exponent": decay_exponent,
     }
 
 
@@ -50,7 +70,10 @@ def ingest(obj, source):
     """Ingest text or contents of a file/directory."""
     creator = obj["memory_creator"]
     store = PrototypeStore(
-        embedder=obj["embedder"], threshold=obj["threshold"]
+        embedder=obj["embedder"],
+        threshold=obj["threshold"],
+        min_threshold=obj["min_threshold"],
+        decay_exponent=obj["decay_exponent"],
     )
 
     if len(source) == 1:
@@ -63,15 +86,17 @@ def ingest(obj, source):
                 for f in sorted(path.glob("*.txt")):
                     texts.append(f.read_text())
             for text in texts:
-                mem = store.add_memory(creator.create(text))
-                click.echo(
-                    f"Stored memory {mem.id} in prototype {mem.prototype_id}"
-                )
+                for chunk in creator.create_all(text):
+                    mem = store.add_memory(chunk)
+                    click.echo(
+                        f"Stored memory {mem.id} in prototype {mem.prototype_id}"
+                    )
             return
 
     content = " ".join(source)
-    mem = store.add_memory(creator.create(content))
-    click.echo(f"Stored memory {mem.id} in prototype {mem.prototype_id}")
+    for chunk in creator.create_all(content):
+        mem = store.add_memory(chunk)
+        click.echo(f"Stored memory {mem.id} in prototype {mem.prototype_id}")
 
 
 @cli.command()
@@ -82,7 +107,10 @@ def query(obj, text, top):
     """Query the store."""
     content = " ".join(text)
     store = PrototypeStore(
-        embedder=obj["embedder"], threshold=obj["threshold"]
+        embedder=obj["embedder"],
+        threshold=obj["threshold"],
+        min_threshold=obj["min_threshold"],
+        decay_exponent=obj["decay_exponent"],
     )
     results = store.query(content, n=top)
     for mem in results:
@@ -96,7 +124,10 @@ def query(obj, text, top):
 def decode_prototype(obj, prototype_id, top):
     """Show example memories for a prototype."""
     store = PrototypeStore(
-        embedder=obj["embedder"], threshold=obj["threshold"]
+        embedder=obj["embedder"],
+        threshold=obj["threshold"],
+        min_threshold=obj["min_threshold"],
+        decay_exponent=obj["decay_exponent"],
     )
     memories = store.decode_prototype(prototype_id, n=top)
     if not memories:
@@ -106,13 +137,35 @@ def decode_prototype(obj, prototype_id, top):
         click.echo(f"{mem.id}: {mem.text}")
 
 
+@cli.command(name="summarize")
+@click.argument("prototype_id")
+@click.option("--max-words", default=50, help="Length of summary")
+@click.pass_obj
+def summarize_prototype(obj, prototype_id, max_words):
+    """Show a simple summary for a prototype."""
+    store = PrototypeStore(
+        embedder=obj["embedder"],
+        threshold=obj["threshold"],
+        min_threshold=obj["min_threshold"],
+        decay_exponent=obj["decay_exponent"],
+    )
+    summary = store.summarize_prototype(prototype_id, max_words=max_words)
+    if summary is None:
+        click.echo("Prototype not found")
+    else:
+        click.echo(summary)
+
+
 @cli.command(name="dump")
 @click.option("--prototype-id", default=None, help="Only dump memories for this prototype")
 @click.pass_obj
 def dump_memories(obj, prototype_id):
     """Dump all memories, optionally for a given prototype."""
     store = PrototypeStore(
-        embedder=obj["embedder"], threshold=obj["threshold"]
+        embedder=obj["embedder"],
+        threshold=obj["threshold"],
+        min_threshold=obj["min_threshold"],
+        decay_exponent=obj["decay_exponent"],
     )
     memories = store.dump_memories(prototype_id=prototype_id)
     for mem in memories:
