@@ -4,5 +4,6 @@ tiktoken
 numpy
 faiss-cpu
 click
+tqdm
 pytest
 sentence-transformers

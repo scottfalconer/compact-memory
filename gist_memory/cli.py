@@ -1,5 +1,6 @@
 import click
 from pathlib import Path
+import sys
 
 from .memory_creation import (
     IdentityMemoryCreator,
@@ -8,6 +9,7 @@ from .memory_creation import (
     LLMSummaryCreator,
 )
 from .store import PrototypeStore
+from tqdm import tqdm
 from .embedder import get_embedder, LocalEmbedder
 
 
@@ -76,6 +78,15 @@ def ingest(obj, source):
         decay_exponent=obj["decay_exponent"],
     )
 
+    def process_chunks(chunks: list[str]) -> None:
+        with tqdm(chunks, desc="Ingesting", unit="mem", disable=not sys.stderr.isatty()) as bar:
+            for chunk in bar:
+                before = store.proto_collection.count()
+                mem = store.add_memory(chunk)
+                after = store.proto_collection.count()
+                action = "Created" if after > before else "Updated"
+                tqdm.write(f"{action} prototype {mem.prototype_id} with memory {mem.id}")
+
     if len(source) == 1:
         path = Path(source[0])
         if path.exists():
@@ -85,18 +96,15 @@ def ingest(obj, source):
             elif path.is_dir():
                 for f in sorted(path.glob("*.txt")):
                     texts.append(f.read_text())
+            chunks: list[str] = []
             for text in texts:
-                for chunk in creator.create_all(text):
-                    mem = store.add_memory(chunk)
-                    click.echo(
-                        f"Stored memory {mem.id} in prototype {mem.prototype_id}"
-                    )
+                chunks.extend(creator.create_all(text))
+            process_chunks(chunks)
             return
 
     content = " ".join(source)
-    for chunk in creator.create_all(content):
-        mem = store.add_memory(chunk)
-        click.echo(f"Stored memory {mem.id} in prototype {mem.prototype_id}")
+    chunks = creator.create_all(content)
+    process_chunks(chunks)
 
 
 @cli.command()
