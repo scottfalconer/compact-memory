@@ -8,5 +8,3 @@ venv/
 *.egg-info/
 # ignore database
 /gist_memory_db/
-tui/node_modules/
-tui/package-lock.json
