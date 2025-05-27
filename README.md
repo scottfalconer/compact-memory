@@ -24,6 +24,12 @@ EOF
 You can alternatively run `.codex/setup.sh` which performs the same steps.
 ```
 
+Alternatively install the package from source:
+
+```bash
+pip install .
+```
+
 ## Usage
 
 Ingest a memory:
