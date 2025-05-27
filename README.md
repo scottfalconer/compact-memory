@@ -83,3 +83,27 @@ Install development dependencies and run `pytest`:
 pip install -r requirements.txt
 pytest
 ```
+
+## Onboarding Demo
+
+A small example is provided under `examples/` so new users can quickly see the
+agent in action.  The demo ingests short excerpts from the Apollo&nbsp;11 moon
+landing transcripts and prints which prototypes were created or updated.
+
+Run the demo after installing dependencies and pre-downloading the local
+embedding model:
+
+```bash
+pip install -r requirements.txt
+python - <<'PY'
+from sentence_transformers import SentenceTransformer
+SentenceTransformer("all-MiniLM-L6-v2")
+PY
+
+# run the example
+python examples/onboarding_demo.py
+```
+
+The script loads all `*.txt` files from `examples/moon_landing`, stores them in a
+local database and displays the prototype assignments along with a final memory
+and prototype count.
