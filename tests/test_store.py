@@ -71,6 +71,14 @@ def test_decode_prototype():
     assert mems[0].text == "alpha bravo"
 
 
+def test_summarize_prototype():
+    client = chromadb.EphemeralClient()
+    store = PrototypeStore(client=client)
+    mem1 = store.add_memory("alpha bravo charlie")
+    summary = store.summarize_prototype(mem1.prototype_id, max_words=2)
+    assert summary == "alpha bravo"
+
+
 def test_dump_memories():
     client = chromadb.EphemeralClient()
     store = PrototypeStore(client=client)
