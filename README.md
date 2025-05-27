@@ -6,7 +6,7 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 
 - CLI interface with `ingest`, `query`, `decode`, `summarize`, and `dump` commands.
 - Uses ChromaDB for persistent storage of prototypes and memories.
-- Pluggable memory creation engines (identity, extractive, chunk, or LLM summary).
+- Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
 - Ingest operation displays a progress bar showing which prototypes are created or updated.
 
@@ -113,3 +113,7 @@ python examples/onboarding_demo.py
 The script loads all `*.txt` files from `examples/moon_landing`, stores them in a
 local database and displays the prototype assignments along with a final memory
 and prototype count.
+
+## Segmentation Playbook
+
+See [docs/SEGMENTATION_PLAYBOOK.md](docs/SEGMENTATION_PLAYBOOK.md) for a detailed workflow on splitting long documents into belief-sized ideas before ingestion. You can enable this behaviour in the CLI via `--memory-creator agentic`.
