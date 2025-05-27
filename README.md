@@ -9,6 +9,7 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 - Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
 - Ingest operation displays a progress bar showing which prototypes are created or updated.
+- Launches a simple Textual TUI when running `gist-memory` with no arguments.
 
 ## Setup
 
@@ -30,6 +31,18 @@ pip install .
 ```
 
 ## Usage
+
+### Interactive TUI
+
+Run ``gist-memory`` with no arguments to start an in-terminal interface that
+allows you to pick a ``.txt`` file from the current directory or enter text
+manually for ingestion:
+
+```bash
+gist-memory
+```
+
+### Command line
 
 Ingest a memory:
 
