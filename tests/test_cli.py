@@ -1,6 +1,8 @@
 import chromadb
 from click.testing import CliRunner
 
+from pathlib import Path
+
 from gist_memory.cli import cli
 from gist_memory.store import PrototypeStore
 
@@ -42,6 +44,25 @@ def test_cli_ingest_directory(tmp_path, monkeypatch):
     mems = store.dump_memories()
     texts = {m.text for m in mems}
     assert {"alpha", "bravo"}.issubset(texts)
+    import shutil
+    shutil.rmtree(str(tmp_path / "db_file"))
+
+
+def test_cli_agentic_ingest(tmp_path, monkeypatch):
+    path = Path("tests/data/constitution.txt")
+    client = chromadb.PersistentClient(str(tmp_path / "db_file"))
+    _patch_client(monkeypatch, client)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        ["--memory-creator", "agentic", "ingest", str(path)],
+    )
+    assert result.exit_code == 0
+
+    store = PrototypeStore(client=client)
+    mems = store.dump_memories()
+    assert len(mems) > 1
     import shutil
     shutil.rmtree(str(tmp_path / "db_file"))
 

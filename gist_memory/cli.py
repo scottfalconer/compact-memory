@@ -7,6 +7,7 @@ from .memory_creation import (
     ExtractiveSummaryCreator,
     ChunkMemoryCreator,
     LLMSummaryCreator,
+    AgenticMemoryCreator,
 )
 from .store import PrototypeStore
 from tqdm import tqdm
@@ -23,7 +24,7 @@ from .embedder import get_embedder, LocalEmbedder
 @click.option("--model-name", default=None, help="Model name for the embedder")
 @click.option(
     "--memory-creator",
-    type=click.Choice(["identity", "extractive", "chunk", "llm"]),
+    type=click.Choice(["identity", "extractive", "chunk", "llm", "agentic"]),
     default="identity",
     help="Memory creation strategy",
 )
@@ -58,6 +59,7 @@ def cli(ctx, embedder, model_name, memory_creator, threshold, min_threshold, dec
             "extractive": ExtractiveSummaryCreator,
             "chunk": ChunkMemoryCreator,
             "llm": LLMSummaryCreator,
+            "agentic": AgenticMemoryCreator,
         }[memory_creator](),
         "threshold": threshold,
         "min_threshold": min_threshold,

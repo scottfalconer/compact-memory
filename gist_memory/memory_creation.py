@@ -70,10 +70,29 @@ class LLMSummaryCreator(MemoryCreator):
         return resp["choices"][0]["message"]["content"].strip()
 
 
+class AgenticMemoryCreator(MemoryCreator):
+    """Segment text into belief-sized ideas using ``agentic_split``."""
+
+    def __init__(self, max_tokens: int = 120, sim_threshold: float = 0.3) -> None:
+        self.max_tokens = max_tokens
+        self.sim_threshold = sim_threshold
+
+    def create(self, text: str) -> str:
+        return self.create_all(text)[0]
+
+    def create_all(self, text: str) -> list[str]:
+        from .segmentation import agentic_split
+
+        return agentic_split(
+            text, max_tokens=self.max_tokens, sim_threshold=self.sim_threshold
+        )
+
+
 __all__ = [
     "MemoryCreator",
     "IdentityMemoryCreator",
     "ExtractiveSummaryCreator",
     "ChunkMemoryCreator",
     "LLMSummaryCreator",
+    "AgenticMemoryCreator",
 ]

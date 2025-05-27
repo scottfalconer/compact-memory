@@ -25,6 +25,15 @@ def test_chunk_memory_creator():
     assert chunks == ["one two", "three four"]
 
 
+def test_agentic_memory_creator():
+    from gist_memory.memory_creation import AgenticMemoryCreator
+
+    text = "A. B. C. D. E."
+    creator = AgenticMemoryCreator(max_tokens=2, sim_threshold=0.1)
+    chunks = creator.create_all(text)
+    assert len(chunks) >= 3
+
+
 def test_llm_summary_creator(monkeypatch):
     class Dummy:
         @staticmethod
