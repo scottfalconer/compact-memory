@@ -19,10 +19,11 @@ dependencies = [
     "click",
     "tqdm",
     "sentence-transformers",
+    "textual",
 ]
 
 [project.optional-dependencies]
 test = ["pytest"]
 
 [project.scripts]
-gist-memory = "gist_memory.cli:cli"
+gist-memory = "gist_memory.__main__:main"
