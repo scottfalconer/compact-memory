@@ -28,3 +28,9 @@ class ExtractiveSummaryCreator(MemoryCreator):
         words = text.split()
         return " ".join(words[: self.max_words])
 
+
+__all__ = [
+    "MemoryCreator",
+    "IdentityMemoryCreator",
+    "ExtractiveSummaryCreator",
+]

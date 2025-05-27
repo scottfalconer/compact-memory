@@ -12,6 +12,8 @@ from .embedder import Embedder, RandomEmbedder
 
 
 def default_chroma_client() -> chromadb.Client:
+    """Return a persistent ChromaDB client rooted in the current directory."""
+
     path = os.path.join(os.getcwd(), "gist_memory_db")
     client = chromadb.PersistentClient(path)
     return client
@@ -31,12 +33,27 @@ class Prototype:
 
 
 class PrototypeStore:
+    """Manage prototypes and memories using a ChromaDB backend."""
+
     def __init__(
         self,
         client: Optional[chromadb.Client] = None,
         threshold: float = 0.4,
         embedder: Embedder | None = None,
     ):
+        """Create a store instance.
+
+        Parameters
+        ----------
+        client:
+            Optional pre-initialised ChromaDB client. If not provided, a
+            persistent client in ``gist_memory_db`` under the current working
+            directory is created.
+        threshold:
+            Distance threshold for assigning a memory to an existing prototype.
+        embedder:
+            Embedding backend used to convert text to vectors.
+        """
         self.client = client or default_chroma_client()
         self.base_threshold = threshold
         self.threshold = threshold
@@ -58,7 +75,12 @@ class PrototypeStore:
         else:
             pid = self._create_prototype(embed)
         mid = str(uuid.uuid4())
-        self.memory_collection.add(ids=[mid], embeddings=[embed], metadatas=[{"prototype_id": pid}], documents=[text])
+        self.memory_collection.add(
+            ids=[mid],
+            embeddings=[embed],
+            metadatas=[{"prototype_id": pid}],
+            documents=[text],
+        )
         self._adapt_threshold()
         return Memory(id=mid, text=text, prototype_id=pid)
 
@@ -147,3 +169,11 @@ class PrototypeStore:
             self.threshold = self.base_threshold
         else:
             self.threshold = max(0.05, self.base_threshold / np.sqrt(count))
+
+
+__all__ = [
+    "Memory",
+    "Prototype",
+    "PrototypeStore",
+    "default_chroma_client",
+]

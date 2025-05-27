@@ -61,9 +61,7 @@ class LocalEmbedder(Embedder):
         """
 
         if SentenceTransformer is None:
-            raise ImportError(
-                "sentence-transformers is required for LocalEmbedder"
-            )
+            raise ImportError("sentence-transformers is required for LocalEmbedder")
         self.model = SentenceTransformer(
             model_name,
             local_files_only=local_files_only,
@@ -82,3 +80,12 @@ def get_embedder(kind: str = "random", model_name: str | None = None) -> Embedde
     if kind == "local":
         return LocalEmbedder(model_name=model_name or "all-MiniLM-L6-v2")
     return RandomEmbedder()
+
+
+__all__ = [
+    "Embedder",
+    "RandomEmbedder",
+    "OpenAIEmbedder",
+    "LocalEmbedder",
+    "get_embedder",
+]
