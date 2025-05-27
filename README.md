@@ -21,8 +21,6 @@ pip install -r requirements.txt
 python -m gist_memory download-model --model-name all-MiniLM-L6-v2
 
 # You can alternatively run `.codex/setup.sh` to perform these steps.
-# The script also installs Node.js and the TUI dependencies so the
-# interactive interface works out of the box.
 ```
 
 Alternatively install the package from source:
@@ -84,20 +82,6 @@ attempt any network downloads. Ensure the model is pre-cached using the commands
 in the setup section or via `.codex/setup.sh`.
 
 Data is stored in `gist_memory_db` in the current working directory.
-
-## Interactive TUI
-
-Running `gist-memory` with no arguments launches an interactive menu
-implemented with [Ink](https://github.com/vadimdemedes/ink).  The Node
-dependencies are installed automatically by `.codex/setup.sh`.  If you skipped
-that script or need to update packages, run:
-
-```bash
-cd tui
-npm install  # requires network access
-```
-
-The TUI simply invokes the Python CLI under the hood.
 
 ## Running Tests
 

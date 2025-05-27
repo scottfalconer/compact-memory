@@ -1,7 +1,6 @@
 import click
 from pathlib import Path
 import sys
-import subprocess
 
 from .memory_creation import (
     IdentityMemoryCreator,
@@ -14,21 +13,8 @@ from .store import PrototypeStore
 from tqdm import tqdm
 from .embedder import get_embedder, LocalEmbedder
 
-def _launch_tui() -> None:
-    """Launch the Node-based interactive UI if available."""
-    script = Path(__file__).resolve().parents[1] / "tui" / "index.js"
-    if not script.exists():
-        click.echo("TUI not found", err=True)
-        return
-    try:
-        subprocess.run(["node", str(script)], check=True)
-    except FileNotFoundError:
-        click.echo("Node.js is required to run the interactive UI", err=True)
-    except subprocess.CalledProcessError:
-        pass
 
-
-@click.group(invoke_without_command=True)
+@click.group()
 @click.option(
     "--embedder",
     type=click.Choice(["random", "openai", "local"]),
@@ -79,8 +65,7 @@ def cli(ctx, embedder, model_name, memory_creator, threshold, min_threshold, dec
         "min_threshold": min_threshold,
         "decay_exponent": decay_exponent,
     }
-    if ctx.invoked_subcommand is None:
-        _launch_tui()
+
 
 @cli.command()
 @click.argument("source", nargs=-1)
