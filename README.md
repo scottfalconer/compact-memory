@@ -11,17 +11,15 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 
 ## Setup
 
-This project requires **Python 3.11+**.  Install the dependencies and pre-cache
-the default local embedding model:
+This project requires **Python 3.11+**.  Install the dependencies and download
+the default local embedding model (only needed the first time):
 
 ```bash
 pip install -r requirements.txt
-python - <<'EOF'
-from sentence_transformers import SentenceTransformer
-SentenceTransformer("all-MiniLM-L6-v2")
-EOF
+# fetch the "all-MiniLM-L6-v2" model so the local embedder works offline
+python -m gist_memory download-model --model-name all-MiniLM-L6-v2
 
-You can alternatively run `.codex/setup.sh` which performs the same steps.
+# You can alternatively run `.codex/setup.sh` to perform these steps.
 ```
 
 Alternatively install the package from source:
@@ -95,10 +93,8 @@ embedding model:
 
 ```bash
 pip install -r requirements.txt
-python - <<'PY'
-from sentence_transformers import SentenceTransformer
-SentenceTransformer("all-MiniLM-L6-v2")
-PY
+# download the local model once
+python -m gist_memory download-model --model-name all-MiniLM-L6-v2
 
 # run the example
 python examples/onboarding_demo.py

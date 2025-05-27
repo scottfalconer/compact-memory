@@ -13,8 +13,5 @@ if [ -f requirements.txt ]; then
 fi
 
 # Pre-download the default local embedding model so it is available offline
-python3 - <<'EOF'
-from sentence_transformers import SentenceTransformer
-SentenceTransformer("all-MiniLM-L6-v2")
-EOF
+python3 -m gist_memory download-model --model-name all-MiniLM-L6-v2
 
