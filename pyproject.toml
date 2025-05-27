@@ -17,6 +17,7 @@ dependencies = [
     "numpy",
     "faiss-cpu",
     "click",
+    "tqdm",
     "sentence-transformers",
 ]
 
