@@ -133,20 +133,39 @@ class JsonNpyVectorStore(VectorStore):
             self.proto_vectors = np.vstack([self.proto_vectors, vec])
         self.index[proto.prototype_id] = idx
 
-    def update_prototype(self, proto_id: str, new_vec: np.ndarray, memory_id: str) -> None:
+    def update_prototype(
+        self,
+        proto_id: str,
+        new_vec: np.ndarray,
+        memory_id: str,
+        *,
+        alpha: float | None = None,
+    ) -> None:
+        """Update ``proto_id`` towards ``new_vec`` using EMA."""
+
         idx = self.index[proto_id]
         assert self.proto_vectors is not None
-        self.proto_vectors[idx] = new_vec
+        current = self.proto_vectors[idx]
         proto = self.prototypes[idx]
+        if alpha is None:
+            alpha = 1.0 / (proto.strength + 1.0) if proto.strength > 0 else 1.0
+        updated = (1 - alpha) * current + alpha * new_vec
+        if self.normalized:
+            norm = np.linalg.norm(updated) or 1.0
+            updated = updated / norm
+        self.proto_vectors[idx] = updated.astype(np.float32)
         proto.last_updated_ts = datetime.utcnow().replace(microsecond=0)
         proto.constituent_memory_ids.append(memory_id)
+        proto.strength += 1.0
 
     def find_nearest(self, vec: np.ndarray, k: int) -> List[Tuple[str, float]]:
+        """Return ``k`` nearest prototypes by cosine similarity."""
+
         if self.proto_vectors is None or len(self.prototypes) == 0:
             return []
-        dists = np.linalg.norm(self.proto_vectors - vec, axis=1)
-        idxs = np.argsort(dists)[:k]
-        return [(self.prototypes[i].prototype_id, float(dists[i])) for i in idxs]
+        sims = self.proto_vectors @ vec
+        idxs = np.argsort(-sims)[:k]
+        return [(self.prototypes[i].prototype_id, float(sims[i])) for i in idxs]
 
     def add_memory(self, memory: RawMemory) -> None:
         self.memories.append(memory)
