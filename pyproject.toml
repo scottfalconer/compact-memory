@@ -11,7 +11,6 @@ license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "chromadb",
     "openai",
     "tiktoken",
     "numpy",
@@ -24,6 +23,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest"]
+chroma = ["chromadb"]
 
 [project.scripts]
 gist-memory = "gist_memory.__main__:main"

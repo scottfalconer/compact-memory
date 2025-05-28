@@ -1,4 +1,3 @@
-import chromadb
 from click.testing import CliRunner
 
 from pathlib import Path
@@ -7,64 +6,44 @@ from gist_memory.cli import cli
 from gist_memory.store import PrototypeStore
 
 
-def _patch_client(monkeypatch, client):
-    import gist_memory.store as store_module
-    monkeypatch.setattr(store_module, "default_chroma_client", lambda: client)
-
-
-def test_cli_ingest_file(tmp_path, monkeypatch):
+def test_cli_ingest_file(tmp_path):
     file_path = tmp_path / "one.txt"
     file_path.write_text("hello world")
-    client = chromadb.PersistentClient(str(tmp_path / "db_file"))
-    _patch_client(monkeypatch, client)
 
     runner = CliRunner()
-    result = runner.invoke(cli, ["ingest", str(file_path)])
+    result = runner.invoke(cli, ["--db-path", str(tmp_path), "ingest", str(file_path)])
     assert result.exit_code == 0
 
-    store = PrototypeStore(client=client)
+    store = PrototypeStore(path=str(tmp_path))
     mems = store.dump_memories()
     assert any(m.text == "hello world" for m in mems)
-    # cleanup database
-    import shutil
-    shutil.rmtree(str(tmp_path / "db_file"))
 
 
-def test_cli_ingest_directory(tmp_path, monkeypatch):
+def test_cli_ingest_directory(tmp_path):
     (tmp_path / "a.txt").write_text("alpha")
     (tmp_path / "b.txt").write_text("bravo")
-    client = chromadb.PersistentClient(str(tmp_path / "db_file"))
-    _patch_client(monkeypatch, client)
-
     runner = CliRunner()
-    result = runner.invoke(cli, ["ingest", str(tmp_path)])
+    result = runner.invoke(cli, ["--db-path", str(tmp_path), "ingest", str(tmp_path)])
     assert result.exit_code == 0
 
-    store = PrototypeStore(client=client)
+    store = PrototypeStore(path=str(tmp_path))
     mems = store.dump_memories()
     texts = {m.text for m in mems}
     assert {"alpha", "bravo"}.issubset(texts)
-    import shutil
-    shutil.rmtree(str(tmp_path / "db_file"))
 
 
-def test_cli_agentic_ingest(tmp_path, monkeypatch):
+def test_cli_agentic_ingest(tmp_path):
     path = Path("tests/data/constitution.txt")
-    client = chromadb.PersistentClient(str(tmp_path / "db_file"))
-    _patch_client(monkeypatch, client)
-
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        ["--memory-creator", "agentic", "ingest", str(path)],
+        ["--db-path", str(tmp_path), "--memory-creator", "agentic", "ingest", str(path)],
     )
     assert result.exit_code == 0
 
-    store = PrototypeStore(client=client)
+    store = PrototypeStore(path=str(tmp_path))
     mems = store.dump_memories()
     assert len(mems) > 1
-    import shutil
-    shutil.rmtree(str(tmp_path / "db_file"))
 
 
 def test_cli_download_model(monkeypatch):

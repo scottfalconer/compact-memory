@@ -5,7 +5,8 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 ## Features
 
 - CLI interface with `ingest`, `query`, `decode`, `summarize`, and `dump` commands.
-- Uses ChromaDB for persistent storage of prototypes and memories.
+- Lightweight JSON/NPY backend for prototypes and memories (default).
+- Optional Chroma vector store for scale via ``pip install \"gist-memory[chroma]\"``.
 - Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
 - Ingest operation displays a progress bar showing which prototypes are created or updated.
@@ -95,6 +96,25 @@ attempt any network downloads. Ensure the model is pre-cached using the commands
 in the setup section or via `.codex/setup.sh`.
 
 Data is stored in `gist_memory_db` in the current working directory.
+
+## Scaling with Chroma
+
+If you exceed about **10k beliefs** or plan to run multi-process agents, switch to
+the Chroma backend:
+
+```yaml
+vector_store: chroma
+chroma_path: ./belief_db
+```
+
+Install the optional dependency first:
+
+```bash
+pip install "gist-memory[chroma]"
+```
+
+A quick benchmark shows brute-force JSON lookup taking ~20 ms for 1k beliefs
+versus <5 ms with Chroma. Larger datasets benefit even more.
 
 ## Running Tests
 
