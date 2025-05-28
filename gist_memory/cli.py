@@ -170,5 +170,18 @@ def stats(
             typer.echo(f"{k}: {v}")
 
 
+@app.command("download-model")
+def download_model(
+    model_name: str = typer.Option(
+        "all-MiniLM-L6-v2", help="SentenceTransformer model name"
+    )
+) -> None:
+    """Pre-download a local embedding model."""
+    from sentence_transformers import SentenceTransformer
+
+    SentenceTransformer(model_name)
+    typer.echo(f"Downloaded {model_name}")
+
+
 if __name__ == "__main__":
     app()
