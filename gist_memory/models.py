@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, Field, validator
+
+
+class BeliefPrototype(BaseModel):
+    """Metadata for a prototype without the vector."""
+
+    prototype_id: str
+    vector_row_index: int
+    summary_text: str = Field(default="")
+    strength: float = 1.0
+    confidence: float = 1.0
+    creation_ts: datetime = Field(default_factory=lambda: datetime.utcnow().replace(microsecond=0))
+    last_updated_ts: datetime = Field(default_factory=lambda: datetime.utcnow().replace(microsecond=0))
+    constituent_memory_ids: List[str] = Field(default_factory=list)
+
+    @validator("summary_text")
+    def _limit_summary(cls, v: str) -> str:
+        if len(v) > 256:
+            return v[:256]
+        return v
+
+    @validator("strength")
+    def _check_strength(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("strength must be > 0")
+        return v
+
+    @validator("confidence")
+    def _check_confidence(cls, v: float) -> float:
+        if not 0 <= v <= 1:
+            raise ValueError("confidence must be between 0 and 1")
+        return v
+
+
+class RawMemory(BaseModel):
+    """Individual memory record."""
+
+    memory_id: str
+    raw_text_hash: str
+    assigned_prototype_id: Optional[str] = None
+    source_document_id: Optional[str] = None
+    creation_ts: datetime = Field(default_factory=lambda: datetime.utcnow().replace(microsecond=0))
+    raw_text: str
+    embedding: Optional[List[float]] = None

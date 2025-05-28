@@ -3,10 +3,7 @@
 This file tracks outstanding work based on `AGENTS.md` and the latest v3 implementation plan.
 
 ## 1 · Data-Model & Storage Layer
-- Implement `BeliefPrototype` and `RawMemory` Pydantic models.
-- Validate `meta.yaml` for embedding model name and dimension.
-- Create a `VectorStore` ABC exposing add/update/query/save/load.
-- Implement `JsonNpyVectorStore` with row-order mapping and `gist migrate --to json`.
+_Completed in v0.1.1._
 
 ## 2 · Embedding & Chunking
 - Provide `embed_text()` wrapper using the local `all-MiniLM-L6-v2` model.
