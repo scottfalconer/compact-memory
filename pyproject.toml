@@ -21,6 +21,7 @@ dependencies = [
     "pyyaml",
     "sentence-transformers",
     "textual",
+    "nltk",
 ]
 
 [project.optional-dependencies]

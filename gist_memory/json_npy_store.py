@@ -10,6 +10,7 @@ import numpy as np
 import yaml
 
 from .models import BeliefPrototype, RawMemory
+from .embedding_pipeline import EmbeddingDimensionMismatchError
 
 
 class VectorStore:
@@ -37,7 +38,7 @@ class VectorStore:
 class JsonNpyVectorStore(VectorStore):
     """Filesystem-backed store using JSON + NPY files."""
 
-    def __init__(self, path: str, *, embedding_model: str = "unknown", embedding_dim: int = 0, normalized: bool = False) -> None:
+    def __init__(self, path: str, *, embedding_model: str = "unknown", embedding_dim: int = 0, normalized: bool = True) -> None:
         self.path = Path(path)
         self.embedding_model = embedding_model
         self.embedding_dim = embedding_dim
@@ -83,12 +84,14 @@ class JsonNpyVectorStore(VectorStore):
         self.embedding_model = str(self.meta.get("embedding_model", "unknown"))
         self.embedding_dim = int(self.meta.get("embedding_dim", 0))
         self.normalized = bool(self.meta.get("normalized", False))
+        if not self.normalized:
+            raise ValueError("embeddings must be normalized")
 
         if self._proto_vec_path().exists():
             arr = np.load(self._proto_vec_path())
             if arr.ndim != 2 or arr.shape[1] != self.embedding_dim:
-                raise ValueError(
-                    f"Dimension mismatch: {arr.shape[1]} vs {self.embedding_dim}"
+                raise EmbeddingDimensionMismatchError(
+                    f"{arr.shape[1]} vs {self.embedding_dim}"
                 )
             self.proto_vectors = arr.astype(np.float32)
         else:
