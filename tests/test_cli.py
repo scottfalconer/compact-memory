@@ -1,66 +1,51 @@
-from click.testing import CliRunner
+import json
+from typer.testing import CliRunner
+from gist_memory.cli import app
+from gist_memory.embedding_pipeline import MockEncoder
+import pytest
 
-from pathlib import Path
 
-from gist_memory.cli import cli
-from gist_memory.store import PrototypeStore
+@pytest.fixture(autouse=True)
+def use_mock_encoder(monkeypatch):
+    enc = MockEncoder()
+    monkeypatch.setattr(
+        "gist_memory.embedding_pipeline._load_model", lambda *a, **k: enc
+    )
+    yield
 
 
-def test_cli_ingest_file(tmp_path):
-    file_path = tmp_path / "one.txt"
-    file_path.write_text("hello world")
-
+def test_cli_init_add_query(tmp_path):
     runner = CliRunner()
-    result = runner.invoke(cli, ["--db-path", str(tmp_path), "ingest", str(file_path)])
+    result = runner.invoke(app, ["init", str(tmp_path), "--agent-name", "tester"])
     assert result.exit_code == 0
 
-    store = PrototypeStore(path=str(tmp_path))
-    mems = store.dump_memories()
-    assert any(m.text == "hello world" for m in mems)
-
-
-def test_cli_ingest_directory(tmp_path):
-    (tmp_path / "a.txt").write_text("alpha")
-    (tmp_path / "b.txt").write_text("bravo")
-    runner = CliRunner()
-    result = runner.invoke(cli, ["--db-path", str(tmp_path), "ingest", str(tmp_path)])
-    assert result.exit_code == 0
-
-    store = PrototypeStore(path=str(tmp_path))
-    mems = store.dump_memories()
-    texts = {m.text for m in mems}
-    assert {"alpha", "bravo"}.issubset(texts)
-
-
-def test_cli_agentic_ingest(tmp_path):
-    path = Path("tests/data/constitution.txt")
-    runner = CliRunner()
     result = runner.invoke(
-        cli,
-        ["--db-path", str(tmp_path), "--memory-creator", "agentic", "ingest", str(path)],
+        app,
+        ["add", "--agent-name", str(tmp_path), "--text", "hello world"],
     )
     assert result.exit_code == 0
 
-    store = PrototypeStore(path=str(tmp_path))
-    mems = store.dump_memories()
-    assert len(mems) > 1
+    result = runner.invoke(
+        app,
+        [
+            "query",
+            "--agent-name",
+            str(tmp_path),
+            "--query-text",
+            "hello",
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0
+    data = json.loads(result.stdout.strip())
+    assert data["memories"]
 
 
-def test_cli_download_model(monkeypatch):
-    called = {}
-
-    def fake_local_embedder(model_name="", local_files_only=True):
-        called["name"] = model_name
-        called["offline"] = local_files_only
-        class Dummy:
-            pass
-        return Dummy()
-
-    import importlib
-    cli_module = importlib.import_module("gist_memory.cli")
-    monkeypatch.setattr(cli_module, "LocalEmbedder", fake_local_embedder)
-
+def test_cli_stats(tmp_path):
     runner = CliRunner()
-    res = runner.invoke(cli, ["download-model", "--model-name", "foo"])
-    assert res.exit_code == 0
-    assert called == {"name": "foo", "offline": False}
+    runner.invoke(app, ["init", str(tmp_path), "--agent-name", "tester"])
+    runner.invoke(app, ["add", "--agent-name", str(tmp_path), "--text", "alpha"])
+    result = runner.invoke(app, ["stats", str(tmp_path), "--json"])
+    assert result.exit_code == 0
+    data = json.loads(result.stdout.strip())
+    assert data["prototypes"] == 1

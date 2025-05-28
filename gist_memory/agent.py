@@ -4,8 +4,12 @@ import hashlib
 import json
 import uuid
 from collections import deque
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
+
+import logging
+import numpy as np
 
 
 from .chunker import Chunker, SentenceWindowChunker
@@ -49,11 +53,25 @@ class EvidenceWriter:
 
     def add(self, belief_id: str, memory_id: str, weight: float) -> None:
         with open(self.path, "a") as f:
-            f.write(json.dumps({
-                "belief_id": belief_id,
-                "memory_id": memory_id,
-                "weight": weight,
-            }) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "belief_id": belief_id,
+                        "memory_id": memory_id,
+                        "weight": weight,
+                    }
+                )
+                + "\n"
+            )
+
+
+@dataclass
+class QueryResult:
+    """Return type for :meth:`Agent.query`."""
+
+    prototypes: List[Dict[str, object]]
+    memories: List[Dict[str, object]]
+    status: str = "ok"
 
 
 class Agent:
@@ -147,3 +165,56 @@ class Agent:
 
         self.store.save()
         return results
+
+    # ------------------------------------------------------------------
+    def query(
+        self,
+        text: str,
+        *,
+        top_k_prototypes: int = 1,
+        top_k_memories: int = 3,
+        include_hypotheses: bool = False,
+    ) -> QueryResult:
+        """Return nearest prototypes and memories for ``text``."""
+
+        vec = embed_text(text)
+        if vec.ndim != 1:
+            vec = vec.reshape(-1)
+        nearest = self.store.find_nearest(vec, k=top_k_prototypes)
+        if not nearest:
+            return QueryResult(prototypes=[], memories=[], status="no_match")
+
+        logging.info(
+            "[query] '%s' → %d protos, top sim %.2f",
+            text[:40],
+            len(nearest),
+            nearest[0][1],
+        )
+
+        proto_map = {p.prototype_id: p for p in self.store.prototypes}
+        proto_results: List[Dict[str, object]] = []
+        memory_candidates: List[tuple[float, RawMemory]] = []
+
+        for pid, sim in nearest:
+            proto = proto_map.get(pid)
+            if not proto:
+                continue
+            proto_results.append({"id": pid, "summary": proto.summary_text, "sim": sim})
+            for mid in proto.constituent_memory_ids:
+                mem = next((m for m in self.store.memories if m.memory_id == mid), None)
+                if mem is None:
+                    continue
+                if mem.embedding is not None:
+                    mem_vec = np.array(mem.embedding, dtype=np.float32)
+                    mem_sim = float(np.dot(vec, mem_vec))
+                else:
+                    mem_sim = float(sim)
+                memory_candidates.append((mem_sim, mem))
+
+        memory_candidates.sort(key=lambda x: -x[0])
+        mem_results = [
+            {"id": m.memory_id, "text": m.raw_text, "sim": s}
+            for s, m in memory_candidates[:top_k_memories]
+        ]
+
+        return QueryResult(prototypes=proto_results, memories=mem_results)

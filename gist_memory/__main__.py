@@ -10,10 +10,12 @@ def main(argv=None) -> None:
     args = sys.argv[1:] if argv is None else argv
     if len(args) == 0:
         from .tui import run_tui
+
         run_tui()
     else:
-        from .cli import cli
-        cli()
+        from .cli import app
+
+        app()
 
 
 if __name__ == "__main__":
