@@ -18,5 +18,5 @@ fi
 pip3 install --no-cache-dir textual typer portalocker
 
 # Pre-download the default local embedding model so it is available offline
-#python3 -m gist_memory download-model --model-name all-MiniLM-L6-v2
+python3 -m gist_memory download-model --model-name all-MiniLM-L6-v2
 
