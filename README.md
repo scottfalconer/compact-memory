@@ -35,12 +35,12 @@ pip install .
 
 ### Interactive TUI
 
-Run ``gist-memory`` with no arguments to start an in-terminal interface that
-allows you to pick a ``.txt`` file from the current directory or enter text
-manually for ingestion:
+Install the optional TUI extras and launch ``gist-run`` to explore a brain
+interactively:
 
 ```bash
-gist-memory
+pip install "gist-memory[tui]"
+gist-run
 ```
 
 ### Command line

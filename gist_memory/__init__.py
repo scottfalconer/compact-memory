@@ -3,7 +3,7 @@
 from .cli import app
 from .models import BeliefPrototype, RawMemory
 from .json_npy_store import JsonNpyVectorStore, VectorStore
-from .agent import Agent
+from .agent import Agent, QueryResult, PrototypeHit, MemoryHit
 from .embedding_pipeline import embed_text
 from .chunker import SentenceWindowChunker, FixedSizeChunker
 
@@ -14,6 +14,9 @@ __all__ = [
     "JsonNpyVectorStore",
     "VectorStore",
     "Agent",
+    "QueryResult",
+    "PrototypeHit",
+    "MemoryHit",
     "embed_text",
     "SentenceWindowChunker",
     "FixedSizeChunker",
