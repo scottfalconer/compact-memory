@@ -4,6 +4,8 @@ numpy
 faiss-cpu
 click
 tqdm
+pydantic
+pyyaml
 pytest
 sentence-transformers
 textual  # required for the TUI

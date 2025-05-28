@@ -17,6 +17,8 @@ dependencies = [
     "faiss-cpu",
     "click",
     "tqdm",
+    "pydantic",
+    "pyyaml",
     "sentence-transformers",
     "textual",
 ]

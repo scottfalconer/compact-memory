@@ -15,6 +15,7 @@ from .store import (
     ChromaVectorStore,
     CloudVectorStore,
 )
+from .json_npy_store import JsonNpyVectorStore
 from tqdm import tqdm
 from .embedder import get_embedder, LocalEmbedder
 
@@ -219,6 +220,43 @@ def dump_memories(obj, prototype_id):
     memories = store.dump_memories(prototype_id=prototype_id)
     for mem in memories:
         click.echo(f"[{mem.prototype_id}] {mem.text}")
+
+
+@cli.command(name="migrate")
+@click.option("--from-path", default="gist_memory_db", help="Old store path")
+@click.option("--to-path", default="gist_memory_json", help="New store path")
+def migrate_store(from_path: str, to_path: str) -> None:
+    """Migrate legacy JSONVectorStore to JsonNpyVectorStore."""
+    old = JSONVectorStore(path=from_path)
+    new = JsonNpyVectorStore(
+        path=to_path,
+        embedding_model="unknown",
+        embedding_dim=len(old.proto_embeds[0]) if old.proto_embeds else 768,
+    )
+    for pid, vec in zip(old.prototypes, old.proto_embeds):
+        proto = BeliefPrototype(
+            prototype_id=pid,
+            vector_row_index=0,
+            summary_text="",
+            strength=1.0,
+            confidence=1.0,
+            constituent_memory_ids=[
+                m.id for m in old.memories if m.prototype_id == pid
+            ],
+        )
+        new.add_prototype(proto, np.array(vec, dtype=np.float32))
+    for mem, emb in zip(old.memories, old.mem_embeds):
+        rm = RawMemory(
+            memory_id=mem.id,
+            raw_text_hash="",
+            assigned_prototype_id=mem.prototype_id,
+            raw_text=mem.text,
+            source_document_id=None,
+            embedding=list(map(float, emb)) if emb is not None else None,
+        )
+        new.add_memory(rm)
+    new.save()
+    click.echo(f"Migrated store to {to_path}")
 
 
 @cli.command(name="download-model")
