@@ -16,6 +16,24 @@ def run_tui() -> None:
     except Exception as exc:  # pragma: no cover - optional dependency
         raise RuntimeError("Textual is required for the TUI") from exc
 
+    class WelcomeApp(App):
+        """Display a short welcome message before launching the main TUI."""
+
+        CSS_PATH = None
+
+        def compose(self) -> ComposeResult:  # type: ignore[override]
+            yield Header()
+            yield Label("Welcome to Gist Memory", id="welcome")
+            yield Label(
+                "Commands: ingest, query, decode, summarize, dump",
+                id="commands",
+            )
+            yield Label("Press any key to continue", id="continue")
+            yield Footer()
+
+        def on_key(self, event) -> None:  # pragma: no cover - simple handler
+            self.exit()
+
     class IngestApp(App):
         """Basic ingestion interface."""
 
@@ -54,6 +72,7 @@ def run_tui() -> None:
             status = self.query_one("#status", Label)
             status.update("Ingested text")
 
+    WelcomeApp().run()
     IngestApp().run()
 
 
