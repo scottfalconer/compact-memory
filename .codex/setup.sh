@@ -10,7 +10,12 @@ apt-get install -y --no-install-recommends python3 python3-pip git
 # Install Python dependencies if requirements.txt is present
 if [ -f requirements.txt ]; then
     pip3 install --no-cache-dir -r requirements.txt
+else
+    pip3 install --no-cache-dir textual
 fi
+
+# Ensure textual is available even when not listed in requirements
+pip3 install --no-cache-dir textual
 
 # Pre-download the default local embedding model so it is available offline
 python3 -m gist_memory download-model --model-name all-MiniLM-L6-v2
