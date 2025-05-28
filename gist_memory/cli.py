@@ -9,7 +9,12 @@ from .memory_creation import (
     LLMSummaryCreator,
     AgenticMemoryCreator,
 )
-from .store import PrototypeStore
+from .store import (
+    PrototypeStore,
+    JSONVectorStore,
+    ChromaVectorStore,
+    CloudVectorStore,
+)
 from tqdm import tqdm
 from .embedder import get_embedder, LocalEmbedder
 
@@ -49,8 +54,31 @@ from .embedder import get_embedder, LocalEmbedder
     show_default=True,
     help="Exponent controlling threshold decay",
 )
+@click.option(
+    "--vector-store",
+    type=click.Choice(["json", "chroma", "cloud"]),
+    default="json",
+    show_default=True,
+    help="Backend storage implementation",
+)
+@click.option(
+    "--db-path",
+    default="gist_memory_db",
+    show_default=True,
+    help="Path for persistent storage",
+)
 @click.pass_context
-def cli(ctx, embedder, model_name, memory_creator, threshold, min_threshold, decay_exponent):
+def cli(
+    ctx,
+    embedder,
+    model_name,
+    memory_creator,
+    threshold,
+    min_threshold,
+    decay_exponent,
+    vector_store,
+    db_path,
+):
     """Gist Memory Agent CLI."""
     ctx.obj = {
         "embedder": get_embedder(embedder, model_name),
@@ -64,6 +92,12 @@ def cli(ctx, embedder, model_name, memory_creator, threshold, min_threshold, dec
         "threshold": threshold,
         "min_threshold": min_threshold,
         "decay_exponent": decay_exponent,
+        "store_cls": {
+            "json": JSONVectorStore,
+            "chroma": ChromaVectorStore,
+            "cloud": CloudVectorStore,
+        }[vector_store],
+        "db_path": db_path,
     }
 
 
@@ -73,19 +107,20 @@ def cli(ctx, embedder, model_name, memory_creator, threshold, min_threshold, dec
 def ingest(obj, source):
     """Ingest text or contents of a file/directory."""
     creator = obj["memory_creator"]
-    store = PrototypeStore(
+    store = obj["store_cls"](
         embedder=obj["embedder"],
         threshold=obj["threshold"],
         min_threshold=obj["min_threshold"],
         decay_exponent=obj["decay_exponent"],
+        path=obj["db_path"],
     )
 
     def process_chunks(chunks: list[str]) -> None:
         with tqdm(chunks, desc="Ingesting", unit="mem", disable=not sys.stderr.isatty()) as bar:
             for chunk in bar:
-                before = store.proto_collection.count()
+                before = store.prototype_count()
                 mem = store.add_memory(chunk)
-                after = store.proto_collection.count()
+                after = store.prototype_count()
                 action = "Created" if after > before else "Updated"
                 tqdm.write(f"{action} prototype {mem.prototype_id} with memory {mem.id}")
 
@@ -116,11 +151,12 @@ def ingest(obj, source):
 def query(obj, text, top):
     """Query the store."""
     content = " ".join(text)
-    store = PrototypeStore(
+    store = obj["store_cls"](
         embedder=obj["embedder"],
         threshold=obj["threshold"],
         min_threshold=obj["min_threshold"],
         decay_exponent=obj["decay_exponent"],
+        path=obj["db_path"],
     )
     results = store.query(content, n=top)
     for mem in results:
@@ -133,11 +169,12 @@ def query(obj, text, top):
 @click.pass_obj
 def decode_prototype(obj, prototype_id, top):
     """Show example memories for a prototype."""
-    store = PrototypeStore(
+    store = obj["store_cls"](
         embedder=obj["embedder"],
         threshold=obj["threshold"],
         min_threshold=obj["min_threshold"],
         decay_exponent=obj["decay_exponent"],
+        path=obj["db_path"],
     )
     memories = store.decode_prototype(prototype_id, n=top)
     if not memories:
@@ -153,11 +190,12 @@ def decode_prototype(obj, prototype_id, top):
 @click.pass_obj
 def summarize_prototype(obj, prototype_id, max_words):
     """Show a simple summary for a prototype."""
-    store = PrototypeStore(
+    store = obj["store_cls"](
         embedder=obj["embedder"],
         threshold=obj["threshold"],
         min_threshold=obj["min_threshold"],
         decay_exponent=obj["decay_exponent"],
+        path=obj["db_path"],
     )
     summary = store.summarize_prototype(prototype_id, max_words=max_words)
     if summary is None:
@@ -171,11 +209,12 @@ def summarize_prototype(obj, prototype_id, max_words):
 @click.pass_obj
 def dump_memories(obj, prototype_id):
     """Dump all memories, optionally for a given prototype."""
-    store = PrototypeStore(
+    store = obj["store_cls"](
         embedder=obj["embedder"],
         threshold=obj["threshold"],
         min_threshold=obj["min_threshold"],
         decay_exponent=obj["decay_exponent"],
+        path=obj["db_path"],
     )
     memories = store.dump_memories(prototype_id=prototype_id)
     for mem in memories:

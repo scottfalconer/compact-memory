@@ -1,4 +1,3 @@
-chromadb
 openai
 tiktoken
 numpy
