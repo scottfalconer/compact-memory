@@ -1,279 +1,174 @@
-import click
+import json
+import shutil
+from dataclasses import asdict
 from pathlib import Path
-import sys
+from typing import Optional
 
-from .memory_creation import (
-    IdentityMemoryCreator,
-    ExtractiveSummaryCreator,
-    ChunkMemoryCreator,
-    LLMSummaryCreator,
-    AgenticMemoryCreator,
-)
-from .store import (
-    PrototypeStore,
-    JSONVectorStore,
-    ChromaVectorStore,
-    CloudVectorStore,
-)
+import typer
+import portalocker
+from rich.table import Table
+from rich.console import Console
+
+from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
-from tqdm import tqdm
-from .embedder import get_embedder, LocalEmbedder
+from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
+from .embedding_pipeline import embed_text
+
+app = typer.Typer(help="Gist Memory command line interface")
+console = Console()
 
 
-@click.group()
-@click.option(
-    "--embedder",
-    type=click.Choice(["random", "openai", "local"]),
-    default="random",
-    help="Embedding backend",
-)
-@click.option("--model-name", default=None, help="Model name for the embedder")
-@click.option(
-    "--memory-creator",
-    type=click.Choice(["identity", "extractive", "chunk", "llm", "agentic"]),
-    default="identity",
-    help="Memory creation strategy",
-)
-@click.option(
-    "--threshold",
-    default=0.4,
-    type=float,
-    show_default=True,
-    help="Prototype assignment threshold",
-)
-@click.option(
-    "--min-threshold",
-    default=0.05,
-    type=float,
-    show_default=True,
-    help="Minimum adaptive threshold",
-)
-@click.option(
-    "--decay-exponent",
-    default=0.5,
-    type=float,
-    show_default=True,
-    help="Exponent controlling threshold decay",
-)
-@click.option(
-    "--vector-store",
-    type=click.Choice(["json", "chroma", "cloud"]),
-    default="json",
-    show_default=True,
-    help="Backend storage implementation",
-)
-@click.option(
-    "--db-path",
-    default="gist_memory_db",
-    show_default=True,
-    help="Path for persistent storage",
-)
-@click.pass_context
-def cli(
-    ctx,
-    embedder,
-    model_name,
-    memory_creator,
-    threshold,
-    min_threshold,
-    decay_exponent,
-    vector_store,
-    db_path,
-):
-    """Gist Memory Agent CLI."""
-    ctx.obj = {
-        "embedder": get_embedder(embedder, model_name),
-        "memory_creator": {
-            "identity": IdentityMemoryCreator,
-            "extractive": ExtractiveSummaryCreator,
-            "chunk": ChunkMemoryCreator,
-            "llm": LLMSummaryCreator,
-            "agentic": AgenticMemoryCreator,
-        }[memory_creator](),
-        "threshold": threshold,
-        "min_threshold": min_threshold,
-        "decay_exponent": decay_exponent,
-        "store_cls": {
-            "json": JSONVectorStore,
-            "chroma": ChromaVectorStore,
-            "cloud": CloudVectorStore,
-        }[vector_store],
-        "db_path": db_path,
-    }
+class PersistenceLock:
+    def __init__(self, path: Path) -> None:
+        self.file = (path / ".lock").open("a+")
+
+    def __enter__(self):
+        portalocker.lock(self.file, portalocker.LockFlags.EXCLUSIVE)
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        portalocker.unlock(self.file)
+        self.file.close()
 
 
-@cli.command()
-@click.argument("source", nargs=-1)
-@click.pass_obj
-def ingest(obj, source):
-    """Ingest text or contents of a file/directory."""
-    creator = obj["memory_creator"]
-    store = obj["store_cls"](
-        embedder=obj["embedder"],
-        threshold=obj["threshold"],
-        min_threshold=obj["min_threshold"],
-        decay_exponent=obj["decay_exponent"],
-        path=obj["db_path"],
+def _load_agent(path: Path) -> Agent:
+    store = JsonNpyVectorStore(path=str(path))
+    chunker_id = store.meta.get("chunker", "sentence_window")
+    chunker_cls = _CHUNKER_REGISTRY.get(chunker_id, SentenceWindowChunker)
+    tau = float(store.meta.get("tau", 0.8))
+    return Agent(store, chunker=chunker_cls(), similarity_threshold=tau)
+
+
+@app.command()
+def init(
+    directory: str,
+    *,
+    agent_name: str = "default",
+    model_name: str = "all-MiniLM-L6-v2",
+    tau: float = 0.8,
+    alpha: float = 0.1,
+    chunker: str = "sentence_window",
+) -> None:
+    """Create a new agent store."""
+    path = Path(directory)
+    if path.exists() and any(path.iterdir()):
+        typer.echo("Directory already exists and is not empty", err=True)
+        raise typer.Exit(code=1)
+    dim = int(embed_text(["dim"]).shape[1])
+    store = JsonNpyVectorStore(
+        path=str(path), embedding_model=model_name, embedding_dim=dim
     )
-
-    def process_chunks(chunks: list[str]) -> None:
-        with tqdm(chunks, desc="Ingesting", unit="mem", disable=not sys.stderr.isatty()) as bar:
-            for chunk in bar:
-                before = store.prototype_count()
-                mem = store.add_memory(chunk)
-                after = store.prototype_count()
-                action = "Created" if after > before else "Updated"
-                tqdm.write(f"{action} prototype {mem.prototype_id} with memory {mem.id}")
-
-    if len(source) == 1:
-        path = Path(source[0])
-        if path.exists():
-            texts: list[str] = []
-            if path.is_file():
-                texts.append(path.read_text())
-            elif path.is_dir():
-                for f in sorted(path.glob("*.txt")):
-                    texts.append(f.read_text())
-            chunks: list[str] = []
-            for text in texts:
-                chunks.extend(creator.create_all(text))
-            process_chunks(chunks)
-            return
-
-    content = " ".join(source)
-    chunks = creator.create_all(content)
-    process_chunks(chunks)
-
-
-@cli.command()
-@click.argument("text", nargs=-1)
-@click.option("--top", default=3, help="Number of results")
-@click.pass_obj
-def query(obj, text, top):
-    """Query the store."""
-    content = " ".join(text)
-    store = obj["store_cls"](
-        embedder=obj["embedder"],
-        threshold=obj["threshold"],
-        min_threshold=obj["min_threshold"],
-        decay_exponent=obj["decay_exponent"],
-        path=obj["db_path"],
+    store.meta.update(
+        {
+            "agent_name": agent_name,
+            "tau": tau,
+            "alpha": alpha,
+            "chunker": chunker,
+        }
     )
-    results = store.query(content, n=top)
-    for mem in results:
-        click.echo(f"[{mem.prototype_id}] {mem.text}")
+    store.save()
+    typer.echo(f"Initialized agent at {directory}")
 
 
-@cli.command(name="decode")
-@click.argument("prototype_id")
-@click.option("--top", default=1, help="Number of memories to show")
-@click.pass_obj
-def decode_prototype(obj, prototype_id, top):
-    """Show example memories for a prototype."""
-    store = obj["store_cls"](
-        embedder=obj["embedder"],
-        threshold=obj["threshold"],
-        min_threshold=obj["min_threshold"],
-        decay_exponent=obj["decay_exponent"],
-        path=obj["db_path"],
-    )
-    memories = store.decode_prototype(prototype_id, n=top)
-    if not memories:
-        click.echo("Prototype not found")
+@app.command()
+def add(
+    *,
+    agent_name: str = typer.Option(..., help="Path to the agent directory"),
+    text: Optional[str] = typer.Option(None, help="Text to add"),
+    file: Optional[Path] = typer.Option(None, help="Text file to add"),
+    source_id: Optional[str] = typer.Option(None, help="Source id"),
+    actor: Optional[str] = typer.Option(None, help="Actor"),
+) -> None:
+    """Ingest new text into the agent."""
+    path = Path(agent_name)
+    if not path.exists():
+        typer.echo("Agent not found", err=True)
+        raise typer.Exit(code=1)
+    input_text = text or (file.read_text() if file else "")
+    if not input_text:
+        typer.echo("No text provided", err=True)
+        raise typer.Exit(code=1)
+    with PersistenceLock(path):
+        agent = _load_agent(path)
+        results = agent.add_memory(input_text)
+        agent.store.save()
+    for r in results:
+        action = "spawned" if r.get("spawned") else "updated"
+        sim = r.get("sim")
+        typer.echo(f"{action} {r['prototype_id']} sim={sim:.2f}" if sim else action)
+
+
+@app.command()
+def query(
+    *,
+    agent_name: str = typer.Option(..., help="Agent directory"),
+    query_text: str = typer.Option(..., help="Query text"),
+    k_prototypes: int = typer.Option(1, help="Number of prototypes"),
+    k_memories: int = typer.Option(3, help="Number of memories"),
+    json_output: bool = typer.Option(False, "--json", help="JSON output"),
+) -> None:
+    """Query stored beliefs."""
+    path = Path(agent_name)
+    with PersistenceLock(path):
+        agent = _load_agent(path)
+        res = agent.query(
+            query_text, top_k_prototypes=k_prototypes, top_k_memories=k_memories
+        )
+    if json_output:
+        typer.echo(json.dumps(asdict(res)))
         return
-    for mem in memories:
-        click.echo(f"{mem.id}: {mem.text}")
+    for proto in res.prototypes:
+        console.print(
+            f"[bold]{proto['id']}[/bold] {proto['summary']} ({proto['sim']:.2f})"
+        )
+    for mem in res.memories:
+        console.print(f"  {mem['text']} ({mem['sim']:.2f})")
 
 
-@cli.command(name="summarize")
-@click.argument("prototype_id")
-@click.option("--max-words", default=50, help="Length of summary")
-@click.pass_obj
-def summarize_prototype(obj, prototype_id, max_words):
-    """Show a simple summary for a prototype."""
-    store = obj["store_cls"](
-        embedder=obj["embedder"],
-        threshold=obj["threshold"],
-        min_threshold=obj["min_threshold"],
-        decay_exponent=obj["decay_exponent"],
-        path=obj["db_path"],
-    )
-    summary = store.summarize_prototype(prototype_id, max_words=max_words)
-    if summary is None:
-        click.echo("Prototype not found")
+@app.command("list-beliefs")
+def list_beliefs(
+    agent_name: str = typer.Argument(..., help="Agent directory"),
+    sort: str = typer.Option("", help="Sort order"),
+) -> None:
+    """List all belief prototypes."""
+    path = Path(agent_name)
+    agent = _load_agent(path)
+    protos = agent.store.prototypes
+    if sort == "strength":
+        protos = sorted(protos, key=lambda p: p.strength, reverse=True)
+    table = Table("id", "strength", "confidence", "summary", title="Beliefs")
+    for p in protos:
+        table.add_row(
+            p.prototype_id,
+            f"{p.strength:.2f}",
+            f"{p.confidence:.2f}",
+            p.summary_text[:60],
+        )
+    console.print(table)
+
+
+@app.command()
+def stats(
+    agent_name: str = typer.Argument(..., help="Agent directory"),
+    json_output: bool = typer.Option(False, "--json", help="JSON output"),
+) -> None:
+    """Show statistics about the store."""
+    path = Path(agent_name)
+    store = JsonNpyVectorStore(path=str(path))
+    size = shutil.disk_usage(path).used
+    data = {
+        "prototypes": len(store.prototypes),
+        "active_memories": len(store.memories),
+        "archived_memories": 0,
+        "disk_size": size,
+        "last_decay": store.meta.get("last_decay_ts"),
+    }
+    if json_output:
+        typer.echo(json.dumps(data))
     else:
-        click.echo(summary)
-
-
-@cli.command(name="dump")
-@click.option("--prototype-id", default=None, help="Only dump memories for this prototype")
-@click.pass_obj
-def dump_memories(obj, prototype_id):
-    """Dump all memories, optionally for a given prototype."""
-    store = obj["store_cls"](
-        embedder=obj["embedder"],
-        threshold=obj["threshold"],
-        min_threshold=obj["min_threshold"],
-        decay_exponent=obj["decay_exponent"],
-        path=obj["db_path"],
-    )
-    memories = store.dump_memories(prototype_id=prototype_id)
-    for mem in memories:
-        click.echo(f"[{mem.prototype_id}] {mem.text}")
-
-
-@cli.command(name="migrate")
-@click.option("--from-path", default="gist_memory_db", help="Old store path")
-@click.option("--to-path", default="gist_memory_json", help="New store path")
-def migrate_store(from_path: str, to_path: str) -> None:
-    """Migrate legacy JSONVectorStore to JsonNpyVectorStore."""
-    old = JSONVectorStore(path=from_path)
-    new = JsonNpyVectorStore(
-        path=to_path,
-        embedding_model="unknown",
-        embedding_dim=len(old.proto_embeds[0]) if old.proto_embeds else 768,
-    )
-    for pid, vec in zip(old.prototypes, old.proto_embeds):
-        proto = BeliefPrototype(
-            prototype_id=pid,
-            vector_row_index=0,
-            summary_text="",
-            strength=1.0,
-            confidence=1.0,
-            constituent_memory_ids=[
-                m.id for m in old.memories if m.prototype_id == pid
-            ],
-        )
-        new.add_prototype(proto, np.array(vec, dtype=np.float32))
-    for mem, emb in zip(old.memories, old.mem_embeds):
-        rm = RawMemory(
-            memory_id=mem.id,
-            raw_text_hash="",
-            assigned_prototype_id=mem.prototype_id,
-            raw_text=mem.text,
-            source_document_id=None,
-            embedding=list(map(float, emb)) if emb is not None else None,
-        )
-        new.add_memory(rm)
-    new.save()
-    click.echo(f"Migrated store to {to_path}")
-
-
-@cli.command(name="download-model")
-@click.option(
-    "--model-name",
-    default="all-MiniLM-L6-v2",
-    show_default=True,
-    help="Embedding model to pre-download",
-)
-def download_model(model_name: str) -> None:
-    """Pre-fetch a local embedding model."""
-    try:
-        LocalEmbedder(model_name=model_name, local_files_only=False)
-    except Exception as exc:  # pragma: no cover - passthrough
-        raise click.ClickException(str(exc))
-    click.echo(f"Downloaded model '{model_name}'")
+        for k, v in data.items():
+            typer.echo(f"{k}: {v}")
 
 
 if __name__ == "__main__":
-    cli()
+    app()
