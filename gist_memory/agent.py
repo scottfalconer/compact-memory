@@ -6,7 +6,7 @@ import uuid
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TypedDict
 
 import logging
 import numpy as np
@@ -65,13 +65,28 @@ class EvidenceWriter:
             )
 
 
-@dataclass
-class QueryResult:
+class PrototypeHit(TypedDict):
+    """Prototype search result."""
+
+    id: str
+    summary: str
+    sim: float
+
+
+class MemoryHit(TypedDict):
+    """Individual memory search result."""
+
+    id: str
+    text: str
+    sim: float
+
+
+class QueryResult(TypedDict):
     """Return type for :meth:`Agent.query`."""
 
-    prototypes: List[Dict[str, object]]
-    memories: List[Dict[str, object]]
-    status: str = "ok"
+    prototypes: List[PrototypeHit]
+    memories: List[MemoryHit]
+    status: str
 
 
 class Agent:
@@ -182,7 +197,11 @@ class Agent:
             vec = vec.reshape(-1)
         nearest = self.store.find_nearest(vec, k=top_k_prototypes)
         if not nearest:
-            return QueryResult(prototypes=[], memories=[], status="no_match")
+            return {
+                "prototypes": [],
+                "memories": [],
+                "status": "no_match",
+            }
 
         logging.info(
             "[query] '%s' → %d protos, top sim %.2f",
@@ -217,4 +236,8 @@ class Agent:
             for s, m in memory_candidates[:top_k_memories]
         ]
 
-        return QueryResult(prototypes=proto_results, memories=mem_results)
+        return {
+            "prototypes": proto_results,
+            "memories": mem_results,
+            "status": "ok",
+        }

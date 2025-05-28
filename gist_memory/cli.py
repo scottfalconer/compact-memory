@@ -1,6 +1,5 @@
 import json
 import shutil
-from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
@@ -115,13 +114,13 @@ def query(
             query_text, top_k_prototypes=k_prototypes, top_k_memories=k_memories
         )
     if json_output:
-        typer.echo(json.dumps(asdict(res)))
+        typer.echo(json.dumps(res))
         return
-    for proto in res.prototypes:
+    for proto in res["prototypes"]:
         console.print(
             f"[bold]{proto['id']}[/bold] {proto['summary']} ({proto['sim']:.2f})"
         )
-    for mem in res.memories:
+    for mem in res["memories"]:
         console.print(f"  {mem['text']} ({mem['sim']:.2f})")
 
 
