@@ -22,6 +22,8 @@ dependencies = [
     "sentence-transformers",
     "textual",
     "nltk",
+    "typer[all]",
+    "portalocker",
 ]
 
 [project.optional-dependencies]

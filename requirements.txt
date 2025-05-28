@@ -10,3 +10,5 @@ pytest
 sentence-transformers
 textual  # required for the TUI
 nltk
+typer[all]
+portalocker

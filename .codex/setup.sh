@@ -14,8 +14,8 @@ else
     pip3 install --no-cache-dir textual
 fi
 
-# Ensure textual is available even when not listed in requirements
-pip3 install --no-cache-dir textual
+# Ensure CLI dependencies are available even when not listed in requirements
+pip3 install --no-cache-dir textual typer portalocker
 
 # Pre-download the default local embedding model so it is available offline
 python3 -m gist_memory download-model --model-name all-MiniLM-L6-v2
