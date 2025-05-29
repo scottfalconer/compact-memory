@@ -8,7 +8,7 @@ from typing import Iterable, Optional
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from .config import DEFAULT_BRAIN_PATH
-from .embedding_pipeline import embed_text
+from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
 
 
 # ---------------------------------------------------------------------------
@@ -45,7 +45,11 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
     store_path = Path(path)
     meta_exists = (store_path / "meta.yaml").exists()
     if meta_exists:
-        store = JsonNpyVectorStore(str(store_path))
+        try:
+            store = JsonNpyVectorStore(str(store_path))
+        except EmbeddingDimensionMismatchError:
+            dim = int(embed_text(["dim"]).shape[1])
+            store = JsonNpyVectorStore(str(store_path), embedding_dim=dim)
     else:
         dim = int(embed_text(["dim"]).shape[1])
         store = JsonNpyVectorStore(str(store_path), embedding_dim=dim)
