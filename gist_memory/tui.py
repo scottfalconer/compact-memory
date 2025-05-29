@@ -42,7 +42,12 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
         raise RuntimeError("Textual is required for the TUI") from exc
 
     store_path = Path(path)
-    store = JsonNpyVectorStore(str(store_path))
+    meta_exists = (store_path / "meta.yaml").exists()
+    if meta_exists:
+        store = JsonNpyVectorStore(str(store_path))
+    else:
+        dim = int(embed_text(["dim"]).shape[1])
+        store = JsonNpyVectorStore(str(store_path), embedding_dim=dim)
     agent = Agent(store)
 
     class HelpScreen(Screen):
