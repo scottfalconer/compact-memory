@@ -4,8 +4,8 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 
 ## Features
 
-- CLI interface with `init`, `add`, `query`, `list-beliefs`, `stats` and
-  `download-model` commands.
+- CLI interface with `init`, `add`, `query`, `list-beliefs`, `stats`,
+  `validate`, `clear` and `download-model` commands.
 - Lightweight JSON/NPY backend for prototypes and memories (default).
 - Optional Chroma vector store for scale via ``pip install \"gist-memory[chroma]\"``.
 - Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
@@ -83,6 +83,9 @@ List belief prototypes and show store stats:
 ```bash
 gist-memory list-beliefs
 gist-memory stats
+gist-memory validate
+# permanently remove all data
+gist-memory clear --yes
 ```
 
 Additional functions such as decoding or summarising a prototype are
