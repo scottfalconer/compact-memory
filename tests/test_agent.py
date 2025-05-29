@@ -39,6 +39,32 @@ def test_snap_and_spawn(tmp_path):
     assert len(store.prototypes) == 2
 
 
+def test_initial_summary(tmp_path):
+    store = JsonNpyVectorStore(path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim)
+    agent = Agent(store, chunker=SentenceWindowChunker())
+    agent.add_memory("alpha bravo charlie")
+    assert store.prototypes[0].summary_text != ""
+    assert "alpha" in store.prototypes[0].summary_text
+
+
+def test_summary_update(tmp_path, monkeypatch):
+    store = JsonNpyVectorStore(path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim)
+    agent = Agent(store, chunker=SentenceWindowChunker(), update_summaries=True)
+    agent.add_memory("alpha bravo")
+    first = store.prototypes[0].summary_text
+
+    # force next memory to update the same prototype
+    def fake_nearest(vec, k=1):
+        return [(store.prototypes[0].prototype_id, 1.0)]
+
+    monkeypatch.setattr(store, "find_nearest", fake_nearest)
+    agent.add_memory("alpha delta echo")
+    updated = store.prototypes[0].summary_text
+    assert updated != ""
+    assert updated != first
+    assert "delta" in updated
+
+
 def test_persistence_roundtrip(tmp_path):
     store = JsonNpyVectorStore(path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunker=SentenceWindowChunker())

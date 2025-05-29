@@ -15,6 +15,11 @@ import numpy as np
 from .chunker import Chunker, SentenceWindowChunker
 from .embedding_pipeline import embed_text
 from .json_npy_store import JsonNpyVectorStore, BeliefPrototype, RawMemory
+from .memory_creation import (
+    ExtractiveSummaryCreator,
+    LLMSummaryCreator,
+    MemoryCreator,
+)
 
 
 class VectorIndexCorrupt(RuntimeError):
@@ -99,12 +104,16 @@ class Agent:
         chunker: Optional[Chunker] = None,
         similarity_threshold: float = 0.8,
         dedup_cache: int = 128,
+        summary_creator: Optional[MemoryCreator] = None,
+        update_summaries: bool = False,
     ) -> None:
         if not 0.5 <= similarity_threshold <= 0.95:
             raise ValueError("similarity_threshold must be between 0.5 and 0.95")
         self.store = store
         self.chunker = chunker or SentenceWindowChunker()
         self.similarity_threshold = similarity_threshold
+        self.summary_creator = summary_creator or ExtractiveSummaryCreator(max_words=25)
+        self.update_summaries = update_summaries
         self.metrics: Dict[str, int] = {
             "memories_ingested": 0,
             "prototypes_spawned": 0,
@@ -152,10 +161,11 @@ class Agent:
                 self.store.update_prototype(pid, vec, mem_id)
             else:
                 # TODO density guard hook
+                summary = self.summary_creator.create(chunk)
                 proto = BeliefPrototype(
                     prototype_id=str(uuid.uuid4()),
                     vector_row_index=0,
-                    summary_text="",
+                    summary_text=summary,
                     strength=1.0,
                     confidence=1.0,
                     constituent_memory_ids=[mem_id],
@@ -176,6 +186,18 @@ class Agent:
             self.store.add_memory(raw_mem)
             self._write_evidence(pid, mem_id, 1.0)
             self.metrics["memories_ingested"] += 1
+            if self.update_summaries:
+                texts = [
+                    m.raw_text
+                    for m in self.store.memories
+                    if m.assigned_prototype_id == pid
+                ][:5]
+                words = " ".join(texts).split()
+                summary = " ".join(words[:25])
+                for p in self.store.prototypes:
+                    if p.prototype_id == pid:
+                        p.summary_text = summary
+                        break
             results.append({"prototype_id": pid, "spawned": spawned, "sim": sim})
 
         self.store.save()
