@@ -214,7 +214,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
 
         def compose(self) -> ComposeResult:  # type: ignore[override]
             yield Header()
-            yield Static("Save brain as zip? [Y/N]", id="exit")
+            yield Static("Save brain as zip? [Y/N]", id="exit", markup=False)
             yield Footer()
 
         def action_yes(self) -> None:

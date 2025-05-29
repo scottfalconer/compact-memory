@@ -51,3 +51,62 @@ def test_wizard_load(monkeypatch, tmp_path):
     store = JsonNpyVectorStore(str(tmp_path))
     assert len(store.memories) == 4
     assert len(store.prototypes) == 4
+
+
+def _patch_mock_encoder(monkeypatch):
+    enc = MockEncoder()
+    monkeypatch.setattr(
+        "gist_memory.embedding_pipeline._load_model", lambda *a, **k: enc
+    )
+    return enc
+
+
+def _patch_run(monkeypatch, autopilot):
+    orig_run = App.run
+
+    def patched_run(self, *a, **kw):
+        return orig_run(self, headless=True, auto_pilot=autopilot)
+
+    monkeypatch.setattr(App, "run", patched_run)
+
+
+def test_wizard_create_exit_no(monkeypatch, tmp_path):
+    _patch_mock_encoder(monkeypatch)
+
+    async def autopilot(pilot):
+        await pilot.press("c")
+        await pilot.press("h", "i")
+        await pilot.press("enter")
+        await pilot.press("f5")
+        await pilot.press("q")
+        await pilot.pause(0.1)
+        await pilot.press("n")
+        await pilot.exit(None)
+
+    _patch_run(monkeypatch, autopilot)
+    run_tui(str(tmp_path))
+    store = JsonNpyVectorStore(str(tmp_path))
+    assert len(store.memories) == 1
+    assert len(store.prototypes) == 1
+    assert not (tmp_path.with_suffix(".zip")).exists()
+
+
+def test_wizard_create_exit_yes(monkeypatch, tmp_path):
+    _patch_mock_encoder(monkeypatch)
+
+    async def autopilot(pilot):
+        await pilot.press("c")
+        await pilot.press("a")
+        await pilot.press("enter")
+        await pilot.press("f5")
+        await pilot.press("q")
+        await pilot.pause(0.1)
+        await pilot.press("y")
+        await pilot.exit(None)
+
+    _patch_run(monkeypatch, autopilot)
+    run_tui(str(tmp_path))
+    store = JsonNpyVectorStore(str(tmp_path))
+    assert len(store.memories) == 1
+    assert len(store.prototypes) == 1
+    assert (tmp_path.with_suffix(".zip")).exists()
