@@ -140,3 +140,47 @@ def test_talk_mode_llm(monkeypatch, tmp_path):
     run_tui(str(tmp_path))
 
     assert "hi" in prompts.get("text", "")
+
+
+def test_install_models_command(monkeypatch, tmp_path):
+    _patch_mock_encoder(monkeypatch)
+
+    calls = []
+
+    def dummy_embed(name):
+        calls.append(name)
+        class Dummy:
+            pass
+        return Dummy()
+
+    def dummy_from_pretrained(name, **kw):
+        calls.append(name)
+        return Dummy()
+
+    class Dummy:
+        pass
+
+    monkeypatch.setattr("sentence_transformers.SentenceTransformer", dummy_embed)
+    monkeypatch.setattr(
+        "transformers.AutoTokenizer.from_pretrained", dummy_from_pretrained
+    )
+    monkeypatch.setattr(
+        "transformers.AutoModelForCausalLM.from_pretrained", dummy_from_pretrained
+    )
+
+    async def autopilot(pilot):
+        await pilot.press("c")
+        await pilot.press(
+            "/", "i", "n", "s", "t", "a", "l", "l", "-", "m", "o", "d", "e", "l", "s"
+        )
+        await pilot.press("enter")
+        await pilot.press("q")
+        await pilot.pause(0.1)
+        await pilot.press("n")
+        await pilot.exit(None)
+
+    _patch_run(monkeypatch, autopilot)
+    run_tui(str(tmp_path))
+
+    assert "all-MiniLM-L6-v2" in calls
+    assert "distilgpt2" in calls

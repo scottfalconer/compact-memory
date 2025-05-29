@@ -174,8 +174,8 @@ gist-run
 From the welcome screen press ``L`` to load the sample Apollo 11 transcripts
 from ``examples/moon_landing``. The wizard now uses a small console where you
 interact via slash commands. Type ``/ingest <text>`` to add a memory, ``/query
-<text>`` to search, ``/stats`` to see store statistics or ``/help`` for a list
-of commands.
+<text>`` to search, ``/stats`` to see store statistics, ``/install-models`` to
+download the local models or ``/help`` for a list of commands.
 
 ## Segmentation Playbook
 
