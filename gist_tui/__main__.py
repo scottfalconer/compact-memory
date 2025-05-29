@@ -4,9 +4,10 @@ from pathlib import Path
 
 from gist_memory.agent import Agent
 from gist_memory.json_npy_store import JsonNpyVectorStore
+from gist_memory.config import DEFAULT_BRAIN_PATH
 
 
-def main(path: str = "brain") -> None:
+def main(path: str = DEFAULT_BRAIN_PATH) -> None:
     """Run the simple Gist Memory TUI."""
     try:
         from textual.app import App, ComposeResult

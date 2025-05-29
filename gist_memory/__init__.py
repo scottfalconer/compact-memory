@@ -6,6 +6,7 @@ from .json_npy_store import JsonNpyVectorStore, VectorStore
 from .agent import Agent, QueryResult, PrototypeHit, MemoryHit
 from .embedding_pipeline import embed_text
 from .chunker import SentenceWindowChunker, FixedSizeChunker
+from .config import DEFAULT_BRAIN_PATH
 
 __all__ = [
     "app",
@@ -20,6 +21,7 @@ __all__ = [
     "embed_text",
     "SentenceWindowChunker",
     "FixedSizeChunker",
+    "DEFAULT_BRAIN_PATH",
 ]
 
 # Semantic version of the package
