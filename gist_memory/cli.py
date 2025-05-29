@@ -11,7 +11,7 @@ from rich.console import Console
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
-from .embedding_pipeline import embed_text
+from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
 from .config import DEFAULT_BRAIN_PATH
 
 app = typer.Typer(help="Gist Memory command line interface")
@@ -32,7 +32,11 @@ class PersistenceLock:
 
 
 def _load_agent(path: Path) -> Agent:
-    store = JsonNpyVectorStore(path=str(path))
+    try:
+        store = JsonNpyVectorStore(path=str(path))
+    except EmbeddingDimensionMismatchError:
+        dim = int(embed_text(["dim"]).shape[1])
+        store = JsonNpyVectorStore(path=str(path), embedding_dim=dim)
     chunker_id = store.meta.get("chunker", "sentence_window")
     chunker_cls = _CHUNKER_REGISTRY.get(chunker_id, SentenceWindowChunker)
     tau = float(store.meta.get("tau", 0.8))
@@ -156,7 +160,11 @@ def stats(
 ) -> None:
     """Show statistics about the store."""
     path = Path(agent_name)
-    store = JsonNpyVectorStore(path=str(path))
+    try:
+        store = JsonNpyVectorStore(path=str(path))
+    except EmbeddingDimensionMismatchError:
+        dim = int(embed_text(["dim"]).shape[1])
+        store = JsonNpyVectorStore(path=str(path), embedding_dim=dim)
     size = shutil.disk_usage(path).used
     data = {
         "prototypes": len(store.prototypes),
