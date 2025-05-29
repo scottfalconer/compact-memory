@@ -220,6 +220,15 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             ("q", "push_screen('exit')", "Quit"),
         ]
 
+        SCREENS = {
+            "help": HelpScreen(),
+            "ingest": IngestScreen(),
+            "beliefs": BeliefScreen(),
+            "query": QueryScreen(),
+            "stats": StatsScreen(),
+            "exit": ExitScreen(),
+        }
+
         def on_mount(self) -> None:
             self.push_screen(WelcomeScreen())
 
@@ -227,15 +236,6 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             if isinstance(event.screen, ExitScreen):
                 return
             store.save()
-
-    WizardApp.screens = {
-        "help": HelpScreen(),
-        "ingest": IngestScreen(),
-        "beliefs": BeliefScreen(),
-        "query": QueryScreen(),
-        "stats": StatsScreen(),
-        "exit": ExitScreen(),
-    }
 
     WizardApp().run()
 
