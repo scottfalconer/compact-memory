@@ -26,6 +26,21 @@ def _disk_usage(path: Path) -> int:
     return size
 
 
+def _install_models(embed_model: str = "all-MiniLM-L6-v2", chat_model: str = "distilgpt2") -> str:
+    """Download the default embedding and chat models."""
+    try:
+        from sentence_transformers import SentenceTransformer
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        SentenceTransformer(embed_model)
+        AutoTokenizer.from_pretrained(chat_model)
+        AutoModelForCausalLM.from_pretrained(chat_model)
+    except Exception as exc:  # pragma: no cover - network / file errors
+        return f"error installing models: {exc}"
+
+    return f"installed {embed_model} and {chat_model}"
+
+
 # ---------------------------------------------------------------------------
 
 def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
@@ -62,11 +77,12 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
         def compose(self) -> ComposeResult:  # type: ignore[override]
             text = (
                 "Use slash commands:\n"
-                "/ingest TEXT  - add a memory\n"
-                "/query TEXT   - search memories\n"
-                "/beliefs      - list prototypes\n"
-                "/stats        - show store stats\n"
-                "/exit         - quit"
+                "/ingest TEXT      - add a memory\n"
+                "/query TEXT       - search memories\n"
+                "/beliefs          - list prototypes\n"
+                "/stats            - show store stats\n"
+                "/install-models   - download models\n"
+                "/exit             - quit"
             )
             yield Header()
             yield Static(text, id="help")
@@ -209,6 +225,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 "/query ",
                 "/beliefs",
                 "/stats",
+                "/install-models",
                 "/exit",
                 "/quit",
                 "/help",
@@ -249,6 +266,9 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 self.text_log.write_line(f"prototypes: {len(store.prototypes)}")
             elif cmd == "/beliefs":
                 self.app.push_screen(BeliefScreen())
+            elif cmd == "/install-models":
+                msg = _install_models()
+                self.text_log.write_line(msg)
             elif cmd in ("/exit", "/quit"):
                 self.app.push_screen(ExitScreen())
             elif cmd in ("/help", "/?"):
@@ -256,6 +276,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 self.text_log.write_line("/query TEXT  - search")
                 self.text_log.write_line("/beliefs     - list prototypes")
                 self.text_log.write_line("/stats       - show stats")
+                self.text_log.write_line("/install-models - download models")
                 self.text_log.write_line("/exit        - quit")
             elif cmd:
                 results = agent.add_memory(cmd)
