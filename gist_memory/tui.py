@@ -60,8 +60,12 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
 
         def compose(self) -> ComposeResult:  # type: ignore[override]
             text = (
-                "F2 Ingest  F3 Beliefs  F4 Query  F5 Stats  Q Quit\n"
-                "Navigate with arrow keys. Press Enter to select."
+                "Use slash commands:\n"
+                "/ingest TEXT  - add a memory\n"
+                "/query TEXT   - search memories\n"
+                "/beliefs      - list prototypes\n"
+                "/stats        - show store stats\n"
+                "/exit         - quit"
             )
             yield Header()
             yield Static(text, id="help")
@@ -84,14 +88,14 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
 
         def action_create(self) -> None:
             self.app.pop_screen()
-            self.app.push_screen(IngestScreen())
+            self.app.push_screen(ConsoleScreen())
 
         def action_load(self) -> None:
             sample_dir = Path("examples/moon_landing")
             for p in sorted(sample_dir.glob("*.txt")):
                 agent.add_memory(p.read_text())
             self.app.pop_screen()
-            self.app.push_screen(BeliefScreen())
+            self.app.push_screen(ConsoleScreen())
 
     class IngestScreen(Screen):
         BINDINGS = [("escape", "app.pop_screen", "Back")]
@@ -190,6 +194,53 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 log.write_line(f"  {m['text']}")
             event.input.value = ""
 
+    class ConsoleScreen(Screen):
+        BINDINGS = []
+
+        def compose(self) -> ComposeResult:  # type: ignore[override]
+            yield Header()
+            self.log = TextLog(id="console")
+            yield self.log
+            yield Input(placeholder="/help for commands", id="cmd")
+            yield Footer()
+
+        def on_input_submitted(self, event: Input.Submitted) -> None:
+            cmd = event.value.strip()
+            event.input.value = ""
+            if cmd.startswith("/ingest "):
+                text = cmd[len("/ingest ") :]
+                results = agent.add_memory(text)
+                for res in results:
+                    if res.get("spawned"):
+                        msg = f"spawned prototype {res['prototype_id']}"
+                    else:
+                        msg = f"added to {res['prototype_id']}"
+                    self.log.write_line(msg)
+            elif cmd.startswith("/query "):
+                q = cmd[len("/query ") :]
+                res = agent.query(q, top_k_prototypes=3, top_k_memories=3)
+                for p in res.get("prototypes", []):
+                    self.log.write_line(f"{p['sim']:.2f} {p['summary']}")
+                for m in res.get("memories", []):
+                    self.log.write_line(f"  {m['text']}")
+            elif cmd == "/stats":
+                usage = _disk_usage(store_path)
+                self.log.write_line(f"disk: {usage} bytes")
+                self.log.write_line(f"memories: {len(store.memories)}")
+                self.log.write_line(f"prototypes: {len(store.prototypes)}")
+            elif cmd == "/beliefs":
+                self.app.push_screen(BeliefScreen())
+            elif cmd in ("/exit", "/quit"):
+                self.app.push_screen(ExitScreen())
+            elif cmd in ("/help", "/?"):
+                self.log.write_line("/ingest TEXT - add memory")
+                self.log.write_line("/query TEXT  - search")
+                self.log.write_line("/beliefs     - list prototypes")
+                self.log.write_line("/stats       - show stats")
+                self.log.write_line("/exit        - quit")
+            elif cmd:
+                self.log.write_line(f"unknown command: {cmd}")
+
     class StatsScreen(Screen):
         BINDINGS = [("escape", "app.pop_screen", "Back")]
 
@@ -231,20 +282,12 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
 
     class WizardApp(App):
         CSS_PATH = None
-        BINDINGS = [
-            ("f1", "push_screen('help')", "Help"),
-            ("f2", "push_screen('ingest')", "Ingest"),
-            ("f3", "push_screen('beliefs')", "Beliefs"),
-            ("f4", "push_screen('query')", "Query"),
-            ("f5", "push_screen('stats')", "Stats"),
-            ("q", "push_screen('exit')", "Quit"),
-        ]
+        BINDINGS = [("q", "push_screen('exit')", "Quit")]
 
         SCREENS = {
             "help": HelpScreen,
-            "ingest": IngestScreen,
+            "console": ConsoleScreen,
             "beliefs": BeliefScreen,
-            "query": QueryScreen,
             "stats": StatsScreen,
             "exit": ExitScreen,
         }
