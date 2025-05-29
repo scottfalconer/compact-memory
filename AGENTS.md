@@ -89,16 +89,19 @@ Beyond the core technical hypotheses, the Gist Memory Agent project is guided by
    * **Architectural Pluggability:** A core design goal is to ensure key components are swappable to allow experimentation and adaptation to evolving technologies. This includes:  
      * **Pluggable Gisting/Memory Creation Engine:** Recognizing that human memory involves subsystems and that the optimal way to create the initial memory\_text (before embedding and quantization) is an area for experimentation (e.g., full LLM summary, intelligent chunking, extractive summary), this component must be designed for easy swapping of different strategies.  
      * **Vector Database:** The initial implementation will be tightly coupled to ChromaDB for simplicity. Future versions may explore alternative backends as needed.
-3. **Leverage Effective Open-Source Technologies:**  
-   * Utilize robust and well-supported open-source libraries and frameworks where possible.  
-   * **ChromaDB:** Specifically targeted for V1 as the vector database due to its ease of local setup, Python integration, and ability to handle metadata alongside embeddings, making it suitable for managing prototypes and their associated memories.  
-4. **Support for Locally Runnable Models:**  
+3. **Leverage Effective Open-Source Technologies:**
+   * Utilize robust and well-supported open-source libraries and frameworks where possible.
+   * **ChromaDB:** Specifically targeted for V1 as the vector database due to its ease of local setup, Python integration, and ability to handle metadata alongside embeddings, making it suitable for managing prototypes and their associated memories.
+4. **Offline-by-Default Operation:**
+   * Outside of initial setup steps (installing dependencies or downloading models), the system can run fully offline. Local operation is the default, though API-based components may be enabled at user discretion.
+   * This facilitates testing in restricted environments and preserves user privacy.
+5. **Support for Locally Runnable Models:**
    * While supporting powerful cloud-based LLMs, the architecture should also strive to accommodate and facilitate the use of locally runnable LLMs and embedding models.  
    * Choice of local model is open; use whichever LLM or embedding model runs best in the available environment.
    * This goal supports user privacy, reduces dependency on external APIs, potentially lowers operational costs, and enhances accessibility for users in restricted environments. This aligns with the goal of swappable components.  
-5. **Practical Utility for Teams:**  
+6. **Practical Utility for Teams:**
    * The ultimate goal is to create a tool that provides tangible benefits to teams by improving knowledge retention, facilitating faster access to relevant information (even if generalized), and supporting more informed decision-making.  
-6. **Cognitively Inspired, Empirically Validated:**  
+7. **Cognitively Inspired, Empirically Validated:**
    * While drawing inspiration from human cognition, the system's effectiveness will be judged by empirical validation and its practical utility, not just its theoretical elegance or faithfulness to cognitive models.
 
 This document reflects the current understanding and guiding principles for building the Gist Memory Agent. These hypotheses, beliefs, and goals will drive the next phase of design, development, and rigorous testing.
