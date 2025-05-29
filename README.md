@@ -138,6 +138,23 @@ The script loads all `*.txt` files from `examples/moon_landing`, stores them in 
 local database and displays the prototype assignments along with a final memory
 and prototype count.
 
+## Wizard Demo
+
+The Textual wizard provides a hands-on tour of the agent. Install the
+requirements, download the embedding model and launch ``gist-run``:
+
+```bash
+pip install -r requirements.txt
+gist-memory download-model --model-name all-MiniLM-L6-v2
+
+# start the wizard
+gist-run
+```
+
+From the welcome screen press ``L`` to load the sample Apollo 11 transcripts
+from ``examples/moon_landing``. Once loaded you can browse the beliefs or run
+queries against them.
+
 ## Segmentation Playbook
 
 See [docs/SEGMENTATION_PLAYBOOK.md](docs/SEGMENTATION_PLAYBOOK.md) for a detailed workflow on splitting long documents into belief-sized ideas before ingestion. You can enable this behaviour in the CLI via `--memory-creator agentic`.
