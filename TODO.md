@@ -24,6 +24,11 @@ _Completed in v0.1.1._
 - Add a mock encoder for deterministic vectors in tests.
 - Provide fixtures with small sentences expecting two prototypes.
 - Setup GitHub Actions for linting and running unit tests.
+- Add unit tests for `Agent.query` covering success and "no_match" cases.
+- Extend CLI tests to cover `list-beliefs` and `download-model` commands.
+- Test `JsonNpyVectorStore.update_prototype` and `find_nearest` directly.
+- Add embedding pipeline tests for single-string and empty inputs, and for `register_embedding`.
+- Introduce minimal TUI tests, e.g. `_disk_usage` helper and textual import error.
 
 ## 6 · Memory Decay / Archival
 - Implement `agent.maintain_memory()` with exponential decay.
