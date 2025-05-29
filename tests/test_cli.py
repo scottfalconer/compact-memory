@@ -101,3 +101,26 @@ def test_cli_talk(tmp_path, monkeypatch):
     assert "hello world" in prompts["text"]
 
 
+def test_cli_download_chat_model(monkeypatch):
+    runner = CliRunner()
+
+    calls = []
+
+    class Dummy:
+        @staticmethod
+        def from_pretrained(name, **kw):
+            calls.append(name)
+            return Dummy()
+
+    monkeypatch.setattr(
+        "transformers.AutoTokenizer.from_pretrained", Dummy.from_pretrained
+    )
+    monkeypatch.setattr(
+        "transformers.AutoModelForCausalLM.from_pretrained", Dummy.from_pretrained
+    )
+
+    result = runner.invoke(app, ["download-chat-model", "--model-name", "foo"])
+    assert result.exit_code == 0
+    assert "foo" in calls
+
+
