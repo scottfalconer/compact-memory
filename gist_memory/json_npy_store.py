@@ -38,7 +38,14 @@ class VectorStore:
 class JsonNpyVectorStore(VectorStore):
     """Filesystem-backed store using JSON + NPY files."""
 
-    def __init__(self, path: str, *, embedding_model: str = "unknown", embedding_dim: int = 0, normalized: bool = True) -> None:
+    def __init__(
+        self,
+        path: str,
+        *,
+        embedding_model: str = "unknown",
+        embedding_dim: int = 0,
+        normalized: bool = True,
+    ) -> None:
         self.path = Path(path)
         self.embedding_model = embedding_model
         self.embedding_dim = embedding_dim
@@ -48,10 +55,13 @@ class JsonNpyVectorStore(VectorStore):
         self.proto_vectors: np.ndarray | None = None
         self.memories: List[RawMemory] = []
         self.index: Dict[str, int] = {}
-        if self.path.exists() and (self.path / "meta.yaml").exists():
+        meta_exists = self.path.exists() and (self.path / "meta.yaml").exists()
+        if meta_exists:
             self.load()
         else:
             os.makedirs(self.path, exist_ok=True)
+            if embedding_dim <= 0:
+                raise ValueError("embedding_dim must be > 0 for new stores")
             self.meta = {
                 "version": 1,
                 "embedding_model": self.embedding_model,
