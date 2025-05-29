@@ -181,6 +181,32 @@ def stats(
 
 
 @app.command()
+def talk(
+    *,
+    agent_name: str = typer.Option(DEFAULT_BRAIN_PATH, help="Agent directory"),
+    message: str = typer.Option(..., help="Message to send"),
+    model_name: str = typer.Option("distilgpt2", help="Local chat model"),
+) -> None:
+    """Talk to the brain using a local LLM."""
+    from .local_llm import LocalChatModel
+
+    path = Path(agent_name)
+    with PersistenceLock(path):
+        agent = _load_agent(path)
+        parts = []
+        for proto in agent.store.prototypes:
+            parts.append(f"{proto.prototype_id}: {proto.summary_text}")
+        for mem in agent.store.memories:
+            parts.append(f"{mem.memory_id}: {mem.raw_text}")
+        context = "\n".join(parts)
+
+    prompt = f"{context}\nUser: {message}\nAssistant:"
+    llm = LocalChatModel(model_name=model_name)
+    reply = llm.reply(prompt)
+    typer.echo(reply)
+
+
+@app.command()
 def validate(
     agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
 ) -> None:

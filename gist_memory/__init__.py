@@ -7,6 +7,7 @@ from .agent import Agent, QueryResult, PrototypeHit, MemoryHit
 from .embedding_pipeline import embed_text
 from .chunker import SentenceWindowChunker, FixedSizeChunker
 from .config import DEFAULT_BRAIN_PATH
+from .local_llm import LocalChatModel
 
 __all__ = [
     "app",
@@ -22,6 +23,7 @@ __all__ = [
     "SentenceWindowChunker",
     "FixedSizeChunker",
     "DEFAULT_BRAIN_PATH",
+    "LocalChatModel",
 ]
 
 # Semantic version of the package

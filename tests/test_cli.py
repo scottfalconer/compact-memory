@@ -79,3 +79,25 @@ def test_cli_validate_mismatch(tmp_path):
     assert result.exit_code != 0
 
 
+def test_cli_talk(tmp_path, monkeypatch):
+    runner = CliRunner()
+    runner.invoke(app, ["init", str(tmp_path)])
+    runner.invoke(app, ["add", "--agent-name", str(tmp_path), "--text", "hello world"])
+
+    prompts = {}
+
+    class Dummy:
+        def __init__(self, *a, **kw):
+            pass
+
+        def reply(self, prompt: str) -> str:
+            prompts["text"] = prompt
+            return "response"
+
+    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", Dummy)
+    result = runner.invoke(app, ["talk", "--agent-name", str(tmp_path), "--message", "hi"])
+    assert result.exit_code == 0
+    assert "response" in result.stdout
+    assert "hello world" in prompts["text"]
+
+
