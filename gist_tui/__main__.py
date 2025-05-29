@@ -10,7 +10,11 @@ def main(path: str = "brain") -> None:
     """Run the simple Gist Memory TUI."""
     try:
         from textual.app import App, ComposeResult
-        from textual.widgets import Header, Footer, Input, TextLog
+        from textual.widgets import Header, Footer, Input
+        try:
+            from textual.widgets import TextLog  # type: ignore
+        except Exception:
+            from textual.widgets import Log as TextLog  # type: ignore
     except Exception as exc:  # pragma: no cover
         raise RuntimeError("textual is required for gist-run") from exc
 
