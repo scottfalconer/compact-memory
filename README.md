@@ -41,6 +41,10 @@ Launch ``gist-run`` to explore a brain interactively:
 gist-run
 ```
 
+All commands operate on the ``brain`` directory by default. Pass
+``--agent-name`` (or a directory argument for ``gist init``) to use a
+different location.
+
 ### Command line
 
 Ingest a memory:
@@ -93,7 +97,7 @@ The local embedder loads the model from the Hugging Face cache only and will not
 attempt any network downloads. Ensure the model is pre-cached using the commands
 in the setup section or via `.codex/setup.sh`.
 
-Data is stored in `gist_memory_db` in the current working directory.
+Data is stored in the `brain` directory by default in the current working directory.
 
 ## Scaling with Chroma
 

@@ -7,6 +7,7 @@ from typing import Iterable, Optional
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
+from .config import DEFAULT_BRAIN_PATH
 
 
 # ---------------------------------------------------------------------------
@@ -26,7 +27,7 @@ def _disk_usage(path: Path) -> int:
 
 # ---------------------------------------------------------------------------
 
-def run_tui(path: str = "brain") -> None:
+def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
     """Launch the Textual wizard."""
     try:
         from textual.app import App, ComposeResult

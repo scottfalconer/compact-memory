@@ -5,6 +5,7 @@ import os
 from gist_memory.store import PrototypeStore
 from gist_memory.memory_creation import IdentityMemoryCreator
 from gist_memory.embedder import get_embedder
+from gist_memory.config import DEFAULT_BRAIN_PATH
 
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
@@ -14,7 +15,10 @@ def main() -> None:
     folder = Path(__file__).parent / "moon_landing"
     texts = [p.read_text() for p in sorted(folder.glob("*.txt"))]
 
-    store = PrototypeStore(embedder=get_embedder("local", "all-MiniLM-L6-v2"))
+    store = PrototypeStore(
+        path=DEFAULT_BRAIN_PATH,
+        embedder=get_embedder("local", "all-MiniLM-L6-v2"),
+    )
     creator = IdentityMemoryCreator()
 
     for text in texts:

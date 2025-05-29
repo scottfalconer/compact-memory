@@ -12,6 +12,7 @@ from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
 from .embedding_pipeline import embed_text
+from .config import DEFAULT_BRAIN_PATH
 
 app = typer.Typer(help="Gist Memory command line interface")
 console = Console()
@@ -40,7 +41,7 @@ def _load_agent(path: Path) -> Agent:
 
 @app.command()
 def init(
-    directory: str,
+    directory: str = typer.Argument(DEFAULT_BRAIN_PATH),
     *,
     agent_name: str = "default",
     model_name: str = "all-MiniLM-L6-v2",
@@ -72,7 +73,9 @@ def init(
 @app.command()
 def add(
     *,
-    agent_name: str = typer.Option(..., help="Path to the agent directory"),
+    agent_name: str = typer.Option(
+        DEFAULT_BRAIN_PATH, help="Path to the agent directory"
+    ),
     text: Optional[str] = typer.Option(None, help="Text to add"),
     file: Optional[Path] = typer.Option(None, help="Text file to add"),
     source_id: Optional[str] = typer.Option(None, help="Source id"),
@@ -100,7 +103,7 @@ def add(
 @app.command()
 def query(
     *,
-    agent_name: str = typer.Option(..., help="Agent directory"),
+    agent_name: str = typer.Option(DEFAULT_BRAIN_PATH, help="Agent directory"),
     query_text: str = typer.Option(..., help="Query text"),
     k_prototypes: int = typer.Option(1, help="Number of prototypes"),
     k_memories: int = typer.Option(3, help="Number of memories"),
@@ -126,7 +129,7 @@ def query(
 
 @app.command("list-beliefs")
 def list_beliefs(
-    agent_name: str = typer.Argument(..., help="Agent directory"),
+    agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
     sort: str = typer.Option("", help="Sort order"),
 ) -> None:
     """List all belief prototypes."""
@@ -148,7 +151,7 @@ def list_beliefs(
 
 @app.command()
 def stats(
-    agent_name: str = typer.Argument(..., help="Agent directory"),
+    agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ) -> None:
     """Show statistics about the store."""
