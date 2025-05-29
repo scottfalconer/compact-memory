@@ -110,3 +110,33 @@ def test_wizard_create_exit_yes(monkeypatch, tmp_path):
     assert len(store.memories) == 1
     assert len(store.prototypes) == 1
     assert (tmp_path.with_suffix(".zip")).exists()
+
+
+def test_talk_mode_llm(monkeypatch, tmp_path):
+    _patch_mock_encoder(monkeypatch)
+
+    prompts = {}
+
+    class Dummy:
+        def __init__(self, *a, **kw):
+            pass
+
+        def reply(self, text):
+            prompts["text"] = text
+            return "resp"
+
+    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", Dummy)
+
+    async def autopilot(pilot):
+        await pilot.press("c")
+        await pilot.press("h", "i")
+        await pilot.press("enter")
+        await pilot.press("q")
+        await pilot.pause(0.1)
+        await pilot.press("n")
+        await pilot.exit(None)
+
+    _patch_run(monkeypatch, autopilot)
+    run_tui(str(tmp_path))
+
+    assert "hi" in prompts.get("text", "")

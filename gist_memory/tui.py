@@ -265,6 +265,21 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                     else:
                         msg = f"added to {res['prototype_id']}"
                     self.text_log.write_line(msg)
+                try:
+                    from .local_llm import LocalChatModel
+
+                    parts = []
+                    for proto in store.prototypes:
+                        parts.append(f"{proto.prototype_id}: {proto.summary_text}")
+                    for mem in store.memories:
+                        parts.append(f"{mem.memory_id}: {mem.raw_text}")
+                    context = "\n".join(parts)
+                    prompt = f"{context}\nUser: {cmd}\nAssistant:"
+                    llm = LocalChatModel()
+                    reply = llm.reply(prompt)
+                    self.text_log.write_line(reply)
+                except Exception as exc:  # pragma: no cover - runtime errors
+                    self.text_log.write_line(f"error: {exc}")
 
     class StatsScreen(Screen):
         BINDINGS = [("escape", "app.pop_screen", "Back")]
