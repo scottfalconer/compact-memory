@@ -1,5 +1,5 @@
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone
 import pytest
 from gist_memory.json_npy_store import JsonNpyVectorStore
 from gist_memory.models import BeliefPrototype, RawMemory
@@ -14,8 +14,8 @@ def test_json_npy_roundtrip(tmp_path):
         summary_text="test",
         strength=1.0,
         confidence=1.0,
-        creation_ts=datetime.utcnow(),
-        last_updated_ts=datetime.utcnow(),
+        creation_ts=datetime.now(timezone.utc),
+        last_updated_ts=datetime.now(timezone.utc),
     )
     store.add_prototype(proto, np.array([1.0, 0.0, 0.0], dtype=np.float32))
     mem = RawMemory(
@@ -44,8 +44,8 @@ def test_meta_validation(tmp_path):
         summary_text="a",
         strength=1.0,
         confidence=1.0,
-        creation_ts=datetime.utcnow(),
-        last_updated_ts=datetime.utcnow(),
+        creation_ts=datetime.now(timezone.utc),
+        last_updated_ts=datetime.now(timezone.utc),
     )
     store.add_prototype(proto, np.array([0.0, 1.0, 0.0], dtype=np.float32))
     store.save()
