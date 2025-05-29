@@ -93,6 +93,8 @@ class JsonNpyVectorStore(VectorStore):
         self.meta = yaml.safe_load(self._meta_path().read_text())
         self.embedding_model = str(self.meta.get("embedding_model", "unknown"))
         self.embedding_dim = int(self.meta.get("embedding_dim", 0))
+        if self.embedding_dim <= 0:
+            raise EmbeddingDimensionMismatchError("embedding_dim missing or invalid")
         self.normalized = bool(self.meta.get("normalized", False))
         if not self.normalized:
             raise ValueError("embeddings must be normalized")
@@ -137,9 +139,11 @@ class JsonNpyVectorStore(VectorStore):
         idx = len(self.prototypes)
         proto.vector_row_index = idx
         self.prototypes.append(proto)
-        if self.proto_vectors is None:
+        if self.proto_vectors is None or self.proto_vectors.size == 0:
             self.proto_vectors = vec.reshape(1, -1)
         else:
+            if vec.ndim == 1:
+                vec = vec.reshape(1, -1)
             self.proto_vectors = np.vstack([self.proto_vectors, vec])
         self.index[proto.prototype_id] = idx
 
