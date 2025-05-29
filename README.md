@@ -4,13 +4,14 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 
 ## Features
 
-- CLI interface with `ingest`, `query`, `decode`, `summarize`, and `dump` commands.
+- CLI interface with `init`, `add`, `query`, `list-beliefs`, `stats` and
+  `download-model` commands.
 - Lightweight JSON/NPY backend for prototypes and memories (default).
 - Optional Chroma vector store for scale via ``pip install \"gist-memory[chroma]\"``.
 - Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
-- Ingest operation displays a progress bar showing which prototypes are created or updated.
 - Launches a simple Textual TUI when running `gist-memory` with no arguments.
+- Python API provides helpers to decode and summarise prototypes.
 
 ## Setup
 
@@ -20,7 +21,7 @@ the default local embedding model (only needed the first time):
 ```bash
 pip install -r requirements.txt
 # fetch the "all-MiniLM-L6-v2" model so the local embedder works offline
-python -m gist_memory download-model --model-name all-MiniLM-L6-v2
+gist-memory download-model --model-name all-MiniLM-L6-v2
 
 # You can alternatively run `.codex/setup.sh` to perform these steps.
 ```
@@ -42,18 +43,16 @@ gist-run
 ```
 
 All commands operate on the ``brain`` directory by default. Pass
-``--agent-name`` (or a directory argument for ``gist init``) to use a
+``--agent-name`` (or a directory argument for ``gist-memory init``) to use a
 different location.
 
 ### Command line
 
-Ingest a memory:
+Initialise a new brain then ingest a memory:
 
 ```bash
-python -m gist_memory \
-    --embedder openai --memory-creator extractive --threshold 0.3 \
-    --min-threshold 0.05 --decay-exponent 0.5 \
-    ingest "Some text to remember"
+gist-memory init brain
+gist-memory add --text "Some text to remember"
 ```
 
 When using the OpenAI embedder, set the ``OPENAI_API_KEY`` environment
@@ -63,35 +62,25 @@ You can also pass a path to a text file or a directory containing ``*.txt``
 files:
 
 ```bash
-python -m gist_memory ingest notes.txt
-python -m gist_memory ingest docs/
+gist-memory add --file notes.txt
+gist-memory add --file docs/
 ```
 
 Query memories:
 
 ```bash
-python -m gist_memory \
-    --embedder local --model-name all-MiniLM-L6-v2 --threshold 0.3 \
-    query "search text" --top 5
+gist-memory query --query-text "search text" --k-memories 5
 ```
 
-Decode a prototype to see example memories:
+List belief prototypes and show store stats:
 
 ```bash
-python -m gist_memory decode <prototype_id> --top 2
+gist-memory list-beliefs
+gist-memory stats
 ```
 
-Summarize a prototype:
-
-```bash
-python -m gist_memory summarize <prototype_id> --max-words 20
-```
-
-Dump all memories (optionally filter by prototype):
-
-```bash
-python -m gist_memory dump --prototype-id <prototype_id>
-```
+Additional functions such as decoding or summarising a prototype are
+available via the Python API.
 
 The local embedder loads the model from the Hugging Face cache only and will not
 attempt any network downloads. Ensure the model is pre-cached using the commands
@@ -139,7 +128,7 @@ embedding model:
 ```bash
 pip install -r requirements.txt
 # download the local model once
-python -m gist_memory download-model --model-name all-MiniLM-L6-v2
+gist-memory download-model --model-name all-MiniLM-L6-v2
 
 # run the example
 python examples/onboarding_demo.py
