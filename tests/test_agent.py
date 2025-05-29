@@ -32,10 +32,10 @@ def test_snap_and_spawn(tmp_path):
     agent = Agent(store, chunker=SentenceWindowChunker())
     agent.add_memory("alpha")
     res = agent.add_memory("golf")[0]
-    assert res["spawned"] is False
-    assert store.prototypes[0].strength == 2.0
+    assert res["spawned"] is True
+    assert len(store.prototypes) == 2
     res2 = agent.add_memory("delta")[0]
-    assert res2["spawned"] is True
+    assert res2["spawned"] is False
     assert len(store.prototypes) == 2
 
 

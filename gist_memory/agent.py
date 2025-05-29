@@ -20,6 +20,7 @@ from .memory_creation import (
     LLMSummaryCreator,
     MemoryCreator,
 )
+from .canonical import render_five_w_template
 
 
 class VectorIndexCorrupt(RuntimeError):
@@ -131,7 +132,16 @@ class Agent:
         self._evidence.add(belief_id, mem_id, weight)
 
     # ------------------------------------------------------------------
-    def add_memory(self, text: str) -> List[Dict[str, object]]:
+    def add_memory(
+        self,
+        text: str,
+        *,
+        who: Optional[str] = None,
+        what: Optional[str] = None,
+        when: Optional[str] = None,
+        where: Optional[str] = None,
+        why: Optional[str] = None,
+    ) -> List[Dict[str, object]]:
         """Ingest ``text`` into the store and return per-chunk statuses."""
 
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -143,7 +153,13 @@ class Agent:
         chunks = self.chunker.chunk(text)
         if not chunks:
             return []
-        vecs = embed_text(chunks)
+        canonical = [
+            render_five_w_template(
+                c, who=who, what=what, when=when, where=where, why=why
+            )
+            for c in chunks
+        ]
+        vecs = embed_text(canonical)
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
 

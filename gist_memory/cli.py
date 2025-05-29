@@ -96,7 +96,7 @@ def add(
         raise typer.Exit(code=1)
     with PersistenceLock(path):
         agent = _load_agent(path)
-        results = agent.add_memory(input_text)
+        results = agent.add_memory(input_text, who=actor)
         agent.store.save()
     for r in results:
         action = "spawned" if r.get("spawned") else "updated"
