@@ -217,7 +217,8 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             import shutil
 
             zip_path = store_path.with_suffix(".zip")
-            shutil.make_archive(store_path.name, "zip", root_dir=store_path)
+            archive = shutil.make_archive(zip_path.stem, "zip", root_dir=store_path)
+            Path(archive).replace(zip_path)
             self.app.exit()
 
         def action_no(self) -> None:
