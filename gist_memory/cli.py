@@ -180,6 +180,40 @@ def stats(
             typer.echo(f"{k}: {v}")
 
 
+@app.command()
+def validate(
+    agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
+) -> None:
+    """Validate the store metadata and embeddings."""
+    path = Path(agent_name)
+    try:
+        JsonNpyVectorStore(path=str(path))
+    except EmbeddingDimensionMismatchError as exc:
+        typer.echo(f"Embedding dimension mismatch: {exc}", err=True)
+        raise typer.Exit(code=1)
+    except Exception as exc:  # pragma: no cover - unexpected errors
+        typer.echo(f"Error loading agent: {exc}", err=True)
+        raise typer.Exit(code=1)
+    typer.echo("Store is valid")
+
+
+@app.command()
+def clear(
+    agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
+    yes: bool = typer.Option(False, "--yes", help="Confirm deletion"),
+) -> None:
+    """Delete all data in the store."""
+    path = Path(agent_name)
+    if not yes:
+        if not typer.confirm(f"Delete {path}?", abort=True):  # pragma: no cover - user abort
+            return
+    if path.exists():
+        shutil.rmtree(path)
+        typer.echo(f"Deleted {path}")
+    else:
+        typer.echo("Directory not found", err=True)
+
+
 @app.command("download-model")
 def download_model(
     model_name: str = typer.Option(

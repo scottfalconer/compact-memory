@@ -49,3 +49,33 @@ def test_cli_stats(tmp_path):
     assert result.exit_code == 0
     data = json.loads(result.stdout.strip())
     assert data["prototypes"] == 1
+
+
+def test_cli_validate_and_clear(tmp_path):
+    runner = CliRunner()
+    runner.invoke(app, ["init", str(tmp_path)])
+
+    result = runner.invoke(app, ["validate", str(tmp_path)])
+    assert result.exit_code == 0
+    assert "valid" in result.stdout.lower()
+
+    result = runner.invoke(app, ["clear", str(tmp_path), "--yes"])
+    assert result.exit_code == 0
+    assert not tmp_path.exists()
+
+
+def test_cli_validate_mismatch(tmp_path):
+    runner = CliRunner()
+    runner.invoke(app, ["init", str(tmp_path)])
+
+    meta_path = tmp_path / "meta.yaml"
+    import yaml
+
+    meta = yaml.safe_load(meta_path.read_text())
+    meta["embedding_dim"] = 2
+    meta_path.write_text(yaml.safe_dump(meta))
+
+    result = runner.invoke(app, ["validate", str(tmp_path)])
+    assert result.exit_code != 0
+
+
