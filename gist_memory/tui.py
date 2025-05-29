@@ -8,6 +8,7 @@ from typing import Iterable, Optional
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from .config import DEFAULT_BRAIN_PATH
+from .embedding_pipeline import embed_text
 
 
 # ---------------------------------------------------------------------------
