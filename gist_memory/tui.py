@@ -79,11 +79,13 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
 
         def compose(self) -> ComposeResult:  # type: ignore[override]
             yield Header()
-            yield Static(
+            text = (
                 "Welcome to Gist Memory\n"
-                "Press [C] to create new brain, [L] to load sample.",
-                id="welcome",
+                "Press [C] to create a new brain or [L] to load a sample.\n"
+                "Once the console opens type /help for commands.\n"
+                "Use F5 for stats and Q to quit."
             )
+            yield Static(text, id="welcome")
             yield Footer()
 
         def action_create(self) -> None:
