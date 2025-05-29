@@ -176,3 +176,7 @@ of commands.
 ## Segmentation Playbook
 
 See [docs/SEGMENTATION_PLAYBOOK.md](docs/SEGMENTATION_PLAYBOOK.md) for a detailed workflow on splitting long documents into belief-sized ideas before ingestion. You can enable this behaviour in the CLI via `--memory-creator agentic`.
+
+## Querying Playbook
+
+See [docs/QUERYING_PLAYBOOK.md](docs/QUERYING_PLAYBOOK.md) for tips on shaping search queries. It explains how to bias retrieval by embedding a templated version of a question when your notes follow a structured `WHO/WHAT/WHEN` format.
