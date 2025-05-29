@@ -7,7 +7,7 @@ def test_local_chat_model(monkeypatch):
             pass
 
         def __call__(self, prompt, return_tensors=None, truncation=None, max_length=None):
-            return {"input_ids": [0]}
+            return {"input_ids": [[0]]}
 
         def decode(self, ids, skip_special_tokens=True):
             return "prompt response"
