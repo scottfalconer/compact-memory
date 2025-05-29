@@ -32,14 +32,11 @@ def run_tui(path: str = "brain") -> None:
         from textual.app import App, ComposeResult
         from textual.containers import Container
         from textual.screen import Screen
-        from textual.widgets import (
-            Header,
-            Footer,
-            Static,
-            Input,
-            TextLog,
-            DataTable,
-        )
+        from textual.widgets import Header, Footer, Static, Input, DataTable
+        try:  # Textual 0.x
+            from textual.widgets import TextLog  # type: ignore
+        except Exception:  # pragma: no cover - Textual >=1.0 renamed the widget
+            from textual.widgets import Log as TextLog  # type: ignore
     except Exception as exc:  # pragma: no cover - optional dependency
         raise RuntimeError("Textual is required for the TUI") from exc
 
