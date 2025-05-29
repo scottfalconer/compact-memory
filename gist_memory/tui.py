@@ -35,6 +35,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
         from textual.containers import Container
         from textual.screen import Screen
         from textual.widgets import Header, Footer, Static, Input, DataTable
+        from .autocomplete_input import TabAutocompleteInput
         try:  # Textual 0.x
             from textual.widgets import TextLog  # type: ignore
         except Exception:  # pragma: no cover - Textual >=1.0 renamed the widget
@@ -201,7 +202,19 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             yield Header()
             self.text_log = TextLog(id="console")
             yield self.text_log
-            self.input = Input(placeholder="/help for commands", id="cmd")
+            suggestions = [
+                "/ingest ",
+                "/query ",
+                "/beliefs",
+                "/stats",
+                "/exit",
+                "/quit",
+                "/help",
+                "/?",
+            ]
+            self.input = TabAutocompleteInput(
+                placeholder="/help for commands", id="cmd", suggestions=suggestions
+            )
             yield self.input
             yield Footer()
 
