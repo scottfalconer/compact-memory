@@ -1,9 +1,13 @@
 """Simple onboarding demo for Gist Memory."""
 from pathlib import Path
+import os
 
 from gist_memory.store import PrototypeStore
 from gist_memory.memory_creation import IdentityMemoryCreator
 from gist_memory.embedder import get_embedder
+
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 
 def main() -> None:
@@ -14,15 +18,15 @@ def main() -> None:
     creator = IdentityMemoryCreator()
 
     for text in texts:
-        before = store.proto_collection.count()
+        before = store.prototype_count()
         mem = store.add_memory(creator.create(text))
-        after = store.proto_collection.count()
+        after = store.prototype_count()
         action = "Created" if after > before else "Updated"
         print(f"{action} prototype {mem.prototype_id} with memory {mem.id}")
 
     print()
-    print(f"Total memories: {store.memory_collection.count()}")
-    print(f"Total prototypes: {store.proto_collection.count()}")
+    print(f"Total memories: {len(store.memories)}")
+    print(f"Total prototypes: {store.prototype_count()}")
 
 
 if __name__ == "__main__":

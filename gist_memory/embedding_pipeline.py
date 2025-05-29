@@ -4,6 +4,21 @@ import functools
 import hashlib
 from typing import List, Sequence
 
+# ---------------------------------------------------------------------------
+# Disable tqdm's multiprocessing lock.
+# On some platforms (notably macOS with the "spawn" start method) creating
+# the default multiprocessing lock can fail with "ValueError: bad value(s) in
+# fds_to_keep".  Avoid this by monkeypatching tqdm to skip the mp lock.
+try:  # pragma: no cover - only needed on certain platforms
+    import tqdm.std
+
+    def _no_mp_lock(cls):
+        cls.mp_lock = None
+
+    tqdm.std.TqdmDefaultWriteLock.create_mp_lock = classmethod(_no_mp_lock)
+except Exception:  # pragma: no cover - tqdm not installed or different API
+    pass
+
 import numpy as np
 
 try:  # optional heavy deps
