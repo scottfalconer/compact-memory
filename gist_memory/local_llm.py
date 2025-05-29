@@ -37,13 +37,26 @@ class LocalChatModel:
             ) from exc
 
     def reply(self, prompt: str) -> str:
-        """Generate a reply given ``prompt``."""
-        inputs = self.tokenizer(prompt, return_tensors="pt")
+        """Generate a reply given ``prompt``.
+
+        If ``prompt`` is longer than the model's maximum context length the
+        excess tokens are truncated from the start to avoid generation errors.
+        """
+        max_len = getattr(getattr(self.model, "config", None), "n_positions", 1024)
+        inputs = self.tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=max_len,
+        )
+        prompt_trimmed = self.tokenizer.decode(inputs["input_ids"][0], skip_special_tokens=True)
         outputs = self.model.generate(**inputs, max_new_tokens=self.max_new_tokens)
         text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         # return only the newly generated portion
         if text.startswith(prompt):
             return text[len(prompt) :].strip()
+        if text.startswith(prompt_trimmed):
+            return text[len(prompt_trimmed) :].strip()
         return text.strip()
 
 

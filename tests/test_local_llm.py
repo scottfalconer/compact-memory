@@ -6,7 +6,7 @@ def test_local_chat_model(monkeypatch):
         def __init__(self, *a, **k):
             pass
 
-        def __call__(self, prompt, return_tensors=None):
+        def __call__(self, prompt, return_tensors=None, truncation=None, max_length=None):
             return {"input_ids": [0]}
 
         def decode(self, ids, skip_special_tokens=True):
@@ -14,7 +14,7 @@ def test_local_chat_model(monkeypatch):
 
     class DummyModel:
         def __init__(self, *a, **k):
-            pass
+            self.config = type("cfg", (), {"n_positions": 1024})()
 
         def generate(self, **kw):
             return [[0]]
