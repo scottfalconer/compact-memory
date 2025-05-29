@@ -50,7 +50,7 @@ def test_wizard_load(monkeypatch, tmp_path):
     run_tui(str(tmp_path))
     store = JsonNpyVectorStore(str(tmp_path))
     assert len(store.memories) == 4
-    assert len(store.prototypes) == 4
+    assert len(store.prototypes) == 3
 
 
 def _patch_mock_encoder(monkeypatch):

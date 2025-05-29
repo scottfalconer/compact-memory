@@ -10,6 +10,7 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 - Optional Chroma vector store for scale via ``pip install \"gist-memory[chroma]\"``.
 - Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
+- Chunks are rendered using a canonical ``WHO/WHAT/WHEN/WHERE/WHY`` template before embedding.
 - Launches a simple Textual TUI when running `gist-memory` with no arguments.
 - Python API provides helpers to decode and summarise prototypes.
 - Chat with a brain using a local LLM via the `talk` command.
