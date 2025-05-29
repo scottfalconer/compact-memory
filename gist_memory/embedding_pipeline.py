@@ -63,7 +63,13 @@ def _load_model(model_name: str, device: str) -> SentenceTransformer:
     if _MODEL is None or model_name != _MODEL_NAME or device != _DEVICE:
         if torch is not None:
             torch.manual_seed(0)
-        _MODEL = SentenceTransformer(model_name, device=device)
+        try:
+            _MODEL = SentenceTransformer(model_name, device=device)
+        except Exception as exc:  # pragma: no cover - depends on local files
+            raise RuntimeError(
+                "Embedding model not found. "
+                "Run `gist-memory download-model` to install it"
+            ) from exc
         _MODEL_NAME = model_name
         _DEVICE = device
     return _MODEL

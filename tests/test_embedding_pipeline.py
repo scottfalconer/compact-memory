@@ -1,5 +1,6 @@
 import numpy as np
 import importlib
+import pytest
 
 from gist_memory import embedding_pipeline as ep
 
@@ -20,3 +21,13 @@ def test_embed_text_uses_mock(monkeypatch):
     exp = enc.encode("a")
     exp = exp / np.linalg.norm(exp)
     assert np.allclose(vecs[0], exp)
+
+
+def test_load_model_failure(monkeypatch):
+    def raise_err(*a, **k):
+        raise OSError("missing")
+
+    monkeypatch.setattr(ep, "SentenceTransformer", raise_err)
+    with pytest.raises(RuntimeError) as exc:
+        ep._load_model("bad", "cpu")
+    assert "gist-memory download-model" in str(exc.value)
