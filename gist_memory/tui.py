@@ -95,11 +95,25 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             yield Header()
             yield Static("Paste text and press Enter", id="hint")
             yield Input(id="ingest")
+            yield Static("File path (Enter to ingest)", id="filehint")
+            yield Input(id="file")
             yield TextLog(highlight=False, id="log")
             yield Footer()
 
         def on_input_submitted(self, event: Input.Submitted) -> None:
-            results = agent.add_memory(event.value)
+            if event.input.id == "file":
+                path = Path(event.value).expanduser()
+                try:
+                    text = path.read_text()
+                except Exception as exc:  # pragma: no cover - runtime error path
+                    log = self.query_one("#log", TextLog)
+                    log.write_line(f"error reading file: {exc}")
+                    event.input.value = ""
+                    return
+            else:
+                text = event.value
+
+            results = agent.add_memory(text)
             log = self.query_one("#log", TextLog)
             for res in results:
                 if res.get("spawned"):
