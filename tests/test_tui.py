@@ -139,7 +139,9 @@ def test_talk_mode_llm(monkeypatch, tmp_path):
     _patch_run(monkeypatch, autopilot)
     run_tui(str(tmp_path))
 
-    assert "hi" in prompts.get("text", "")
+    txt = prompts.get("text", "")
+    assert "hi" in txt
+    assert "<MEM" in txt
 
 
 def test_install_models_command(monkeypatch, tmp_path):

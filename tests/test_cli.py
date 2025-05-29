@@ -99,6 +99,7 @@ def test_cli_talk(tmp_path, monkeypatch):
     assert result.exit_code == 0
     assert "response" in result.stdout
     assert "hello world" in prompts["text"]
+    assert "<MEM" in prompts["text"]
 
 
 def test_cli_download_chat_model(monkeypatch):

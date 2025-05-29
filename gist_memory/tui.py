@@ -9,6 +9,7 @@ from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from .config import DEFAULT_BRAIN_PATH
 from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
+from .memory_cues import MemoryCueRenderer
 
 
 # ---------------------------------------------------------------------------
@@ -287,15 +288,17 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                         msg = f"added to {res['prototype_id']}"
                     self.text_log.write_line(msg)
                 try:
-                    from .local_llm import LocalChatModel
-
-                    parts = []
+                    cues = MemoryCueRenderer().render(
+                        [p["summary"] for p in agent.query(cmd, top_k_prototypes=3, top_k_memories=0)["prototypes"]]
+                    )
+                    parts = [cues] if cues else []
                     for proto in store.prototypes:
                         parts.append(f"{proto.prototype_id}: {proto.summary_text}")
                     for mem in store.memories:
                         parts.append(f"{mem.memory_id}: {mem.raw_text}")
                     context = "\n".join(parts)
                     prompt = f"{context}\nUser: {cmd}\nAssistant:"
+                    from .local_llm import LocalChatModel
                     llm = LocalChatModel()
                     reply = llm.reply(prompt)
                     self.text_log.write_line(reply)
