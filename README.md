@@ -35,11 +35,9 @@ pip install .
 
 ### Interactive TUI
 
-Install the optional TUI extras and launch ``gist-run`` to explore a brain
-interactively:
+Launch ``gist-run`` to explore a brain interactively:
 
 ```bash
-pip install "gist-memory[tui]"
 gist-run
 ```
 

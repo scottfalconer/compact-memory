@@ -23,6 +23,8 @@ dependencies = [
     "nltk",
     "typer[all]",
     "portalocker",
+    "textual>=0.46",
+    "rich>=13.6",
 ]
 
 [project.optional-dependencies]
