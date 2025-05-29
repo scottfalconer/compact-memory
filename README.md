@@ -22,9 +22,15 @@ the default local embedding model (only needed the first time):
 pip install -r requirements.txt
 # fetch the "all-MiniLM-L6-v2" model so the local embedder works offline
 gist-memory download-model --model-name all-MiniLM-L6-v2
-
-# You can alternatively run `.codex/setup.sh` to perform these steps.
 ```
+
+For a quick offline setup you can also run:
+
+```bash
+bash .codex/setup.sh
+```
+
+Once installed, running `gist-memory` with no arguments will start the Textual TUI.
 
 Alternatively install the package from source:
 
