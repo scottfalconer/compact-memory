@@ -2,11 +2,14 @@ import json
 import shutil
 from pathlib import Path
 from typing import Optional
+import logging
 
 import typer
 import portalocker
 from rich.table import Table
 from rich.console import Console
+
+from .logging_utils import configure_logging
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
@@ -16,6 +19,21 @@ from .config import DEFAULT_BRAIN_PATH
 
 app = typer.Typer(help="Gist Memory command line interface")
 console = Console()
+
+
+@app.callback(invoke_without_command=False)
+def main(
+    ctx: typer.Context,
+    log_file: Optional[Path] = typer.Option(
+        None, "--log-file", help="Write debug logs to this file"
+    ),
+    verbose: bool = typer.Option(False, "--verbose", help="Enable debug logging"),
+) -> None:
+    """Configure logging before executing commands."""
+    if log_file:
+        level = logging.DEBUG if verbose else logging.INFO
+        configure_logging(log_file, level)
+
 
 
 class PersistenceLock:

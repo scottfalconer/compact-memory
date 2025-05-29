@@ -9,6 +9,7 @@ from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from .config import DEFAULT_BRAIN_PATH
 from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
+from .logging_utils import configure_logging
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +83,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 "/beliefs          - list prototypes\n"
                 "/stats            - show store stats\n"
                 "/install-models   - download models\n"
+                "/log PATH        - write debug log\n"
                 "/exit             - quit"
             )
             yield Header()
@@ -225,8 +227,9 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 "/query ",
                 "/beliefs",
                 "/stats",
-                "/install-models",
-                "/exit",
+                "/install-models", 
+                "/log ",
+                "/exit", 
                 "/quit",
                 "/help",
                 "/?",
@@ -266,6 +269,12 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 self.text_log.write_line(f"prototypes: {len(store.prototypes)}")
             elif cmd == "/beliefs":
                 self.app.push_screen(BeliefScreen())
+            elif cmd.startswith("/log "):
+                path = Path(cmd[len("/log ") :]).expanduser()
+                if not path.is_absolute():
+                    path = store_path / path
+                configure_logging(path)
+                self.text_log.write_line(f"logging to {path}")
             elif cmd == "/install-models":
                 msg = _install_models()
                 self.text_log.write_line(msg)
@@ -277,6 +286,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 self.text_log.write_line("/beliefs     - list prototypes")
                 self.text_log.write_line("/stats       - show stats")
                 self.text_log.write_line("/install-models - download models")
+                self.text_log.write_line("/log PATH   - write debug log")
                 self.text_log.write_line("/exit        - quit")
             elif cmd:
                 results = agent.add_memory(cmd)

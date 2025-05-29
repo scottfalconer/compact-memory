@@ -124,3 +124,26 @@ def test_cli_download_chat_model(monkeypatch):
     assert "foo" in calls
 
 
+def test_cli_logging(tmp_path):
+    log_path = tmp_path / "cli.log"
+    runner = CliRunner()
+    runner.invoke(app, ["init", str(tmp_path)])
+    runner.invoke(app, ["add", "--agent-name", str(tmp_path), "--text", "alpha"])
+    result = runner.invoke(
+        app,
+        [
+            "--log-file",
+            str(log_path),
+            "--verbose",
+            "query",
+            "--agent-name",
+            str(tmp_path),
+            "--query-text",
+            "alpha",
+        ],
+    )
+    assert result.exit_code == 0
+    assert log_path.exists()
+    assert log_path.read_text() != ""
+
+
