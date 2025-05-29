@@ -199,10 +199,14 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
 
         def compose(self) -> ComposeResult:  # type: ignore[override]
             yield Header()
-            self.log = TextLog(id="console")
-            yield self.log
-            yield Input(placeholder="/help for commands", id="cmd")
+            self.text_log = TextLog(id="console")
+            yield self.text_log
+            self.input = Input(placeholder="/help for commands", id="cmd")
+            yield self.input
             yield Footer()
+
+        def on_mount(self) -> None:
+            self.input.focus()
 
         def on_input_submitted(self, event: Input.Submitted) -> None:
             cmd = event.value.strip()
@@ -215,31 +219,37 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                         msg = f"spawned prototype {res['prototype_id']}"
                     else:
                         msg = f"added to {res['prototype_id']}"
-                    self.log.write_line(msg)
+                    self.text_log.write_line(msg)
             elif cmd.startswith("/query "):
                 q = cmd[len("/query ") :]
                 res = agent.query(q, top_k_prototypes=3, top_k_memories=3)
                 for p in res.get("prototypes", []):
-                    self.log.write_line(f"{p['sim']:.2f} {p['summary']}")
+                    self.text_log.write_line(f"{p['sim']:.2f} {p['summary']}")
                 for m in res.get("memories", []):
-                    self.log.write_line(f"  {m['text']}")
+                    self.text_log.write_line(f"  {m['text']}")
             elif cmd == "/stats":
                 usage = _disk_usage(store_path)
-                self.log.write_line(f"disk: {usage} bytes")
-                self.log.write_line(f"memories: {len(store.memories)}")
-                self.log.write_line(f"prototypes: {len(store.prototypes)}")
+                self.text_log.write_line(f"disk: {usage} bytes")
+                self.text_log.write_line(f"memories: {len(store.memories)}")
+                self.text_log.write_line(f"prototypes: {len(store.prototypes)}")
             elif cmd == "/beliefs":
                 self.app.push_screen(BeliefScreen())
             elif cmd in ("/exit", "/quit"):
                 self.app.push_screen(ExitScreen())
             elif cmd in ("/help", "/?"):
-                self.log.write_line("/ingest TEXT - add memory")
-                self.log.write_line("/query TEXT  - search")
-                self.log.write_line("/beliefs     - list prototypes")
-                self.log.write_line("/stats       - show stats")
-                self.log.write_line("/exit        - quit")
+                self.text_log.write_line("/ingest TEXT - add memory")
+                self.text_log.write_line("/query TEXT  - search")
+                self.text_log.write_line("/beliefs     - list prototypes")
+                self.text_log.write_line("/stats       - show stats")
+                self.text_log.write_line("/exit        - quit")
             elif cmd:
-                self.log.write_line(f"unknown command: {cmd}")
+                results = agent.add_memory(cmd)
+                for res in results:
+                    if res.get("spawned"):
+                        msg = f"spawned prototype {res['prototype_id']}"
+                    else:
+                        msg = f"added to {res['prototype_id']}"
+                    self.text_log.write_line(msg)
 
     class StatsScreen(Screen):
         BINDINGS = [("escape", "app.pop_screen", "Back")]
@@ -282,7 +292,10 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
 
     class WizardApp(App):
         CSS_PATH = None
-        BINDINGS = [("q", "push_screen('exit')", "Quit")]
+        BINDINGS = [
+            ("q", "push_screen('exit')", "Quit"),
+            ("f5", "push_screen('stats')", "Stats"),
+        ]
 
         SCREENS = {
             "help": HelpScreen,
