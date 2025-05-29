@@ -1,6 +1,9 @@
 import builtins
 import pytest
+from textual.app import App
 from gist_memory.tui import _disk_usage, run_tui
+from gist_memory.json_npy_store import JsonNpyVectorStore
+from gist_memory.embedding_pipeline import MockEncoder
 
 
 def test_disk_usage(tmp_path):
@@ -23,3 +26,28 @@ def test_run_tui_import_error(monkeypatch, tmp_path):
     monkeypatch.setattr(builtins, "__import__", fake_import)
     with pytest.raises(RuntimeError):
         run_tui(str(tmp_path))
+
+
+def test_wizard_load(monkeypatch, tmp_path):
+    enc = MockEncoder()
+    monkeypatch.setattr(
+        "gist_memory.embedding_pipeline._load_model", lambda *a, **k: enc
+    )
+
+    async def autopilot(pilot):
+        await pilot.pause(0.1)
+        await pilot.press("l")
+        await pilot.pause(0.2)
+        pilot.app.exit()
+
+    orig_run = App.run
+
+    def patched_run(self, *a, **kw):
+        return orig_run(self, headless=True, auto_pilot=autopilot)
+
+    monkeypatch.setattr(App, "run", patched_run)
+
+    run_tui(str(tmp_path))
+    store = JsonNpyVectorStore(str(tmp_path))
+    assert len(store.memories) == 4
+    assert len(store.prototypes) == 4
