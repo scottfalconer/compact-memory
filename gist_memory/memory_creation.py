@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class MemoryCreator:
     """Base interface for creating memory text from source text."""
 
