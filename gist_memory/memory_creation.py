@@ -88,6 +88,42 @@ class AgenticMemoryCreator(MemoryCreator):
         )
 
 
+_TEMPLATE_REGISTRY: dict[str, type["TemplateBuilder"]] = {}
+
+
+def register_template_builder(id: str, cls: type["TemplateBuilder"]) -> None:
+    _TEMPLATE_REGISTRY[id] = cls
+
+
+class TemplateBuilder:
+    """Combine extracted slots with a sentence into a canonical string."""
+
+    id: str = "default"
+
+    def build(self, sentence: str, slots: dict[str, str]) -> str:  # pragma: no cover - interface
+        raise NotImplementedError
+
+    def config(self) -> dict[str, int | str]:
+        return {"id": self.id}
+
+
+class DefaultTemplateBuilder(TemplateBuilder):
+    """Simple builder concatenating slot values."""
+
+    id = "default"
+
+    def build(self, sentence: str, slots: dict[str, str]) -> str:
+        parts = [sentence]
+        for key in ("who", "what", "when", "where", "why"):
+            val = slots.get(key)
+            if val:
+                parts.append(f"{key}:{val}")
+        return " | ".join(parts)
+
+
+register_template_builder(DefaultTemplateBuilder.id, DefaultTemplateBuilder)
+
+
 __all__ = [
     "MemoryCreator",
     "IdentityMemoryCreator",
@@ -95,4 +131,8 @@ __all__ = [
     "ChunkMemoryCreator",
     "LLMSummaryCreator",
     "AgenticMemoryCreator",
+    "TemplateBuilder",
+    "DefaultTemplateBuilder",
+    "register_template_builder",
+    "_TEMPLATE_REGISTRY",
 ]
