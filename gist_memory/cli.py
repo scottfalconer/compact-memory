@@ -253,5 +253,19 @@ def download_model(
     typer.echo(f"Downloaded {model_name}")
 
 
+@app.command("download-chat-model")
+def download_chat_model(
+    model_name: str = typer.Option(
+        "distilgpt2", help="Local causal LM name"
+    )
+) -> None:
+    """Pre-download a local chat model for ``talk`` mode."""
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+
+    AutoTokenizer.from_pretrained(model_name)
+    AutoModelForCausalLM.from_pretrained(model_name)
+    typer.echo(f"Downloaded {model_name}")
+
+
 if __name__ == "__main__":
     app()

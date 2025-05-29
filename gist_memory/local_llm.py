@@ -22,12 +22,19 @@ class LocalChatModel:
     def __post_init__(self) -> None:
         if AutoModelForCausalLM is None or AutoTokenizer is None:
             raise ImportError("transformers is required for LocalChatModel")
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.model_name, local_files_only=True
-        )
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name, local_files_only=True
-        )
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name, local_files_only=True
+            )
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_name, local_files_only=True
+            )
+        except Exception as exc:  # pragma: no cover - depends on local files
+            raise RuntimeError(
+                "Chat model not found. "
+                "Run `gist-memory download-chat-model --model-name "
+                f"{self.model_name}` to install it"
+            ) from exc
 
     def reply(self, prompt: str) -> str:
         """Generate a reply given ``prompt``."""

@@ -24,6 +24,8 @@ the default local embedding model (only needed the first time):
 pip install -r requirements.txt
 # fetch the "all-MiniLM-L6-v2" model so the local embedder works offline
 gist-memory download-model --model-name all-MiniLM-L6-v2
+# fetch the default chat model for talk mode
+gist-memory download-chat-model --model-name distilgpt2
 ```
 
 For a quick offline setup you can also run:
@@ -85,6 +87,7 @@ Chat with the entire brain using a local model:
 ```bash
 gist-memory talk --message "What's in this brain?"
 ```
+Ensure the chat model is pre-downloaded using `gist-memory download-chat-model`.
 
 List belief prototypes and show store stats:
 
@@ -100,8 +103,8 @@ Additional functions such as decoding or summarising a prototype are
 available via the Python API.
 
 The local embedder loads the model from the Hugging Face cache only and will not
-attempt any network downloads. Ensure the model is pre-cached using the commands
-in the setup section or via `.codex/setup.sh`.
+attempt any network downloads. Ensure the embedding and chat models are
+pre-cached using the commands in the setup section or via `.codex/setup.sh`.
 
 Data is stored in the `brain` directory by default in the current working directory.
 
