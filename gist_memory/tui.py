@@ -236,12 +236,12 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
         ]
 
         SCREENS = {
-            "help": HelpScreen(),
-            "ingest": IngestScreen(),
-            "beliefs": BeliefScreen(),
-            "query": QueryScreen(),
-            "stats": StatsScreen(),
-            "exit": ExitScreen(),
+            "help": HelpScreen,
+            "ingest": IngestScreen,
+            "beliefs": BeliefScreen,
+            "query": QueryScreen,
+            "stats": StatsScreen,
+            "exit": ExitScreen,
         }
 
         def on_mount(self) -> None:
