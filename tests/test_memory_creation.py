@@ -3,6 +3,10 @@ from gist_memory.memory_creation import (
     ExtractiveSummaryCreator,
     ChunkMemoryCreator,
     LLMSummaryCreator,
+    TemplateBuilder,
+    DefaultTemplateBuilder,
+    register_template_builder,
+    _TEMPLATE_REGISTRY,
 )
 
 
@@ -43,3 +47,22 @@ def test_llm_summary_creator(monkeypatch):
     monkeypatch.setattr(openai.ChatCompletion, "create", Dummy.create)
     creator = LLMSummaryCreator(model="dummy")
     assert creator.create("text") == "summary"
+
+
+def test_default_template_builder():
+    builder = DefaultTemplateBuilder()
+    out = builder.build("hello", {"who": "Alice", "why": "testing"})
+    assert "hello" in out
+    assert "who:Alice" in out
+    assert "why:testing" in out
+
+
+def test_register_template_builder():
+    class DummyTemplate(TemplateBuilder):
+        id = "dummy"
+
+        def build(self, sentence: str, slots: dict[str, str]) -> str:
+            return "dummy"
+
+    register_template_builder(DummyTemplate.id, DummyTemplate)
+    assert _TEMPLATE_REGISTRY["dummy"] is DummyTemplate
