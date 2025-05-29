@@ -12,6 +12,7 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
 - Launches a simple Textual TUI when running `gist-memory` with no arguments.
 - Python API provides helpers to decode and summarise prototypes.
+- Chat with a brain using a local LLM via the `talk` command.
 
 ## Setup
 
@@ -76,6 +77,12 @@ Query memories:
 
 ```bash
 gist-memory query --query-text "search text" --k-memories 5
+```
+
+Chat with the entire brain using a local model:
+
+```bash
+gist-memory talk --message "What's in this brain?"
 ```
 
 List belief prototypes and show store stats:
