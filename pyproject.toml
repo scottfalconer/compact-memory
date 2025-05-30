@@ -32,6 +32,7 @@ dependencies = [
 test = ["pytest"]
 chroma = ["chromadb"]
 tui = ["textual>=0.46", "rich>=13.6"]
+spacy = ["spacy"]
 
 [project.scripts]
 gist-memory = "gist_memory.__main__:main"
