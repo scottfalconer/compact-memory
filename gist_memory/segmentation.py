@@ -1,12 +1,26 @@
 from typing import Iterable, List
 
 from .spacy_utils import get_nlp
+import re
 
 
 def _sentences(text: str) -> List[str]:
     """Split text into sentences using spaCy."""
     doc = get_nlp()(text.strip())
-    return [sent.text.strip() for sent in doc.sents if sent.text.strip()]
+    sents = [sent.text.strip() for sent in doc.sents if sent.text.strip()]
+    if len(sents) <= 2:
+        parts = re.split(r"(?<=[.!?])\s+", text.strip())
+        merged: List[str] = []
+        i = 0
+        while i < len(parts):
+            part = parts[i]
+            if part in {"Dr.", "Mr.", "Mrs.", "Ms.", "Sr.", "Jr.", "St.", "Prof.", "p.m.", "a.m."} and i + 1 < len(parts):
+                part = part + " " + parts[i + 1]
+                i += 1
+            merged.append(part.strip())
+            i += 1
+        sents = [m for m in merged if m]
+    return sents
 
 
 def _jaccard(a: Iterable[str], b: Iterable[str]) -> float:
