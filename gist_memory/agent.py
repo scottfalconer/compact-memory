@@ -23,6 +23,7 @@ from .memory_creation import (
 from .canonical import render_five_w_template
 from .conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
 from .conflict import SimpleConflictLogger, negation_conflict
+from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 
 
 class VectorIndexCorrupt(RuntimeError):
@@ -322,8 +323,65 @@ class Agent:
         }
 
     # ------------------------------------------------------------------
+    def process_conversational_turn(
+        self,
+        input_message: str,
+        manager: ActiveMemoryManager,
+    ) -> tuple[str, dict]:
+        """Generate a reply to ``input_message`` using ``manager`` for context."""
+
+        from .local_llm import LocalChatModel
+
+        llm = getattr(self, "_chat_model", None)
+        if llm is None:
+            llm = LocalChatModel()
+            self._chat_model = llm
+
+        vec = embed_text([input_message])
+        if vec.ndim != 1:
+            vec = vec.reshape(-1)
+
+        history_candidates = manager.select_history_candidates_for_prompt(vec)
+        history_final = manager.finalize_history_for_prompt(
+            history_candidates,
+            llm.model.config.n_positions - llm.max_new_tokens,
+            llm.tokenizer,
+        )
+
+        history_text = "\n".join(t.text for t in history_final)
+
+        query_res = self.query(input_message, top_k_prototypes=2, top_k_memories=2)
+        proto_summaries = "; ".join(p["summary"] for p in query_res.get("prototypes", []))
+        mem_texts = "; ".join(m["text"] for m in query_res.get("memories", []))
+
+        parts = []
+        if history_text:
+            parts.append(history_text)
+        parts.append(f"User asked: {input_message}")
+        if proto_summaries:
+            parts.append(f"Relevant concepts: {proto_summaries}")
+        if mem_texts:
+            parts.append(f"Context: {mem_texts}")
+        parts.append("Answer:")
+        prompt = "\n".join(parts)
+        prompt = llm.prepare_prompt(self, prompt)
+        reply = llm.reply(prompt)
+
+        manager.add_turn(
+            ConversationTurn(
+                text=f"User: {input_message}\nAgent: {reply}",
+                turn_embedding=vec.tolist() if hasattr(vec, "tolist") else None,
+            )
+        )
+
+        return reply, {"query_result": query_res}
+
+    # ------------------------------------------------------------------
     def receive_channel_message(
-        self, source_id: str, message_text: str
+        self,
+        source_id: str,
+        message_text: str,
+        manager: Optional[ActiveMemoryManager] = None,
     ) -> dict[str, object]:
         """Process ``message_text`` posted to the shared channel by ``source_id``.
 
@@ -346,6 +404,13 @@ class Agent:
         text = message_text.strip()
         if text.endswith("?"):
             # -------------------------------------------------- Option A: query
+            if manager is not None:
+                reply, info = self.process_conversational_turn(text, manager)
+                summary["action"] = "query"
+                summary["query_result"] = info.get("query_result", {})
+                summary["reply"] = reply
+                return summary
+
             result = self.query(text, top_k_prototypes=2, top_k_memories=2)
             summary["action"] = "query"
             summary["query_result"] = result

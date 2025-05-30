@@ -96,7 +96,7 @@ def test_cli_talk_prompt_respects_limit(tmp_path, monkeypatch):
 
     monkeypatch.setattr(DummyModel, "generate", capture_generate)
 
-    talk(agent_name=str(tmp_path), message="hi", model_name="distilgpt2")
+    talk(agent_name=str(tmp_path), message="hi?", model_name="distilgpt2")
     tokens = len(captured["ids"])
     max_len = DummyModel().config.n_positions - LocalChatModel().max_new_tokens
     assert tokens <= max_len
