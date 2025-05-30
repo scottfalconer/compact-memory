@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -67,8 +67,8 @@ class JsonNpyVectorStore(VectorStore):
                 "embedding_model": self.embedding_model,
                 "embedding_dim": self.embedding_dim,
                 "normalized": self.normalized,
-                "created_at": datetime.utcnow().isoformat() + "Z",
-                "updated_at": datetime.utcnow().isoformat() + "Z",
+                "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             }
             self.proto_vectors = np.zeros((0, self.embedding_dim), dtype=np.float32)
             self.save()
@@ -120,10 +120,10 @@ class JsonNpyVectorStore(VectorStore):
                     line = line.strip()
                     if not line:
                         continue
-                    self.memories.append(RawMemory.parse_raw(line))
+                    self.memories.append(RawMemory.model_validate_json(line))
 
     def save(self) -> None:
-        self.meta["updated_at"] = datetime.utcnow().isoformat() + "Z"
+        self.meta["updated_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         with open(self._meta_path(), "w") as f:
             yaml.safe_dump(self.meta, f)
         with open(self._proto_json_path(), "w") as f:
@@ -168,7 +168,7 @@ class JsonNpyVectorStore(VectorStore):
             norm = np.linalg.norm(updated) or 1.0
             updated = updated / norm
         self.proto_vectors[idx] = updated.astype(np.float32)
-        proto.last_updated_ts = datetime.utcnow().replace(microsecond=0)
+        proto.last_updated_ts = datetime.now(timezone.utc).replace(microsecond=0)
         proto.constituent_memory_ids.append(memory_id)
         proto.strength += 1.0
 

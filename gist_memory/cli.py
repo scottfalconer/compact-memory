@@ -13,6 +13,7 @@ from .json_npy_store import JsonNpyVectorStore
 from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
 from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
 from .config import DEFAULT_BRAIN_PATH
+from .memory_cues import MemoryCueRenderer
 
 app = typer.Typer(help="Gist Memory command line interface")
 console = Console()
@@ -188,12 +189,16 @@ def talk(
     model_name: str = typer.Option("distilgpt2", help="Local chat model"),
 ) -> None:
     """Talk to the brain using a local LLM."""
-    from .local_llm import LocalChatModel
 
     path = Path(agent_name)
     with PersistenceLock(path):
         agent = _load_agent(path)
-        parts = []
+        # render short memory cue tags for the most relevant prototypes
+        q = agent.query(message, top_k_prototypes=3, top_k_memories=0)
+        cue_renderer = MemoryCueRenderer()
+        cues = cue_renderer.render([p["summary"] for p in q["prototypes"]])
+
+        parts = [cues] if cues else []
         for proto in agent.store.prototypes:
             parts.append(f"{proto.prototype_id}: {proto.summary_text}")
         for mem in agent.store.memories:
@@ -201,7 +206,9 @@ def talk(
         context = "\n".join(parts)
 
     prompt = f"{context}\nUser: {message}\nAssistant:"
+    from .local_llm import LocalChatModel
     llm = LocalChatModel(model_name=model_name)
+    prompt = llm.prepare_prompt(agent, prompt)
     reply = llm.reply(prompt)
     typer.echo(reply)
 
@@ -231,7 +238,9 @@ def clear(
     """Delete all data in the store."""
     path = Path(agent_name)
     if not yes:
-        if not typer.confirm(f"Delete {path}?", abort=True):  # pragma: no cover - user abort
+        if not typer.confirm(
+            f"Delete {path}?", abort=True
+        ):  # pragma: no cover - user abort
             return
     if path.exists():
         shutil.rmtree(path)
@@ -255,9 +264,7 @@ def download_model(
 
 @app.command("download-chat-model")
 def download_chat_model(
-    model_name: str = typer.Option(
-        "distilgpt2", help="Local causal LM name"
-    )
+    model_name: str = typer.Option("distilgpt2", help="Local causal LM name")
 ) -> None:
     """Pre-download a local chat model for ``talk`` mode."""
     from transformers import AutoModelForCausalLM, AutoTokenizer

@@ -121,6 +121,9 @@ def test_talk_mode_llm(monkeypatch, tmp_path):
         def __init__(self, *a, **kw):
             pass
 
+        def prepare_prompt(self, agent, prompt, **kw):
+            return prompt
+
         def reply(self, text):
             prompts["text"] = text
             return "resp"
@@ -139,7 +142,9 @@ def test_talk_mode_llm(monkeypatch, tmp_path):
     _patch_run(monkeypatch, autopilot)
     run_tui(str(tmp_path))
 
-    assert "hi" in prompts.get("text", "")
+    txt = prompts.get("text", "")
+    assert "hi" in txt
+    assert "<MEM" in txt
 
 
 def test_install_models_command(monkeypatch, tmp_path):
@@ -149,8 +154,10 @@ def test_install_models_command(monkeypatch, tmp_path):
 
     def dummy_embed(name):
         calls.append(name)
+
         class Dummy:
             pass
+
         return Dummy()
 
     def dummy_from_pretrained(name, **kw):
