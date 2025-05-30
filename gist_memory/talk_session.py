@@ -7,6 +7,7 @@ from typing import Callable, Dict, Iterable, List, Tuple
 import time
 
 from .agent import Agent
+from .active_memory_manager import ActiveMemoryManager
 from .chunker import Chunker
 from .utils import load_agent
 
@@ -22,6 +23,7 @@ class TalkSession:
     agents: Dict[str, Agent] = field(default_factory=dict)
     listeners: Dict[str, Callable[[str, str], None]] = field(default_factory=dict)
     log: List[Tuple[str, str, float]] = field(default_factory=list)
+    memory_managers: Dict[str, ActiveMemoryManager] = field(default_factory=dict)
 
 
 class TalkSessionManager:
@@ -38,10 +40,16 @@ class TalkSessionManager:
         """
         sid = uuid.uuid4().hex
         agents: Dict[str, Agent] = {}
+        managers: Dict[str, ActiveMemoryManager] = {}
         for p in agent_paths:
             path = Path(p)
             agents[str(path)] = _load_agent(path)
-        self._sessions[sid] = TalkSession(session_id=sid, agents=agents)
+            managers[str(path)] = ActiveMemoryManager()
+        self._sessions[sid] = TalkSession(
+            session_id=sid,
+            agents=agents,
+            memory_managers=managers,
+        )
         return sid
 
     def end_session(self, session_id: str) -> None:
@@ -72,12 +80,12 @@ class TalkSessionManager:
         for aid, agent in session.agents.items():
             if aid == sender:
                 continue
+            mgr = session.memory_managers.get(aid)
             if hasattr(agent, "receive_channel_message"):
                 try:
-                    agent.receive_channel_message(sender, message)
+                    agent.receive_channel_message(sender, message, mgr)
                 except TypeError:
-                    # fallback for old signature
-                    agent.receive_channel_message(message)  # type: ignore[arg-type]
+                    agent.receive_channel_message(sender, message)  # type: ignore[arg-type]
             else:
                 agent.add_memory(message)
 
@@ -101,8 +109,10 @@ class TalkSessionManager:
         for _sender, msg, _ts in session.log:
             agent.add_memory(msg)
         session.agents[key] = agent
+        session.memory_managers[key] = ActiveMemoryManager()
 
     def kick_brain(self, session_id: str, brain_id: str) -> None:
         """Remove ``brain_id`` from the session if present."""
         session = self._sessions[session_id]
         session.agents.pop(brain_id, None)
+        session.memory_managers.pop(brain_id, None)

@@ -91,6 +91,8 @@ def test_cli_talk(tmp_path, monkeypatch):
             pass
 
         tokenizer = staticmethod(lambda text, return_tensors=None: {"input_ids": [text.split()]})
+        model = type("M", (), {"config": type("C", (), {"n_positions": 50})()})()
+        max_new_tokens = 10
 
         def prepare_prompt(self, agent, prompt, **kw):
             return prompt
@@ -101,55 +103,34 @@ def test_cli_talk(tmp_path, monkeypatch):
 
     monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", Dummy)
     result = runner.invoke(
-        app, ["talk", "--agent-name", str(tmp_path), "--message", "hi"]
+        app, ["talk", "--agent-name", str(tmp_path), "--message", "hi?"]
     )
     assert result.exit_code == 0
     assert "response" in result.stdout
     assert "hello world" in prompts["text"]
-    assert "<MEM" in prompts["text"]
+    assert "User asked" in prompts["text"]
 
 
-def test_talk_command_initializes_active_memory_manager_with_params(tmp_path, monkeypatch):
+def test_talk_command_calls_receive_channel_message(tmp_path, monkeypatch):
     runner = CliRunner()
-    runner.invoke(app, ["init", str(tmp_path)])
+    tmp_path.mkdir(exist_ok=True)
 
-    meta_path = tmp_path / "meta.yaml"
-    import yaml
+    called = {}
 
-    meta = yaml.safe_load(meta_path.read_text())
-    meta["config_max_history_buffer_turns"] = 42
-    meta_path.write_text(yaml.safe_dump(meta))
+    class DummyAgent:
+        store = type("S", (), {"meta": {}})()
 
-    captured = {}
+        def receive_channel_message(self, src, msg, mgr=None):
+            called["src"] = src
+            called["msg"] = msg
+            called["mgr"] = mgr
+            return {"reply": "ok"}
 
-    class DummyMgr:
-        def __init__(self, **kw):
-            captured["params"] = kw
-
-        def select_history_candidates_for_prompt(self, *a, **kw):
-            return []
-
-        def finalize_history_for_prompt(self, *a, **kw):
-            return []
-
-        def add_turn(self, *a, **kw):
-            pass
+    monkeypatch.setattr("gist_memory.cli._load_agent", lambda p: DummyAgent())
 
     class DummyLLM:
         def __init__(self, *a, **kw):
             pass
-
-        tokenizer = staticmethod(lambda text, return_tensors=None: {"input_ids": [text.split()]})
-
-        tokenizer = staticmethod(lambda text, return_tensors=None: {"input_ids": [text.split()]})
-
-        tokenizer = staticmethod(lambda text, return_tensors=None: {"input_ids": [text.split()]})
-
-        tokenizer = staticmethod(lambda text, return_tensors=None: {"input_ids": [text.split()]})
-
-        tokenizer = staticmethod(lambda text, return_tensors=None: {"input_ids": [text.split()]})
-
-        tokenizer = staticmethod(lambda text, return_tensors=None: {"input_ids": [text.split()]})
 
         def prepare_prompt(self, agent, prompt, **kw):
             return prompt
@@ -157,102 +138,21 @@ def test_talk_command_initializes_active_memory_manager_with_params(tmp_path, mo
         def reply(self, prompt):
             return "ok"
 
-    monkeypatch.setattr("gist_memory.cli.ActiveMemoryManager", DummyMgr)
+        model = type("M", (), {"config": type("C", (), {"n_positions": 50})()})()
+        max_new_tokens = 10
+
     monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", DummyLLM)
 
     result = runner.invoke(
-        app, ["talk", "--agent-name", str(tmp_path), "--message", "hi"]
+        app, ["talk", "--agent-name", str(tmp_path), "--message", "hi?"]
     )
     assert result.exit_code == 0
-    assert captured["params"].get("config_max_history_buffer_turns") == 42
+    assert called["src"] == "cli"
+    assert called["msg"] == "hi?"
+    assert called["mgr"] is not None
 
 
-def test_talk_command_uses_active_memory_manager_to_get_history_for_prompt(tmp_path, monkeypatch):
-    runner = CliRunner()
-    runner.invoke(app, ["init", str(tmp_path)])
 
-    calls = {"select": 0, "finalize": 0}
-
-    class DummyMgr:
-        def __init__(self, **kw):
-            pass
-
-        def select_history_candidates_for_prompt(self, *a, **kw):
-            calls["select"] += 1
-            return []
-
-        def finalize_history_for_prompt(self, *a, **kw):
-            calls["finalize"] += 1
-            return []
-
-        def add_turn(self, *a, **kw):
-            pass
-
-    class DummyLLM:
-        def __init__(self, *a, **kw):
-            pass
-
-        tokenizer = staticmethod(lambda text, return_tensors=None: {"input_ids": [text.split()]})
-
-        def prepare_prompt(self, agent, prompt, **kw):
-            return prompt
-
-        def reply(self, prompt):
-            return "ok"
-
-    monkeypatch.setattr("gist_memory.cli.ActiveMemoryManager", DummyMgr)
-    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", DummyLLM)
-
-    result = runner.invoke(
-        app, ["talk", "--agent-name", str(tmp_path), "--message", "hi"]
-    )
-    assert result.exit_code == 0
-    assert calls["select"] == 1
-    assert calls["finalize"] == 1
-
-
-def test_talk_command_adds_new_turns_to_active_memory_manager(tmp_path, monkeypatch):
-    runner = CliRunner()
-    runner.invoke(app, ["init", str(tmp_path)])
-
-    captured = {}
-
-    class DummyMgr:
-        def __init__(self, **kw):
-            pass
-
-        def select_history_candidates_for_prompt(self, *a, **kw):
-            return []
-
-        def finalize_history_for_prompt(self, *a, **kw):
-            return []
-
-        def add_turn(self, turn):
-            captured["turn"] = turn
-
-    class DummyLLM:
-        def __init__(self, *a, **kw):
-            pass
-
-        tokenizer = staticmethod(lambda text, return_tensors=None: {"input_ids": [text.split()]})
-
-        def prepare_prompt(self, agent, prompt, **kw):
-            return prompt
-
-        def reply(self, prompt):
-            return "resp"
-
-    monkeypatch.setattr("gist_memory.cli.ActiveMemoryManager", DummyMgr)
-    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", DummyLLM)
-
-    result = runner.invoke(
-        app, ["talk", "--agent-name", str(tmp_path), "--message", "hello"]
-    )
-    assert result.exit_code == 0
-    turn = captured.get("turn")
-    assert turn is not None
-    assert turn.user_message == "hello"
-    assert turn.agent_response == "resp"
 
 
 def test_cli_download_chat_model(monkeypatch):

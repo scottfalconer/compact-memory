@@ -11,10 +11,6 @@ from rich.console import Console
 
 from .logging_utils import configure_logging
 
-from .memory_cues import MemoryCueRenderer
-from .active_memory_manager import ActiveMemoryManager
-from .models import ConversationalTurn
-from .embedding_pipeline import embed_text
 
 
 from .agent import Agent
@@ -305,7 +301,7 @@ def talk(
     message: str = typer.Option(..., help="Message to send"),
     model_name: str = typer.Option("distilgpt2", help="Local chat model"),
 ) -> None:
-    """Talk to the brain using a local LLM."""
+    """Talk to the brain using the same pathway as chat sessions."""
 
     path = Path(agent_name)
     if not path.exists():
@@ -315,68 +311,27 @@ def talk(
             err=True,
         )
         raise typer.Exit(code=1)
+
     with PersistenceLock(path):
         agent = _load_agent(path)
-
-        params = {
-            k: v for k, v in agent.store.meta.items() if k.startswith("config_")
-        }
-        active_mgr = ActiveMemoryManager(**params)
-
-        q = agent.query(message, top_k_prototypes=3, top_k_memories=0)
-        cue_renderer = MemoryCueRenderer()
-        cues = cue_renderer.render([p["summary"] for p in q["prototypes"]])
-
-        parts = [cues] if cues else []
-        for proto in agent.store.prototypes:
-            parts.append(f"{proto.prototype_id}: {proto.summary_text}")
-        for mem in agent.store.memories:
-            parts.append(f"{mem.memory_id}: {mem.raw_text}")
-        context = "\n".join(parts)
 
         from .local_llm import LocalChatModel
 
         try:
-            llm = LocalChatModel(model_name=model_name)
+            agent._chat_model = LocalChatModel(model_name=model_name)
         except RuntimeError as exc:
             typer.echo(str(exc), err=True)
             raise typer.Exit(code=1)
-        from tqdm import tqdm
 
-        bar = tqdm(total=1, desc="Loading chat model", disable=False)
-        llm = LocalChatModel(model_name=model_name)
-        bar.update(1)
-        bar.close()
+        from .active_memory_manager import ActiveMemoryManager
 
-        user_embedding = embed_text(message)
-        cands = active_mgr.select_history_candidates_for_prompt(user_embedding)
-        stm_turns = active_mgr.finalize_history_for_prompt(
-            cands, 100, llm.tokenizer
-        )
-        stm_text = "\n".join(
-            f"User: {t.user_message}\nAssistant: {t.agent_response}"
-            for t in stm_turns
-        )
+        mgr = ActiveMemoryManager()
+        result = agent.receive_channel_message("cli", message, mgr)
+        reply = result.get("reply")
+        if reply:
+            typer.echo(reply)
 
-        prompt_parts = []
-        if stm_text:
-            prompt_parts.append(stm_text)
-        if context:
-            prompt_parts.append(context)
-        prompt_parts.append(f"User: {message}\nAssistant:")
-        prompt = "\n".join(prompt_parts)
-
-        prompt = llm.prepare_prompt(agent, prompt)
-        reply = llm.reply(prompt)
-        typer.echo(reply)
-
-        emb = embed_text(f"{message}\n{reply}").tolist()
-        turn = ConversationalTurn(
-            user_message=message, agent_response=reply, turn_embedding=emb
-        )
-        active_mgr.add_turn(turn)
-
-        return
+    return
 
 
 @app.command()
