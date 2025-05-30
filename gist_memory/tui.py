@@ -444,6 +444,68 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                     self.text_log.write_line(f"Error: {exc}", style="red")
                     self.set_status("LLM error", error=True)
 
+    class GroupSessionScreen(StatusMixin):
+        """IRC-style group chat interface."""
+
+        BINDINGS = [("escape", "leave", "Back")]
+
+        def compose(self) -> ComposeResult:  # type: ignore[override]
+            table = DataTable(id="participants")
+            table.add_columns("participant")
+            feed = TextLog(id="feed", highlight=False)
+            yield Header()
+            yield Container(table, feed, id="sess")
+            suggestions = ["/invite ", "/kick ", "/end"]
+            self.input = TabAutocompleteInput(
+                placeholder="message", id="msg", suggestions=suggestions
+            )
+            yield self.input
+            yield Static("", id="status")
+            yield Footer()
+
+        def on_mount(self) -> None:
+            self.input.focus()
+            talk_mgr.register_listener(session_id, "tui", self._on_msg)
+            self._refresh()
+
+        def on_unmount(self) -> None:
+            talk_mgr.unregister_listener(session_id, "tui")
+
+        def _refresh(self) -> None:
+            table = self.query_one("#participants", DataTable)
+            table.clear()
+            table.add_row("User")
+            sess = talk_mgr.get_session(session_id)
+            for pid in sess.agents:
+                table.add_row(pid)
+
+        def _on_msg(self, sender: str, text: str) -> None:
+            name = "User" if sender == "tui" else Path(sender).name
+            log = self.query_one("#feed", TextLog)
+            log.write_line(f"[{name}]: {text}")
+
+        def on_input_submitted(self, event: Input.Submitted) -> None:
+            msg = event.value.strip()
+            event.input.value = ""
+            if msg.startswith("/invite "):
+                path = msg[len("/invite ") :].strip()
+                talk_mgr.invite_brain(session_id, path)
+                self._on_msg("system", f"invited {path}")
+                self._refresh()
+            elif msg.startswith("/kick "):
+                bid = msg[len("/kick ") :].strip()
+                talk_mgr.kick_brain(session_id, bid)
+                self._on_msg("system", f"kicked {bid}")
+                self._refresh()
+            elif msg == "/end":
+                self.action_leave()
+            elif msg:
+                self._on_msg("tui", msg)
+                talk_mgr.post_message(session_id, "tui", msg)
+
+        def action_leave(self) -> None:
+            self.app.pop_screen()
+
     class StatsScreen(StatusMixin):
         BINDINGS = [("escape", "app.pop_screen", "Back")]
 
@@ -490,6 +552,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
         BINDINGS = [
             ("q", "push_screen('exit')", "Quit"),
             ("f5", "push_screen('stats')", "Stats"),
+            ("f6", "push_screen('group')", "Group"),
         ]
 
         SCREENS = {
@@ -497,6 +560,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             "console": ConsoleScreen,
             "beliefs": BeliefScreen,
             "stats": StatsScreen,
+            "group": GroupSessionScreen,
             "talk": ChatScreen,
             "exit": ExitScreen,
         }
