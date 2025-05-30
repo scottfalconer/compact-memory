@@ -153,3 +153,21 @@ def test_cli_logging(tmp_path):
     assert log_path.read_text() != ""
 
 
+def test_cli_corrupt_store(tmp_path):
+    runner = CliRunner()
+    runner.invoke(app, ["init", str(tmp_path)])
+    meta_path = tmp_path / "meta.yaml"
+    import yaml
+
+    meta = yaml.safe_load(meta_path.read_text())
+    meta["embedding_dim"] = 2
+    meta_path.write_text(yaml.safe_dump(meta))
+
+    result = runner.invoke(
+        app,
+        ["query", "--agent-name", str(tmp_path), "--query-text", "hi"],
+    )
+    assert result.exit_code != 0
+    assert "Brain data is corrupted" in result.stderr
+
+
