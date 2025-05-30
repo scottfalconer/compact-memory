@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
+
+import numpy as np
 
 
 @dataclass
@@ -11,6 +13,7 @@ class ConversationTurn:
     text: str
     trace_strength: float = 0.0
     current_activation_level: float = 0.0
+    turn_embedding: Optional[List[float]] = None
 
 
 @dataclass
@@ -22,11 +25,18 @@ class ActiveMemoryManager:
     config_pruning_weight_trace_strength: float = 1.0
     config_pruning_weight_current_activation: float = 1.0
     config_pruning_weight_recency: float = 0.1
+    config_initial_activation: float = 1.0
+    config_activation_decay_rate: float = 0.1
+    config_min_activation_floor: float = 0.0
+    config_relevance_boost_factor: float = 1.0
     history: List[ConversationTurn] = field(default_factory=list)
 
     # --------------------------------------------------------------
     def add_turn(self, turn: ConversationTurn) -> None:
         """Add ``turn`` to the history, pruning if necessary."""
+        self._decay_activations()
+        if turn.current_activation_level == 0.0:
+            turn.current_activation_level = self.config_initial_activation
         self.history.append(turn)
         if len(self.history) > self.config_max_history_buffer_turns:
             self._prune_history_buffer()
@@ -69,5 +79,37 @@ class ActiveMemoryManager:
 
         self.history = candidates + keep_slice
 
+
+    # --------------------------------------------------------------
+    def _decay_activations(self) -> None:
+        """Decay activation levels of all turns by ``config_activation_decay_rate``."""
+        rate = self.config_activation_decay_rate
+        floor = self.config_min_activation_floor
+        for t in self.history:
+            t.current_activation_level = max(
+                floor, t.current_activation_level * (1.0 - rate)
+            )
+
+    # --------------------------------------------------------------
+    def boost_activation_by_relevance(self, current_query_embedding: np.ndarray) -> None:
+        """Boost activation based on cosine similarity to ``current_query_embedding``."""
+        if current_query_embedding is None:
+            return
+
+        q = np.asarray(current_query_embedding, dtype=np.float32)
+        q_norm = np.linalg.norm(q) or 1.0
+        q = q / q_norm
+
+        for t in self.history:
+            if t.turn_embedding is None:
+                continue
+            vec = np.asarray(t.turn_embedding, dtype=np.float32)
+            v_norm = np.linalg.norm(vec) or 1.0
+            vec = vec / v_norm
+            similarity = float(np.dot(vec, q))
+            boost = similarity * self.config_relevance_boost_factor
+            t.current_activation_level += boost
+            if t.current_activation_level < self.config_min_activation_floor:
+                t.current_activation_level = self.config_min_activation_floor
 
 __all__ = ["ConversationTurn", "ActiveMemoryManager"]

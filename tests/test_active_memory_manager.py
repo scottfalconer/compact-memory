@@ -1,4 +1,5 @@
 import pytest
+import numpy as np
 
 from gist_memory.active_memory_manager import ActiveMemoryManager, ConversationTurn
 
@@ -75,3 +76,72 @@ def test_pruning_correctly_removes_lowest_priority_turn():
         mgr.add_turn(t)
     assert t4 not in mgr.history
     assert len(mgr.history) == 3
+
+
+def test_new_turn_gets_initial_activation_level():
+    mgr = ActiveMemoryManager(config_initial_activation=0.9)
+    t = ConversationTurn("hi")
+    mgr.add_turn(t)
+    assert mgr.history[-1].current_activation_level == pytest.approx(0.9)
+
+
+def test_activation_level_decays_over_subsequent_turns():
+    mgr = ActiveMemoryManager(
+        config_initial_activation=1.0,
+        config_activation_decay_rate=0.1,
+    )
+    t1 = ConversationTurn("t1")
+    mgr.add_turn(t1)
+    assert t1.current_activation_level == pytest.approx(1.0)
+
+    t2 = ConversationTurn("t2")
+    mgr.add_turn(t2)
+    assert t1.current_activation_level == pytest.approx(0.9)
+
+    t3 = ConversationTurn("t3")
+    mgr.add_turn(t3)
+    assert t1.current_activation_level == pytest.approx(0.81)
+
+
+def test_relevance_boost_increases_activation_for_semantically_similar_turns():
+    mgr = ActiveMemoryManager(config_initial_activation=0.0, config_relevance_boost_factor=0.5)
+    t1 = ConversationTurn("a", turn_embedding=[1.0, 0.0])
+    t2 = ConversationTurn("b", turn_embedding=[0.0, 1.0])
+    mgr.add_turn(t1)
+    mgr.add_turn(t2)
+    before = t1.current_activation_level
+    mgr.boost_activation_by_relevance(np.array([1.0, 0.0]))
+    assert t1.current_activation_level > before
+    assert t1.current_activation_level > t2.current_activation_level
+
+
+def test_relevance_boost_scales_with_similarity_and_boost_factor():
+    mgr = ActiveMemoryManager(config_initial_activation=0.0, config_relevance_boost_factor=2.0)
+    emb1 = np.array([1.0, 0.0])
+    emb2 = np.array([1.0, 1.0]) / np.sqrt(2)
+    t1 = ConversationTurn("a", turn_embedding=emb1.tolist())
+    t2 = ConversationTurn("b", turn_embedding=emb2.tolist())
+    mgr.add_turn(t1)
+    mgr.add_turn(t2)
+    mgr.boost_activation_by_relevance(emb1)
+    expected_t1 = 2.0 * 1.0  # similarity 1.0 * factor
+    expected_t2 = 2.0 * float(np.dot(emb2, emb1))
+    assert t1.current_activation_level == pytest.approx(expected_t1)
+    assert t2.current_activation_level == pytest.approx(expected_t2)
+
+
+def test_activation_does_not_fall_below_floor_if_set():
+    mgr = ActiveMemoryManager(
+        config_initial_activation=1.0,
+        config_activation_decay_rate=0.5,
+        config_min_activation_floor=0.2,
+    )
+    t1 = ConversationTurn("t1")
+    t2 = ConversationTurn("t2")
+    t3 = ConversationTurn("t3")
+    t4 = ConversationTurn("t4")
+    mgr.add_turn(t1)
+    mgr.add_turn(t2)  # t1 decays to 0.5
+    mgr.add_turn(t3)  # t1 decays to 0.25
+    mgr.add_turn(t4)  # t1 decays to floor 0.2
+    assert t1.current_activation_level >= 0.2
