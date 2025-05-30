@@ -191,3 +191,29 @@ def test_install_models_command(monkeypatch, tmp_path):
 
     assert "all-MiniLM-L6-v2" in calls
     assert "distilgpt2" in calls
+
+
+def test_tui_logging(monkeypatch, tmp_path):
+    _patch_mock_encoder(monkeypatch)
+
+    async def autopilot(pilot):
+        await pilot.press("c")
+        await pilot.press("h", "i")
+        await pilot.press("enter")
+        await pilot.press(
+            "/", "l", "o", "g", " ", "l", "o", "g", ".", "t", "x", "t"
+        )
+        await pilot.press("enter")
+        await pilot.press("/", "q", "u", "e", "r", "y", " ", "h", "i")
+        await pilot.press("enter")
+        await pilot.press("q")
+        await pilot.pause(0.1)
+        await pilot.press("n")
+        await pilot.exit(None)
+
+    _patch_run(monkeypatch, autopilot)
+    run_tui(str(tmp_path))
+
+    log_path = tmp_path / "log.txt"
+    assert log_path.exists()
+    assert log_path.read_text() != ""
