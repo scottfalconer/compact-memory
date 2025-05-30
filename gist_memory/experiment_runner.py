@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
+from .active_memory_manager import ActiveMemoryManager
 from .chunker import Chunker, SentenceWindowChunker
 from .memory_creation import MemoryCreator, ExtractiveSummaryCreator
 from .embedding_pipeline import embed_text
@@ -23,6 +24,7 @@ class ExperimentConfig:
     chunker: Optional[Chunker] = None
     summary_creator: Optional[MemoryCreator] = None
     work_dir: Optional[Path] = None
+    active_memory_params: Optional[Dict[str, Any]] = None
 
 
 def run_experiment(config: ExperimentConfig) -> Dict[str, Any]:
@@ -33,6 +35,14 @@ def run_experiment(config: ExperimentConfig) -> Dict[str, Any]:
     store = JsonNpyVectorStore(
         path=str(work), embedding_model="experiment", embedding_dim=dim
     )
+    if config.active_memory_params:
+        store.meta.update(config.active_memory_params)
+    params = {
+        k: v for k, v in store.meta.items() if k.startswith("config_")
+    }
+    if config.active_memory_params:
+        params.update(config.active_memory_params)
+    ActiveMemoryManager(**params)
     agent = Agent(
         store,
         chunker=config.chunker or SentenceWindowChunker(),

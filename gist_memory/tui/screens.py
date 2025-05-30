@@ -16,7 +16,12 @@ from ..agent import Agent
 from ..json_npy_store import JsonNpyVectorStore
 from ..talk_session import TalkSessionManager
 
-from .helpers import _disk_usage, _install_models
+from .helpers import (
+    _disk_usage,
+    _install_models,
+    _path_suggestions,
+    _brain_path_suggestions,
+)
 
 try:  # Textual 0.x
     from textual.widgets import TextLog  # type: ignore
@@ -85,6 +90,7 @@ class HelpScreen(Screen):
             "/stats            - show store stats\n"
             "/install-models   - download models\n"
             "/talk             - chat session\n"
+            "/params           - agent parameters\n"
             "/log PATH        - write debug log\n"
             "/exit             - quit"
         )
@@ -289,21 +295,39 @@ class ConsoleScreen(StatusMixin):
         yield Header()
         self.text_log = TextLog(id="console")
         yield self.text_log
-        suggestions = [
+        base_suggestions = [
             "/ingest ",
             "/query ",
             "/beliefs",
             "/stats",
             "/install-models",
             "/talk",
+            "/params",
             "/log ",
             "/exit",
             "/quit",
             "/help",
             "/?",
         ]
+
+        self.recent_queries: list[str] = []
+
+        def suggest(value: str) -> list[str]:
+            if value.startswith("/log "):
+                prefix = value[len("/log ") :]
+                return ["/log " + p for p in _path_suggestions(prefix)]
+            if value.startswith("/query "):
+                prefix = value[len("/query ") :]
+                opts = [q for q in self.recent_queries if q.startswith(prefix)]
+                for proto in store.prototypes:
+                    s = proto.summary_text
+                    if s.startswith(prefix):
+                        opts.append(s)
+                return ["/query " + o for o in opts][:10]
+            return [s for s in base_suggestions if s.startswith(value)]
+
         self.input = TabAutocompleteInput(
-            placeholder="/help for commands", id="cmd", suggestions=suggestions
+            placeholder="/help for commands", id="cmd", suggestions=suggest
         )
         yield self.input
         yield Static("", id="status")
@@ -330,6 +354,8 @@ class ConsoleScreen(StatusMixin):
             event.input.disabled = False
         elif cmd.startswith("/query "):
             q = cmd[len("/query ") :]
+            self.recent_queries.insert(0, q)
+            self.recent_queries = self.recent_queries[:10]
             self.set_status("Querying...")
             event.input.disabled = True
             res = agent.query(q, top_k_prototypes=3, top_k_memories=3)
@@ -348,6 +374,8 @@ class ConsoleScreen(StatusMixin):
             self.app.push_screen(BeliefScreen())
         elif cmd == "/talk":
             self.app.push_screen(ChatScreen())
+        elif cmd == "/params":
+            self.app.push_screen(ParamsScreen())
         elif cmd.startswith("/log "):
             path = Path(cmd[len("/log ") :]).expanduser()
             if not path.is_absolute():
@@ -370,6 +398,7 @@ class ConsoleScreen(StatusMixin):
             self.text_log.write_line("/stats       - show stats")
             self.text_log.write_line("/install-models - download models")
             self.text_log.write_line("/talk        - chat session")
+            self.text_log.write_line("/params      - agent parameters")
             self.text_log.write_line("/log PATH   - write debug log")
             self.text_log.write_line("/exit        - quit")
         elif cmd:
@@ -420,9 +449,16 @@ class GroupSessionScreen(StatusMixin):
         feed = TextLog(id="feed", highlight=False)
         yield Header()
         yield Container(table, feed, id="sess")
-        suggestions = ["/invite ", "/kick ", "/end"]
+        base_suggestions = ["/invite ", "/kick ", "/end"]
+
+        def suggest(value: str) -> list[str]:
+            if value.startswith("/invite "):
+                prefix = value[len("/invite ") :]
+                return ["/invite " + p for p in _brain_path_suggestions(store_path.parent, prefix)]
+            return [s for s in base_suggestions if s.startswith(value)]
+
         self.input = TabAutocompleteInput(
-            placeholder="message", id="msg", suggestions=suggestions
+            placeholder="message", id="msg", suggestions=suggest
         )
         yield self.input
         yield Static("", id="status")
@@ -496,6 +532,12 @@ class ConflictListScreen(StatusMixin):
     def compose(self) -> ComposeResult:  # type: ignore[override]
         table = DataTable(id="conflicts")
         table.add_columns("prototype", "memory A", "memory B", "reason")
+class ParamsScreen(StatusMixin):
+    BINDINGS = [("escape", "app.pop_screen", "Back")]
+
+    def compose(self) -> ComposeResult:  # type: ignore[override]
+        table = DataTable(id="params")
+        table.add_columns("key", "value")
         yield Header()
         yield table
         yield Static("", id="status")
@@ -535,6 +577,18 @@ class ConflictListScreen(StatusMixin):
             reason = rec.get("reason", "")
             table.add_row(pid[:8], text_a, text_b, reason)
         self.set_status("")
+        table = self.query_one("#params", DataTable)
+        table.add_row("tau", str(agent.similarity_threshold))
+        chunk_cfg = getattr(agent.chunker, "config", lambda: {})()
+        chunk_id = chunk_cfg.pop("id", agent.chunker.__class__.__name__)
+        table.add_row("chunker", str(chunk_id))
+        for k, v in chunk_cfg.items():
+            table.add_row(f"chunker.{k}", str(v))
+
+        creator = agent.summary_creator
+        table.add_row("memory_creator", creator.__class__.__name__)
+        for k, v in vars(creator).items():
+            table.add_row(f"memory_creator.{k}", str(v))
 
 
 class ExitScreen(StatusMixin):
@@ -576,6 +630,7 @@ class WizardApp(App):
         "console": ConsoleScreen,
         "beliefs": BeliefScreen,
         "stats": StatsScreen,
+        "params": ParamsScreen,
         "group": GroupSessionScreen,
         "conflicts": ConflictListScreen,
         "talk": ChatScreen,
@@ -603,6 +658,7 @@ __all__ = [
     "ChatScreen",
     "ConsoleScreen",
     "GroupSessionScreen",
+    "ParamsScreen",
     "StatsScreen",
     "ConflictListScreen",
     "ExitScreen",

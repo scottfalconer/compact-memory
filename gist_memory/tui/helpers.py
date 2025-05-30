@@ -34,4 +34,40 @@ def _install_models(
     return f"installed {embed_model} and {chat_model}"
 
 
-__all__ = ["_disk_usage", "_install_models"]
+def _path_suggestions(prefix: str, limit: int = 5) -> list[str]:
+    """Return file path completions for ``prefix``."""
+    path = Path(prefix).expanduser()
+    base = path.parent if path.name else path
+    pattern = path.name + "*"
+    try:
+        items = [p for p in base.glob(pattern)]
+    except OSError:
+        items = []
+    suggestions = []
+    for item in items:
+        suggestion = str(item)
+        if item.is_dir():
+            suggestion += "/"
+        suggestions.append(suggestion)
+        if len(suggestions) >= limit:
+            break
+    return suggestions
+
+
+def _brain_path_suggestions(base: Path, prefix: str, limit: int = 5) -> list[str]:
+    """Return sub directories under ``base`` that look like brains."""
+    suggestions: list[str] = []
+    for p in base.glob(prefix + "*"):
+        if (p / "meta.yaml").exists():
+            suggestions.append(str(p))
+            if len(suggestions) >= limit:
+                break
+    return suggestions
+
+
+__all__ = [
+    "_disk_usage",
+    "_install_models",
+    "_path_suggestions",
+    "_brain_path_suggestions",
+]
