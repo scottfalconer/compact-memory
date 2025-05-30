@@ -13,6 +13,7 @@ from .memory_cues import MemoryCueRenderer
 from .conflict_flagging import ConflictFlagger, ConflictLogger
 from .experiment_runner import ExperimentConfig, run_experiment
 from .conflict import ConflictLogger, negation_conflict
+from .talk_session import TalkSessionManager
 
 
 __all__ = [
@@ -38,6 +39,7 @@ __all__ = [
     "run_experiment",
     "ConflictLogger",
     "negation_conflict",
+    "TalkSessionManager",
 ]
 
 # Semantic version of the package
