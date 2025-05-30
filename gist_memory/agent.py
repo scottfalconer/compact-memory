@@ -21,8 +21,8 @@ from .memory_creation import (
     MemoryCreator,
 )
 from .canonical import render_five_w_template
-from .conflict_flagging import ConflictFlagger, ConflictLogger
-from .conflict import ConflictLogger, negation_conflict
+from .conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
+from .conflict import ConflictLogger as SimpleConflictLogger, negation_conflict
 
 
 class VectorIndexCorrupt(RuntimeError):
@@ -134,21 +134,12 @@ class Agent:
             c = Path(store.path) / "conflicts.jsonl"
         else:
             c = Path("conflicts.jsonl")
-        self._conflicts = ConflictFlagger(ConflictLogger(c))
-        self._conflicts = ConflictLogger(c)
+        self._conflict_logger = SimpleConflictLogger(c)
+        self._conflicts = ConflictFlagger(FlagLogger(c))
 
     # ------------------------------------------------------------------
     def _log_conflict(self, proto_id: str, mem_a: RawMemory, mem_b: RawMemory) -> None:
-        self._conflicts.add(proto_id, mem_a, mem_b)
-
-    def _check_conflicts(self, proto_id: str, new_mem: RawMemory) -> None:
-        for mem in self.store.memories:
-            if mem.memory_id == new_mem.memory_id:
-                continue
-            if mem.assigned_prototype_id != proto_id:
-                continue
-            if negation_conflict(mem.raw_text, new_mem.raw_text):
-                self._log_conflict(proto_id, mem, new_mem)
+        self._conflict_logger.add(proto_id, mem_a, mem_b)
 
     # ------------------------------------------------------------------
     def _write_evidence(self, belief_id: str, mem_id: str, weight: float) -> None:
@@ -244,7 +235,6 @@ class Agent:
             self.store.add_memory(raw_mem)
             self._write_evidence(pid, mem_id, 1.0)
             self._flag_conflicts(pid, raw_mem, vec)
-            self._check_conflicts(pid, raw_mem)
             self.metrics["memories_ingested"] += 1
             if self.update_summaries:
                 texts = [
