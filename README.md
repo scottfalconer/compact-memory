@@ -39,6 +39,13 @@ For a quick offline setup you can also run:
 bash .codex/setup.sh
 ```
 
+
+To run completely offline set:
+
+```
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
+```
 Once installed, running `gist-memory` with no arguments will start the Textual TUI.
 
 Alternatively install the package from source:
@@ -189,3 +196,9 @@ See [docs/SEGMENTATION_PLAYBOOK.md](docs/SEGMENTATION_PLAYBOOK.md) for a detaile
 ## Querying Playbook
 
 See [docs/QUERYING_PLAYBOOK.md](docs/QUERYING_PLAYBOOK.md) for tips on shaping search queries. It explains how to bias retrieval by embedding a templated version of a question when your notes follow a structured `WHO/WHAT/WHEN` format.
+
+## Architecture and Storage
+
+A high level overview of the modules and ingestion pipeline lives in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).  The on-disk file layout is
+described in [docs/STORAGE_FORMAT.md](docs/STORAGE_FORMAT.md).
