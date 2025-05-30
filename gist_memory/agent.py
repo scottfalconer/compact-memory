@@ -22,7 +22,7 @@ from .memory_creation import (
 )
 from .canonical import render_five_w_template
 from .conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
-from .conflict import ConflictLogger as SimpleConflictLogger, negation_conflict
+from .conflict import SimpleConflictLogger, negation_conflict
 
 
 class VectorIndexCorrupt(RuntimeError):

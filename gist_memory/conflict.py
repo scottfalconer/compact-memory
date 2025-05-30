@@ -24,7 +24,7 @@ def negation_conflict(text_a: str, text_b: str) -> bool:
     return subj_a == subj_b and obj_a == obj_b and neg_a != neg_b
 
 
-class ConflictLogger:
+class SimpleConflictLogger:
     """Append conflicts to ``conflicts.jsonl`` for HITL review."""
 
     def __init__(self, path: Path) -> None:
@@ -47,4 +47,4 @@ class ConflictLogger:
             )
 
 
-__all__ = ["negation_conflict", "ConflictLogger"]
+__all__ = ["negation_conflict", "SimpleConflictLogger"]
