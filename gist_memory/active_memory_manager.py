@@ -27,7 +27,7 @@ class ActiveMemoryManager:
     config_pruning_weight_trace_strength: float = 1.0
     config_pruning_weight_current_activation: float = 1.0
     config_pruning_weight_recency: float = 0.1
-    config_initial_activation: float = 1.0
+    config_initial_activation: float = 0.0
     config_activation_decay_rate: float = 0.1
     config_min_activation_floor: float = 0.0
     config_relevance_boost_factor: float = 1.0
@@ -69,11 +69,13 @@ class ActiveMemoryManager:
                     recency = 1.0
                 else:
                     recency = idx / (n - 1)
+                w_ts = self.config_pruning_weight_trace_strength
+                w_ca = self.config_pruning_weight_current_activation
+                w_rec = self.config_pruning_weight_recency
                 score = (
-                    self.config_pruning_weight_trace_strength * t.trace_strength
-                    + self.config_pruning_weight_current_activation
-                    * t.current_activation_level
-                    + self.config_pruning_weight_recency * recency
+                    w_ts * t.trace_strength
+                    + w_ca * t.current_activation_level
+                    + w_rec * recency
                 )
                 scores.append(score)
             min_index = scores.index(min(scores))
@@ -81,10 +83,9 @@ class ActiveMemoryManager:
 
         self.history = candidates + keep_slice
 
-
     # --------------------------------------------------------------
     def _decay_activations(self) -> None:
-        """Decay activation levels of all turns by ``config_activation_decay_rate``."""
+        """Decay activation levels using ``config_activation_decay_rate``."""
         rate = self.config_activation_decay_rate
         floor = self.config_min_activation_floor
         for t in self.history:
@@ -93,8 +94,10 @@ class ActiveMemoryManager:
             )
 
     # --------------------------------------------------------------
-    def boost_activation_by_relevance(self, current_query_embedding: np.ndarray) -> None:
-        """Boost activation based on cosine similarity to ``current_query_embedding``."""
+    def boost_activation_by_relevance(
+        self, current_query_embedding: np.ndarray
+    ) -> None:
+        """Boost activation via similarity to ``current_query_embedding``."""
         if current_query_embedding is None:
             return
 
@@ -131,10 +134,14 @@ class ActiveMemoryManager:
             older = list(self.history)
 
         threshold = self.config_prompt_activation_threshold_for_inclusion
-        activated = [t for t in older if t.current_activation_level >= threshold]
+        activated = []
+        for t in older:
+            if t.current_activation_level >= threshold:
+                activated.append(t)
 
         activated.sort(
-            key=lambda t: (t.current_activation_level, t.trace_strength), reverse=True
+            key=lambda t: (t.current_activation_level, t.trace_strength),
+            reverse=True,
         )
 
         max_older = self.config_prompt_max_activated_older_turns
@@ -144,5 +151,54 @@ class ActiveMemoryManager:
         selected_older.sort(key=lambda t: self.history.index(t))
 
         return selected_older + list(recent_slice)
+
+    # --------------------------------------------------------------
+    def finalize_history_for_prompt(
+        self,
+        candidate_turns: List[ConversationTurn],
+        max_tokens_for_history: int,
+        llm_tokenizer,
+    ) -> List[ConversationTurn]:
+        """Fit ``candidate_turns`` within ``max_tokens_for_history`` tokens."""
+
+        forced_recent = self.config_prompt_num_forced_recent_turns
+        if forced_recent > 0:
+            recent = candidate_turns[-forced_recent:]
+            older = candidate_turns[:-forced_recent]
+        else:
+            recent = []
+            older = list(candidate_turns)
+
+        priority = list(recent) + older
+
+        current_tokens = 0
+        kept_ids = set()
+
+        for turn in priority:
+            if hasattr(turn, "text"):
+                text = turn.text
+            else:
+                user = getattr(turn, "user_message", "")
+                agent = getattr(turn, "agent_response", "")
+                text = f"{user}\n{agent}".strip()
+
+            ids = llm_tokenizer(text, return_tensors=None).get("input_ids", [])
+            if isinstance(ids, (list, tuple)):
+                if ids and isinstance(ids[0], (list, tuple)):
+                    tokens = list(ids[0])
+                else:
+                    tokens = list(ids)
+            else:
+                tokens = [ids]
+            n_tokens = len(tokens)
+
+            if current_tokens + n_tokens <= max_tokens_for_history:
+                kept_ids.add(id(turn))
+                current_tokens += n_tokens
+            else:
+                break
+
+        return [t for t in candidate_turns if id(t) in kept_ids]
+
 
 __all__ = ["ConversationTurn", "ActiveMemoryManager"]
