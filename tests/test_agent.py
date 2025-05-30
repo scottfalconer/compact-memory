@@ -77,3 +77,37 @@ def test_persistence_roundtrip(tmp_path):
     assert before[0] == after[0]
     assert abs(before[1] - after[1]) < 1e-6
 
+
+def test_receive_channel_ingest(tmp_path):
+    store = JsonNpyVectorStore(path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim)
+    agent = Agent(store, chunker=SentenceWindowChunker())
+    res = agent.receive_channel_message("user", "hello there")
+    assert res["action"] == "ingest"
+    texts = [m.raw_text for m in agent.store.memories]
+    assert "hello there" in texts
+
+
+def test_receive_channel_query(monkeypatch, tmp_path):
+    store = JsonNpyVectorStore(path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim)
+    agent = Agent(store, chunker=SentenceWindowChunker())
+    agent.add_memory("alpha bravo")
+
+    prompts = {}
+
+    class Dummy:
+        def __init__(self, *a, **k):
+            pass
+
+        def prepare_prompt(self, agent, prompt, **kw):
+            prompts["prompt"] = prompt
+            return prompt
+
+        def reply(self, prompt):
+            return "pong"
+
+    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", Dummy)
+    res = agent.receive_channel_message("user", "alpha?")
+    assert res["action"] == "query"
+    assert res["reply"] == "pong"
+    assert "User asked" in prompts["prompt"]
+

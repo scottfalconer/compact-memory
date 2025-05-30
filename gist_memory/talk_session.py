@@ -88,7 +88,11 @@ class TalkSessionManager:
             if aid == sender:
                 continue
             if hasattr(agent, "receive_channel_message"):
-                agent.receive_channel_message(message)
+                try:
+                    agent.receive_channel_message(sender, message)
+                except TypeError:
+                    # fallback for old signature
+                    agent.receive_channel_message(message)  # type: ignore[arg-type]
             else:
                 agent.add_memory(message)
 
