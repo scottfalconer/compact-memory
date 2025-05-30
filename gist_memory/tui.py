@@ -68,16 +68,50 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
     except Exception as exc:  # pragma: no cover - optional dependency
         raise RuntimeError("Textual is required for the TUI") from exc
 
+    class StatusMixin(Screen):
+        """Screen mixin providing a status bar helper."""
+
+        def set_status(self, message: str, *, error: bool = False) -> None:
+            bar = self.query_one("#status", Static)
+            if error:
+                bar.update(f"[red]{message}[/]", markup=True)
+            else:
+                bar.update(message)
+
+    class MessageModal(StatusMixin):
+        """Modal dialog for critical messages."""
+
+        BINDINGS = [("enter", "dismiss", "OK"), ("escape", "dismiss", "OK")]
+        modal = True
+
+        def __init__(self, message: str) -> None:
+            super().__init__()
+            self._message = message
+
+        def compose(self) -> ComposeResult:  # type: ignore[override]
+            yield Header()
+            yield Static(self._message, id="modal")
+            yield Static("", id="status")
+            yield Footer()
+
+        def action_dismiss(self) -> None:
+            self.app.pop_screen()
+
     store_path = Path(path)
     meta_exists = (store_path / "meta.yaml").exists()
     if meta_exists:
         try:
             store = JsonNpyVectorStore(str(store_path))
-        except EmbeddingDimensionMismatchError:
-            dim = int(embed_text(["dim"]).shape[1])
-            store = JsonNpyVectorStore(str(store_path), embedding_dim=dim)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Error: Brain data is corrupted. {exc}. "
+                f"Try running gist-memory validate {store_path} for more details or restore from a backup."
+            ) from exc
     else:
-        dim = int(embed_text(["dim"]).shape[1])
+        try:
+            dim = int(embed_text(["dim"]).shape[1])
+        except RuntimeError as exc:
+            raise RuntimeError(str(exc)) from exc
         store = JsonNpyVectorStore(str(store_path), embedding_dim=dim)
     agent = Agent(store)
 
@@ -127,7 +161,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             self.app.pop_screen()
             self.app.push_screen(ConsoleScreen())
 
-    class IngestScreen(Screen):
+    class IngestScreen(StatusMixin):
         BINDINGS = [("escape", "app.pop_screen", "Back")]
 
         def compose(self) -> ComposeResult:  # type: ignore[override]
@@ -136,18 +170,28 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             yield Input(id="ingest")
             yield Static("File path (Enter to ingest)", id="filehint")
             yield Input(id="file")
+            yield Static("", id="fileerr")
             yield TextLog(highlight=False, id="log")
+            yield Static("", id="status")
             yield Footer()
 
         def on_input_submitted(self, event: Input.Submitted) -> None:
+            self.set_status("Processing...")
+            event.input.disabled = True
             if event.input.id == "file":
                 path = Path(event.value).expanduser()
+                if not path.exists():
+                    self.set_status("File does not exist.", error=True)
+                    event.input.disabled = False
+                    return
                 try:
                     text = path.read_text()
                 except Exception as exc:  # pragma: no cover - runtime error path
                     log = self.query_one("#log", TextLog)
-                    log.write_line(f"error reading file: {exc}")
+                    log.write_line(f"Error: {exc}", style="red")
+                    self.set_status(f"error reading file", error=True)
                     event.input.value = ""
+                    event.input.disabled = False
                     return
             else:
                 text = event.value
@@ -161,18 +205,35 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                     msg = f"added to {res['prototype_id']}"
                 log.write_line(msg)
             event.input.value = ""
+            self.set_status("Memory ingested.")
+            event.input.disabled = False
 
-    class BeliefScreen(Screen):
+        def on_input_changed(self, event: Input.Changed) -> None:
+            if event.input.id == "file":
+                err = self.query_one("#fileerr", Static)
+                path = Path(event.value).expanduser()
+                if path.exists():
+                    err.update("")
+                else:
+                    err.update("File does not exist.", style="red")
+
+    class BeliefScreen(StatusMixin):
         BINDINGS = [("escape", "app.pop_screen", "Back")]
 
         def compose(self) -> ComposeResult:  # type: ignore[override]
             table = DataTable(id="tbl")
             table.add_columns("id", "strength", "summary")
-            for p in store.prototypes:
-                table.add_row(p.prototype_id[:8], str(p.strength), p.summary_text)
             yield Header()
             yield table
+            yield Static("", id="status")
             yield Footer()
+
+        def on_mount(self) -> None:
+            self.set_status("Loading...")
+            table = self.query_one("#tbl", DataTable)
+            for p in store.prototypes:
+                table.add_row(p.prototype_id[:8], str(p.strength), p.summary_text)
+            self.set_status("")
 
         def on_data_table_row_highlighted(
             self, event: DataTable.RowHighlighted
@@ -206,7 +267,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 yield Static(m, classes="mem")
             yield Footer()
 
-    class QueryScreen(Screen):
+    class QueryScreen(StatusMixin):
         BINDINGS = [("escape", "app.pop_screen", "Back")]
 
         def compose(self) -> ComposeResult:  # type: ignore[override]
@@ -214,9 +275,12 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             yield Static("Ask a question and press Enter", id="hint")
             yield Input(id="query")
             yield TextLog(id="answers")
+            yield Static("", id="status")
             yield Footer()
 
         def on_input_submitted(self, event: Input.Submitted) -> None:
+            self.set_status("Querying...")
+            event.input.disabled = True
             res = agent.query(event.value, top_k_prototypes=3, top_k_memories=3)
             log = self.query_one("#answers", TextLog)
             log.clear()
@@ -225,8 +289,10 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             for m in res.get("memories", []):
                 log.write_line(f"  {m['text']}")
             event.input.value = ""
+            event.input.disabled = False
+            self.set_status("")
 
-    class ConsoleScreen(Screen):
+    class ConsoleScreen(StatusMixin):
         BINDINGS = []
 
         def compose(self) -> ComposeResult:  # type: ignore[override]
@@ -249,6 +315,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 placeholder="/help for commands", id="cmd", suggestions=suggestions
             )
             yield self.input
+            yield Static("", id="status")
             yield Footer()
 
         def on_mount(self) -> None:
@@ -259,6 +326,8 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             event.input.value = ""
             if cmd.startswith("/ingest "):
                 text = cmd[len("/ingest ") :]
+                self.set_status("Ingesting...")
+                event.input.disabled = True
                 results = agent.add_memory(text)
                 for res in results:
                     if res.get("spawned"):
@@ -266,13 +335,19 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                     else:
                         msg = f"added to {res['prototype_id']}"
                     self.text_log.write_line(msg)
+                self.set_status("Memory ingested.")
+                event.input.disabled = False
             elif cmd.startswith("/query "):
                 q = cmd[len("/query ") :]
+                self.set_status("Querying...")
+                event.input.disabled = True
                 res = agent.query(q, top_k_prototypes=3, top_k_memories=3)
                 for p in res.get("prototypes", []):
                     self.text_log.write_line(f"{p['sim']:.2f} {p['summary']}")
                 for m in res.get("memories", []):
                     self.text_log.write_line(f"  {m['text']}")
+                self.set_status("")
+                event.input.disabled = False
             elif cmd == "/stats":
                 usage = _disk_usage(store_path)
                 self.text_log.write_line(f"disk: {usage} bytes")
@@ -287,8 +362,12 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 configure_logging(path)
                 self.text_log.write_line(f"logging to {path}")
             elif cmd == "/install-models":
+                self.set_status("Installing models...")
                 msg = _install_models()
                 self.text_log.write_line(msg)
+                self.set_status("")
+                if msg.startswith("error"):
+                    self.app.push_screen(MessageModal(msg))
             elif cmd in ("/exit", "/quit"):
                 self.app.push_screen(ExitScreen())
             elif cmd in ("/help", "/?"):
@@ -321,12 +400,15 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                     from .local_llm import LocalChatModel
                     llm = LocalChatModel()
                     prompt = llm.prepare_prompt(agent, prompt)
+                    self.set_status("Querying...")
                     reply = llm.reply(prompt)
                     self.text_log.write_line(reply)
+                    self.set_status("")
                 except Exception as exc:  # pragma: no cover - runtime errors
-                    self.text_log.write_line(f"error: {exc}")
+                    self.text_log.write_line(f"Error: {exc}", style="red")
+                    self.set_status("LLM error", error=True)
 
-    class StatsScreen(Screen):
+    class StatsScreen(StatusMixin):
         BINDINGS = [("escape", "app.pop_screen", "Back")]
 
         def compose(self) -> ComposeResult:  # type: ignore[override]
@@ -340,9 +422,10 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             table.add_row("updated", store.meta.get("updated_at", ""))
             yield Header()
             yield table
+            yield Static("", id="status")
             yield Footer()
 
-    class ExitScreen(Screen):
+    class ExitScreen(StatusMixin):
         BINDINGS = [
             ("y", "yes", "Yes"),
             ("n", "no", "No"),
@@ -351,6 +434,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
         def compose(self) -> ComposeResult:  # type: ignore[override]
             yield Header()
             yield Static("Save brain as zip? [Y/N]", id="exit", markup=False)
+            yield Static("", id="status")
             yield Footer()
 
         def action_yes(self) -> None:

@@ -1,3 +1,4 @@
+import pytest
 from gist_memory.local_llm import LocalChatModel
 
 
@@ -90,3 +91,21 @@ def test_prepare_prompt(monkeypatch, tmp_path):
     model = LocalChatModel()
     prepared = model.prepare_prompt(agent, "prompt")
     assert "summary" in prepared or prepared == "prompt"
+
+
+def test_local_chat_model_failure(monkeypatch):
+    def err(*a, **k):
+        raise OSError("missing")
+
+    monkeypatch.setattr(
+        "gist_memory.local_llm.AutoTokenizer.from_pretrained", err
+    )
+    monkeypatch.setattr(
+        "gist_memory.local_llm.AutoModelForCausalLM.from_pretrained", err
+    )
+
+    with pytest.raises(RuntimeError) as exc:
+        LocalChatModel(model_name="foo")
+    msg = str(exc.value)
+    assert "download-chat-model" in msg
+    assert "foo" in msg

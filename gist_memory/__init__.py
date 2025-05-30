@@ -11,6 +11,9 @@ from .local_llm import LocalChatModel
 from .canonical import render_five_w_template
 from .memory_cues import MemoryCueRenderer
 from .conflict_flagging import ConflictFlagger, ConflictLogger
+from .experiment_runner import ExperimentConfig, run_experiment
+from .conflict import ConflictLogger, negation_conflict
+
 
 __all__ = [
     "app",
@@ -31,6 +34,10 @@ __all__ = [
     "MemoryCueRenderer",
     "ConflictFlagger",
     "ConflictLogger",
+    "ExperimentConfig",
+    "run_experiment",
+    "ConflictLogger",
+    "negation_conflict",
 ]
 
 # Semantic version of the package

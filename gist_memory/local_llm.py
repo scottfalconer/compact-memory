@@ -33,9 +33,8 @@ class LocalChatModel:
             )
         except Exception as exc:  # pragma: no cover - depends on local files
             raise RuntimeError(
-                "Chat model not found. "
-                "Run `gist-memory download-chat-model --model-name "
-                f"{self.model_name}` to install it"
+                f"Error: Local Chat Model '{self.model_name}' not found. "
+                f"Please run: gist-memory download-chat-model --model-name {self.model_name} to install it."
             ) from exc
 
     def reply(self, prompt: str) -> str:

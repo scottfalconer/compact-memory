@@ -2,6 +2,13 @@ import sys
 import logging
 from pathlib import Path
 
+try:  # optional pretty tracebacks
+    from rich.traceback import install as install_rich_traceback
+
+    install_rich_traceback()
+except Exception:  # pragma: no cover - rich may not be installed
+    pass
+
 from .logging_utils import configure_logging
 
 
