@@ -46,7 +46,19 @@ class LocalChatModel:
         """
         max_len = getattr(getattr(self.model, "config", None), "n_positions", 1024)
         full = self.tokenizer(prompt, return_tensors="pt")
-        ids = full["input_ids"][0]
+        ids_raw = full["input_ids"]
+        if isinstance(ids_raw, (list, tuple)):
+            if ids_raw and isinstance(ids_raw[0], (list, tuple)):
+                ids = list(ids_raw[0])
+            else:
+                ids = list(ids_raw)
+        else:
+            # handle single integer or tensor values
+            try:
+                ids = list(ids_raw[0])  # type: ignore[index]
+            except Exception:
+                ids = [ids_raw]  # type: ignore[list-item]
+
         if len(ids) > max_len:
             excess = len(ids) - max_len
             old_ids = ids[:excess]
@@ -64,7 +76,11 @@ class LocalChatModel:
         prompt_trimmed = self.tokenizer.decode(
             inputs["input_ids"][0], skip_special_tokens=True
         )
-        outputs = self.model.generate(**inputs, max_new_tokens=self.max_new_tokens)
+        outputs = self.model.generate(
+            **inputs,
+            max_new_tokens=self.max_new_tokens,
+            pad_token_id=getattr(self.tokenizer, "eos_token_id", None),
+        )
         text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         # return only the newly generated portion
         if text.startswith(prompt):
