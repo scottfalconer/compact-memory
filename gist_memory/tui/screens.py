@@ -89,6 +89,7 @@ class HelpScreen(Screen):
             "/stats            - show store stats\n"
             "/install-models   - download models\n"
             "/talk             - chat session\n"
+            "/params           - agent parameters\n"
             "/log PATH        - write debug log\n"
             "/exit             - quit"
         )
@@ -300,6 +301,7 @@ class ConsoleScreen(StatusMixin):
             "/stats",
             "/install-models",
             "/talk",
+            "/params",
             "/log ",
             "/exit",
             "/quit",
@@ -371,6 +373,8 @@ class ConsoleScreen(StatusMixin):
             self.app.push_screen(BeliefScreen())
         elif cmd == "/talk":
             self.app.push_screen(ChatScreen())
+        elif cmd == "/params":
+            self.app.push_screen(ParamsScreen())
         elif cmd.startswith("/log "):
             path = Path(cmd[len("/log ") :]).expanduser()
             if not path.is_absolute():
@@ -393,6 +397,7 @@ class ConsoleScreen(StatusMixin):
             self.text_log.write_line("/stats       - show stats")
             self.text_log.write_line("/install-models - download models")
             self.text_log.write_line("/talk        - chat session")
+            self.text_log.write_line("/params      - agent parameters")
             self.text_log.write_line("/log PATH   - write debug log")
             self.text_log.write_line("/exit        - quit")
         elif cmd:
@@ -520,6 +525,32 @@ class StatsScreen(StatusMixin):
         yield Footer()
 
 
+class ParamsScreen(StatusMixin):
+    BINDINGS = [("escape", "app.pop_screen", "Back")]
+
+    def compose(self) -> ComposeResult:  # type: ignore[override]
+        table = DataTable(id="params")
+        table.add_columns("key", "value")
+        yield Header()
+        yield table
+        yield Static("", id="status")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        table = self.query_one("#params", DataTable)
+        table.add_row("tau", str(agent.similarity_threshold))
+        chunk_cfg = getattr(agent.chunker, "config", lambda: {})()
+        chunk_id = chunk_cfg.pop("id", agent.chunker.__class__.__name__)
+        table.add_row("chunker", str(chunk_id))
+        for k, v in chunk_cfg.items():
+            table.add_row(f"chunker.{k}", str(v))
+
+        creator = agent.summary_creator
+        table.add_row("memory_creator", creator.__class__.__name__)
+        for k, v in vars(creator).items():
+            table.add_row(f"memory_creator.{k}", str(v))
+
+
 class ExitScreen(StatusMixin):
     BINDINGS = [
         ("y", "yes", "Yes"),
@@ -551,6 +582,7 @@ class WizardApp(App):
         ("q", "push_screen('exit')", "Quit"),
         ("f5", "push_screen('stats')", "Stats"),
         ("f6", "push_screen('group')", "Group"),
+        ("f7", "push_screen('params')", "Params"),
     ]
 
     SCREENS = {
@@ -558,6 +590,7 @@ class WizardApp(App):
         "console": ConsoleScreen,
         "beliefs": BeliefScreen,
         "stats": StatsScreen,
+        "params": ParamsScreen,
         "group": GroupSessionScreen,
         "talk": ChatScreen,
         "exit": ExitScreen,
@@ -584,6 +617,7 @@ __all__ = [
     "ChatScreen",
     "ConsoleScreen",
     "GroupSessionScreen",
+    "ParamsScreen",
     "StatsScreen",
     "ExitScreen",
 ]

@@ -97,6 +97,10 @@ def test_wizard_create_exit_no(monkeypatch, tmp_path):
 
     _patch_run(monkeypatch, autopilot)
     run_tui(str(tmp_path))
+
+    store = JsonNpyVectorStore(str(tmp_path))
+    assert len(store.memories) == 1
+    assert len(store.prototypes) == 1
     store = JsonNpyVectorStore(str(tmp_path))
     assert len(store.memories) == 1
     assert len(store.prototypes) == 1
@@ -259,3 +263,20 @@ def test_group_session_invite(monkeypatch, tmp_path):
     store = JsonNpyVectorStore(str(brain2))
     texts = [m.raw_text for m in store.memories]
     assert "hi" in texts
+
+
+def test_params_screen(monkeypatch, tmp_path):
+    _patch_mock_encoder(monkeypatch)
+
+    async def autopilot(pilot):
+        await pilot.press("c")
+        await pilot.press("h", "i")
+        await pilot.press("enter")
+        await pilot.press("f7")
+        await pilot.press("q")
+        await pilot.pause(0.1)
+        await pilot.press("n")
+        await pilot.exit(None)
+
+    _patch_run(monkeypatch, autopilot)
+    run_tui(str(tmp_path))
