@@ -31,3 +31,20 @@ def test_load_model_failure(monkeypatch):
     with pytest.raises(RuntimeError) as exc:
         ep._load_model("bad", "cpu")
     assert "gist-memory download-model" in str(exc.value)
+
+
+def test_embed_text_long_truncates(monkeypatch):
+    enc = ep.MockEncoder()
+    monkeypatch.setattr(ep, "_load_model", lambda *a, **k: enc)
+
+    captured = {}
+
+    def fake_embed(text, *a, **k):
+        captured["text"] = text
+        return enc.encode(text)
+
+    monkeypatch.setattr(ep, "_embed_cached", fake_embed)
+    long_text = "word " * 2000
+    vec = ep.embed_text(long_text)
+    assert vec.shape == (enc.dim,)
+    assert len(captured["text"]) < len(long_text)
