@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Optional
+import inspect
 
 from .importance_filter import dynamic_importance_filter
 
@@ -78,12 +79,19 @@ class LocalChatModel:
         prompt_trimmed = self.tokenizer.decode(
             inputs["input_ids"][0], skip_special_tokens=True
         )
+        cls_fn = getattr(self.model.__class__, "generate")
+        sig = inspect.signature(cls_fn)
+        if "self" in sig.parameters:
+            outputs = cls_fn(
+                self.model,
         try:
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=self.max_new_tokens,
                 pad_token_id=getattr(self.tokenizer, "eos_token_id", None),
             )
+        else:
+            outputs = cls_fn(
         except TypeError:
             outputs = self.model.__class__.generate(
                 **inputs,
