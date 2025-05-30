@@ -15,6 +15,9 @@ else
     pip3 install --no-cache-dir textual
 fi
 
+# Tools for linting and testing
+pip3 install --no-cache-dir flake8 pytest
+
 # Ensure CLI dependencies are available even when not listed in requirements
 pip3 install --no-cache-dir textual rich typer portalocker
 

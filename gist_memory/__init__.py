@@ -17,32 +17,38 @@ from .talk_session import TalkSessionManager
 from .utils import load_agent
 
 
-__all__ = [
-    "app",
-    "BeliefPrototype",
-    "RawMemory",
-    "JsonNpyVectorStore",
-    "VectorStore",
-    "Agent",
-    "QueryResult",
-    "PrototypeHit",
-    "MemoryHit",
-    "embed_text",
-    "SentenceWindowChunker",
-    "FixedSizeChunker",
-    "DEFAULT_BRAIN_PATH",
-    "LocalChatModel",
-    "render_five_w_template",
-    "MemoryCueRenderer",
-    "ConflictFlagger",
-    "ConflictLogger",
-    "SimpleConflictLogger",
-    "ExperimentConfig",
-    "run_experiment",
-    "negation_conflict",
-    "TalkSessionManager",
-    "load_agent",
-]
+# Exported symbols.  ``dict.fromkeys`` ensures each value only appears once
+# while preserving the explicit ordering of the list below.
+__all__ = list(
+    dict.fromkeys(
+        [
+            "app",
+            "BeliefPrototype",
+            "RawMemory",
+            "JsonNpyVectorStore",
+            "VectorStore",
+            "Agent",
+            "QueryResult",
+            "PrototypeHit",
+            "MemoryHit",
+            "embed_text",
+            "SentenceWindowChunker",
+            "FixedSizeChunker",
+            "DEFAULT_BRAIN_PATH",
+            "LocalChatModel",
+            "render_five_w_template",
+            "MemoryCueRenderer",
+            "ConflictFlagger",
+            "ConflictLogger",
+            "SimpleConflictLogger",
+            "ExperimentConfig",
+            "run_experiment",
+            "negation_conflict",
+            "TalkSessionManager",
+            "load_agent",
+        ]
+    )
+)
 
 # Semantic version of the package
 __version__ = "0.1.0"
