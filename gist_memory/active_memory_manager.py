@@ -22,6 +22,8 @@ class ActiveMemoryManager:
 
     config_max_history_buffer_turns: int = 100
     config_prompt_num_forced_recent_turns: int = 0
+    config_prompt_max_activated_older_turns: int = 5
+    config_prompt_activation_threshold_for_inclusion: float = 0.0
     config_pruning_weight_trace_strength: float = 1.0
     config_pruning_weight_current_activation: float = 1.0
     config_pruning_weight_recency: float = 0.1
@@ -111,5 +113,36 @@ class ActiveMemoryManager:
             t.current_activation_level += boost
             if t.current_activation_level < self.config_min_activation_floor:
                 t.current_activation_level = self.config_min_activation_floor
+
+    # --------------------------------------------------------------
+    def select_history_candidates_for_prompt(
+        self, current_query_embedding: np.ndarray
+    ) -> List[ConversationTurn]:
+        """Return recent turns plus older activated ones for STM."""
+
+        self.boost_activation_by_relevance(current_query_embedding)
+
+        num_recent = self.config_prompt_num_forced_recent_turns
+        if num_recent > 0:
+            recent_slice = self.history[-num_recent:]
+            older = self.history[:-num_recent]
+        else:
+            recent_slice = []
+            older = list(self.history)
+
+        threshold = self.config_prompt_activation_threshold_for_inclusion
+        activated = [t for t in older if t.current_activation_level >= threshold]
+
+        activated.sort(
+            key=lambda t: (t.current_activation_level, t.trace_strength), reverse=True
+        )
+
+        max_older = self.config_prompt_max_activated_older_turns
+        selected_older = activated[:max_older]
+
+        # preserve original order of selected older turns
+        selected_older.sort(key=lambda t: self.history.index(t))
+
+        return selected_older + list(recent_slice)
 
 __all__ = ["ConversationTurn", "ActiveMemoryManager"]
