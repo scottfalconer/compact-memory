@@ -52,3 +52,25 @@ def test_unique_ids(tmp_path):
     sid1 = mgr.create_session([brain])
     sid2 = mgr.create_session([brain])
     assert sid1 != sid2
+
+
+def test_invite_and_kick(tmp_path):
+    brain1 = tmp_path / "b1"
+    brain2 = tmp_path / "b2"
+    brain3 = tmp_path / "b3"
+    _create_brain(brain1)
+    _create_brain(brain2)
+    _create_brain(brain3)
+
+    mgr = TalkSessionManager()
+    sid = mgr.create_session([brain1, brain2])
+    mgr.post_message(sid, "user", "hello")
+
+    mgr.invite_brain(sid, brain3)
+    session = mgr.get_session(sid)
+    assert len(session.agents) == 3
+    texts = [m.raw_text for m in session.agents[str(brain3)].store.memories]
+    assert "hello" in texts
+
+    mgr.kick_brain(sid, str(brain2))
+    assert str(brain2) not in session.agents
