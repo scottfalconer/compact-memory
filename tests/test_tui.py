@@ -4,6 +4,8 @@ from textual.app import App
 from gist_memory.tui import _disk_usage, run_tui
 from gist_memory.json_npy_store import JsonNpyVectorStore
 from gist_memory.embedding_pipeline import MockEncoder
+from gist_memory.agent import Agent
+from gist_memory.chunker import SentenceWindowChunker
 
 
 def test_disk_usage(tmp_path):
@@ -68,6 +70,16 @@ def _patch_run(monkeypatch, autopilot):
         return orig_run(self, headless=True, auto_pilot=autopilot)
 
     monkeypatch.setattr(App, "run", patched_run)
+
+
+def _create_brain(path):
+    store = JsonNpyVectorStore(
+        path=str(path), embedding_model="mock", embedding_dim=MockEncoder.dim
+    )
+    agent = Agent(store, chunker=SentenceWindowChunker())
+    agent._conflicts = type("Dummy", (), {"check_pair": lambda *a, **k: None})()
+    agent.add_memory("alpha")
+    store.save()
 
 
 def test_wizard_create_exit_no(monkeypatch, tmp_path):
@@ -217,3 +229,33 @@ def test_tui_logging(monkeypatch, tmp_path):
     log_path = tmp_path / "log.txt"
     assert log_path.exists()
     assert log_path.read_text() != ""
+
+
+def test_group_session_invite(monkeypatch, tmp_path):
+    _patch_mock_encoder(monkeypatch)
+    brain2 = tmp_path / "b2"
+    _create_brain(brain2)
+
+    async def autopilot(pilot):
+        await pilot.press("c")
+        await pilot.press("f6")
+        await pilot.pause(0.1)
+        cmd = f"/invite {brain2}"
+        for ch in cmd:
+            await pilot.press(ch)
+        await pilot.press("enter")
+        await pilot.press("h", "i")
+        await pilot.press("enter")
+        await pilot.press("/", "e", "n", "d")
+        await pilot.press("enter")
+        await pilot.press("q")
+        await pilot.pause(0.1)
+        await pilot.press("n")
+        await pilot.exit(None)
+
+    _patch_run(monkeypatch, autopilot)
+    run_tui(str(tmp_path))
+
+    store = JsonNpyVectorStore(str(brain2))
+    texts = [m.raw_text for m in store.memories]
+    assert "hi" in texts
