@@ -170,7 +170,6 @@ def test_cli_corrupt_store(tmp_path):
     assert result.exit_code != 0
     assert "Brain data is corrupted" in result.stderr
 
-
 def test_cli_invalid_store(tmp_path):
     runner = CliRunner()
     # directory exists but store not initialised
@@ -181,5 +180,3 @@ def test_cli_invalid_store(tmp_path):
     )
     assert result.exit_code != 0
     assert "not found or is invalid" in result.stderr
-
-
