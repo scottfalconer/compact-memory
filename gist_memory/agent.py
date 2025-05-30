@@ -173,6 +173,7 @@ class Agent:
         why: Optional[str] = None,
         progress_callback: Optional[Callable[[int, int, bool, str, Optional[float]], None]] = None,
         save: bool = True,
+        source_document_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
         """Ingest ``text`` into the store and return per-chunk statuses."""
 
@@ -228,7 +229,7 @@ class Agent:
                 memory_id=mem_id,
                 raw_text_hash=hashlib.sha256(chunk.encode("utf-8")).hexdigest(),
                 assigned_prototype_id=pid,
-                source_document_id=None,
+                source_document_id=source_document_id,
                 raw_text=chunk,
                 embedding=list(map(float, vec)),
             )
@@ -318,6 +319,68 @@ class Agent:
         }
 
     # ------------------------------------------------------------------
-    def receive_channel_message(self, text: str) -> None:
-        """Handle a message broadcast from a talk session."""
-        self.add_memory(text)
+    def receive_channel_message(self, source_id: str, message_text: str) -> dict[str, object]:
+        """Process ``message_text`` posted to the shared channel by ``source_id``.
+
+        The default behaviour is intentionally simple:
+
+        * If the message looks like a question (ends with ``?``) the agent
+          performs a :meth:`query` and attempts to generate a short textual
+          reply using :class:`~gist_memory.local_llm.LocalChatModel`.
+        * Otherwise the message is ingested as a new memory with a
+          ``source_document_id`` that references the sender.
+
+        A dictionary summarising the chosen action is returned.  This provides
+        lightweight observability for higher level session management code.
+        """
+
+        logging.info("[receive] from %s: %s", source_id, message_text[:40])
+
+        summary: dict[str, object] = {"source": source_id}
+
+        text = message_text.strip()
+        if text.endswith("?"):
+            # -------------------------------------------------- Option A: query
+            result = self.query(text, top_k_prototypes=2, top_k_memories=2)
+            summary["action"] = "query"
+            summary["query_result"] = result
+            reply: Optional[str] = None
+            try:
+                from .local_llm import LocalChatModel
+
+                llm = getattr(self, "_chat_model", None)
+                if llm is None:
+                    llm = LocalChatModel()
+                    self._chat_model = llm
+
+                proto_summaries = "; ".join(
+                    p["summary"] for p in result.get("prototypes", [])
+                )
+                mem_texts = "; ".join(m["text"] for m in result.get("memories", []))
+                prompt_parts = [f"User asked: {text}"]
+                if proto_summaries:
+                    prompt_parts.append(f"Relevant concepts: {proto_summaries}")
+                if mem_texts:
+                    prompt_parts.append(f"Context: {mem_texts}")
+                prompt_parts.append("Answer:")
+                prompt = "\n".join(prompt_parts)
+                prompt = llm.prepare_prompt(self, prompt)
+                reply = llm.reply(prompt)
+            except Exception as exc:  # pragma: no cover - optional dep
+                logging.warning("chat reply failed: %s", exc)
+                reply = None
+
+            summary["reply"] = reply
+            return summary
+
+        # -------------------------------------------- Option B: ingest message
+        results = self.add_memory(
+            text,
+            source_document_id=f"session_post_from:{source_id}",
+        )
+        summary.update({
+            "action": "ingest",
+            "chunks_ingested": len(results),
+            "reply": None,
+        })
+        return summary
