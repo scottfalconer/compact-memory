@@ -45,6 +45,9 @@ class LocalChatModel:
         excess tokens are truncated from the start to avoid generation errors.
         """
         max_len = getattr(getattr(self.model, "config", None), "n_positions", 1024)
+        # leave room for generation tokens
+        max_input_len = max_len - self.max_new_tokens
+
         full = self.tokenizer(prompt, return_tensors="pt")
         ids_raw = full["input_ids"]
         if isinstance(ids_raw, (list, tuple)):
@@ -59,8 +62,8 @@ class LocalChatModel:
             except Exception:
                 ids = [ids_raw]  # type: ignore[list-item]
 
-        if len(ids) > max_len:
-            excess = len(ids) - max_len
+        if len(ids) > max_input_len:
+            excess = len(ids) - max_input_len
             old_ids = ids[:excess]
             keep_ids = ids[excess:]
             old_text = self.tokenizer.decode(old_ids, skip_special_tokens=True)
@@ -71,7 +74,7 @@ class LocalChatModel:
             prompt,
             return_tensors="pt",
             truncation=True,
-            max_length=max_len,
+            max_length=max_input_len,
         )
         prompt_trimmed = self.tokenizer.decode(
             inputs["input_ids"][0], skip_special_tokens=True
