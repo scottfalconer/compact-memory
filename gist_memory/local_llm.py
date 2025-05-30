@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-"""Simple local LLM wrapper for chat style generation."""
+"""Simple local LLM wrapper for chat‑style generation."""
 
 from dataclasses import dataclass
-from typing import Optional
 import inspect
+from typing import Optional
 
 from .importance_filter import dynamic_importance_filter
 
 try:  # heavy dependency only when needed
     from transformers import AutoModelForCausalLM, AutoTokenizer
-except Exception:  # pragma: no cover - optional
+except Exception:  # pragma: no cover – optional
     AutoModelForCausalLM = None  # type: ignore
     AutoTokenizer = None  # type: ignore
 
@@ -22,9 +22,16 @@ class LocalChatModel:
     model_name: str = "distilgpt2"
     max_new_tokens: int = 100
 
+    tokenizer: Optional["AutoTokenizer"] = None  # populated in ``__post_init__``
+    model: Optional["AutoModelForCausalLM"] = None
+
+    # ------------------------------------------------------------------
+    # Initialisation
+    # ------------------------------------------------------------------
     def __post_init__(self) -> None:
         if AutoModelForCausalLM is None or AutoTokenizer is None:
             raise ImportError("transformers is required for LocalChatModel")
+
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name, local_files_only=True
@@ -32,31 +39,34 @@ class LocalChatModel:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name, local_files_only=True
             )
-        except Exception as exc:  # pragma: no cover - depends on local files
+        except Exception as exc:  # pragma: no cover – depends on local files
             raise RuntimeError(
                 f"Error: Local Chat Model '{self.model_name}' not found. "
-                f"Please run: gist-memory download-chat-model --model-name {self.model_name} to install it."
+                "Please run: gist-memory download-chat-model "
+                f"--model-name {self.model_name} to install it."
             ) from exc
 
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
     def reply(self, prompt: str) -> str:
-        """Generate a reply given ``prompt``.
+        """Generate a reply to ``prompt`` trimming context if necessary."""
+        if self.tokenizer is None or self.model is None:
+            raise RuntimeError("LocalChatModel not initialised")
 
-        If ``prompt`` is longer than the model's maximum context length the
-        excess tokens are truncated from the start to avoid generation errors.
-        """
+        # --------------------------------------------------------------
+        # Token management
         max_len = getattr(getattr(self.model, "config", None), "n_positions", 1024)
-        # leave room for generation tokens
         max_input_len = max_len - self.max_new_tokens
 
         full = self.tokenizer(prompt, return_tensors="pt")
         ids_raw = full["input_ids"]
+
         if isinstance(ids_raw, (list, tuple)):
-            if ids_raw and isinstance(ids_raw[0], (list, tuple)):
-                ids = list(ids_raw[0])
-            else:
-                ids = list(ids_raw)
+            ids = list(
+                ids_raw[0] if ids_raw and isinstance(ids_raw[0], (list, tuple)) else ids_raw
+            )
         else:
-            # handle single integer or tensor values
             try:
                 ids = list(ids_raw[0])  # type: ignore[index]
             except Exception:
@@ -64,12 +74,12 @@ class LocalChatModel:
 
         if len(ids) > max_input_len:
             excess = len(ids) - max_input_len
-            old_ids = ids[:excess]
-            keep_ids = ids[excess:]
+            old_ids, keep_ids = ids[:excess], ids[excess:]
             old_text = self.tokenizer.decode(old_ids, skip_special_tokens=True)
-            filtered = dynamic_importance_filter(old_text)
             keep_text = self.tokenizer.decode(keep_ids, skip_special_tokens=True)
+            filtered = dynamic_importance_filter(old_text)
             prompt = (filtered + "\n" + keep_text).strip()
+
         inputs = self.tokenizer(
             prompt,
             return_tensors="pt",
@@ -79,31 +89,39 @@ class LocalChatModel:
         prompt_trimmed = self.tokenizer.decode(
             inputs["input_ids"][0], skip_special_tokens=True
         )
-        cls_fn = getattr(self.model.__class__, "generate")
+
+        # --------------------------------------------------------------
+        # Call generate() robustly across transformers versions
+        cls_fn = self.model.__class__.generate
         sig = inspect.signature(cls_fn)
-        if "self" in sig.parameters:
-            outputs = cls_fn(
-                self.model,
+
         try:
+            if "self" in sig.parameters:
+                outputs = cls_fn(
+                    self.model,
+                    **inputs,
+                    max_new_tokens=self.max_new_tokens,
+                    pad_token_id=getattr(self.tokenizer, "eos_token_id", None),
+                )
+            else:
+                outputs = cls_fn(
+                    **inputs,
+                    max_new_tokens=self.max_new_tokens,
+                    pad_token_id=getattr(self.tokenizer, "eos_token_id", None),
+                )
+        except TypeError:
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=self.max_new_tokens,
                 pad_token_id=getattr(self.tokenizer, "eos_token_id", None),
             )
-        else:
-            outputs = cls_fn(
-        except TypeError:
-            outputs = self.model.__class__.generate(
-                **inputs,
-                max_new_tokens=self.max_new_tokens,
-                pad_token_id=getattr(self.tokenizer, "eos_token_id", None),
-            )
+
         text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        # return only the newly generated portion
-        if text.startswith(prompt):
-            return text[len(prompt) :].strip()
-        if text.startswith(prompt_trimmed):
-            return text[len(prompt_trimmed) :].strip()
+
+        # Return only the newly generated portion
+        for prefix in (prompt, prompt_trimmed):
+            if text.startswith(prefix):
+                return text[len(prefix) :].strip()
         return text.strip()
 
     # ------------------------------------------------------------------
@@ -116,6 +134,9 @@ class LocalChatModel:
         top_k: int = 3,
     ) -> str:
         """Truncate ``prompt`` with a short recap if it exceeds context length."""
+
+        if self.tokenizer is None or self.model is None:
+            raise RuntimeError("LocalChatModel not initialised")
 
         max_len = getattr(getattr(self.model, "config", None), "n_positions", 1024)
         tokens = self.tokenizer(prompt, return_tensors="pt")["input_ids"][0]
@@ -140,10 +161,7 @@ class LocalChatModel:
         ]
 
         recap = "; ".join(summaries)
-        if recap:
-            recap_text = f"<recap> Recent conversation: {recap}\n"
-        else:
-            recap_text = ""
+        recap_text = f"<recap> Recent conversation: {recap}\n" if recap else ""
 
         return recap_text + recent_text
 
