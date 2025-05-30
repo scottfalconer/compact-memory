@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+import faiss
+
 import numpy as np
 import yaml
 
@@ -55,6 +57,8 @@ class JsonNpyVectorStore(VectorStore):
         self.proto_vectors: np.ndarray | None = None
         self.memories: List[RawMemory] = []
         self.index: Dict[str, int] = {}
+        self.faiss_index: faiss.Index | None = None
+        self._index_dirty: bool = True
         meta_exists = self.path.exists() and (self.path / "meta.yaml").exists()
         if meta_exists:
             self.load()
@@ -85,6 +89,19 @@ class JsonNpyVectorStore(VectorStore):
 
     def _mem_jsonl_path(self) -> Path:
         return self.path / "raw_memories.jsonl"
+
+    # ------------------------------------------------------------------
+    def _build_faiss_index(self) -> None:
+        """Rebuild the FAISS index from ``self.proto_vectors``."""
+        if self.proto_vectors is None or len(self.prototypes) == 0:
+            self.faiss_index = None
+            self._index_dirty = False
+            return
+
+        index = faiss.IndexFlatIP(self.embedding_dim)
+        index.add(self.proto_vectors.astype(np.float32))
+        self.faiss_index = index
+        self._index_dirty = False
 
     # ------------------------------------------------------------------
     def load(self) -> None:
@@ -121,6 +138,8 @@ class JsonNpyVectorStore(VectorStore):
                     if not line:
                         continue
                     self.memories.append(RawMemory.model_validate_json(line))
+        self._index_dirty = True
+        self.faiss_index = None
 
     def save(self) -> None:
         self.meta["updated_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -133,6 +152,7 @@ class JsonNpyVectorStore(VectorStore):
         with open(self._mem_jsonl_path(), "w") as f:
             for mem in self.memories:
                 f.write(mem.model_dump_json() + "\n")
+        self._index_dirty = True
 
     # ------------------------------------------------------------------
     def add_prototype(self, proto: BeliefPrototype, vec: np.ndarray) -> None:
@@ -146,6 +166,7 @@ class JsonNpyVectorStore(VectorStore):
                 vec = vec.reshape(1, -1)
             self.proto_vectors = np.vstack([self.proto_vectors, vec])
         self.index[proto.prototype_id] = idx
+        self._index_dirty = True
 
     def update_prototype(
         self,
@@ -171,15 +192,29 @@ class JsonNpyVectorStore(VectorStore):
         proto.last_updated_ts = datetime.now(timezone.utc).replace(microsecond=0)
         proto.constituent_memory_ids.append(memory_id)
         proto.strength += 1.0
+        self._index_dirty = True
 
     def find_nearest(self, vec: np.ndarray, k: int) -> List[Tuple[str, float]]:
         """Return ``k`` nearest prototypes by cosine similarity."""
 
         if self.proto_vectors is None or len(self.prototypes) == 0:
             return []
-        sims = self.proto_vectors @ vec
-        idxs = np.argsort(-sims)[:k]
-        return [(self.prototypes[i].prototype_id, float(sims[i])) for i in idxs]
+
+        if (
+            self.faiss_index is None
+            or self._index_dirty
+            or self.faiss_index.ntotal != len(self.prototypes)
+        ):
+            self._build_faiss_index()
+
+        query = vec.astype(np.float32).reshape(1, -1)
+        dists, idxs = self.faiss_index.search(query, min(k, self.faiss_index.ntotal))
+        results: List[Tuple[str, float]] = []
+        for idx, dist in zip(idxs[0], dists[0]):
+            if idx < 0:
+                continue
+            results.append((self.prototypes[int(idx)].prototype_id, float(dist)))
+        return results
 
     def add_memory(self, memory: RawMemory) -> None:
         self.memories.append(memory)
