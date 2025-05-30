@@ -90,12 +90,17 @@ def test_cli_talk(tmp_path, monkeypatch):
         def __init__(self, *a, **kw):
             pass
 
+        def prepare_prompt(self, agent, prompt, **kw):
+            return prompt
+
         def reply(self, prompt: str) -> str:
             prompts["text"] = prompt
             return "response"
 
     monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", Dummy)
-    result = runner.invoke(app, ["talk", "--agent-name", str(tmp_path), "--message", "hi"])
+    result = runner.invoke(
+        app, ["talk", "--agent-name", str(tmp_path), "--message", "hi"]
+    )
     assert result.exit_code == 0
     assert "response" in result.stdout
     assert "hello world" in prompts["text"]
@@ -123,5 +128,3 @@ def test_cli_download_chat_model(monkeypatch):
     result = runner.invoke(app, ["download-chat-model", "--model-name", "foo"])
     assert result.exit_code == 0
     assert "foo" in calls
-
-

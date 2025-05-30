@@ -208,6 +208,7 @@ def talk(
     prompt = f"{context}\nUser: {message}\nAssistant:"
     from .local_llm import LocalChatModel
     llm = LocalChatModel(model_name=model_name)
+    prompt = llm.prepare_prompt(agent, prompt)
     reply = llm.reply(prompt)
     typer.echo(reply)
 
@@ -237,7 +238,9 @@ def clear(
     """Delete all data in the store."""
     path = Path(agent_name)
     if not yes:
-        if not typer.confirm(f"Delete {path}?", abort=True):  # pragma: no cover - user abort
+        if not typer.confirm(
+            f"Delete {path}?", abort=True
+        ):  # pragma: no cover - user abort
             return
     if path.exists():
         shutil.rmtree(path)
@@ -261,9 +264,7 @@ def download_model(
 
 @app.command("download-chat-model")
 def download_chat_model(
-    model_name: str = typer.Option(
-        "distilgpt2", help="Local causal LM name"
-    )
+    model_name: str = typer.Option("distilgpt2", help="Local causal LM name")
 ) -> None:
     """Pre-download a local chat model for ``talk`` mode."""
     from transformers import AutoModelForCausalLM, AutoTokenizer
