@@ -1,4 +1,5 @@
 """Wizard-style Textual TUI for the Gist Memory agent."""
+
 from __future__ import annotations
 
 import os
@@ -15,6 +16,7 @@ from .memory_cues import MemoryCueRenderer
 
 # ---------------------------------------------------------------------------
 
+
 def _disk_usage(path: Path) -> int:
     """Return total size of files under ``path`` in bytes."""
     size = 0
@@ -28,7 +30,9 @@ def _disk_usage(path: Path) -> int:
     return size
 
 
-def _install_models(embed_model: str = "all-MiniLM-L6-v2", chat_model: str = "distilgpt2") -> str:
+def _install_models(
+    embed_model: str = "all-MiniLM-L6-v2", chat_model: str = "distilgpt2"
+) -> str:
     """Download the default embedding and chat models."""
     try:
         from sentence_transformers import SentenceTransformer
@@ -45,6 +49,7 @@ def _install_models(embed_model: str = "all-MiniLM-L6-v2", chat_model: str = "di
 
 # ---------------------------------------------------------------------------
 
+
 def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
     """Launch the Textual wizard."""
     try:
@@ -53,6 +58,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
         from textual.screen import Screen
         from textual.widgets import Header, Footer, Static, Input, DataTable
         from .autocomplete_input import TabAutocompleteInput
+
         try:  # Textual 0.x
             from textual.widgets import TextLog  # type: ignore
         except Exception:  # pragma: no cover - Textual >=1.0 renamed the widget
@@ -179,7 +185,9 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             idx = event.row_key
             proto = store.prototypes[int(idx)]
             mems = list(
-                m.raw_text for m in store.memories if m.memory_id in proto.constituent_memory_ids
+                m.raw_text
+                for m in store.memories
+                if m.memory_id in proto.constituent_memory_ids
             )[:3]
             self.app.push_screen(DetailScreen(mems))
 
@@ -310,6 +318,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                     prompt = f"{context}\nUser: {cmd}\nAssistant:"
                     from .local_llm import LocalChatModel
                     llm = LocalChatModel()
+                    prompt = llm.prepare_prompt(agent, prompt)
                     reply = llm.reply(prompt)
                     self.text_log.write_line(reply)
                 except Exception as exc:  # pragma: no cover - runtime errors
