@@ -1,12 +1,21 @@
 from typing import Iterable, List
 
-from .spacy_utils import get_nlp
+from .spacy_utils import get_nlp, simple_sentences
 
 
 def _sentences(text: str) -> List[str]:
     """Split text into sentences using spaCy."""
-    doc = get_nlp()(text.strip())
-    return [sent.text.strip() for sent in doc.sents if sent.text.strip()]
+    nlp = get_nlp()
+    try:
+        doc = nlp(text.strip())
+        sents = [sent.text.strip() for sent in doc.sents if sent.text.strip()]
+    except Exception:  # pragma: no cover - fallback
+        sents = []
+    if "parser" not in nlp.pipe_names:
+        sents = simple_sentences(text)
+    if len(sents) <= 1 or ("p.m." in text or "a.m." in text) and len(sents) < 3:
+        sents = simple_sentences(text)
+    return sents
 
 
 def _jaccard(a: Iterable[str], b: Iterable[str]) -> float:

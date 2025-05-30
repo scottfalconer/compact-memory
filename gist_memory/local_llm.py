@@ -78,11 +78,18 @@ class LocalChatModel:
         prompt_trimmed = self.tokenizer.decode(
             inputs["input_ids"][0], skip_special_tokens=True
         )
-        outputs = self.model.generate(
-            **inputs,
-            max_new_tokens=self.max_new_tokens,
-            pad_token_id=getattr(self.tokenizer, "eos_token_id", None),
-        )
+        try:
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=self.max_new_tokens,
+                pad_token_id=getattr(self.tokenizer, "eos_token_id", None),
+            )
+        except TypeError:
+            outputs = self.model.__class__.generate(
+                **inputs,
+                max_new_tokens=self.max_new_tokens,
+                pad_token_id=getattr(self.tokenizer, "eos_token_id", None),
+            )
         text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
         # return only the newly generated portion
         if text.startswith(prompt):
