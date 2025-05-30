@@ -17,6 +17,7 @@ from .json_npy_store import JsonNpyVectorStore
 from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
 from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
 from .config import DEFAULT_BRAIN_PATH
+from .memory_cues import MemoryCueRenderer
 
 app = typer.Typer(help="Gist Memory command line interface")
 console = Console()
@@ -207,7 +208,6 @@ def talk(
     model_name: str = typer.Option("distilgpt2", help="Local chat model"),
 ) -> None:
     """Talk to the brain using a local LLM."""
-    from .local_llm import LocalChatModel
 
     path = Path(agent_name)
     with PersistenceLock(path):
@@ -225,6 +225,7 @@ def talk(
         context = "\n".join(parts)
 
     prompt = f"{context}\nUser: {message}\nAssistant:"
+    from .local_llm import LocalChatModel
     llm = LocalChatModel(model_name=model_name)
     reply = llm.reply(prompt)
     typer.echo(reply)
