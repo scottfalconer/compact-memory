@@ -12,6 +12,7 @@ from .canonical import render_five_w_template
 from .memory_cues import MemoryCueRenderer
 from .conflict_flagging import ConflictFlagger, ConflictLogger
 from .experiment_runner import ExperimentConfig, run_experiment
+from .history_experiment import HistoryExperimentConfig, run_history_experiment
 from .conflict import SimpleConflictLogger, negation_conflict
 from .talk_session import TalkSessionManager
 from .utils import load_agent
@@ -44,6 +45,8 @@ __all__ = list(
             "SimpleConflictLogger",
             "ExperimentConfig",
             "run_experiment",
+            "HistoryExperimentConfig",
+            "run_history_experiment",
             "negation_conflict",
             "TalkSessionManager",
             "load_agent",
