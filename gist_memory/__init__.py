@@ -1,7 +1,7 @@
 """Gist Memory Agent package."""
 
 from .cli import app
-from .models import BeliefPrototype, RawMemory
+from .models import BeliefPrototype, RawMemory, ConversationalTurn
 from .json_npy_store import JsonNpyVectorStore, VectorStore
 from .agent import Agent, QueryResult, PrototypeHit, MemoryHit
 from .embedding_pipeline import embed_text
@@ -25,6 +25,7 @@ __all__ = list(
             "app",
             "BeliefPrototype",
             "RawMemory",
+            "ConversationalTurn",
             "JsonNpyVectorStore",
             "VectorStore",
             "Agent",

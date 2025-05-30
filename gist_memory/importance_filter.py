@@ -76,7 +76,7 @@ def dynamic_importance_filter(text: str, nlp: Optional[object] = None) -> str:
         if re.search(r"\b\d{4}\b", part):
             salient.append(line)
             continue
-        if re.search(r"\b[A-Z][a-z]+\b", part):
+        if nlp is None and re.search(r"\b[A-Z][a-z]+\b", part):
             salient.append(line)
             continue
         if re.search(r"decision|decided", part, re.IGNORECASE):

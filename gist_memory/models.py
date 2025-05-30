@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
+import uuid
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -47,3 +48,19 @@ class RawMemory(BaseModel):
     creation_ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
     raw_text: str
     embedding: Optional[List[float]] = None
+
+
+class ConversationalTurn(BaseModel):
+    """Record of a single conversational turn."""
+
+    user_message: str
+    agent_response: str
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0)
+    )
+    turn_id: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    turn_embedding: Optional[List[float]] = None
+    trace_strength: float = 1.0
+    current_activation_level: float = 0.0
+    metadata: Optional[Dict[str, Any]] = None
+

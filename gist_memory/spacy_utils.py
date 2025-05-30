@@ -1,4 +1,5 @@
 import threading
+import re
 
 import spacy
 
@@ -13,5 +14,15 @@ def get_nlp():
     if _nlp is None:
         with _lock:
             if _nlp is None:
-                _nlp = spacy.load(_MODEL_NAME)
+                try:
+                    _nlp = spacy.load(_MODEL_NAME)
+                except Exception:  # pragma: no cover - fallback path
+                    nlp = spacy.blank("en")
+                    nlp.add_pipe("sentencizer")
+                    _nlp = nlp
     return _nlp
+
+
+def simple_sentences(text: str) -> list[str]:
+    pattern = re.compile(r"(?<!\bDr\.)(?<=[.!?])\s+(?=[A-Z])")
+    return [s.strip() for s in re.split(pattern, text.strip()) if s.strip()]
