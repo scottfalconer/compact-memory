@@ -9,7 +9,8 @@ apt-get install -y --no-install-recommends python3 python3-pip git
 
 # Install Python dependencies if requirements.txt is present
 if [ -f requirements.txt ]; then
-    pip3 install --no-cache-dir -r requirements.txt
+pip3 install --no-cache-dir -r requirements.txt
+python3 -m spacy download en_core_web_sm
 else
     pip3 install --no-cache-dir textual
 fi
