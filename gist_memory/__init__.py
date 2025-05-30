@@ -10,6 +10,7 @@ from .config import DEFAULT_BRAIN_PATH
 from .local_llm import LocalChatModel
 from .canonical import render_five_w_template
 from .memory_cues import MemoryCueRenderer
+from .conflict_flagging import ConflictFlagger, ConflictLogger
 
 __all__ = [
     "app",
@@ -28,6 +29,8 @@ __all__ = [
     "LocalChatModel",
     "render_five_w_template",
     "MemoryCueRenderer",
+    "ConflictFlagger",
+    "ConflictLogger",
 ]
 
 # Semantic version of the package
