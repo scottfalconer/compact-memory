@@ -19,8 +19,16 @@ def negation_conflict(text_a: str, text_b: str) -> bool:
     mb = _PATTERN.match(text_b)
     if not ma or not mb:
         return False
-    subj_a, neg_a, obj_a = ma.group(1).strip().lower(), bool(ma.group(2)), ma.group(3).strip().lower()
-    subj_b, neg_b, obj_b = mb.group(1).strip().lower(), bool(mb.group(2)), mb.group(3).strip().lower()
+    subj_a, neg_a, obj_a = (
+        ma.group(1).strip().lower(),
+        bool(ma.group(2)),
+        ma.group(3).strip().lower(),
+    )
+    subj_b, neg_b, obj_b = (
+        mb.group(1).strip().lower(),
+        bool(mb.group(2)),
+        mb.group(3).strip().lower(),
+    )
     return subj_a == subj_b and obj_a == obj_b and neg_a != neg_b
 
 

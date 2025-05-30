@@ -15,7 +15,9 @@ def load_agent(path: Path) -> Agent:
     try:
         store = JsonNpyVectorStore(path=str(path))
     except FileNotFoundError as exc:
-        raise FileNotFoundError(f"Agent directory '{path}' not found or is invalid") from exc
+        raise FileNotFoundError(
+            f"Agent directory '{path}' not found or is invalid"
+        ) from exc
     except EmbeddingDimensionMismatchError:
         dim = int(embed_text(["dim"]).shape[1])
         store = JsonNpyVectorStore(path=str(path), embedding_dim=dim)
@@ -24,5 +26,6 @@ def load_agent(path: Path) -> Agent:
     chunker_cls = _CHUNKER_REGISTRY.get(chunker_id, SentenceWindowChunker)
     tau = float(store.meta.get("tau", 0.8))
     return Agent(store, chunker=chunker_cls(), similarity_threshold=tau)
+
 
 __all__ = ["load_agent"]

@@ -59,7 +59,8 @@ class ActiveMemoryManager:
                     recency = idx / (n - 1)
                 score = (
                     self.config_pruning_weight_trace_strength * t.trace_strength
-                    + self.config_pruning_weight_current_activation * t.current_activation_level
+                    + self.config_pruning_weight_current_activation
+                    * t.current_activation_level
                     + self.config_pruning_weight_recency * recency
                 )
                 scores.append(score)

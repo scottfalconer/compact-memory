@@ -32,4 +32,5 @@ def render_five_w_template(
     parts.append(f"CONTENT: {text}")
     return " ".join(parts)
 
+
 __all__ = ["render_five_w_template"]

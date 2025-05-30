@@ -22,8 +22,7 @@ class Chunker(ABC):
     id: str
 
     @abstractmethod
-    def chunk(self, text: str) -> List[str]:
-        ...
+    def chunk(self, text: str) -> List[str]: ...
 
     def config(self) -> Dict[str, int | str]:
         return {}

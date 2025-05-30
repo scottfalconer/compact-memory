@@ -103,7 +103,9 @@ class TemplateBuilder:
 
     id: str = "default"
 
-    def build(self, sentence: str, slots: dict[str, str]) -> str:  # pragma: no cover - interface
+    def build(
+        self, sentence: str, slots: dict[str, str]
+    ) -> str:  # pragma: no cover - interface
         raise NotImplementedError
 
     def config(self) -> dict[str, int | str]:

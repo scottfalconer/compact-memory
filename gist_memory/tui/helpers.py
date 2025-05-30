@@ -17,7 +17,9 @@ def _disk_usage(path: Path) -> int:
     return size
 
 
-def _install_models(embed_model: str = "all-MiniLM-L6-v2", chat_model: str = "distilgpt2") -> str:
+def _install_models(
+    embed_model: str = "all-MiniLM-L6-v2", chat_model: str = "distilgpt2"
+) -> str:
     """Download the default embedding and chat models."""
     try:
         from sentence_transformers import SentenceTransformer

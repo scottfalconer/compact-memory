@@ -15,8 +15,12 @@ class BeliefPrototype(BaseModel):
     summary_text: str = Field(default="")
     strength: float = 1.0
     confidence: float = 1.0
-    creation_ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
-    last_updated_ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
+    creation_ts: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0)
+    )
+    last_updated_ts: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0)
+    )
     constituent_memory_ids: List[str] = Field(default_factory=list)
 
     @field_validator("summary_text")
@@ -45,7 +49,9 @@ class RawMemory(BaseModel):
     raw_text_hash: str
     assigned_prototype_id: Optional[str] = None
     source_document_id: Optional[str] = None
-    creation_ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
+    creation_ts: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0)
+    )
     raw_text: str
     embedding: Optional[List[float]] = None
 
@@ -63,4 +69,3 @@ class ConversationalTurn(BaseModel):
     trace_strength: float = 1.0
     current_activation_level: float = 0.0
     metadata: Optional[Dict[str, Any]] = None
-

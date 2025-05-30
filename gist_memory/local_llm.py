@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import inspect
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - for type hints only
+    from .agent import Agent
 
 from .importance_filter import dynamic_importance_filter
 
@@ -64,7 +67,9 @@ class LocalChatModel:
 
         if isinstance(ids_raw, (list, tuple)):
             ids = list(
-                ids_raw[0] if ids_raw and isinstance(ids_raw[0], (list, tuple)) else ids_raw
+                ids_raw[0]
+                if ids_raw and isinstance(ids_raw[0], (list, tuple))
+                else ids_raw
             )
         else:
             try:
@@ -127,7 +132,7 @@ class LocalChatModel:
     # ------------------------------------------------------------------
     def prepare_prompt(
         self,
-        agent: "Agent",
+        agent: Agent,
         prompt: str,
         *,
         recent_tokens: int = 600,
