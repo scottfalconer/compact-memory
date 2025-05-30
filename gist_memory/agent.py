@@ -316,3 +316,8 @@ class Agent:
             "memories": mem_results,
             "status": "ok",
         }
+
+    # ------------------------------------------------------------------
+    def receive_channel_message(self, text: str) -> None:
+        """Handle a message broadcast from a talk session."""
+        self.add_memory(text)
