@@ -84,12 +84,16 @@ class LocalChatModel:
         if "self" in sig.parameters:
             outputs = cls_fn(
                 self.model,
+        try:
+            outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=self.max_new_tokens,
                 pad_token_id=getattr(self.tokenizer, "eos_token_id", None),
             )
         else:
             outputs = cls_fn(
+        except TypeError:
+            outputs = self.model.__class__.generate(
                 **inputs,
                 max_new_tokens=self.max_new_tokens,
                 pad_token_id=getattr(self.tokenizer, "eos_token_id", None),

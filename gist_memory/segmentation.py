@@ -2,6 +2,7 @@ from typing import Iterable, List
 
 from .spacy_utils import get_nlp
 import re
+from .spacy_utils import get_nlp, simple_sentences
 
 
 def _sentences(text: str) -> List[str]:
@@ -20,6 +21,16 @@ def _sentences(text: str) -> List[str]:
             merged.append(part.strip())
             i += 1
         sents = [m for m in merged if m]
+    nlp = get_nlp()
+    try:
+        doc = nlp(text.strip())
+        sents = [sent.text.strip() for sent in doc.sents if sent.text.strip()]
+    except Exception:  # pragma: no cover - fallback
+        sents = []
+    if "parser" not in nlp.pipe_names:
+        sents = simple_sentences(text)
+    if len(sents) <= 1 or ("p.m." in text or "a.m." in text) and len(sents) < 3:
+        sents = simple_sentences(text)
     return sents
 
 
