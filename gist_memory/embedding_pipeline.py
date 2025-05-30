@@ -79,7 +79,9 @@ def _load_model(model_name: str, device: str) -> SentenceTransformer:
 
 
 @functools.lru_cache(maxsize=5000)
-def _embed_cached(text: str, model_name: str, device: str, batch_size: int) -> np.ndarray:
+def _embed_cached(
+    text: str, model_name: str, device: str, batch_size: int
+) -> np.ndarray:
     model = _load_model(model_name, device)
     vec = model.encode(text, batch_size=batch_size, convert_to_numpy=True)
     vec = vec.astype(np.float32)
@@ -141,4 +143,3 @@ __all__ = [
     "embed_text",
     "register_embedding",
 ]
-

@@ -45,7 +45,6 @@ def main(
     ctx.obj = {"verbose": verbose}
 
 
-
 class PersistenceLock:
     def __init__(self, path: Path) -> None:
         self.file = (path / ".lock").open("a+")
@@ -165,14 +164,19 @@ def add(
         agent.store.save()
         chunks = agent.chunker.chunk(input_text)
         from tqdm import tqdm
+
         bar = tqdm(total=len(chunks), desc="Adding", disable=False)
+
         def cb(i, total, spawned, pid, sim):
             bar.update(1)
             if VERBOSE:
                 act = "spawned" if spawned else "updated"
                 sim_str = f" (similarity: {sim:.2f})" if sim is not None else ""
                 typer.echo(f"Chunk {i}/{total}: {act} {pid}{sim_str}")
-        results = agent.add_memory(input_text, who=actor, progress_callback=cb, save=not dry_run)
+
+        results = agent.add_memory(
+            input_text, who=actor, progress_callback=cb, save=not dry_run
+        )
         bar.close()
         if not dry_run:
             agent.store.save()
@@ -324,12 +328,14 @@ def talk(
 
     prompt = f"{context}\nUser: {message}\nAssistant:"
     from .local_llm import LocalChatModel
+
     try:
         llm = LocalChatModel(model_name=model_name)
     except RuntimeError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1)
     from tqdm import tqdm
+
     bar = tqdm(total=1, desc="Loading chat model", disable=False)
     llm = LocalChatModel(model_name=model_name)
     bar.update(1)
@@ -437,7 +443,9 @@ def run_experiment_cmd(
     work_dir: Optional[Path] = typer.Option(
         None, help="Directory for the temporary store"
     ),
-    similarity_threshold: float = typer.Option(0.8, "--tau", help="Similarity threshold"),
+    similarity_threshold: float = typer.Option(
+        0.8, "--tau", help="Similarity threshold"
+    ),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ) -> None:
     """Run a simple ingestion experiment."""

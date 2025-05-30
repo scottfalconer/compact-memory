@@ -21,7 +21,9 @@ class VectorStore:
     def add_prototype(self, proto: BeliefPrototype, vec: np.ndarray) -> None:
         raise NotImplementedError
 
-    def update_prototype(self, proto_id: str, new_vec: np.ndarray, memory_id: str) -> None:
+    def update_prototype(
+        self, proto_id: str, new_vec: np.ndarray, memory_id: str
+    ) -> None:
         raise NotImplementedError
 
     def find_nearest(self, vec: np.ndarray, k: int) -> List[Tuple[str, float]]:
@@ -71,8 +73,12 @@ class JsonNpyVectorStore(VectorStore):
                 "embedding_model": self.embedding_model,
                 "embedding_dim": self.embedding_dim,
                 "normalized": self.normalized,
-                "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                "updated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "created_at": datetime.now(timezone.utc)
+                .isoformat()
+                .replace("+00:00", "Z"),
+                "updated_at": datetime.now(timezone.utc)
+                .isoformat()
+                .replace("+00:00", "Z"),
             }
             self.proto_vectors = np.zeros((0, self.embedding_dim), dtype=np.float32)
             self.save()
@@ -142,7 +148,9 @@ class JsonNpyVectorStore(VectorStore):
         self.faiss_index = None
 
     def save(self) -> None:
-        self.meta["updated_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        self.meta["updated_at"] = (
+            datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        )
         with open(self._meta_path(), "w") as f:
             yaml.safe_dump(self.meta, f)
         with open(self._proto_json_path(), "w") as f:
@@ -218,5 +226,3 @@ class JsonNpyVectorStore(VectorStore):
 
     def add_memory(self, memory: RawMemory) -> None:
         self.memories.append(memory)
-
-

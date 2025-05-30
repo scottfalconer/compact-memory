@@ -1,4 +1,5 @@
 """Input widget with tab-based autocomplete."""
+
 from __future__ import annotations
 
 from typing import Iterable
@@ -11,7 +12,9 @@ from textual import events
 class TabAutocompleteInput(Input):
     """Input widget that accepts suggestions with the Tab key."""
 
-    def __init__(self, *args, suggestions: Iterable[str] | None = None, **kwargs) -> None:
+    def __init__(
+        self, *args, suggestions: Iterable[str] | None = None, **kwargs
+    ) -> None:
         suggester = SuggestFromList(suggestions) if suggestions else None
         super().__init__(*args, suggester=suggester, **kwargs)
 
@@ -23,5 +26,6 @@ class TabAutocompleteInput(Input):
             event.stop()
             return
         await super()._on_key(event)
+
 
 __all__ = ["TabAutocompleteInput"]

@@ -30,7 +30,9 @@ talk_mgr: TalkSessionManager
 session_id: str
 
 
-def set_context(a: Agent, s: JsonNpyVectorStore, path: Path, mgr: TalkSessionManager, sid: str) -> None:
+def set_context(
+    a: Agent, s: JsonNpyVectorStore, path: Path, mgr: TalkSessionManager, sid: str
+) -> None:
     global agent, store, store_path, talk_mgr, session_id
     agent = a
     store = s
@@ -272,9 +274,7 @@ class ChatScreen(StatusMixin):
         talk_mgr.unregister_listener(session_id, "tui")
 
     def _on_message(self, sender: str, message: str) -> None:
-        self.app.call_from_thread(
-            self.feed.write_line, f"{sender}: {message}"
-        )
+        self.app.call_from_thread(self.feed.write_line, f"{sender}: {message}")
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         talk_mgr.post_message(session_id, "user", event.value)
@@ -381,7 +381,12 @@ class ConsoleScreen(StatusMixin):
                 self.text_log.write_line(msg)
             try:
                 cues = MemoryCueRenderer().render(
-                    [p["summary"] for p in agent.query(cmd, top_k_prototypes=3, top_k_memories=0)["prototypes"]]
+                    [
+                        p["summary"]
+                        for p in agent.query(cmd, top_k_prototypes=3, top_k_memories=0)[
+                            "prototypes"
+                        ]
+                    ]
                 )
                 parts = [cues] if cues else []
                 for proto in store.prototypes:

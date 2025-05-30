@@ -322,7 +322,9 @@ class Agent:
         }
 
     # ------------------------------------------------------------------
-    def receive_channel_message(self, source_id: str, message_text: str) -> dict[str, object]:
+    def receive_channel_message(
+        self, source_id: str, message_text: str
+    ) -> dict[str, object]:
         """Process ``message_text`` posted to the shared channel by ``source_id``.
 
         The default behaviour is intentionally simple:
@@ -381,9 +383,11 @@ class Agent:
             text,
             source_document_id=f"session_post_from:{source_id}",
         )
-        summary.update({
-            "action": "ingest",
-            "chunks_ingested": len(results),
-            "reply": None,
-        })
+        summary.update(
+            {
+                "action": "ingest",
+                "chunks_ingested": len(results),
+                "reply": None,
+            }
+        )
         return summary

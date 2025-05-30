@@ -48,28 +48,22 @@ class VectorStore(ABC):
         self.embedder = embedder or RandomEmbedder()
 
     @abstractmethod
-    def add_memory(self, text: str) -> Memory:
-        ...
+    def add_memory(self, text: str) -> Memory: ...
 
     @abstractmethod
-    def query(self, text: str, n: int = 5) -> List[Memory]:
-        ...
+    def query(self, text: str, n: int = 5) -> List[Memory]: ...
 
     @abstractmethod
-    def decode_prototype(self, pid: str, n: int = 1) -> List[Memory]:
-        ...
+    def decode_prototype(self, pid: str, n: int = 1) -> List[Memory]: ...
 
     @abstractmethod
-    def summarize_prototype(self, pid: str, max_words: int = 50) -> str | None:
-        ...
+    def summarize_prototype(self, pid: str, max_words: int = 50) -> str | None: ...
 
     @abstractmethod
-    def dump_memories(self, prototype_id: str | None = None) -> List[Memory]:
-        ...
+    def dump_memories(self, prototype_id: str | None = None) -> List[Memory]: ...
 
     @abstractmethod
-    def prototype_count(self) -> int:
-        ...
+    def prototype_count(self) -> int: ...
 
 
 class JSONVectorStore(VectorStore):
@@ -165,7 +159,9 @@ class JSONVectorStore(VectorStore):
         self.proto_embeds.append(embed)
         return pid
 
-    def _update_prototype(self, pid: str, embed: np.ndarray, alpha: float = 0.1) -> None:
+    def _update_prototype(
+        self, pid: str, embed: np.ndarray, alpha: float = 0.1
+    ) -> None:
         if pid not in self.prototypes:
             self._create_prototype(embed)
             return
@@ -178,7 +174,7 @@ class JSONVectorStore(VectorStore):
         if count <= 1:
             self.threshold = self.base_threshold
         else:
-            adjusted = self.base_threshold / (count ** self.decay_exponent)
+            adjusted = self.base_threshold / (count**self.decay_exponent)
             self.threshold = max(self.min_threshold, adjusted)
 
     def prototype_count(self) -> int:
@@ -247,7 +243,11 @@ class JSONVectorStore(VectorStore):
         return " ".join(words[:max_words])
 
     def dump_memories(self, prototype_id: str | None = None) -> List[Memory]:
-        mems = [m for m in self.memories if prototype_id is None or m.prototype_id == prototype_id]
+        mems = [
+            m
+            for m in self.memories
+            if prototype_id is None or m.prototype_id == prototype_id
+        ]
         return list(mems)
 
 
@@ -342,7 +342,9 @@ class ChromaVectorStore(JSONVectorStore):
 
     def dump_memories(self, prototype_id: str | None = None) -> List[Memory]:
         where = {"prototype_id": prototype_id} if prototype_id else None
-        mem_res = self.memory_collection.get(where=where, include=["metadatas", "documents"])
+        mem_res = self.memory_collection.get(
+            where=where, include=["metadatas", "documents"]
+        )
         memories: list[Memory] = []
         for mid, doc, meta in zip(
             mem_res.get("ids", []),
@@ -358,7 +360,9 @@ class ChromaVectorStore(JSONVectorStore):
         self.proto_collection.add(ids=[pid], embeddings=[embed])
         return pid
 
-    def _update_prototype(self, pid: str, embed: np.ndarray, alpha: float = 0.1) -> None:
+    def _update_prototype(
+        self, pid: str, embed: np.ndarray, alpha: float = 0.1
+    ) -> None:
         proto = self.proto_collection.get(ids=[pid], include=["embeddings"])
         if not proto["ids"]:
             self.proto_collection.add(ids=[pid], embeddings=[embed])
@@ -372,7 +376,7 @@ class ChromaVectorStore(JSONVectorStore):
         if count <= 1:
             self.threshold = self.base_threshold
         else:
-            adjusted = self.base_threshold / (count ** self.decay_exponent)
+            adjusted = self.base_threshold / (count**self.decay_exponent)
             self.threshold = max(self.min_threshold, adjusted)
 
     def prototype_count(self) -> int:
@@ -400,10 +404,14 @@ class CloudVectorStore(JSONVectorStore):
     def query(self, text: str, n: int = 5) -> List[Memory]:  # pragma: no cover - stub
         raise NotImplementedError("CloudVectorStore not implemented yet")
 
-    def decode_prototype(self, pid: str, n: int = 1) -> List[Memory]:  # pragma: no cover - stub
+    def decode_prototype(
+        self, pid: str, n: int = 1
+    ) -> List[Memory]:  # pragma: no cover - stub
         raise NotImplementedError("CloudVectorStore not implemented yet")
 
-    def dump_memories(self, prototype_id: str | None = None) -> List[Memory]:  # pragma: no cover - stub
+    def dump_memories(
+        self, prototype_id: str | None = None
+    ) -> List[Memory]:  # pragma: no cover - stub
         raise NotImplementedError("CloudVectorStore not implemented yet")
 
 
