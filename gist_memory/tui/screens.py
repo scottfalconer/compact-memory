@@ -15,7 +15,12 @@ from ..agent import Agent
 from ..json_npy_store import JsonNpyVectorStore
 from ..talk_session import TalkSessionManager
 
-from .helpers import _disk_usage, _install_models
+from .helpers import (
+    _disk_usage,
+    _install_models,
+    _path_suggestions,
+    _brain_path_suggestions,
+)
 
 try:  # Textual 0.x
     from textual.widgets import TextLog  # type: ignore
@@ -288,7 +293,7 @@ class ConsoleScreen(StatusMixin):
         yield Header()
         self.text_log = TextLog(id="console")
         yield self.text_log
-        suggestions = [
+        base_suggestions = [
             "/ingest ",
             "/query ",
             "/beliefs",
@@ -301,8 +306,25 @@ class ConsoleScreen(StatusMixin):
             "/help",
             "/?",
         ]
+
+        self.recent_queries: list[str] = []
+
+        def suggest(value: str) -> list[str]:
+            if value.startswith("/log "):
+                prefix = value[len("/log ") :]
+                return ["/log " + p for p in _path_suggestions(prefix)]
+            if value.startswith("/query "):
+                prefix = value[len("/query ") :]
+                opts = [q for q in self.recent_queries if q.startswith(prefix)]
+                for proto in store.prototypes:
+                    s = proto.summary_text
+                    if s.startswith(prefix):
+                        opts.append(s)
+                return ["/query " + o for o in opts][:10]
+            return [s for s in base_suggestions if s.startswith(value)]
+
         self.input = TabAutocompleteInput(
-            placeholder="/help for commands", id="cmd", suggestions=suggestions
+            placeholder="/help for commands", id="cmd", suggestions=suggest
         )
         yield self.input
         yield Static("", id="status")
@@ -329,6 +351,8 @@ class ConsoleScreen(StatusMixin):
             event.input.disabled = False
         elif cmd.startswith("/query "):
             q = cmd[len("/query ") :]
+            self.recent_queries.insert(0, q)
+            self.recent_queries = self.recent_queries[:10]
             self.set_status("Querying...")
             event.input.disabled = True
             res = agent.query(q, top_k_prototypes=3, top_k_memories=3)
@@ -419,9 +443,16 @@ class GroupSessionScreen(StatusMixin):
         feed = TextLog(id="feed", highlight=False)
         yield Header()
         yield Container(table, feed, id="sess")
-        suggestions = ["/invite ", "/kick ", "/end"]
+        base_suggestions = ["/invite ", "/kick ", "/end"]
+
+        def suggest(value: str) -> list[str]:
+            if value.startswith("/invite "):
+                prefix = value[len("/invite ") :]
+                return ["/invite " + p for p in _brain_path_suggestions(store_path.parent, prefix)]
+            return [s for s in base_suggestions if s.startswith(value)]
+
         self.input = TabAutocompleteInput(
-            placeholder="message", id="msg", suggestions=suggestions
+            placeholder="message", id="msg", suggestions=suggest
         )
         yield self.input
         yield Static("", id="status")
