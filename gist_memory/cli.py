@@ -294,5 +294,28 @@ def download_chat_model(
     typer.echo(f"Downloaded {model_name}")
 
 
+@app.command("experiment")
+def run_experiment_cmd(
+    dataset: Path = typer.Argument(..., help="Text file to ingest"),
+    work_dir: Optional[Path] = typer.Option(
+        None, help="Directory for the temporary store"
+    ),
+    similarity_threshold: float = typer.Option(0.8, "--tau", help="Similarity threshold"),
+    json_output: bool = typer.Option(False, "--json", help="JSON output"),
+) -> None:
+    """Run a simple ingestion experiment."""
+    from .experiment_runner import ExperimentConfig, run_experiment
+
+    cfg = ExperimentConfig(
+        dataset=dataset, similarity_threshold=similarity_threshold, work_dir=work_dir
+    )
+    metrics = run_experiment(cfg)
+    if json_output:
+        typer.echo(json.dumps(metrics))
+    else:
+        for k, v in metrics.items():
+            typer.echo(f"{k}: {v}")
+
+
 if __name__ == "__main__":
     app()
