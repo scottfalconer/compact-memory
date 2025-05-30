@@ -11,6 +11,6 @@ sentence-transformers
 transformers
 textual  # required for the TUI
 rich>=13.6
-nltk
+spacy
 typer[all]
 portalocker

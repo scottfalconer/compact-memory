@@ -6,11 +6,7 @@ from typing import Dict, List, Type
 
 import tiktoken
 
-try:
-    import nltk
-    nltk.data.find("tokenizers/punkt")
-except (ImportError, LookupError):  # pragma: no cover - fallback if punkt missing
-    nltk = None
+from .spacy_utils import get_nlp
 
 
 _CHUNKER_REGISTRY: Dict[str, Type["Chunker"]] = {}
@@ -54,18 +50,8 @@ class SentenceWindowChunker(Chunker):
         }
 
     def _sentences(self, text: str) -> List[str]:
-        if nltk is not None:
-            try:
-                from nltk.tokenize import sent_tokenize
-
-                return sent_tokenize(text)
-            except LookupError:  # pragma: no cover - dataset missing
-                pass
-        # simple regex fallback
-        import re
-
-        parts = re.split(r"(?<=[.!?])\s+|\n+", text.strip())
-        return [p.strip() for p in parts if p.strip()]
+        doc = get_nlp()(text.strip())
+        return [s.text.strip() for s in doc.sents if s.text.strip()]
 
     def chunk(self, text: str) -> List[str]:
         sents = self._sentences(text)

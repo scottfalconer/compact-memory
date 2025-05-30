@@ -21,7 +21,7 @@ dependencies = [
     "pyyaml",
     "sentence-transformers",
     "transformers",
-    "nltk",
+    "spacy",
     "typer[all]",
     "portalocker",
     "textual>=0.46",

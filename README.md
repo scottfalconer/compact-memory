@@ -25,6 +25,8 @@ the default local embedding model (only needed the first time):
 
 ```bash
 pip install -r requirements.txt
+# download the spaCy model for sentence segmentation
+python -m spacy download en_core_web_sm
 # fetch the "all-MiniLM-L6-v2" model so the local embedder works offline
 gist-memory download-model --model-name all-MiniLM-L6-v2
 # fetch the default chat model for talk mode

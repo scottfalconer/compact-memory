@@ -1,11 +1,12 @@
-import re
-from typing import List, Iterable
+from typing import Iterable, List
+
+from .spacy_utils import get_nlp
 
 
 def _sentences(text: str) -> List[str]:
-    """Split text into rough sentences."""
-    parts = re.split(r"(?<=[.!?])\s+|\n+", text.strip())
-    return [p.strip() for p in parts if p.strip()]
+    """Split text into sentences using spaCy."""
+    doc = get_nlp()(text.strip())
+    return [sent.text.strip() for sent in doc.sents if sent.text.strip()]
 
 
 def _jaccard(a: Iterable[str], b: Iterable[str]) -> float:
