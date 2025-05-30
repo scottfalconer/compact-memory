@@ -2,11 +2,15 @@ import json
 import shutil
 from pathlib import Path
 from typing import Optional
+import logging
 
 import typer
 import portalocker
 from rich.table import Table
 from rich.console import Console
+
+from .logging_utils import configure_logging
+from .memory_cues import MemoryCueRenderer
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
@@ -16,6 +20,21 @@ from .config import DEFAULT_BRAIN_PATH
 
 app = typer.Typer(help="Gist Memory command line interface")
 console = Console()
+
+
+@app.callback(invoke_without_command=False)
+def main(
+    ctx: typer.Context,
+    log_file: Optional[Path] = typer.Option(
+        None, "--log-file", help="Write debug logs to this file"
+    ),
+    verbose: bool = typer.Option(False, "--verbose", help="Enable debug logging"),
+) -> None:
+    """Configure logging before executing commands."""
+    if log_file:
+        level = logging.DEBUG if verbose else logging.INFO
+        configure_logging(log_file, level)
+
 
 
 class PersistenceLock:
@@ -193,7 +212,12 @@ def talk(
     path = Path(agent_name)
     with PersistenceLock(path):
         agent = _load_agent(path)
-        parts = []
+        # render short memory cue tags for the most relevant prototypes
+        q = agent.query(message, top_k_prototypes=3, top_k_memories=0)
+        cue_renderer = MemoryCueRenderer()
+        cues = cue_renderer.render([p["summary"] for p in q["prototypes"]])
+
+        parts = [cues] if cues else []
         for proto in agent.store.prototypes:
             parts.append(f"{proto.prototype_id}: {proto.summary_text}")
         for mem in agent.store.memories:

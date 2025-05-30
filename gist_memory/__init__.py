@@ -9,6 +9,7 @@ from .chunker import SentenceWindowChunker, FixedSizeChunker
 from .config import DEFAULT_BRAIN_PATH
 from .local_llm import LocalChatModel
 from .canonical import render_five_w_template
+from .memory_cues import MemoryCueRenderer
 
 __all__ = [
     "app",
@@ -26,6 +27,7 @@ __all__ = [
     "DEFAULT_BRAIN_PATH",
     "LocalChatModel",
     "render_five_w_template",
+    "MemoryCueRenderer",
 ]
 
 # Semantic version of the package

@@ -9,6 +9,8 @@ from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from .config import DEFAULT_BRAIN_PATH
 from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
+from .logging_utils import configure_logging
+from .memory_cues import MemoryCueRenderer
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +84,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 "/beliefs          - list prototypes\n"
                 "/stats            - show store stats\n"
                 "/install-models   - download models\n"
+                "/log PATH        - write debug log\n"
                 "/exit             - quit"
             )
             yield Header()
@@ -225,8 +228,9 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 "/query ",
                 "/beliefs",
                 "/stats",
-                "/install-models",
-                "/exit",
+                "/install-models", 
+                "/log ",
+                "/exit", 
                 "/quit",
                 "/help",
                 "/?",
@@ -266,6 +270,12 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 self.text_log.write_line(f"prototypes: {len(store.prototypes)}")
             elif cmd == "/beliefs":
                 self.app.push_screen(BeliefScreen())
+            elif cmd.startswith("/log "):
+                path = Path(cmd[len("/log ") :]).expanduser()
+                if not path.is_absolute():
+                    path = store_path / path
+                configure_logging(path)
+                self.text_log.write_line(f"logging to {path}")
             elif cmd == "/install-models":
                 msg = _install_models()
                 self.text_log.write_line(msg)
@@ -277,6 +287,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 self.text_log.write_line("/beliefs     - list prototypes")
                 self.text_log.write_line("/stats       - show stats")
                 self.text_log.write_line("/install-models - download models")
+                self.text_log.write_line("/log PATH   - write debug log")
                 self.text_log.write_line("/exit        - quit")
             elif cmd:
                 results = agent.add_memory(cmd)
@@ -287,15 +298,17 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                         msg = f"added to {res['prototype_id']}"
                     self.text_log.write_line(msg)
                 try:
-                    from .local_llm import LocalChatModel
-
-                    parts = []
+                    cues = MemoryCueRenderer().render(
+                        [p["summary"] for p in agent.query(cmd, top_k_prototypes=3, top_k_memories=0)["prototypes"]]
+                    )
+                    parts = [cues] if cues else []
                     for proto in store.prototypes:
                         parts.append(f"{proto.prototype_id}: {proto.summary_text}")
                     for mem in store.memories:
                         parts.append(f"{mem.memory_id}: {mem.raw_text}")
                     context = "\n".join(parts)
                     prompt = f"{context}\nUser: {cmd}\nAssistant:"
+                    from .local_llm import LocalChatModel
                     llm = LocalChatModel()
                     reply = llm.reply(prompt)
                     self.text_log.write_line(reply)
