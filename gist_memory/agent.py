@@ -21,6 +21,7 @@ from .memory_creation import (
     MemoryCreator,
 )
 from .canonical import render_five_w_template
+from .conflict import ConflictLogger, negation_conflict
 
 
 class VectorIndexCorrupt(RuntimeError):
@@ -123,9 +124,25 @@ class Agent:
         self._dedup = _LRUSet(size=dedup_cache)
         if isinstance(store.path, (str, Path)):
             p = Path(store.path) / "evidence.jsonl"
+            c = Path(store.path) / "conflicts.jsonl"
         else:
             p = Path("evidence.jsonl")
+            c = Path("conflicts.jsonl")
         self._evidence = EvidenceWriter(p)
+        self._conflicts = ConflictLogger(c)
+
+    # ------------------------------------------------------------------
+    def _log_conflict(self, proto_id: str, mem_a: RawMemory, mem_b: RawMemory) -> None:
+        self._conflicts.add(proto_id, mem_a, mem_b)
+
+    def _check_conflicts(self, proto_id: str, new_mem: RawMemory) -> None:
+        for mem in self.store.memories:
+            if mem.memory_id == new_mem.memory_id:
+                continue
+            if mem.assigned_prototype_id != proto_id:
+                continue
+            if negation_conflict(mem.raw_text, new_mem.raw_text):
+                self._log_conflict(proto_id, mem, new_mem)
 
     # ------------------------------------------------------------------
     def _write_evidence(self, belief_id: str, mem_id: str, weight: float) -> None:
@@ -204,6 +221,7 @@ class Agent:
             )
             self.store.add_memory(raw_mem)
             self._write_evidence(pid, mem_id, 1.0)
+            self._check_conflicts(pid, raw_mem)
             self.metrics["memories_ingested"] += 1
             if self.update_summaries:
                 texts = [
