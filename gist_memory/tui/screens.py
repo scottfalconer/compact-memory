@@ -532,12 +532,6 @@ class ConflictListScreen(StatusMixin):
     def compose(self) -> ComposeResult:  # type: ignore[override]
         table = DataTable(id="conflicts")
         table.add_columns("prototype", "memory A", "memory B", "reason")
-class ParamsScreen(StatusMixin):
-    BINDINGS = [("escape", "app.pop_screen", "Back")]
-
-    def compose(self) -> ComposeResult:  # type: ignore[override]
-        table = DataTable(id="params")
-        table.add_columns("key", "value")
         yield Header()
         yield table
         yield Static("", id="status")
@@ -577,6 +571,20 @@ class ParamsScreen(StatusMixin):
             reason = rec.get("reason", "")
             table.add_row(pid[:8], text_a, text_b, reason)
         self.set_status("")
+
+
+class ParamsScreen(StatusMixin):
+    BINDINGS = [("escape", "app.pop_screen", "Back")]
+
+    def compose(self) -> ComposeResult:  # type: ignore[override]
+        table = DataTable(id="params")
+        table.add_columns("key", "value")
+        yield Header()
+        yield table
+        yield Static("", id="status")
+        yield Footer()
+
+    def on_mount(self) -> None:
         table = self.query_one("#params", DataTable)
         table.add_row("tau", str(agent.similarity_threshold))
         chunk_cfg = getattr(agent.chunker, "config", lambda: {})()
