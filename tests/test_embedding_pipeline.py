@@ -30,4 +30,6 @@ def test_load_model_failure(monkeypatch):
     monkeypatch.setattr(ep, "SentenceTransformer", raise_err)
     with pytest.raises(RuntimeError) as exc:
         ep._load_model("bad", "cpu")
-    assert "gist-memory download-model" in str(exc.value)
+    msg = str(exc.value)
+    assert "download-model" in msg
+    assert "bad" in msg

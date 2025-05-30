@@ -52,12 +52,20 @@ class PersistenceLock:
         self.file.close()
 
 
+def _corrupt_exit(path: Path, exc: Exception) -> None:
+    typer.echo(f"Error: Brain data is corrupted. {exc}", err=True)
+    typer.echo(
+        f"Try running gist-memory validate {path} for more details or restore from a backup.",
+        err=True,
+    )
+    raise typer.Exit(code=1)
+
+
 def _load_agent(path: Path) -> Agent:
     try:
         store = JsonNpyVectorStore(path=str(path))
-    except EmbeddingDimensionMismatchError:
-        dim = int(embed_text(["dim"]).shape[1])
-        store = JsonNpyVectorStore(path=str(path), embedding_dim=dim)
+    except Exception as exc:
+        _corrupt_exit(path, exc)
     chunker_id = store.meta.get("chunker", "sentence_window")
     chunker_cls = _CHUNKER_REGISTRY.get(chunker_id, SentenceWindowChunker)
     tau = float(store.meta.get("tau", 0.8))
@@ -79,7 +87,11 @@ def init(
     if path.exists() and any(path.iterdir()):
         typer.echo("Directory already exists and is not empty", err=True)
         raise typer.Exit(code=1)
-    dim = int(embed_text(["dim"]).shape[1])
+    try:
+        dim = int(embed_text(["dim"]).shape[1])
+    except RuntimeError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1)
     store = JsonNpyVectorStore(
         path=str(path), embedding_model=model_name, embedding_dim=dim
     )
@@ -117,7 +129,11 @@ def add(
         raise typer.Exit(code=1)
     with PersistenceLock(path):
         agent = _load_agent(path)
-        results = agent.add_memory(input_text, who=actor)
+        try:
+            results = agent.add_memory(input_text, who=actor)
+        except RuntimeError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=1)
         agent.store.save()
     for r in results:
         action = "spawned" if r.get("spawned") else "updated"
@@ -138,9 +154,13 @@ def query(
     path = Path(agent_name)
     with PersistenceLock(path):
         agent = _load_agent(path)
-        res = agent.query(
-            query_text, top_k_prototypes=k_prototypes, top_k_memories=k_memories
-        )
+        try:
+            res = agent.query(
+                query_text, top_k_prototypes=k_prototypes, top_k_memories=k_memories
+            )
+        except RuntimeError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=1)
     if json_output:
         typer.echo(json.dumps(res))
         return
@@ -183,9 +203,8 @@ def stats(
     path = Path(agent_name)
     try:
         store = JsonNpyVectorStore(path=str(path))
-    except EmbeddingDimensionMismatchError:
-        dim = int(embed_text(["dim"]).shape[1])
-        store = JsonNpyVectorStore(path=str(path), embedding_dim=dim)
+    except Exception as exc:
+        _corrupt_exit(path, exc)
     size = shutil.disk_usage(path).used
     data = {
         "prototypes": len(store.prototypes),
@@ -227,7 +246,11 @@ def talk(
 
     prompt = f"{context}\nUser: {message}\nAssistant:"
     from .local_llm import LocalChatModel
-    llm = LocalChatModel(model_name=model_name)
+    try:
+        llm = LocalChatModel(model_name=model_name)
+    except RuntimeError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(code=1)
     prompt = llm.prepare_prompt(agent, prompt)
     reply = llm.reply(prompt)
     typer.echo(reply)
