@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Iterable
+import json
 
 from textual.app import App, ComposeResult
 from textual.containers import Container
@@ -104,7 +105,7 @@ class WelcomeScreen(Screen):
             "Welcome to Gist Memory\n"
             "Press [C] to create a new brain or [L] to load a sample.\n"
             "Once the console opens type /help for commands.\n"
-            "Use F5 for stats and Q to quit."
+            "Use F5 for stats, F7 for conflicts and Q to quit."
         )
         yield Static(text, id="welcome")
         yield Footer()
@@ -489,6 +490,53 @@ class StatsScreen(StatusMixin):
         yield Footer()
 
 
+class ConflictListScreen(StatusMixin):
+    BINDINGS = [("escape", "app.pop_screen", "Back")]
+
+    def compose(self) -> ComposeResult:  # type: ignore[override]
+        table = DataTable(id="conflicts")
+        table.add_columns("prototype", "memory A", "memory B", "reason")
+        yield Header()
+        yield table
+        yield Static("", id="status")
+        yield Footer()
+
+    def on_mount(self) -> None:
+        self.set_status("Loading...")
+        path = store_path / "conflicts.jsonl"
+        table = self.query_one("#conflicts", DataTable)
+        if not path.exists():
+            self.set_status("No conflicts logged")
+            return
+        try:
+            lines = path.read_text().splitlines()
+        except Exception as exc:  # pragma: no cover - runtime errors
+            self.set_status(f"error reading log: {exc}", error=True)
+            return
+
+        mem_map = {m.memory_id: m.raw_text for m in store.memories}
+        for line in lines:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            pid = rec.get("prototype_id", "")
+            text_a = rec.get("text_a")
+            text_b = rec.get("text_b")
+            if text_a is None:
+                mid_a = rec.get("memory_a") or rec.get("memory_id_a")
+                text_a = mem_map.get(mid_a, mid_a or "")
+            if text_b is None:
+                mid_b = rec.get("memory_b") or rec.get("memory_id_b")
+                text_b = mem_map.get(mid_b, mid_b or "")
+            reason = rec.get("reason", "")
+            table.add_row(pid[:8], text_a, text_b, reason)
+        self.set_status("")
+
+
 class ExitScreen(StatusMixin):
     BINDINGS = [
         ("y", "yes", "Yes"),
@@ -520,6 +568,7 @@ class WizardApp(App):
         ("q", "push_screen('exit')", "Quit"),
         ("f5", "push_screen('stats')", "Stats"),
         ("f6", "push_screen('group')", "Group"),
+        ("f7", "push_screen('conflicts')", "Conflicts"),
     ]
 
     SCREENS = {
@@ -528,6 +577,7 @@ class WizardApp(App):
         "beliefs": BeliefScreen,
         "stats": StatsScreen,
         "group": GroupSessionScreen,
+        "conflicts": ConflictListScreen,
         "talk": ChatScreen,
         "exit": ExitScreen,
     }
@@ -554,5 +604,6 @@ __all__ = [
     "ConsoleScreen",
     "GroupSessionScreen",
     "StatsScreen",
+    "ConflictListScreen",
     "ExitScreen",
 ]
