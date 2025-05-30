@@ -129,6 +129,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 "/beliefs          - list prototypes\n"
                 "/stats            - show store stats\n"
                 "/install-models   - download models\n"
+                "/talk             - chat session\n"
                 "/log PATH        - write debug log\n"
                 "/exit             - quit"
             )
@@ -295,6 +296,34 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             event.input.disabled = False
             self.set_status("")
 
+    class ChatScreen(StatusMixin):
+        BINDINGS = [("escape", "app.pop_screen", "Back")]
+
+        def compose(self) -> ComposeResult:  # type: ignore[override]
+            yield Header()
+            self.feed = TextLog(id="feed")
+            yield self.feed
+            self.input = Input(id="msg")
+            yield self.input
+            yield Static("", id="status")
+            yield Footer()
+
+        def on_mount(self) -> None:
+            self.input.focus()
+            talk_mgr.register_listener(session_id, "tui", self._on_message)
+
+        def on_unmount(self) -> None:
+            talk_mgr.unregister_listener(session_id, "tui")
+
+        def _on_message(self, sender: str, message: str) -> None:
+            self.app.call_from_thread(
+                self.feed.write_line, f"{sender}: {message}"
+            )
+
+        def on_input_submitted(self, event: Input.Submitted) -> None:
+            talk_mgr.post_message(session_id, "user", event.value)
+            event.input.value = ""
+
     class ConsoleScreen(StatusMixin):
         BINDINGS = []
 
@@ -308,6 +337,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 "/beliefs",
                 "/stats",
                 "/install-models",
+                "/talk",
                 "/log ",
                 "/exit",
                 "/quit",
@@ -358,6 +388,8 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 self.text_log.write_line(f"prototypes: {len(store.prototypes)}")
             elif cmd == "/beliefs":
                 self.app.push_screen(BeliefScreen())
+            elif cmd == "/talk":
+                self.app.push_screen(ChatScreen())
             elif cmd.startswith("/log "):
                 path = Path(cmd[len("/log ") :]).expanduser()
                 if not path.is_absolute():
@@ -379,6 +411,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
                 self.text_log.write_line("/beliefs     - list prototypes")
                 self.text_log.write_line("/stats       - show stats")
                 self.text_log.write_line("/install-models - download models")
+                self.text_log.write_line("/talk        - chat session")
                 self.text_log.write_line("/log PATH   - write debug log")
                 self.text_log.write_line("/exit        - quit")
             elif cmd:
@@ -528,6 +561,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             "beliefs": BeliefScreen,
             "stats": StatsScreen,
             "group": GroupSessionScreen,
+            "talk": ChatScreen,
             "exit": ExitScreen,
         }
 

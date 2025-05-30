@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from collections import deque
+from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, TypedDict, Callable
@@ -34,22 +34,23 @@ class _LRUSet:
 
     def __init__(self, size: int = 128) -> None:
         self.size = size
-        self._queue: deque[str] = deque(maxlen=size)
-        self._set: set[str] = set()
+        # OrderedDict preserves insertion order and provides an efficient
+        # LRU eviction mechanism via :meth:`popitem`.
+        self._cache: "OrderedDict[str, None]" = OrderedDict()
 
     def add(self, item: str) -> bool:
         """Add ``item`` and return ``True`` if it was new."""
-        if item in self._set:
+        if item in self._cache:
+            # Touch to mark as recently used without counting as new
+            self._cache.move_to_end(item)
             return False
-        if len(self._queue) == self.size:
-            old = self._queue.popleft()
-            self._set.remove(old)
-        self._queue.append(item)
-        self._set.add(item)
+        self._cache[item] = None
+        if len(self._cache) > self.size:
+            self._cache.popitem(last=False)
         return True
 
     def __contains__(self, item: str) -> bool:
-        return item in self._set
+        return item in self._cache
 
 
 class EvidenceWriter:
@@ -171,7 +172,9 @@ class Agent:
         when: Optional[str] = None,
         where: Optional[str] = None,
         why: Optional[str] = None,
-        progress_callback: Optional[Callable[[int, int, bool, str, Optional[float]], None]] = None,
+        progress_callback: Optional[
+            Callable[[int, int, bool, str, Optional[float]], None]
+        ] = None,
         save: bool = True,
     ) -> List[Dict[str, object]]:
         """Ingest ``text`` into the store and return per-chunk statuses."""
