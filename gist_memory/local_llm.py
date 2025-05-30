@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
+from .importance_filter import dynamic_importance_filter
+
 try:  # heavy dependency only when needed
     from transformers import AutoModelForCausalLM, AutoTokenizer
 except Exception:  # pragma: no cover - optional
@@ -43,6 +45,16 @@ class LocalChatModel:
         excess tokens are truncated from the start to avoid generation errors.
         """
         max_len = getattr(getattr(self.model, "config", None), "n_positions", 1024)
+        full = self.tokenizer(prompt, return_tensors="pt")
+        ids = full["input_ids"][0]
+        if len(ids) > max_len:
+            excess = len(ids) - max_len
+            old_ids = ids[:excess]
+            keep_ids = ids[excess:]
+            old_text = self.tokenizer.decode(old_ids, skip_special_tokens=True)
+            filtered = dynamic_importance_filter(old_text)
+            keep_text = self.tokenizer.decode(keep_ids, skip_special_tokens=True)
+            prompt = (filtered + "\n" + keep_text).strip()
         inputs = self.tokenizer(
             prompt,
             return_tensors="pt",

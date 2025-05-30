@@ -6,6 +6,7 @@ def test_local_chat_model(monkeypatch):
         def __init__(self, *a, **k):
             pass
 
+
         def __call__(
             self, prompt, return_tensors=None, truncation=None, max_length=None
         ):
