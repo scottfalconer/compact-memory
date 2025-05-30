@@ -6,7 +6,7 @@ import uuid
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, TypedDict
+from typing import Dict, List, Optional, TypedDict, Callable
 
 import logging
 import numpy as np
@@ -21,6 +21,8 @@ from .memory_creation import (
     MemoryCreator,
 )
 from .canonical import render_five_w_template
+from .conflict_flagging import ConflictFlagger, ConflictLogger, ConflictRecord
+from .conflict import ConflictLogger as SimpleConflictLogger, negation_conflict
 
 
 class VectorIndexCorrupt(RuntimeError):
@@ -123,13 +125,51 @@ class Agent:
         self._dedup = _LRUSet(size=dedup_cache)
         if isinstance(store.path, (str, Path)):
             p = Path(store.path) / "evidence.jsonl"
+            c = Path(store.path) / "conflicts.jsonl"
         else:
             p = Path("evidence.jsonl")
+            c = Path("conflicts.jsonl")
         self._evidence = EvidenceWriter(p)
+        if isinstance(store.path, (str, Path)):
+            c = Path(store.path) / "conflicts.jsonl"
+        else:
+            c = Path("conflicts.jsonl")
+        logger = ConflictLogger(c)
+        self._conflicts = ConflictFlagger(logger)
+        self._legacy_logger = SimpleConflictLogger(c)
+
+    # ------------------------------------------------------------------
+    def _log_conflict(self, proto_id: str, mem_a: RawMemory, mem_b: RawMemory) -> None:
+        self._legacy_logger.add(proto_id, mem_a, mem_b)
+
+    def _check_conflicts(self, proto_id: str, new_mem: RawMemory) -> None:
+        for mem in self.store.memories:
+            if mem.memory_id == new_mem.memory_id:
+                continue
+            if mem.assigned_prototype_id != proto_id:
+                continue
+            if negation_conflict(mem.raw_text, new_mem.raw_text):
+                self._log_conflict(proto_id, mem, new_mem)
 
     # ------------------------------------------------------------------
     def _write_evidence(self, belief_id: str, mem_id: str, weight: float) -> None:
         self._evidence.add(belief_id, mem_id, weight)
+
+    def _flag_conflicts(
+        self,
+        prototype_id: str,
+        new_mem: RawMemory,
+        new_vec: np.ndarray,
+    ) -> None:
+        for mem in self.store.memories:
+            if mem.assigned_prototype_id != prototype_id:
+                continue
+            if mem.memory_id == new_mem.memory_id:
+                continue
+            if mem.embedding is None:
+                continue
+            vec_b = np.array(mem.embedding, dtype=np.float32)
+            self._conflicts.check_pair(prototype_id, new_mem, new_vec, mem, vec_b)
 
     # ------------------------------------------------------------------
     def add_memory(
@@ -141,6 +181,8 @@ class Agent:
         when: Optional[str] = None,
         where: Optional[str] = None,
         why: Optional[str] = None,
+        progress_callback: Optional[Callable[[int, int, bool, str, Optional[float]], None]] = None,
+        save: bool = True,
     ) -> List[Dict[str, object]]:
         """Ingest ``text`` into the store and return per-chunk statuses."""
 
@@ -164,7 +206,8 @@ class Agent:
             vecs = vecs.reshape(1, -1)
 
         results: List[Dict[str, object]] = []
-        for chunk, vec in zip(chunks, vecs):
+        total = len(chunks)
+        for idx, (chunk, vec) in enumerate(zip(chunks, vecs), 1):
             mem_id = str(uuid.uuid4())
             nearest = self.store.find_nearest(vec, k=1)
             if not nearest and len(self.store.prototypes) > 0:
@@ -201,6 +244,7 @@ class Agent:
             )
             self.store.add_memory(raw_mem)
             self._write_evidence(pid, mem_id, 1.0)
+            self._flag_conflicts(pid, raw_mem, vec)
             self.metrics["memories_ingested"] += 1
             if self.update_summaries:
                 texts = [
@@ -215,8 +259,11 @@ class Agent:
                         p.summary_text = summary
                         break
             results.append({"prototype_id": pid, "spawned": spawned, "sim": sim})
+            if progress_callback:
+                progress_callback(idx, total, spawned, pid, sim)
 
-        self.store.save()
+        if save:
+            self.store.save()
         return results
 
     # ------------------------------------------------------------------
