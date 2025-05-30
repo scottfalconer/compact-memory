@@ -22,6 +22,7 @@ from .config import DEFAULT_BRAIN_PATH
 
 app = typer.Typer(help="Gist Memory command line interface")
 console = Console()
+VERBOSE = False
 
 
 @app.callback(invoke_without_command=False)
@@ -36,6 +37,11 @@ def main(
     if log_file:
         level = logging.DEBUG if verbose else logging.INFO
         configure_logging(log_file, level)
+    elif verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    global VERBOSE
+    VERBOSE = verbose
+    ctx.obj = {"verbose": verbose}
 
 
 
@@ -55,6 +61,10 @@ class PersistenceLock:
 def _load_agent(path: Path) -> Agent:
     try:
         store = JsonNpyVectorStore(path=str(path))
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(
+            f"Agent directory '{path}' not found or is invalid"
+        ) from exc
     except EmbeddingDimensionMismatchError:
         dim = int(embed_text(["dim"]).shape[1])
         store = JsonNpyVectorStore(path=str(path), embedding_dim=dim)
@@ -77,7 +87,18 @@ def init(
     """Create a new agent store."""
     path = Path(directory)
     if path.exists() and any(path.iterdir()):
-        typer.echo("Directory already exists and is not empty", err=True)
+        typer.secho(
+            "Directory already exists and is not empty",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+    if not 0.5 <= tau <= 0.95:
+        typer.secho(
+            "Error: --tau must be between 0.5 and 0.95.",
+            err=True,
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(code=1)
     dim = int(embed_text(["dim"]).shape[1])
     store = JsonNpyVectorStore(
@@ -105,24 +126,65 @@ def add(
     file: Optional[Path] = typer.Option(None, help="Text file to add"),
     source_id: Optional[str] = typer.Option(None, help="Source id"),
     actor: Optional[str] = typer.Option(None, help="Actor"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Do not modify the store"),
 ) -> None:
     """Ingest new text into the agent."""
     path = Path(agent_name)
     if not path.exists():
-        typer.echo("Agent not found", err=True)
+        typer.secho(
+            f"Error: Agent directory '{path}' not found or is invalid.",
+            fg=typer.colors.RED,
+            err=True,
+        )
         raise typer.Exit(code=1)
-    input_text = text or (file.read_text() if file else "")
+    try:
+        file_text = file.read_text() if file else ""
+    except Exception as exc:
+        typer.secho(
+            f"Error: Could not read file '{file}'. Reason: {exc}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    input_text = text or file_text
     if not input_text:
-        typer.echo("No text provided", err=True)
+        typer.secho("No text provided", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1)
     with PersistenceLock(path):
         agent = _load_agent(path)
-        results = agent.add_memory(input_text, who=actor)
-        agent.store.save()
+        chunks = agent.chunker.chunk(input_text)
+        from tqdm import tqdm
+        bar = tqdm(total=len(chunks), desc="Adding", disable=False)
+        def cb(i, total, spawned, pid, sim):
+            bar.update(1)
+            if VERBOSE:
+                act = "spawned" if spawned else "updated"
+                sim_str = f" (similarity: {sim:.2f})" if sim is not None else ""
+                typer.echo(f"Chunk {i}/{total}: {act} {pid}{sim_str}")
+        results = agent.add_memory(input_text, who=actor, progress_callback=cb, save=not dry_run)
+        bar.close()
+        if not dry_run:
+            agent.store.save()
+    if dry_run:
+        spawned = sum(1 for r in results if r.get("spawned"))
+        updated = sum(1 for r in results if not r.get("spawned"))
+        typer.echo(
+            f"Would spawn {spawned} new prototype{'s' if spawned!=1 else ''} and update {updated} existing ones."
+        )
+        return
+    proto_map = {p.prototype_id: p for p in agent.store.prototypes}
     for r in results:
-        action = "spawned" if r.get("spawned") else "updated"
+        if r.get("duplicate"):
+            typer.echo("Duplicate text skipped")
+            continue
+        action = "Spawned new prototype" if r.get("spawned") else "Updated prototype"
         sim = r.get("sim")
-        typer.echo(f"{action} {r['prototype_id']} sim={sim:.2f}" if sim else action)
+        proto = proto_map.get(r["prototype_id"])
+        summary = proto.summary_text if proto else ""
+        sim_str = f" (similarity: {sim:.2f})" if sim is not None else ""
+        typer.echo(
+            f"Successfully added memory. {action} {r['prototype_id']}{sim_str}. Summary: '{summary}'"
+        )
 
 
 @app.command()
@@ -136,6 +198,13 @@ def query(
 ) -> None:
     """Query stored beliefs."""
     path = Path(agent_name)
+    if not path.exists():
+        typer.secho(
+            f"Error: Agent directory '{path}' not found or is invalid.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
     with PersistenceLock(path):
         agent = _load_agent(path)
         res = agent.query(
@@ -181,6 +250,13 @@ def stats(
 ) -> None:
     """Show statistics about the store."""
     path = Path(agent_name)
+    if not path.exists():
+        typer.secho(
+            f"Error: Agent directory '{path}' not found or is invalid.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
     try:
         store = JsonNpyVectorStore(path=str(path))
     except EmbeddingDimensionMismatchError:
@@ -211,6 +287,13 @@ def talk(
     """Talk to the brain using a local LLM."""
 
     path = Path(agent_name)
+    if not path.exists():
+        typer.secho(
+            f"Error: Agent directory '{path}' not found or is invalid.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
     with PersistenceLock(path):
         agent = _load_agent(path)
         # render short memory cue tags for the most relevant prototypes
@@ -227,7 +310,11 @@ def talk(
 
     prompt = f"{context}\nUser: {message}\nAssistant:"
     from .local_llm import LocalChatModel
+    from tqdm import tqdm
+    bar = tqdm(total=1, desc="Loading chat model", disable=False)
     llm = LocalChatModel(model_name=model_name)
+    bar.update(1)
+    bar.close()
     prompt = llm.prepare_prompt(agent, prompt)
     reply = llm.reply(prompt)
     typer.echo(reply)
@@ -239,13 +326,22 @@ def validate(
 ) -> None:
     """Validate the store metadata and embeddings."""
     path = Path(agent_name)
+    if not path.exists():
+        typer.secho(
+            f"Error: Agent directory '{path}' not found or is invalid.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
     try:
         JsonNpyVectorStore(path=str(path))
     except EmbeddingDimensionMismatchError as exc:
-        typer.echo(f"Embedding dimension mismatch: {exc}", err=True)
+        typer.secho(
+            f"Embedding dimension mismatch: {exc}", err=True, fg=typer.colors.RED
+        )
         raise typer.Exit(code=1)
     except Exception as exc:  # pragma: no cover - unexpected errors
-        typer.echo(f"Error loading agent: {exc}", err=True)
+        typer.secho(f"Error loading agent: {exc}", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1)
     typer.echo("Store is valid")
 
@@ -254,9 +350,23 @@ def validate(
 def clear(
     agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
     yes: bool = typer.Option(False, "--yes", help="Confirm deletion"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Do not delete files"),
 ) -> None:
     """Delete all data in the store."""
     path = Path(agent_name)
+    if not path.exists():
+        typer.secho(
+            f"Error: Agent directory '{path}' not found or is invalid.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    if dry_run:
+        store = JsonNpyVectorStore(path=str(path))
+        typer.echo(
+            f"Would delete {len(store.prototypes)} prototypes and {len(store.memories)} memories."
+        )
+        return
     if not yes:
         if not typer.confirm(
             f"Delete {path}?", abort=True
@@ -266,7 +376,7 @@ def clear(
         shutil.rmtree(path)
         typer.echo(f"Deleted {path}")
     else:
-        typer.echo("Directory not found", err=True)
+        typer.secho("Directory not found", err=True, fg=typer.colors.RED)
 
 
 @app.command("download-model")
@@ -277,8 +387,12 @@ def download_model(
 ) -> None:
     """Pre-download a local embedding model."""
     from sentence_transformers import SentenceTransformer
+    from tqdm import tqdm
 
+    bar = tqdm(total=1, desc="Downloading model", disable=False)
     SentenceTransformer(model_name)
+    bar.update(1)
+    bar.close()
     typer.echo(f"Downloaded {model_name}")
 
 
@@ -288,9 +402,13 @@ def download_chat_model(
 ) -> None:
     """Pre-download a local chat model for ``talk`` mode."""
     from transformers import AutoModelForCausalLM, AutoTokenizer
+    from tqdm import tqdm
 
+    bar = tqdm(total=1, desc="Downloading chat model", disable=False)
     AutoTokenizer.from_pretrained(model_name)
     AutoModelForCausalLM.from_pretrained(model_name)
+    bar.update(1)
+    bar.close()
     typer.echo(f"Downloaded {model_name}")
 
 
