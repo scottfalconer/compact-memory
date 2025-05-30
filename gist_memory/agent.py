@@ -6,7 +6,7 @@ import uuid
 from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, TypedDict
+from typing import Dict, List, Optional, TypedDict, Callable
 
 import logging
 import numpy as np
@@ -141,6 +141,8 @@ class Agent:
         when: Optional[str] = None,
         where: Optional[str] = None,
         why: Optional[str] = None,
+        progress_callback: Optional[Callable[[int, int, bool, str, Optional[float]], None]] = None,
+        save: bool = True,
     ) -> List[Dict[str, object]]:
         """Ingest ``text`` into the store and return per-chunk statuses."""
 
@@ -164,7 +166,8 @@ class Agent:
             vecs = vecs.reshape(1, -1)
 
         results: List[Dict[str, object]] = []
-        for chunk, vec in zip(chunks, vecs):
+        total = len(chunks)
+        for idx, (chunk, vec) in enumerate(zip(chunks, vecs), 1):
             mem_id = str(uuid.uuid4())
             nearest = self.store.find_nearest(vec, k=1)
             if not nearest and len(self.store.prototypes) > 0:
@@ -215,8 +218,11 @@ class Agent:
                         p.summary_text = summary
                         break
             results.append({"prototype_id": pid, "spawned": spawned, "sim": sim})
+            if progress_callback:
+                progress_callback(idx, total, spawned, pid, sim)
 
-        self.store.save()
+        if save:
+            self.store.save()
         return results
 
     # ------------------------------------------------------------------
