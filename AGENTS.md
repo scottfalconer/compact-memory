@@ -1,107 +1,93 @@
-# **Gist Memory Agent: Core Hypotheses, Beliefs, and Goals (Prototype-Centric)**
+**I. Vision: The Cognitively-Inspired Gist Memory Agent**
 
-This document outlines the central hypotheses, guiding beliefs, and overarching goals that shape the design and specification of the Gist Memory Agent. The primary architectural direction is a **Coarse Prototype Memory System**.
+* **Core Mission:** To develop an agent that intelligently captures, stores, and utilizes the "gist" – the essential, abstract meaning – of information, combating information overload and enabling more effective knowledge utilization.
+* **Guiding Philosophy:** We draw inspiration from human cognitive processes, including memory, attention, and learning. Our aim is to create mechanisms that are more organic and adaptive than purely hardcoded logic. We believe this approach will lead to a more robust, flexible, and insightful agent.
+* **Development Tenet: Design for Experimentation:** A fundamental principle of this project is that components modeling cognitive functions must be designed with tunable parameters. Our experimentation framework is crucial for validating hypotheses about these mechanisms, optimizing their performance, and driving iterative improvement.
 
-## **I. Core Hypothesis: The Coarse Prototype Memory System**
+**II. Core Cognitive Analogs & System Architecture**
 
-The fundamental hypothesis guiding the project is:
+Our system architecture distinguishes between long-term knowledge storage and a dynamic, active memory for current interactions.
 
-1. **A Coarse Prototype Memory System that snap-assigns each new text embedding to the nearest prototype (or spawns a new one when beyond a threshold τ) will:**  
-   * Compress storage and reduce search latency by orders of magnitude, and  
-   * Enhance the robustness and generalisability of downstream reasoning by letting the agent operate on stable, noise-reduced conceptual representations—at the cost of some fine-grained recall.  
-   * *Whether these prototypes consistently improve task accuracy over using raw memories is an empirical question that must be benchmarked for each downstream task.*
+**A. Long-Term Memory (LTM): The Prototype System – Capturing the Gist**
 
-## **II. Core Beliefs: Mechanics of the Prototype System**
+* **Concept:** Analogous to human semantic and episodic long-term memory, this system stores consolidated knowledge.
+* **Mechanism: Coarse Prototype Memory System**
+    * **Gist-Based Processing:** Inspired by Fuzzy-Trace Theory, we prioritize the extraction and storage of the essential meaning ("gist") over verbatim details. This promotes durable and flexible knowledge.
+    * **Prototypes as Conceptual Centroids:** Incoming information (memories) are snap-assigned to the nearest existing "prototype" (a vector representing a conceptual gist) or spawn new prototypes if sufficiently novel.
+    * **Prototype Evolution:** Prototypes are dynamic. Their vector representations and textual summaries evolve via an Exponential Moving Average (EMA) as new, related memories are assigned, reflecting how concepts can refine over time. Their `strength` increases with supporting evidence.
+    * **Schema-Driven Assimilation:** New information is integrated by relating it to these existing conceptual structures (prototypes), mirroring how human understanding is often guided by existing schemas.
+* **Key Tunable Parameters for LTM (via Experimentation Framework):**
+    * `similarity_threshold` (τ): For assigning memories to prototypes or spawning new ones.
+    * `ema_alpha` (α): Learning rate for prototype vector/summary updates.
+    * Prototype health metrics & thresholds: For potential future splitting/merging of prototypes.
+    * Parameters for `MemoryCreator` strategies (e.g., chunk size, summarization detail).
 
-The following key beliefs detail the operational principles and expected behaviors of the Coarse Prototype Memory System, drawing inspiration from both computational efficiency and human cognitive strategies:
+**B. Active/Working Memory: Dynamic Conversational Context – Thinking in the Moment**
 
-1. **Efficient Generalisation through Quantisation:**  
-   * Snap-assignment of an incoming memory embedding e to its nearest prototype p (if dist(e, p) ≤ τ) combined with an adaptive threshold τ performs online vector quantisation.  
-   * A new prototype is created only when an incoming embedding is significantly distant from all existing prototypes *and* shows evidence of local density (e.g., a small cluster of similar outliers), to avoid the proliferation of one-off, overly specific prototypes.  
-   * **τ Adaptation Heuristics (Open):** Exactly how the distance threshold τ should adapt over time is still an open research question. Potential heuristics to explore include adjusting τ based on the total number of prototypes, the average distance between them, or the rate at which new prototypes are spawned.
-2. **Prototype Evolution (“Updating the Prior”):**  
-   * Prototypes are dynamic and evolve as new, related memories are assigned to them, typically via an exponential moving average (EMA): p\_new \= (1‑α)·p\_old \+ α·e, where α is a learning rate. This allows prototypes to integrate fresh evidence smoothly.  
-   * "Health-checks" (e.g., monitoring intra-prototype variance or semantic drift) are necessary to detect when a prototype becomes too broad or incoherent. The system aims to automatically split or merge prototypes based on these metrics, with minimal manual intervention, or re-initialize them when needed.
-   * Aggregating multiple semantically similar memories under a single prototype vector is expected to suppress idiosyncratic noise (e.g., from typos, stylistic variations, minor factual discrepancies in source texts) and yield a clearer, more stable conceptual vector.  
-   * This enhanced signal-to-noise ratio is believed to benefit tasks relying on pattern detection, thematic reasoning, or understanding generalized concepts. Tasks demanding exact recall of specific episodic details may still require access to the raw, individual memories.  
-4. **Recall–Quality Trade-off & Two-Tier Retrieval:**  
-   * A reduction in recall for ultra-specific, individual memories is an accepted trade-off for the benefits of generalization, noise reduction, and efficiency provided by the prototype system.  
-   * A two-tier retrieval pipeline is proposed to mitigate this loss while preserving speed:  
-     * **(a) Coarse Prototype Search:** Initially, user queries are matched against the coarse prototype vectors to quickly identify the most relevant conceptual cluster(s).  
-     * **(b) Fine Re-ranking / Raw-Memory Lookup:** Within the top-ranked prototype cluster(s), individual constituent memories can then be re-ranked or retrieved based on their similarity to the query or other criteria.  
-   * *The actual impact of this prototype-based approach on downstream task accuracy (e.g., in decision-making or question-answering) compared to using raw memories is a primary unknown that must be empirically measured.*  
-   * By default, the original raw memory text is discarded once its gist representation is stored as metadata in the vector database.
-5. **Decoding Requirement for Human Readability:**  
-   * Prototype vectors, being numerical representations, are not directly human-interpretable.  
-   * To present the "meaning" of a prototype or its constituent memories to a user, a decoding step is necessary. Potential methods include:  
-     * Retrieving and displaying representative individual memories assigned to the prototype.  
-     * Using an LLM to generate a textual summary or descriptive label for the concept represented by the prototype vector, based on its constituent memories.  
-     * Exploring experimental embedding-inversion decoders to generate text directly from prototype vectors (a more advanced research direction).  
-   * The best prompting strategies for decoding prototypes remain an open question and will likely require experimentation.
-6. **Cognitively Inspired Architecture (with Caveats):**  
-   * The design draws inspiration from cognitive science theories suggesting that humans rely on gist-like prototypes or schemas for semantic memory, while also retaining some specific episodic exemplars.  
-   * This analogy is a motivating factor and a source of design heuristics, not a claim of direct replication of human neural mechanisms. The effectiveness of the approach must be validated empirically. Hybrid strategies that combine prototype-based reasoning with selective access to detailed individual memories may ultimately be necessary.  
-7. **Belief in Gist-Based Processing (Inspired by Fuzzy-Trace Theory):**  
-   * We believe that prioritizing the "gist" (essential meaning) over verbatim details for memory representation, as suggested by Fuzzy-Trace Theory, leads to more durable, flexible, and efficiently processed knowledge. Prototypes serve as these robust gist representations.  
-8. **Belief in Schema-Driven Assimilation:**  
-   * Drawing from Schema Theory, we believe that new information (memories) is best understood and integrated by relating it to existing conceptual structures (prototypes). The "snap-assignment" process is a computational analog to assimilating new experiences into existing cognitive schemas. Prototypes, like schemas, help organize and give context to individual memories.
+* **Concept:** Simulates human active/working memory, providing a limited-capacity buffer that holds and processes information relevant to the current interaction, especially for the `talk` command's LLM. This is managed by the `ActiveMemoryManager`.
+* **Core Characteristics (Inspired by Human Cognition):**
+    1.  **Limited Capacity:** The total information assembled for the LLM prompt strictly adheres to the model's token limits.
+    2.  **Dynamic Content:** The content is not a fixed window but is dynamically selected and prioritized based on several factors.
+    3.  **Recency (Activation Decay):** Recently processed conversational turns have a higher baseline "activation level," making them readily available. This activation naturally decays over time or with new inputs, unless refreshed.
+    4.  **Trace Strength (Intrinsic Importance):** Each conversational turn acquires a `trace_strength` score. This reflects its inherent significance, calculated based on factors like:
+        * Semantic novelty at the time of occurrence.
+        * Presence of salient entities (e.g., identified by spaCy NER).
+        * Degree to which it activated or led to updates in LTM (prototypes).
+        * (Future) Explicit user feedback (e.g., "this is important").
+        This `trace_strength` makes a turn more resistant to being pruned from the overall history buffer.
+    5.  **Current Activation Level (Contextual Relevance & Connection):** A turn's `trace_strength` is modulated by its `current_activation_level`. This dynamic level is boosted when a historical turn is semantically similar (connected) to the *current user query* or the immediate conversational context. This models how current cues "light up" relevant past information (spreading activation).
+* **Mechanism (`ActiveMemoryManager`):**
+    * Stores `ConversationalTurn` objects, each enriched with its text, embedding, `trace_strength`, and dynamically updated `current_activation_level`.
+    * Implements algorithms for calculating `trace_strength` upon turn creation.
+    * Manages `current_activation_level` through decay and relevance-based boosting.
+    * Employs **Prioritized Pruning** for the main history buffer: When the buffer exceeds its max size, it prunes turns with the lowest combined score of recency, activation, and trace strength.
+* **Key Tunable "Meta-Parameters" for Active Memory (via Experimentation Framework):**
+    * Weights for factors contributing to `trace_strength` (e.g., `config_weight_novelty`, `config_weight_salient_entities`).
+    * Parameters for `current_activation_level` dynamics (e.g., `config_initial_activation`, `config_activation_decay_rate`, `config_relevance_boost_factor`).
+    * History buffer management (e.g., `config_max_history_buffer_turns`, weights for pruning decision).
+    * Parameters for selecting history for the prompt (see next section).
 
-## **III. Key Unknowns to Validate in V1 Experiments**
+**C. Attentional Focus & Prompt Assembly for LLM Interaction – Orchestrating Thought**
 
-The initial development phase (V1) will focus on empirically testing and validating the following key unknowns related to the Coarse Prototype Memory System:
+* **Concept:** The agent constructs a focused, token-limited prompt for its internal LLM by drawing from both the prioritized Active/Working Memory and selectively retrieved LTM. This simulates an "attentional spotlight."
+* **Mechanism (Orchestrated by `talk` command logic using `ActiveMemoryManager` and `Agent`):**
+    1.  **Prioritize Current Input:** The current user message is the primary focus.
+    2.  **Select from Active Memory (STM):** The `ActiveMemoryManager` provides a selection of historical turns for the prompt. This selection (the "tree/branches" of active thought) is based on:
+        * A few *forced recent* turns.
+        * A limited number of older turns with high *current activation levels* (strong connection to the current query), further prioritized by their *trace strength*.
+        This selection is then pruned to fit a pre-defined token budget for STM within the overall prompt.
+    3.  **Retrieve Relevant Gist from LTM:** The current query (potentially augmented by context from selected STM) is used to query the `Agent`'s LTM, retrieving a small number of the most relevant prototype summaries and/or key memory snippets.
+    4.  **Combine and Finalize:** The selected STM and LTM components are combined. If this combined context still exceeds the LLM's absolute input limit, `LocalChatModel.prepare_prompt()` provides a final intelligent summarization/recap.
+* **Goal:** Maximize the density of relevant information (both recent interaction and long-term knowledge) within the LLM's context window.
+* **Key Tunable Parameters (via Experimentation Framework):**
+    * Token budget allocation ratios for STM vs. LTM within the prompt.
+    * `config_prompt_num_forced_recent_turns`, `config_prompt_max_activated_older_turns`, `config_prompt_activation_threshold_for_inclusion` (for STM selection from `ActiveMemoryManager`).
+    * `top_k_prototypes`, `top_k_memories` for LTM retrieval.
+    * Parameters for `LocalChatModel.prepare_prompt()` (recap length, etc.).
 
-1. **Optimal τ (Threshold) Selection:** Determining the best methods for setting the initial distance threshold τ for assigning memories to existing prototypes versus spawning new ones, and how to adapt τ dynamically based on the evolving structure of the knowledge base. The precise adaptation heuristics—such as adjusting τ based on prototype count, average inter-prototype distance, or spawn rate—remain an open research area.
-3. **Empirical Accuracy Comparison:** Benchmarking the accuracy of prototype-based reasoning (using retrieved prototype information) versus using the top-N retrieved raw memories for a set of representative downstream tasks (e.g., question answering, decision support).  
-4. **Prototype Health Metrics and Management:** Defining and validating effective criteria and "health metrics" (e.g., intra-prototype variance, size, density) for triggering prototype splitting, merging, or re-initialization to maintain a high-quality and meaningful set of conceptual prototypes.  
-5. **Optimal Initial memory\_text Representation Strategy:** Empirically comparing the effectiveness (prototype quality, ingestion efficiency, downstream task performance, recall-quality trade-off) of different strategies for creating the initial memory\_text that is embedded and quantized. This includes testing LLM-generated deep gist summaries, intelligently chunked source text segments, and lightweight extractive summaries.  
-6. **Effectiveness of Prototype Decoding:** Evaluating different methods for translating prototype vectors and their associated memory clusters into human-understandable explanations or summaries.
+**III. Learning & Adaptation in the Agent**
 
-## **IV. Supporting Beliefs and Project Context**
+* **From New Information:** New data refines LTM prototypes (via EMA) and populates Active Memory, contributing to `trace_strength` calculation.
+* **From Interaction & Feedback (Implicit & Explicit):**
+    * User corrections or clarifications (even if just ingested as new memories with high `trace_strength`) will influence LTM and future STM selections.
+    * (Future) Direct feedback mechanisms can more explicitly adjust `trace_strength` or trigger LTM re-evaluation.
+* **Through Experimentation:** The primary mode of meta-learning and system optimization. By testing different configurations of LTM and Active Memory parameters, we refine the agent's cognitive strategies.
 
-The Coarse Prototype Memory System forms the core architecture. The following broader beliefs and contextual points remain relevant:
+**IV. Guiding Principles for Developers**
 
-1. **Problem Addressed:** The system aims to combat information overload and institutional forgetting by capturing the generalized, conceptual essence of information.  
-2. **Nature of an Individual "Memory" (Input to Quantization):** Before being snapped to a prototype, an individual "memory" is a rich representation of a source document (e.g., a holistic summary, an intelligent chunk, or an extractive summary), which is then embedded. The optimal form of this initial representation is a key unknown to test, recognizing that human gist formation is an active, constructive process influenced by prior knowledge and goals, not just passive compression.  
-3. **Value of Shared Memory for Teams:** The system, even with its prototype abstraction, is intended as a collective "second brain" to enhance team cognition, consistency, and onboarding.  
-4. **Role of LLMs:** LLMs are crucial for:  
-   * Generating the initial high-quality textual "memory" from source documents (if that representation strategy is chosen).  
-   * Assisting in "decoding" prototypes into human-readable summaries or labels.  
-   * Supporting conflict resolution processes within or between prototype clusters.  
-5. **Inspiration from Systems like ReadAgent:** Systems like ReadAgent, which focus on creating "gist memories" from text segments (episodes) to improve comprehension of long documents, are on the right track. Their emphasis on abstracting essential meaning over verbatim recall aligns with the Gist Memory Agent's philosophy, even if the Gist Memory Agent further quantizes these initial gists/memories into prototypes.  
-6. **Dynamic Aspects:**  
-   * **Memory/Prototype Decay:** Mechanisms will be needed to manage the relevance of prototypes and their constituent memories over time.  
-   * **Conflict Resolution:** LLM-assisted HIL processes will be needed to handle conflicts that arise when contradictory memories are assigned to the same prototype or when prototypes themselves represent conflicting concepts.  
-7. **Evolutionary Design Path:** The project's design has evolved from granular conceptual extraction to a unified memory concept, and now to the Coarse Prototype Memory System. This reflects a deepening understanding of cognitive analogies and technical trade-offs.  
-8. **Belief in Attentional Salience and Narrative Context (Long-Term Aspiration):**  
-   * Inspired by human cognition, we believe that future enhancements could incorporate mechanisms to identify and give greater weight to salient information during memory creation or prototype assignment.  
-   * Furthermore, presenting retrieved memory clusters within a narrative context, or allowing the exploration of memories through narrative threads, could significantly improve user understanding and interaction, though this is a more advanced goal.
+1.  **Embrace Cognitive Inspiration:** When designing new features or refining existing ones, actively consider analogies from human cognition (e.g., attention, memory consolidation, contextual recall) as a rich source of design patterns.
+2.  **Design for Tunability and Experimentation:** Identify key parameters in your algorithms that represent choices in how a cognitive process is modeled. Expose these so they can be systematically tested and optimized via the experimentation framework.
+3.  **Prioritize Clarity of Mechanism:** While inspired by complex systems, the implemented mechanisms should be understandable, debuggable, and their impact measurable.
+4.  **Modularity:** Encapsulate complex cognitive models (like the `ActiveMemoryManager` or the `PrototypeSystem`) into well-defined modules with clear interfaces.
+5.  **Iterate and Validate:** Use the experimentation framework not just for tuning, but for validating that these cognitively-inspired mechanisms actually lead to improved performance and desired emergent behaviors.
 
-## **V. Project Goals**
+**V. Key Unknowns & Areas for Experimental Validation (Update this section regularly)**
 
-Beyond the core technical hypotheses, the Gist Memory Agent project is guided by the following overarching goals:
+* Optimal weighting schemes for `trace_strength` factors in `ActiveMemoryManager`.
+* Most effective decay rates and boosting factors for `current_activation_level`.
+* Best strategies for pruning the `ActiveMemoryManager` history buffer (balancing recency, strength, activation).
+* Optimal parameters for selecting STM turns for the prompt (how many recent vs. how many older-but-relevant).
+* The ideal token budget allocation between STM, LTM, and current query within the final LLM prompt.
+* How to effectively measure the "quality" or "human-likeness" of the agent's active memory management.
+* Impact of different LTM prototype granularities (controlled by τ) on the quality of information retrieved for Active Memory.
 
-1. **Simplicity and Ease of Use:**  
-   * The primary interface (CLI for V1) must be intuitive, well-documented, and accessible to users with varying technical skills.  
-   * Installation, configuration, and common operations should be straightforward.  
-2. **Open-Source Ethos and Modularity:**  
-   * The project will be developed as open-source software, using the **MIT License** to ensure maximum simplicity, permissiveness, and ease of adoption by the community.  
-   * Contributions from the community will be encouraged and facilitated through clear guidelines.  
-   * **Architectural Pluggability:** A core design goal is to ensure key components are swappable to allow experimentation and adaptation to evolving technologies. This includes:  
-     * **Pluggable Gisting/Memory Creation Engine:** Recognizing that human memory involves subsystems and that the optimal way to create the initial memory\_text (before embedding and quantization) is an area for experimentation (e.g., full LLM summary, intelligent chunking, extractive summary), this component must be designed for easy swapping of different strategies.  
-     * **Vector Database:** The initial implementation will be tightly coupled to ChromaDB for simplicity. Future versions may explore alternative backends as needed.
-3. **Leverage Effective Open-Source Technologies:**
-   * Utilize robust and well-supported open-source libraries and frameworks where possible.
-   * **ChromaDB:** Specifically targeted for V1 as the vector database due to its ease of local setup, Python integration, and ability to handle metadata alongside embeddings, making it suitable for managing prototypes and their associated memories.
-4. **Offline-by-Default Operation:**
-   * Outside of initial setup steps (installing dependencies or downloading models), the system can run fully offline. Local operation is the default, though API-based components may be enabled at user discretion.
-   * This facilitates testing in restricted environments and preserves user privacy.
-5. **Support for Locally Runnable Models:**
-   * While supporting powerful cloud-based LLMs, the architecture should also strive to accommodate and facilitate the use of locally runnable LLMs and embedding models.  
-   * Choice of local model is open; use whichever LLM or embedding model runs best in the available environment.
-   * This goal supports user privacy, reduces dependency on external APIs, potentially lowers operational costs, and enhances accessibility for users in restricted environments. This aligns with the goal of swappable components.  
-6. **Practical Utility for Teams:**
-   * The ultimate goal is to create a tool that provides tangible benefits to teams by improving knowledge retention, facilitating faster access to relevant information (even if generalized), and supporting more informed decision-making.  
-7. **Cognitively Inspired, Empirically Validated:**
-   * While drawing inspiration from human cognition, the system's effectiveness will be judged by empirical validation and its practical utility, not just its theoretical elegance or faithfulness to cognitive models.
-
-This document reflects the current understanding and guiding principles for building the Gist Memory Agent. These hypotheses, beliefs, and goals will drive the next phase of design, development, and rigorous testing.
