@@ -3,7 +3,8 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Callable, Dict, Iterable, List, Tuple
+import time
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
@@ -34,7 +35,8 @@ def _load_agent(path: Path) -> Agent:
 class TalkSession:
     session_id: str
     agents: Dict[str, Agent] = field(default_factory=dict)
-    log: List[Tuple[str, str]] = field(default_factory=list)
+    listeners: Dict[str, Callable[[str, str], None]] = field(default_factory=dict)
+    log: List[Tuple[str, str, float]] = field(default_factory=list)
 
 
 class TalkSessionManager:
@@ -64,10 +66,36 @@ class TalkSessionManager:
     def get_session(self, session_id: str) -> TalkSession:
         return self._sessions[session_id]
 
-    def post_message(self, session_id: str, sender: str, message: str) -> None:
-        """Append ``message`` from ``sender`` to the session log."""
+    def register_listener(
+        self, session_id: str, listener_id: str, callback: Callable[[str, str], None]
+    ) -> None:
+        """Register ``callback`` to receive messages for ``session_id``."""
         session = self._sessions[session_id]
-        session.log.append((sender, message))
+        session.listeners[listener_id] = callback
+
+    def unregister_listener(self, session_id: str, listener_id: str) -> None:
+        """Remove ``listener_id`` from ``session_id`` if present."""
+        session = self._sessions[session_id]
+        session.listeners.pop(listener_id, None)
+
+    def post_message(self, session_id: str, sender: str, message: str) -> None:
+        """Append ``message`` from ``sender`` to the session log and broadcast."""
+        session = self._sessions[session_id]
+        ts = time.time()
+        session.log.append((sender, message, ts))
+
+        for aid, agent in session.agents.items():
+            if aid == sender:
+                continue
+            if hasattr(agent, "receive_channel_message"):
+                agent.receive_channel_message(message)
+            else:
+                agent.add_memory(message)
+
+        for lid, cb in session.listeners.items():
+            if lid == sender:
+                continue
+            cb(sender, message)
 
     # ------------------------------------------------------------------
     def invite_brain(self, session_id: str, brain_path_or_id: str | Path) -> None:
@@ -81,7 +109,7 @@ class TalkSessionManager:
         if key in session.agents:
             return
         agent = _load_agent(path)
-        for _sender, msg in session.log:
+        for _sender, msg, _ts in session.log:
             agent.add_memory(msg)
         session.agents[key] = agent
 
