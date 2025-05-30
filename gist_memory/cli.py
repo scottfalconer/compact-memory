@@ -19,7 +19,6 @@ from .json_npy_store import JsonNpyVectorStore
 from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
 from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
 from .config import DEFAULT_BRAIN_PATH
-from .memory_cues import MemoryCueRenderer
 
 app = typer.Typer(help="Gist Memory command line interface")
 console = Console()
