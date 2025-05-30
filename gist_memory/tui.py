@@ -73,11 +73,20 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
     if meta_exists:
         try:
             store = JsonNpyVectorStore(str(store_path))
-        except EmbeddingDimensionMismatchError:
-            dim = int(embed_text(["dim"]).shape[1])
-            store = JsonNpyVectorStore(str(store_path), embedding_dim=dim)
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(
+                f"Brain directory '{store_path}' not found or is invalid"
+            ) from exc
+        except Exception as exc:
+            raise RuntimeError(
+                f"Error: Brain data is corrupted. {exc}. "
+                f"Try running gist-memory validate {store_path} for more details or restore from a backup."
+            ) from exc
     else:
-        dim = int(embed_text(["dim"]).shape[1])
+        try:
+            dim = int(embed_text(["dim"]).shape[1])
+        except RuntimeError as exc:
+            raise RuntimeError(str(exc)) from exc
         store = JsonNpyVectorStore(str(store_path), embedding_dim=dim)
     agent = Agent(store)
 
