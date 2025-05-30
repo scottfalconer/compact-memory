@@ -68,3 +68,24 @@ class TalkSessionManager:
         """Append ``message`` from ``sender`` to the session log."""
         session = self._sessions[session_id]
         session.log.append((sender, message))
+
+    # ------------------------------------------------------------------
+    def invite_brain(self, session_id: str, brain_path_or_id: str | Path) -> None:
+        """Add a brain to an existing session.
+
+        Late-joining brains ingest the full message history so far.
+        """
+        session = self._sessions[session_id]
+        path = Path(brain_path_or_id)
+        key = str(path)
+        if key in session.agents:
+            return
+        agent = _load_agent(path)
+        for _sender, msg in session.log:
+            agent.add_memory(msg)
+        session.agents[key] = agent
+
+    def kick_brain(self, session_id: str, brain_id: str) -> None:
+        """Remove ``brain_id`` from the session if present."""
+        session = self._sessions[session_id]
+        session.agents.pop(brain_id, None)
