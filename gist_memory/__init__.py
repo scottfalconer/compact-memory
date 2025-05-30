@@ -14,6 +14,7 @@ from .conflict_flagging import ConflictFlagger, ConflictLogger
 from .experiment_runner import ExperimentConfig, run_experiment
 from .conflict import ConflictLogger, negation_conflict
 from .talk_session import TalkSessionManager
+from .utils import load_agent
 
 
 __all__ = [
@@ -40,6 +41,7 @@ __all__ = [
     "ConflictLogger",
     "negation_conflict",
     "TalkSessionManager",
+    "load_agent",
 ]
 
 # Semantic version of the package

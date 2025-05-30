@@ -7,28 +7,13 @@ from typing import Callable, Dict, Iterable, List, Tuple
 import time
 
 from .agent import Agent
-from .json_npy_store import JsonNpyVectorStore
-from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
-from .chunker import SentenceWindowChunker, Chunker
+from .chunker import Chunker
+from .utils import load_agent
 
 
 def _load_agent(path: Path) -> Agent:
-    """Load a persisted agent from ``path``.
-
-    This mirrors the logic of the CLI helper for convenience.
-    """
-    try:
-        store = JsonNpyVectorStore(path=str(path))
-    except Exception as exc:
-        raise RuntimeError(f"Error loading agent at {path}: {exc}") from exc
-    except EmbeddingDimensionMismatchError:
-        dim = int(embed_text(["dim"]).shape[1])
-        store = JsonNpyVectorStore(path=str(path), embedding_dim=dim)
-    chunker_id = store.meta.get("chunker", "sentence_window")
-    chunker_cls: type[Chunker] = SentenceWindowChunker
-    if chunker_id == "sentence_window":
-        chunker_cls = SentenceWindowChunker
-    return Agent(store, chunker=chunker_cls(), similarity_threshold=float(store.meta.get("tau", 0.8)))
+    """Load a persisted agent from ``path``."""
+    return load_agent(path)
 
 
 @dataclass
