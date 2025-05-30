@@ -153,4 +153,3 @@ def test_cli_logging(tmp_path):
     assert log_path.read_text() != ""
 
 
-

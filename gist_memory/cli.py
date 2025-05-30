@@ -10,7 +10,9 @@ from rich.table import Table
 from rich.console import Console
 
 from .logging_utils import configure_logging
+
 from .memory_cues import MemoryCueRenderer
+
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
