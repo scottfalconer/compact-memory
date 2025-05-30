@@ -145,3 +145,79 @@ def test_activation_does_not_fall_below_floor_if_set():
     mgr.add_turn(t3)  # t1 decays to 0.25
     mgr.add_turn(t4)  # t1 decays to floor 0.2
     assert t1.current_activation_level >= 0.2
+
+
+def test_candidate_selection_always_includes_forced_recent_turns():
+    mgr = ActiveMemoryManager(
+        config_prompt_num_forced_recent_turns=2,
+        config_prompt_max_activated_older_turns=0,
+    )
+    t1 = ConversationTurn("old")
+    t2 = ConversationTurn("r1")
+    t3 = ConversationTurn("r2")
+    for t in (t1, t2, t3):
+        mgr.add_turn(t)
+    selected = mgr.select_history_candidates_for_prompt(np.array([0.0]))
+    assert t2 in selected and t3 in selected
+    assert t1 not in selected
+
+
+def test_candidate_selection_pulls_older_turns_based_on_high_activation_after_boost():
+    mgr = ActiveMemoryManager(
+        config_prompt_num_forced_recent_turns=1,
+        config_prompt_max_activated_older_turns=2,
+        config_prompt_activation_threshold_for_inclusion=0.1,
+        config_relevance_boost_factor=1.0,
+    )
+    t1 = ConversationTurn("a", turn_embedding=[1.0, 0.0])
+    t2 = ConversationTurn("b", turn_embedding=[0.0, 1.0])
+    t3 = ConversationTurn("recent")
+    for t in (t1, t2, t3):
+        mgr.add_turn(t)
+    selected = mgr.select_history_candidates_for_prompt(np.array([1.0, 0.0]))
+    assert t1 in selected
+    assert t3 in selected
+    assert t2 not in selected
+
+
+def test_candidate_selection_respects_max_activated_older_turns_limit():
+    mgr = ActiveMemoryManager(
+        config_prompt_max_activated_older_turns=2,
+        config_prompt_activation_threshold_for_inclusion=0.0,
+    )
+    turns = [
+        ConversationTurn("t1", current_activation_level=0.9),
+        ConversationTurn("t2", current_activation_level=0.8),
+        ConversationTurn("t3", current_activation_level=0.7),
+    ]
+    for t in turns:
+        mgr.add_turn(t)
+    selected = mgr.select_history_candidates_for_prompt(np.array([0.0]))
+    assert len(selected) == 2
+    assert turns[0] in selected and turns[1] in selected
+
+
+def test_candidate_selection_uses_trace_strength_for_tie_breaking_among_activated_turns():
+    mgr = ActiveMemoryManager(
+        config_prompt_max_activated_older_turns=1,
+        config_prompt_activation_threshold_for_inclusion=0.0,
+    )
+    t1 = ConversationTurn("a", current_activation_level=1.0, trace_strength=0.1)
+    t2 = ConversationTurn("b", current_activation_level=1.0, trace_strength=0.9)
+    mgr.add_turn(t1)
+    mgr.add_turn(t2)
+    selected = mgr.select_history_candidates_for_prompt(np.array([0.0]))
+    assert selected == [t2]
+
+
+def test_candidate_selection_filters_by_activation_threshold():
+    mgr = ActiveMemoryManager(
+        config_prompt_max_activated_older_turns=5,
+        config_prompt_activation_threshold_for_inclusion=0.5,
+    )
+    t1 = ConversationTurn("low", current_activation_level=0.4)
+    t2 = ConversationTurn("high", current_activation_level=0.6)
+    for t in (t1, t2):
+        mgr.add_turn(t)
+    selected = mgr.select_history_candidates_for_prompt(np.array([0.0]))
+    assert t2 in selected and t1 not in selected
