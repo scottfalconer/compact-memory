@@ -4,6 +4,9 @@ import functools
 import hashlib
 from typing import List, Sequence
 
+import tiktoken
+from .importance_filter import dynamic_importance_filter
+
 # ---------------------------------------------------------------------------
 # Disable tqdm's multiprocessing lock.
 # On some platforms (notably macOS with the "spawn" start method) creating
@@ -93,17 +96,37 @@ def embed_text(
 ) -> np.ndarray:
     """Embed ``text`` or list of texts."""
 
+    try:
+        tokenizer = tiktoken.get_encoding("gpt2")
+    except Exception:  # pragma: no cover - fallback if tokenizer missing
+        tokenizer = None
+
+    def _too_long(t: str) -> bool:
+        if tokenizer is not None:
+            try:
+                return len(tokenizer.encode(t)) > 1000
+            except Exception:  # pragma: no cover - encoding failure
+                return len(t.split()) > 1000
+        return len(t.split()) > 1000
+
     if isinstance(text, str):
         if text == "":
             model = _load_model(model_name, device)
             return np.zeros(model.get_sentence_embedding_dimension(), dtype=np.float32)
+        if _too_long(text):
+            text = dynamic_importance_filter(text)
         return _embed_cached(text, model_name, device, batch_size)
 
     texts = list(text)
     if not texts:
         model = _load_model(model_name, device)
         return np.zeros((0, model.get_sentence_embedding_dimension()), dtype=np.float32)
-    vecs = [_embed_cached(t, model_name, device, batch_size) for t in texts]
+    filtered = []
+    for t in texts:
+        if _too_long(t):
+            t = dynamic_importance_filter(t)
+        filtered.append(t)
+    vecs = [_embed_cached(t, model_name, device, batch_size) for t in filtered]
     return np.stack(vecs)
 
 
