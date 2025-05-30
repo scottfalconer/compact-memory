@@ -12,6 +12,9 @@ from rich.console import Console
 from .logging_utils import configure_logging
 
 from .memory_cues import MemoryCueRenderer
+from .active_memory_manager import ActiveMemoryManager
+from .models import ConversationalTurn
+from .embedding_pipeline import embed_text
 
 
 from .agent import Agent
@@ -314,7 +317,12 @@ def talk(
         raise typer.Exit(code=1)
     with PersistenceLock(path):
         agent = _load_agent(path)
-        # render short memory cue tags for the most relevant prototypes
+
+        params = {
+            k: v for k, v in agent.store.meta.items() if k.startswith("config_")
+        }
+        active_mgr = ActiveMemoryManager(**params)
+
         q = agent.query(message, top_k_prototypes=3, top_k_memories=0)
         cue_renderer = MemoryCueRenderer()
         cues = cue_renderer.render([p["summary"] for p in q["prototypes"]])
@@ -326,23 +334,49 @@ def talk(
             parts.append(f"{mem.memory_id}: {mem.raw_text}")
         context = "\n".join(parts)
 
-    prompt = f"{context}\nUser: {message}\nAssistant:"
-    from .local_llm import LocalChatModel
+        from .local_llm import LocalChatModel
 
-    try:
+        try:
+            llm = LocalChatModel(model_name=model_name)
+        except RuntimeError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(code=1)
+        from tqdm import tqdm
+
+        bar = tqdm(total=1, desc="Loading chat model", disable=False)
         llm = LocalChatModel(model_name=model_name)
-    except RuntimeError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(code=1)
-    from tqdm import tqdm
+        bar.update(1)
+        bar.close()
 
-    bar = tqdm(total=1, desc="Loading chat model", disable=False)
-    llm = LocalChatModel(model_name=model_name)
-    bar.update(1)
-    bar.close()
-    prompt = llm.prepare_prompt(agent, prompt)
-    reply = llm.reply(prompt)
-    typer.echo(reply)
+        user_embedding = embed_text(message)
+        cands = active_mgr.select_history_candidates_for_prompt(user_embedding)
+        stm_turns = active_mgr.finalize_history_for_prompt(
+            cands, 100, llm.tokenizer
+        )
+        stm_text = "\n".join(
+            f"User: {t.user_message}\nAssistant: {t.agent_response}"
+            for t in stm_turns
+        )
+
+        prompt_parts = []
+        if stm_text:
+            prompt_parts.append(stm_text)
+        if context:
+            prompt_parts.append(context)
+        prompt_parts.append(f"User: {message}\nAssistant:")
+        prompt = "\n".join(prompt_parts)
+
+        prompt = llm.prepare_prompt(agent, prompt)
+        reply = llm.reply(prompt)
+        typer.echo(reply)
+
+        emb = embed_text(f"{message}\n{reply}").tolist()
+        turn = ConversationalTurn(
+            user_message=message, agent_response=reply, turn_embedding=emb
+        )
+        active_mgr.add_turn(turn)
+
+        return
 
 
 @app.command()
