@@ -1,0 +1,13 @@
+- turns:
+    - user: "Remember that module B depends on A."
+    - assistant: "Okay."
+    - user: "Also C depends on B."
+    - assistant: "Understood."
+  query: "Which module does C depend on?"
+  required_turn_index: 2
+- turns:
+    - user: "Let's define variable 'secret' as 123."
+    - assistant: "Got it."
+    - user: "I'll ask you for the secret later."
+  query: "What is the secret value?"
+  required_turn_index: 0
