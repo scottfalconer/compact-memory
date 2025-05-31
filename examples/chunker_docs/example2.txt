@@ -1,0 +1,3 @@
+Chunking allows large passages to be divided into manageable windows of text.
+By sliding a window over the document, the agent can maintain context between chunks.
+This file gives you additional sentences to test the behaviour of the chunker implementation.
