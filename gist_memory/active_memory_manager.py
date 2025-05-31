@@ -182,15 +182,26 @@ class ActiveMemoryManager:
                 agent = getattr(turn, "agent_response", "")
                 text = f"{user}\n{agent}".strip()
 
-            ids = llm_tokenizer(text, return_tensors=None).get("input_ids", [])
-            if isinstance(ids, (list, tuple)):
-                if ids and isinstance(ids[0], (list, tuple)):
-                    tokens = list(ids[0])
-                else:
-                    tokens = list(ids)
+            if hasattr(llm_tokenizer, "tokenize"):
+                try:
+                    tokens = llm_tokenizer.tokenize(text)
+                except Exception:
+                    tokens = llm_tokenizer(text, return_tensors=None).get(
+                        "input_ids", []
+                    )
             else:
-                tokens = [ids]
-            n_tokens = len(tokens)
+                tokens = llm_tokenizer(text, return_tensors=None).get(
+                    "input_ids", []
+                )
+
+            if isinstance(tokens, (list, tuple)):
+                if tokens and isinstance(tokens[0], (list, tuple)):
+                    token_list = list(tokens[0])
+                else:
+                    token_list = list(tokens)
+            else:
+                token_list = [tokens]
+            n_tokens = len(token_list)
 
             if current_tokens + n_tokens <= max_tokens_for_history:
                 kept_ids.add(id(turn))
