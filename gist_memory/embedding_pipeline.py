@@ -142,6 +142,19 @@ def embed_text(
     return np.stack(vecs)
 
 
+def get_embedding_dim(model_name: str = _MODEL_NAME, device: str = _DEVICE) -> int:
+    """Return the embedding dimension for ``model_name`` on ``device``."""
+
+    model = _load_model(model_name, device)
+    get_dim = getattr(model, "get_sentence_embedding_dimension", None)
+    if callable(get_dim):
+        return int(get_dim())
+    dim = getattr(model, "dim", None)
+    if isinstance(dim, int):
+        return dim
+    raise AttributeError("embedding dimension not found")
+
+
 def register_embedding(name: str, encoder_callable) -> None:
     """Allow plugins to register alternative embedding functions."""
     globals()[name] = encoder_callable
@@ -151,5 +164,6 @@ __all__ = [
     "EmbeddingDimensionMismatchError",
     "MockEncoder",
     "embed_text",
+    "get_embedding_dim",
     "register_embedding",
 ]

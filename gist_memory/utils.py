@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Iterable, List
 
 from .json_npy_store import JsonNpyVectorStore
 from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
-from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
+from .embedding_pipeline import get_embedding_dim, EmbeddingDimensionMismatchError
 
 
 def get_disk_usage(path: Path) -> int:
@@ -41,7 +41,8 @@ def load_agent(path: Path) -> Agent:
             f"Agent directory '{path}' not found or is invalid"
         ) from exc
     except EmbeddingDimensionMismatchError:
-        dim = int(embed_text(["dim"]).shape[1])
+        from .embedding_pipeline import get_embedding_dim
+        dim = get_embedding_dim()
         store = JsonNpyVectorStore(path=str(path), embedding_dim=dim)
 
     chunker_id = store.meta.get("chunker", "sentence_window")

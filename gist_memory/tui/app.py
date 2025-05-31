@@ -5,7 +5,7 @@ from pathlib import Path
 from ..agent import Agent
 from ..json_npy_store import JsonNpyVectorStore
 from ..config import DEFAULT_BRAIN_PATH
-from ..embedding_pipeline import embed_text
+from ..embedding_pipeline import get_embedding_dim
 from ..talk_session import TalkSessionManager
 
 from .helpers import _install_models
@@ -31,7 +31,7 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
             ) from exc
     else:
         try:
-            dim = int(embed_text(["dim"]).shape[1])
+            dim = get_embedding_dim()
         except RuntimeError as exc:
             raise RuntimeError(str(exc)) from exc
         store = JsonNpyVectorStore(str(store_path), embedding_dim=dim)
