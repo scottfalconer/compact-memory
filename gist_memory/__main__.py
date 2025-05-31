@@ -15,8 +15,9 @@ from .logging_utils import configure_logging
 def main(argv=None) -> None:
     """Entry point for the ``gist-memory`` command.
 
-    When invoked without arguments, launch the Textual TUI. Otherwise fall back
-    to the CLI implementation.
+    This module used to launch a Textual TUI when ``gist-memory`` was executed
+    without any arguments. The TUI has been removed so we now always invoke the
+    Typer based CLI regardless of the arguments passed.
     """
     args = list(sys.argv[1:] if argv is None else argv)
 
@@ -36,14 +37,9 @@ def main(argv=None) -> None:
 
     sys.argv = [sys.argv[0]] + args
 
-    if len(args) == 0:
-        from .tui import run_tui
+    from .cli import app
 
-        run_tui()
-    else:
-        from .cli import app
-
-        app()
+    app()
 
 
 if __name__ == "__main__":

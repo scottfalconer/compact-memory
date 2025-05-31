@@ -28,7 +28,6 @@ _Completed in v0.1.1._
 - Extend CLI tests to cover `list-beliefs` and `download-model` commands.
 - Test `JsonNpyVectorStore.update_prototype` and `find_nearest` directly.
 - Add embedding pipeline tests for single-string and empty inputs, and for `register_embedding`.
-- Introduce minimal TUI tests, e.g. `_disk_usage` helper and textual import error.
 
 ## 6 · Memory Decay / Archival
 - Implement `agent.maintain_memory()` with exponential decay.

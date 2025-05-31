@@ -24,16 +24,13 @@ dependencies = [
     "spacy",
     "typer[all]",
     "portalocker",
-    "textual>=0.46",
     "rich>=13.6",
 ]
 
 [project.optional-dependencies]
 test = ["pytest"]
 chroma = ["chromadb"]
-tui = ["textual>=0.46", "rich>=13.6"]
 spacy = ["spacy"]
 
 [project.scripts]
 gist-memory = "gist_memory.__main__:main"
-gist-run = "gist_tui.__main__:main"

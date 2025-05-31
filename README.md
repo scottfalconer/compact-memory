@@ -11,10 +11,10 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 - Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
 - Chunks are rendered using a canonical ``WHO/WHAT/WHEN/WHERE/WHY`` template before embedding.
-- Launches a simple Textual TUI when running `gist-memory` with no arguments.
+- A Colab notebook will provide an interactive GUI in the future.
 - Python API provides helpers to decode and summarise prototypes.
 - Chat with a brain using a local LLM via the `talk` command.
-- Enable debug logging with `--log-file` or the `/log` TUI command.
+- Enable debug logging with `--log-file`.
 - Conflicts are heuristically flagged and written to `conflicts.jsonl` for
   HITL review.
 
@@ -46,7 +46,7 @@ To run completely offline set:
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 ```
-Once installed, running `gist-memory` with no arguments will start the Textual TUI.
+Once installed, run `gist-memory --help` to see the available commands.
 
 Alternatively install the package from source:
 
@@ -55,18 +55,6 @@ pip install .
 ```
 
 ## Usage
-
-### Interactive TUI
-
-Launch ``gist-run`` to explore a brain interactively:
-
-```bash
-gist-run
-```
-
-All commands operate on the ``brain`` directory by default. Pass
-``--agent-name`` (or a directory argument for ``gist-memory init``) to use a
-different location.
 
 ### Command line
 
@@ -170,24 +158,6 @@ The script loads all `*.txt` files from `examples/moon_landing`, stores them in 
 local database and displays the prototype assignments along with a final memory
 and prototype count.
 
-## Wizard Demo
-
-The Textual wizard provides a hands-on tour of the agent. Install the
-requirements, download the embedding model and launch ``gist-run``:
-
-```bash
-pip install -r requirements.txt
-gist-memory download-model --model-name all-MiniLM-L6-v2
-
-# start the wizard
-gist-run
-```
-
-From the welcome screen press ``L`` to load the sample Apollo 11 transcripts
-from ``examples/moon_landing``. The wizard now uses a small console where you
-interact via slash commands. Type ``/ingest <text>`` to add a memory, ``/query
-<text>`` to search, ``/stats`` to see store statistics, ``/install-models`` to
-download the local models or ``/help`` for a list of commands.
 
 ## Segmentation Playbook
 
