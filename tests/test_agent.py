@@ -10,6 +10,7 @@ from gist_memory.json_npy_store import JsonNpyVectorStore
 from gist_memory.chunker import SentenceWindowChunker
 from gist_memory.active_memory_manager import ActiveMemoryManager
 from gist_memory.prompt_budget import PromptBudget
+import sys
 
 
 @pytest.fixture(autouse=True)
@@ -173,4 +174,31 @@ def test_get_statistics_ephemeral_store(tmp_path):
     agent = Agent(store, chunker=SentenceWindowChunker())
     stats = agent.get_statistics()
     assert stats["disk_usage"] == 0
+
+
+def test_add_memory_tqdm_notebook(monkeypatch, tmp_path):
+    store = JsonNpyVectorStore(path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim)
+    agent = Agent(store, chunker=SentenceWindowChunker())
+
+    updates: list[int] = []
+
+    class DummyBar:
+        closed = False
+
+        def __init__(self, *a, **k):
+            self.total = k.get("total")
+
+        def update(self, n=1):
+            updates.append(n)
+
+        def close(self):
+            DummyBar.closed = True
+
+    import types
+    monkeypatch.setitem(sys.modules, "tqdm.notebook", types.SimpleNamespace(tqdm=lambda *a, **k: DummyBar(*a, **k)))
+
+    agent.add_memory("alpha bravo", tqdm_notebook=True)
+
+    assert sum(updates) == len(agent.chunker.chunk("alpha bravo"))
+    assert DummyBar.closed
 

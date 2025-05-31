@@ -101,6 +101,8 @@ gist-memory clear --yes
 
 Additional functions such as decoding or summarising a prototype are
 available via the Python API.
+When working in a Jupyter notebook you can display a progress bar during
+ingestion by passing ``tqdm_notebook=True`` to ``Agent.add_memory``.
 
 The local embedder loads the model from the Hugging Face cache only and will not
 attempt any network downloads. Ensure the embedding and chat models are

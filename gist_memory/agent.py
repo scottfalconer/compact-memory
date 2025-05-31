@@ -215,10 +215,15 @@ class Agent:
         progress_callback: Optional[
             Callable[[int, int, bool, str, Optional[float]], None]
         ] = None,
+        tqdm_notebook: bool = False,
         save: bool = True,
         source_document_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
-        """Ingest ``text`` into the store and return per-chunk statuses."""
+        """Ingest ``text`` into the store and return per-chunk statuses.
+
+        When ``tqdm_notebook`` is ``True`` and ``progress_callback`` is not
+        provided a ``tqdm.notebook`` progress bar is used if available.
+        """
 
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
         if digest in self._dedup:
@@ -238,6 +243,20 @@ class Agent:
         vecs = embed_text(canonical)
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
+
+        bar = None
+        if tqdm_notebook and progress_callback is None:
+            try:  # pragma: no cover - optional dependency
+                from tqdm.notebook import tqdm as notebook_tqdm
+            except Exception:  # pragma: no cover - tqdm not installed
+                pass
+            else:
+                bar = notebook_tqdm(total=len(chunks), desc="Adding")
+
+                def _default_cb(i: int, total: int, spawned: bool, pid: str, sim: Optional[float]) -> None:
+                    bar.update(1)
+
+                progress_callback = _default_cb
 
         results: List[Dict[str, object]] = []
         total = len(chunks)
@@ -295,6 +314,12 @@ class Agent:
             results.append({"prototype_id": pid, "spawned": spawned, "sim": sim})
             if progress_callback:
                 progress_callback(idx, total, spawned, pid, sim)
+
+        if bar is not None:
+            try:  # pragma: no cover - just cleanup
+                bar.close()
+            except Exception:
+                pass
 
         if save:
             self.store.save()
