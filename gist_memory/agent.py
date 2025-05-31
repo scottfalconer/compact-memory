@@ -91,12 +91,33 @@ class MemoryHit(TypedDict):
     sim: float
 
 
-class QueryResult(TypedDict):
-    """Return type for :meth:`Agent.query`."""
+class QueryResult(dict):
+    """Result object returned by :meth:`Agent.query` with HTML representation."""
 
     prototypes: List[PrototypeHit]
     memories: List[MemoryHit]
     status: str
+
+    def __init__(self, prototypes: List[PrototypeHit], memories: List[MemoryHit], status: str) -> None:
+        super().__init__(prototypes=prototypes, memories=memories, status=status)
+
+    # --------------------------------------------------------------
+    def _repr_html_(self) -> str:
+        proto_rows = "".join(
+            f"<tr><td>{p['id']}</td><td>{p['summary']}</td><td>{p['sim']:.2f}</td></tr>"
+            for p in self.get('prototypes', [])
+        )
+        mem_rows = "".join(
+            f"<tr><td>{m['id']}</td><td>{m['text']}</td><td>{m['sim']:.2f}</td></tr>"
+            for m in self.get('memories', [])
+        )
+        html = """<h4>Prototypes</h4><table><tr><th>ID</th><th>Summary</th><th>Sim</th></tr>{p_rows}</table>""".format(
+            p_rows=proto_rows
+        )
+        html += """<h4>Memories</h4><table><tr><th>ID</th><th>Text</th><th>Sim</th></tr>{m_rows}</table>""".format(
+            m_rows=mem_rows
+        )
+        return html
 
 
 class Agent:
@@ -157,6 +178,15 @@ class Agent:
             "updated": self.store.meta.get("updated_at"),
             "disk_usage": disk_usage,
         }
+
+    # ------------------------------------------------------------------
+    def _repr_html_(self) -> str:
+        """HTML summary for notebooks."""
+        stats = self.get_statistics()
+        rows = "".join(
+            f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in stats.items()
+        )
+        return f"<h3>Agent</h3><table>{rows}</table>"
 
     # ------------------------------------------------------------------
     def get_prototypes_view(
@@ -316,11 +346,7 @@ class Agent:
             vec = vec.reshape(-1)
         nearest = self.store.find_nearest(vec, k=top_k_prototypes)
         if not nearest:
-            return {
-                "prototypes": [],
-                "memories": [],
-                "status": "no_match",
-            }
+            return QueryResult([], [], "no_match")
 
         logging.info(
             "[query] '%s' → %d protos, top sim %.2f",
@@ -355,11 +381,7 @@ class Agent:
             for s, m in memory_candidates[:top_k_memories]
         ]
 
-        return {
-            "prototypes": proto_results,
-            "memories": mem_results,
-            "status": "ok",
-        }
+        return QueryResult(proto_results, mem_results, "ok")
 
     # ------------------------------------------------------------------
     def process_conversational_turn(
