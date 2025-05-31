@@ -4,15 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import inspect
-from typing import Optional, TYPE_CHECKING, Iterable, Any
+from typing import Optional, TYPE_CHECKING, Iterable
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from .agent import Agent
 
 from .importance_filter import dynamic_importance_filter
 
-AutoModelForCausalLM: Any | None = None
-AutoTokenizer: Any | None = None
+try:  # heavy dependency only when needed
+    from transformers import AutoModelForCausalLM, AutoTokenizer
+except Exception:  # pragma: no cover - optional
+    AutoModelForCausalLM = None  # type: ignore
+    AutoTokenizer = None  # type: ignore
 
 
 @dataclass
