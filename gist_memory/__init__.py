@@ -33,6 +33,8 @@ __all__ = [
     "negation_conflict",
     "TalkSessionManager",
     "load_agent",
+    "tokenize_text",
+    "token_count",
 ]
 
 _lazy_map = {
@@ -63,6 +65,8 @@ _lazy_map = {
     "negation_conflict": "gist_memory.conflict",
     "TalkSessionManager": "gist_memory.talk_session",
     "load_agent": "gist_memory.utils",
+    "tokenize_text": "gist_memory.token_utils",
+    "token_count": "gist_memory.token_utils",
 }
 
 
