@@ -17,7 +17,6 @@ from ..json_npy_store import JsonNpyVectorStore
 from ..talk_session import TalkSessionManager
 
 from .helpers import (
-    _disk_usage,
     _install_models,
     _path_suggestions,
     _brain_path_suggestions,
@@ -199,8 +198,9 @@ class BeliefScreen(StatusMixin):
     def on_mount(self) -> None:
         self.set_status("Loading...")
         table = self.query_one("#tbl", DataTable)
-        for p in store.prototypes:
-            table.add_row(p.prototype_id[:8], str(p.strength), p.summary_text)
+        protos = agent.get_prototypes_view()
+        for p in protos:
+            table.add_row(p["id"][:8], str(p["strength"]), p["summary"])
         self.set_status("")
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
@@ -366,10 +366,10 @@ class ConsoleScreen(StatusMixin):
             self.set_status("")
             event.input.disabled = False
         elif cmd == "/stats":
-            usage = _disk_usage(store_path)
-            self.text_log.write_line(f"disk: {usage} bytes")
-            self.text_log.write_line(f"memories: {len(store.memories)}")
-            self.text_log.write_line(f"prototypes: {len(store.prototypes)}")
+            stats = agent.get_statistics()
+            self.text_log.write_line(f"disk: {stats.get('disk_usage', 0)} bytes")
+            self.text_log.write_line(f"memories: {stats.get('memories', 0)}")
+            self.text_log.write_line(f"prototypes: {stats.get('prototypes', 0)}")
         elif cmd == "/beliefs":
             self.app.push_screen(BeliefScreen())
         elif cmd == "/talk":
@@ -514,12 +514,12 @@ class StatsScreen(StatusMixin):
     def compose(self) -> ComposeResult:  # type: ignore[override]
         table = DataTable(id="stats")
         table.add_columns("key", "value")
-        usage = _disk_usage(store_path)
-        table.add_row("disk", f"{usage} bytes")
-        table.add_row("memories", str(len(store.memories)))
-        table.add_row("prototypes", str(len(store.prototypes)))
-        table.add_row("tau", str(agent.similarity_threshold))
-        table.add_row("updated", store.meta.get("updated_at", ""))
+        stats = agent.get_statistics()
+        table.add_row("disk", f"{stats.get('disk_usage', 0)} bytes")
+        table.add_row("memories", str(stats.get('memories', 0)))
+        table.add_row("prototypes", str(stats.get('prototypes', 0)))
+        table.add_row("tau", str(stats.get('tau', 0)))
+        table.add_row("updated", stats.get('updated', ""))
         yield Header()
         yield table
         yield Static("", id="status")

@@ -1,7 +1,8 @@
 import builtins
 import pytest
 from textual.app import App
-from gist_memory.tui import _disk_usage, run_tui
+from gist_memory.tui import run_tui
+from gist_memory.utils import get_disk_usage
 from gist_memory.json_npy_store import JsonNpyVectorStore
 from gist_memory.embedding_pipeline import MockEncoder
 from gist_memory.agent import Agent
@@ -14,7 +15,7 @@ def test_disk_usage(tmp_path):
     f2 = tmp_path / "b.txt"
     f2.write_text("beta")
     expected = f1.stat().st_size + f2.stat().st_size
-    assert _disk_usage(tmp_path) == expected
+    assert get_disk_usage(tmp_path) == expected
 
 
 def test_run_tui_import_error(monkeypatch, tmp_path):

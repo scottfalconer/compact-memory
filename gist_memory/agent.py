@@ -140,6 +140,39 @@ class Agent:
         self._conflicts = ConflictFlagger(FlagLogger(c))
 
     # ------------------------------------------------------------------
+    def get_statistics(self) -> Dict[str, object]:
+        """Return summary statistics about the current store."""
+
+        from .utils import get_disk_usage
+
+        path = Path(self.store.path)
+        return {
+            "prototypes": len(self.store.prototypes),
+            "memories": len(self.store.memories),
+            "tau": self.similarity_threshold,
+            "updated": self.store.meta.get("updated_at"),
+            "disk_usage": get_disk_usage(path),
+        }
+
+    # ------------------------------------------------------------------
+    def get_prototypes_view(self, sort_by: str | None = None) -> List[Dict[str, object]]:
+        """Return list of prototypes for display purposes."""
+
+        protos = list(self.store.prototypes)
+        if sort_by == "strength":
+            protos.sort(key=lambda p: p.strength, reverse=True)
+
+        return [
+            {
+                "id": p.prototype_id,
+                "strength": p.strength,
+                "confidence": p.confidence,
+                "summary": p.summary_text,
+            }
+            for p in protos
+        ]
+
+    # ------------------------------------------------------------------
     def _log_conflict(self, proto_id: str, mem_a: RawMemory, mem_b: RawMemory) -> None:
         self._conflict_logger.add(proto_id, mem_a, mem_b)
 
