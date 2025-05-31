@@ -114,15 +114,11 @@ class Agent:
         prompt_budget: PromptBudget | None = None,
     ) -> None:
         if not 0.5 <= similarity_threshold <= 0.95:
-            raise ValueError(
-                "similarity_threshold must be between 0.5 and 0.95"
-            )
+            raise ValueError("similarity_threshold must be between 0.5 and 0.95")
         self.store = store
         self.chunker = chunker or SentenceWindowChunker()
         self.similarity_threshold = similarity_threshold
-        self.summary_creator = summary_creator or ExtractiveSummaryCreator(
-            max_words=25
-        )
+        self.summary_creator = summary_creator or ExtractiveSummaryCreator(max_words=25)
         self.update_summaries = update_summaries
         self.metrics: Dict[str, int] = {
             "memories_ingested": 0,
@@ -181,15 +177,11 @@ class Agent:
         ]
 
     # ------------------------------------------------------------------
-    def _log_conflict(
-        self, proto_id: str, mem_a: RawMemory, mem_b: RawMemory
-    ) -> None:
+    def _log_conflict(self, proto_id: str, mem_a: RawMemory, mem_b: RawMemory) -> None:
         self._conflict_logger.add(proto_id, mem_a, mem_b)
 
     # ------------------------------------------------------------------
-    def _write_evidence(
-        self, belief_id: str, mem_id: str, weight: float
-    ) -> None:
+    def _write_evidence(self, belief_id: str, mem_id: str, weight: float) -> None:
         self._evidence.add(belief_id, mem_id, weight)
 
     def _flag_conflicts(
@@ -206,9 +198,7 @@ class Agent:
             if mem.embedding is None:
                 continue
             vec_b = np.array(mem.embedding, dtype=np.float32)
-            self._conflicts.check_pair(
-                prototype_id, new_mem, new_vec, mem, vec_b
-            )
+            self._conflicts.check_pair(prototype_id, new_mem, new_vec, mem, vec_b)
 
     # ------------------------------------------------------------------
     def add_memory(
@@ -389,6 +379,14 @@ class Agent:
             vec = vec.reshape(-1)
 
         history_candidates = manager.select_history_candidates_for_prompt(vec)
+        candidate_tokens = token_count(
+            llm.tokenizer, "\n".join(t.text for t in history_candidates)
+        )
+        logging.debug(
+            "[prompt] history candidates=%d tokens=%d",
+            len(history_candidates),
+            candidate_tokens,
+        )
         if hasattr(llm, "_context_length"):
             max_len = llm._context_length()
         else:  # fallback for test doubles
@@ -434,14 +432,41 @@ class Agent:
         history_final = older_final + recent_final
 
         history_text = "\n".join(t.text for t in history_final)
+        history_tokens_final = token_count(llm.tokenizer, history_text)
+        logging.debug(
+            "[prompt] history after fit turns=%d tokens=%d",
+            len(history_final),
+            history_tokens_final,
+        )
 
         query_res = self.query(input_message, top_k_prototypes=2, top_k_memories=2)
-        proto_summaries = "; ".join(p["summary"] for p in query_res.get("prototypes", []))
+        proto_summaries = "; ".join(
+            p["summary"] for p in query_res.get("prototypes", [])
+        )
         mem_texts = "; ".join(m["text"] for m in query_res.get("memories", []))
+        ltm_initial = "\n".join(
+            [
+                f"Relevant concepts: {proto_summaries}" if proto_summaries else "",
+                f"Context: {mem_texts}" if mem_texts else "",
+            ]
+        ).strip()
+        logging.debug(
+            "[prompt] LTM snippets tokens before=%d",
+            token_count(llm.tokenizer, ltm_initial) if ltm_initial else 0,
+        )
 
         user_text = input_message
         if b_query:
+            logging.debug(
+                "[prompt] query tokens before=%d limit=%s",
+                token_count(llm.tokenizer, user_text),
+                b_query,
+            )
             user_text = truncate_text(llm.tokenizer, user_text, b_query)
+            logging.debug(
+                "[prompt] query tokens after=%d",
+                token_count(llm.tokenizer, user_text),
+            )
 
         ltm_parts = []
         if proto_summaries:
@@ -450,7 +475,16 @@ class Agent:
             ltm_parts.append(f"Context: {mem_texts}")
         ltm_text = "\n".join(ltm_parts)
         if b_ltm:
+            logging.debug(
+                "[prompt] LTM tokens before=%d limit=%s",
+                token_count(llm.tokenizer, ltm_text),
+                b_ltm,
+            )
             ltm_text = truncate_text(llm.tokenizer, ltm_text, b_ltm)
+            logging.debug(
+                "[prompt] LTM tokens after=%d",
+                token_count(llm.tokenizer, ltm_text),
+            )
 
         parts = []
         if history_text:
@@ -460,7 +494,11 @@ class Agent:
             parts.append(ltm_text)
         parts.append("Answer:")
         prompt = "\n".join(parts)
+        before_llm_tokens = token_count(llm.tokenizer, prompt)
+        logging.debug("[prompt] before prepare tokens=%d", before_llm_tokens)
         prompt = llm.prepare_prompt(self, prompt)
+        after_llm_tokens = token_count(llm.tokenizer, prompt)
+        logging.debug("[prompt] after prepare tokens=%d", after_llm_tokens)
         reply = llm.reply(prompt)
 
         manager.add_turn(

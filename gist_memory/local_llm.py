@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import inspect
+import logging
 from typing import Optional, TYPE_CHECKING, Iterable
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
@@ -55,11 +56,17 @@ class LocalChatModel:
         global AutoModelForCausalLM, AutoTokenizer
         if AutoModelForCausalLM is None or AutoTokenizer is None:
             try:
-                from transformers import AutoModelForCausalLM as _Model, AutoTokenizer as _Tok
+                from transformers import (
+                    AutoModelForCausalLM as _Model,
+                    AutoTokenizer as _Tok,
+                )
+
                 AutoModelForCausalLM = _Model
                 AutoTokenizer = _Tok
             except Exception as exc:  # pragma: no cover – optional
-                raise ImportError("transformers is required for LocalChatModel") from exc
+                raise ImportError(
+                    "transformers is required for LocalChatModel"
+                ) from exc
 
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(
@@ -170,14 +177,20 @@ class LocalChatModel:
             raise RuntimeError("LocalChatModel not initialised")
 
         max_len = self._context_length()
+        input_tokens = token_count(self.tokenizer, prompt)
+        logging.debug("[prepare_prompt] input tokens=%d max=%d", input_tokens, max_len)
         tokens = self.tokenizer(prompt, return_tensors="pt")["input_ids"][0]
-        if token_count(self.tokenizer, prompt) <= max_len:
+        if input_tokens <= max_len:
+            logging.debug("[prepare_prompt] no truncation needed")
             return prompt
 
         old_tokens = tokens[:-recent_tokens]
         recent_tokens_ids = tokens[-recent_tokens:]
         old_text = self.tokenizer.decode(old_tokens, skip_special_tokens=True)
         recent_text = self.tokenizer.decode(recent_tokens_ids, skip_special_tokens=True)
+        logging.debug(
+            "[prepare_prompt] old=%d recent=%d", len(old_tokens), len(recent_tokens_ids)
+        )
 
         from .memory_creation import DefaultTemplateBuilder
         from .embedding_pipeline import embed_text
@@ -194,7 +207,15 @@ class LocalChatModel:
         recap = "; ".join(summaries)
         recap_text = f"<recap> Recent conversation: {recap}\n" if recap else ""
 
-        return recap_text + recent_text
+        output = recap_text + recent_text
+        output_tokens = token_count(self.tokenizer, output)
+        logging.debug(
+            "[prepare_prompt] output tokens=%d (recap=%d recent=%d)",
+            output_tokens,
+            token_count(self.tokenizer, recap_text),
+            token_count(self.tokenizer, recent_text),
+        )
+        return output
 
 
 __all__ = ["LocalChatModel"]

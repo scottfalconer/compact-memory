@@ -8,6 +8,7 @@ from .prompt_budget import PromptBudget
 from .token_utils import token_count
 
 import numpy as np
+import logging
 
 
 @dataclass
@@ -155,7 +156,14 @@ class ActiveMemoryManager:
         # preserve original order of selected older turns
         selected_older.sort(key=lambda t: self.history.index(t))
 
-        return selected_older + list(recent_slice)
+        selected = selected_older + list(recent_slice)
+        logging.debug(
+            "[prompt] select_history candidates=%d recent=%d older=%d",
+            len(selected),
+            len(recent_slice),
+            len(selected_older),
+        )
+        return selected
 
     # --------------------------------------------------------------
     def finalize_history_for_prompt(
