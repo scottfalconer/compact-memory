@@ -11,6 +11,7 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 - Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
 - Chunks are rendered using a canonical ``WHO/WHAT/WHEN/WHERE/WHY`` template before embedding.
+- The CLI runs smoothly in Colab.
 - A Colab notebook will provide an interactive GUI in the future.
 - Python API provides helpers to decode and summarise prototypes.
 - Chat with a brain using a local LLM via the `talk` command.

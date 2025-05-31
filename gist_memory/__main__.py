@@ -15,9 +15,8 @@ from .logging_utils import configure_logging
 def main(argv=None) -> None:
     """Entry point for the ``gist-memory`` command.
 
-    This module used to launch a Textual TUI when ``gist-memory`` was executed
-    without any arguments. The TUI has been removed so we now always invoke the
-    Typer based CLI regardless of the arguments passed.
+    This entry point always delegates directly to the Typer-based CLI,
+    which runs well in Colab or any terminal.
     """
     args = list(sys.argv[1:] if argv is None else argv)
 
@@ -26,7 +25,7 @@ def main(argv=None) -> None:
     if "--log-file" in args:
         idx = args.index("--log-file")
         log_file = args[idx + 1]
-        del args[idx: idx + 2]
+        del args[idx : idx + 2]
     if "--verbose" in args:
         verbose = True
         args.remove("--verbose")
