@@ -30,4 +30,20 @@ def token_count(tokenizer: Any, text: str) -> int:
     return len(tokenize_text(tokenizer, text))
 
 
-__all__ = ["tokenize_text", "token_count"]
+def truncate_text(tokenizer: Any, text: str, max_tokens: int) -> str:
+    """Return ``text`` truncated to ``max_tokens`` using ``tokenizer``."""
+    tokens = tokenize_text(tokenizer, text)
+    if len(tokens) <= max_tokens:
+        return text
+    trimmed = tokens[:max_tokens]
+    if hasattr(tokenizer, "decode"):
+        try:
+            return tokenizer.decode(trimmed, skip_special_tokens=True)
+        except Exception:
+            pass
+    if all(isinstance(t, str) for t in trimmed):
+        return " ".join(trimmed)
+    return " ".join(text.split()[:max_tokens])
+
+
+__all__ = ["tokenize_text", "token_count", "truncate_text"]

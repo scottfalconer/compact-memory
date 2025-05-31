@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from .prompt_budget import PromptBudget
+
 from .token_utils import token_count
 
 import numpy as np
@@ -34,6 +36,7 @@ class ActiveMemoryManager:
     config_min_activation_floor: float = 0.0
     config_relevance_boost_factor: float = 1.0
     history: List[ConversationTurn] = field(default_factory=list)
+    prompt_budget: Optional[PromptBudget] = None
 
     # --------------------------------------------------------------
     def add_turn(self, turn: ConversationTurn) -> None:
