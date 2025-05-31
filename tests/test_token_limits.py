@@ -41,6 +41,11 @@ class DummyModel:
         return [[0]]
 
 
+class NoLenModel(DummyModel):
+    def __init__(self, *a, **k):
+        self.config = type("cfg", (), {})()
+
+
 @pytest.fixture(autouse=True)
 def dummy_llm(monkeypatch):
     monkeypatch.setattr(
@@ -100,3 +105,23 @@ def test_cli_talk_prompt_respects_limit(tmp_path, monkeypatch):
     tokens = len(captured["ids"])
     max_len = DummyModel().config.n_positions - LocalChatModel().max_new_tokens
     assert tokens <= max_len
+
+
+def test_context_length_uses_tokenizer_when_config_missing(monkeypatch):
+    _setup_encoder(monkeypatch)
+
+    class Tok(DummyTokenizer):
+        model_max_length = 150
+
+    monkeypatch.setattr(
+        "gist_memory.local_llm.AutoTokenizer.from_pretrained", lambda *a, **k: Tok()
+    )
+    monkeypatch.setattr(
+        "gist_memory.local_llm.AutoModelForCausalLM.from_pretrained",
+        lambda *a, **k: NoLenModel(),
+    )
+
+    model = LocalChatModel(max_new_tokens=100)
+    long_prompt = " ".join(f"w{i}" for i in range(50))
+    model.reply(long_prompt)
+    assert len(NoLenModel.generated) <= 50

@@ -385,9 +385,15 @@ class Agent:
             vec = vec.reshape(-1)
 
         history_candidates = manager.select_history_candidates_for_prompt(vec)
+        if hasattr(llm, "_context_length"):
+            max_hist = llm._context_length() - llm.max_new_tokens
+        else:  # fallback for test doubles
+            cfg = getattr(getattr(llm, "model", None), "config", None)
+            max_len = getattr(cfg, "n_positions", 1024)
+            max_hist = max_len - llm.max_new_tokens
         history_final = manager.finalize_history_for_prompt(
             history_candidates,
-            llm.model.config.n_positions - llm.max_new_tokens,
+            max_hist,
             llm.tokenizer,
         )
 
