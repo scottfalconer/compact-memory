@@ -1,0 +1,12 @@
+- turns:
+    - user: "Remember that module B depends on A."
+    - assistant: "Okay."
+    - user: "Also C depends on B."
+    - assistant: "Understood."
+  query: "Which module does C depend on?"
+  answer: "B"
+- turns:
+    - user: "Set secret to 123."
+    - assistant: "Okay."
+  query: "What is secret?"
+  answer: "123"

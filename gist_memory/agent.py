@@ -499,6 +499,7 @@ class Agent:
         prompt = llm.prepare_prompt(self, prompt)
         after_llm_tokens = token_count(llm.tokenizer, prompt)
         logging.debug("[prompt] after prepare tokens=%d", after_llm_tokens)
+        prompt_tokens = after_llm_tokens
         reply = llm.reply(prompt)
 
         manager.add_turn(
@@ -508,7 +509,7 @@ class Agent:
             )
         )
 
-        return reply, {"query_result": query_res}
+        return reply, {"query_result": query_res, "prompt_tokens": prompt_tokens}
 
     # ------------------------------------------------------------------
     def receive_channel_message(
