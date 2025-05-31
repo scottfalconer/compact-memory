@@ -1,6 +1,6 @@
 openai
 tiktoken
-numpy
+numpy<1.26  # avoid Accelerate/BLAS segfaults on macOS
 faiss-cpu
 click
 tqdm
