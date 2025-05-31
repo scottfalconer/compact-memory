@@ -15,6 +15,7 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 - Python API provides helpers to decode and summarise prototypes.
 - Chat with a brain using a local LLM via the `talk` command.
 - Enable debug logging with `--log-file`.
+- Library log level can be adjusted programmatically via ``set_library_log_level``.
 - Conflicts are heuristically flagged and written to `conflicts.jsonl` for
   HITL review.
 

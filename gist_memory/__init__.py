@@ -5,6 +5,8 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
+from .logging_utils import get_library_logger, set_library_log_level
+
 __all__ = [
     "app",
     "BeliefPrototype",
@@ -36,6 +38,8 @@ __all__ = [
     "tokenize_text",
     "token_count",
     "PromptBudget",
+    "get_library_logger",
+    "set_library_log_level",
 ]
 
 _lazy_map = {

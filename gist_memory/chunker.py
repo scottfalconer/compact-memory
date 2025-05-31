@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+
+logger = logging.getLogger(__name__)
 from abc import ABC, abstractmethod
 from typing import Dict, List, Type
 
@@ -64,7 +66,7 @@ class SentenceWindowChunker(Chunker):
             else:
                 tokens = sent.split()
             if len(tokens) > self.max_tokens:
-                logging.warning("long sentence split")
+                logger.warning("long sentence split")
                 for i in range(0, len(tokens), self.max_tokens):
                     sub = tokens[i : i + self.max_tokens]
                     if current:

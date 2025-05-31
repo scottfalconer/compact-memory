@@ -9,7 +9,7 @@ try:  # optional pretty tracebacks
 except Exception:  # pragma: no cover - rich may not be installed
     pass
 
-from .logging_utils import configure_logging
+from .logging_utils import configure_logging, set_library_log_level
 
 
 def main(argv=None) -> None:
@@ -34,6 +34,8 @@ def main(argv=None) -> None:
     if log_file:
         level = logging.DEBUG if verbose else logging.INFO
         configure_logging(Path(log_file), level)
+    elif verbose:
+        set_library_log_level(logging.DEBUG, add_basic_handler=True)
 
     sys.argv = [sys.argv[0]] + args
 

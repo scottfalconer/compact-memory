@@ -9,7 +9,7 @@ import portalocker
 from rich.table import Table
 from rich.console import Console
 
-from .logging_utils import configure_logging
+from .logging_utils import configure_logging, set_library_log_level
 
 
 from .agent import Agent
@@ -36,7 +36,7 @@ def main(
         level = logging.DEBUG if verbose else logging.INFO
         configure_logging(log_file, level)
     elif verbose:
-        logging.basicConfig(level=logging.DEBUG)
+        set_library_log_level(logging.DEBUG, add_basic_handler=True)
     global VERBOSE
     VERBOSE = verbose
     ctx.obj = {"verbose": verbose}

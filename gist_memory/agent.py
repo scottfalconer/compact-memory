@@ -10,6 +10,8 @@ from typing import Dict, List, Optional, TypedDict, Callable
 import logging
 import numpy as np
 
+logger = logging.getLogger(__name__)
+
 
 from .chunker import Chunker, SentenceWindowChunker
 from .embedding_pipeline import embed_text
@@ -322,7 +324,7 @@ class Agent:
                 "status": "no_match",
             }
 
-        logging.info(
+        logger.info(
             "[query] '%s' → %d protos, top sim %.2f",
             text[:40],
             len(nearest),
@@ -384,7 +386,7 @@ class Agent:
         candidate_tokens = token_count(
             llm.tokenizer, "\n".join(t.text for t in history_candidates)
         )
-        logging.debug(
+        logger.debug(
             "[prompt] history candidates=%d tokens=%d",
             len(history_candidates),
             candidate_tokens,
@@ -435,7 +437,7 @@ class Agent:
 
         history_text = "\n".join(t.text for t in history_final)
         history_tokens_final = token_count(llm.tokenizer, history_text)
-        logging.debug(
+        logger.debug(
             "[prompt] history after fit turns=%d tokens=%d",
             len(history_final),
             history_tokens_final,
@@ -452,20 +454,20 @@ class Agent:
                 f"Context: {mem_texts}" if mem_texts else "",
             ]
         ).strip()
-        logging.debug(
+        logger.debug(
             "[prompt] LTM snippets tokens before=%d",
             token_count(llm.tokenizer, ltm_initial) if ltm_initial else 0,
         )
 
         user_text = input_message
         if b_query:
-            logging.debug(
+            logger.debug(
                 "[prompt] query tokens before=%d limit=%s",
                 token_count(llm.tokenizer, user_text),
                 b_query,
             )
             user_text = truncate_text(llm.tokenizer, user_text, b_query)
-            logging.debug(
+            logger.debug(
                 "[prompt] query tokens after=%d",
                 token_count(llm.tokenizer, user_text),
             )
@@ -477,13 +479,13 @@ class Agent:
             ltm_parts.append(f"Context: {mem_texts}")
         ltm_text = "\n".join(ltm_parts)
         if b_ltm:
-            logging.debug(
+            logger.debug(
                 "[prompt] LTM tokens before=%d limit=%s",
                 token_count(llm.tokenizer, ltm_text),
                 b_ltm,
             )
             ltm_text = truncate_text(llm.tokenizer, ltm_text, b_ltm)
-            logging.debug(
+            logger.debug(
                 "[prompt] LTM tokens after=%d",
                 token_count(llm.tokenizer, ltm_text),
             )
@@ -497,10 +499,10 @@ class Agent:
         parts.append("Answer:")
         prompt = "\n".join(parts)
         before_llm_tokens = token_count(llm.tokenizer, prompt)
-        logging.debug("[prompt] before prepare tokens=%d", before_llm_tokens)
+        logger.debug("[prompt] before prepare tokens=%d", before_llm_tokens)
         prompt = llm.prepare_prompt(self, prompt)
         after_llm_tokens = token_count(llm.tokenizer, prompt)
-        logging.debug("[prompt] after prepare tokens=%d", after_llm_tokens)
+        logger.debug("[prompt] after prepare tokens=%d", after_llm_tokens)
         prompt_tokens = after_llm_tokens
         reply = llm.reply(prompt)
 
@@ -534,7 +536,7 @@ class Agent:
         lightweight observability for higher level session management code.
         """
 
-        logging.info("[receive] from %s: %s", source_id, message_text[:40])
+        logger.info("[receive] from %s: %s", source_id, message_text[:40])
 
         summary: dict[str, object] = {"source": source_id}
 
@@ -574,7 +576,7 @@ class Agent:
                 prompt = llm.prepare_prompt(self, prompt)
                 reply = llm.reply(prompt)
             except Exception as exc:  # pragma: no cover - optional dep
-                logging.warning("chat reply failed: %s", exc)
+                logger.warning("chat reply failed: %s", exc)
                 reply = None
 
             summary["reply"] = reply

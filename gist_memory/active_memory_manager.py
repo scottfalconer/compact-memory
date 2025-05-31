@@ -10,6 +10,8 @@ from .token_utils import token_count
 import numpy as np
 import logging
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ConversationTurn:
@@ -157,7 +159,7 @@ class ActiveMemoryManager:
         selected_older.sort(key=lambda t: self.history.index(t))
 
         selected = selected_older + list(recent_slice)
-        logging.debug(
+        logger.debug(
             "[prompt] select_history candidates=%d recent=%d older=%d",
             len(selected),
             len(recent_slice),
