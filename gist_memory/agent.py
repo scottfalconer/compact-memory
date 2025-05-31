@@ -147,13 +147,15 @@ class Agent:
 
         from .utils import get_disk_usage
 
-        path = Path(self.store.path)
+        path_value = self.store.path
+        path = Path(path_value) if path_value else None
+        disk_usage = get_disk_usage(path) if path is not None else 0
         return {
             "prototypes": len(self.store.prototypes),
             "memories": len(self.store.memories),
             "tau": self.similarity_threshold,
             "updated": self.store.meta.get("updated_at"),
-            "disk_usage": get_disk_usage(path),
+            "disk_usage": disk_usage,
         }
 
     # ------------------------------------------------------------------
