@@ -5,8 +5,8 @@
 `gist-memory` implements a coarse prototype memory system for storing and
 retrieving textual information. Incoming text is converted into vector
 embeddings and "snap-assigned" to belief prototypes which act as stable
-centroids. The codebase is organised into a library providing Python APIs,
-a CLI (`gist-memory`) and a lightweight Textual TUI (`gist-run`).
+centroids. The codebase is organised into a library providing Python APIs and
+a CLI (`gist-memory`).
 
 The design follows the hypotheses documented in `AGENTS.md`:
 prototypes reduce storage and search cost while providing more robust
@@ -18,7 +18,6 @@ experimented with.
 
 ```
 ├── gist_memory/           # main library
-├── gist_tui/              # thin wrapper running the TUI
 ├── examples/              # onboarding demo
 ├── tests/                 # unit tests using mock embeddings
 └── docs/                  # documentation
@@ -46,9 +45,6 @@ experimented with.
 - **`cli.py`** – Typer-based command line app supporting `init`, `add`,
   `query`, `list-beliefs`, `stats` and `download-model`. Persistence is
   locked during writes to avoid corruption.
-- **`tui.py`** – interactive Textual interface for exploring a brain.
-  Provides screens for ingesting text, listing beliefs, querying and
-  viewing statistics.
 - **`embedding_pipeline.py`**, **`embedder.py`** and **`store.py`** –
   additional abstractions for embedding backends and alternative vector
   stores (e.g. ChromaDB). These allow switching to different storage or
@@ -91,14 +87,11 @@ quickly.
    the query embedding.
 3. The results include the ranked prototypes and the top memories.
 
-## CLI/TUI
+## CLI
 
-- `gist-memory` invokes the CLI. Without arguments it falls back to the
-  TUI via `__main__.py`.
-- `gist-run` is an entry point that launches the wizard-like TUI defined
-  in `tui.py`.
-
-Both interfaces operate on the same underlying store structure.
+`gist-memory` is implemented using Typer and exposes subcommands for
+initialising a brain, ingesting text and querying memories.  A Colab
+notebook will provide a graphical interface in the future.
 
 ## Testing
 

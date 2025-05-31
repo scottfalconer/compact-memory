@@ -93,8 +93,8 @@ Our system architecture distinguishes between long-term knowledge storage and a 
 
 **VI. Developer Notes**
 
-* The command line ``talk`` command and the TUI both route user messages through
-  ``Agent.receive_channel_message``.  That method now delegates to
+* The ``talk`` command routes user messages through
+  ``Agent.receive_channel_message``.  That method delegates to
   ``Agent.process_conversational_turn`` when an ``ActiveMemoryManager`` is
   provided, ensuring memory reduction and prompt generation behave
   consistently across interfaces.
