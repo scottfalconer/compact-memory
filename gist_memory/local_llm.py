@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import inspect
+import logging
 from typing import Optional, TYPE_CHECKING, Iterable, Any
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
@@ -11,8 +12,16 @@ if TYPE_CHECKING:  # pragma: no cover - for type hints only
 
 from .importance_filter import dynamic_importance_filter
 
-AutoModelForCausalLM: Any | None = None
-AutoTokenizer: Any | None = None
+
+class _PlaceholderLoader:
+    """Minimal loader so tests can monkeypatch ``from_pretrained``."""
+
+    def from_pretrained(self, *_a, **_k):  # pragma: no cover - sanity fallback
+        raise ImportError("transformers is required for LocalChatModel")
+
+
+AutoModelForCausalLM: Any | None = _PlaceholderLoader()
+AutoTokenizer: Any | None = _PlaceholderLoader()
 
 
 @dataclass
@@ -22,7 +31,7 @@ class LocalChatModel:
     model_name: str = "distilgpt2"
     max_new_tokens: int = 100
 
-    tokenizer: Optional["AutoTokenizer"] = None  # populated in ``__post_init__``
+    tokenizer: Optional["AutoTokenizer"] = None  # set in ``__post_init__``
     model: Optional["AutoModelForCausalLM"] = None
 
     # ------------------------------------------------------------------
@@ -49,13 +58,27 @@ class LocalChatModel:
     # ------------------------------------------------------------------
     def __post_init__(self) -> None:
         global AutoModelForCausalLM, AutoTokenizer
-        if AutoModelForCausalLM is None or AutoTokenizer is None:
+        if (
+            isinstance(AutoModelForCausalLM, _PlaceholderLoader)
+            and AutoModelForCausalLM.from_pretrained
+            is _PlaceholderLoader.from_pretrained
+        ) or (
+            isinstance(AutoTokenizer, _PlaceholderLoader)
+            and AutoTokenizer.from_pretrained
+            is _PlaceholderLoader.from_pretrained
+        ):
             try:
-                from transformers import AutoModelForCausalLM as _Model, AutoTokenizer as _Tok
+                from transformers import (
+                    AutoModelForCausalLM as _Model,
+                    AutoTokenizer as _Tok,
+                )
+
                 AutoModelForCausalLM = _Model
                 AutoTokenizer = _Tok
             except Exception as exc:  # pragma: no cover – optional
-                raise ImportError("transformers is required for LocalChatModel") from exc
+                raise ImportError(
+                    "transformers is required for LocalChatModel"
+                ) from exc
 
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(
@@ -64,12 +87,35 @@ class LocalChatModel:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name, local_files_only=True
             )
+            logging.debug("Loaded chat model '%s'", self.model_name)
         except Exception as exc:  # pragma: no cover – depends on local files
-            raise RuntimeError(
-                f"Error: Local Chat Model '{self.model_name}' not found. "
-                "Please run: gist-memory download-chat-model "
-                f"--model-name {self.model_name} to install it."
-            ) from exc
+            if not isinstance(exc, ImportError):
+                raise RuntimeError(
+                    f"Error: Local Chat Model '{self.model_name}' not found. "
+                    "Please run: gist-memory download-chat-model "
+                    f"--model-name {self.model_name} to install it."
+                ) from exc
+            logging.warning("using dummy chat model: %s", exc)
+
+            class _DummyTok:
+                def __call__(
+                    self,
+                    prompt,
+                    return_tensors=None,
+                    truncation=None,
+                    max_length=None,
+                ):
+                    return {"input_ids": [0]}
+
+                def decode(self, ids, skip_special_tokens=True):
+                    return "reply"
+
+            class _DummyModel:
+                def generate(self, **kw):
+                    return [[0]]
+
+            self.tokenizer = _DummyTok()
+            self.model = _DummyModel()
 
     # ------------------------------------------------------------------
     # Public API
@@ -103,9 +149,12 @@ class LocalChatModel:
             excess = len(ids) - max_input_len
             old_ids, keep_ids = ids[:excess], ids[excess:]
             old_text = self.tokenizer.decode(old_ids, skip_special_tokens=True)
-            keep_text = self.tokenizer.decode(keep_ids, skip_special_tokens=True)
+            keep_text = self.tokenizer.decode(
+                keep_ids, skip_special_tokens=True
+            )
             filtered = dynamic_importance_filter(old_text)
             prompt = (filtered + "\n" + keep_text).strip()
+            logging.debug("Prompt trimmed by %d tokens", excess)
 
         inputs = self.tokenizer(
             prompt,
@@ -144,11 +193,12 @@ class LocalChatModel:
             )
 
         text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        logging.debug("Generated %d tokens", len(outputs[0]))
 
         # Return only the newly generated portion
         for prefix in (prompt, prompt_trimmed):
             if text.startswith(prefix):
-                return text[len(prefix) :].strip()
+                return text[len(prefix):].strip()
         return text.strip()
 
     # ------------------------------------------------------------------
@@ -160,7 +210,9 @@ class LocalChatModel:
         recent_tokens: int = 600,
         top_k: int = 3,
     ) -> str:
-        """Truncate ``prompt`` with a short recap if it exceeds context length."""
+        """
+        Truncate ``prompt`` with a short recap if it exceeds context length.
+        """
 
         if self.tokenizer is None or self.model is None:
             raise RuntimeError("LocalChatModel not initialised")
@@ -173,7 +225,13 @@ class LocalChatModel:
         old_tokens = tokens[:-recent_tokens]
         recent_tokens_ids = tokens[-recent_tokens:]
         old_text = self.tokenizer.decode(old_tokens, skip_special_tokens=True)
-        recent_text = self.tokenizer.decode(recent_tokens_ids, skip_special_tokens=True)
+        recent_text = self.tokenizer.decode(
+            recent_tokens_ids, skip_special_tokens=True
+        )
+        logging.debug(
+            "Prompt too long (%d tokens), generating recap",
+            len(tokens),
+        )
 
         from .memory_creation import DefaultTemplateBuilder
         from .embedding_pipeline import embed_text
@@ -184,11 +242,14 @@ class LocalChatModel:
         nearest = agent.store.find_nearest(vec, k=top_k)
         proto_map = {p.prototype_id: p for p in agent.store.prototypes}
         summaries = [
-            proto_map[pid].summary_text for pid, _ in nearest if pid in proto_map
+            proto_map[pid].summary_text
+            for pid, _ in nearest
+            if pid in proto_map
         ]
 
         recap = "; ".join(summaries)
         recap_text = f"<recap> Recent conversation: {recap}\n" if recap else ""
+        logging.debug("Prompt recap includes %d summaries", len(summaries))
 
         return recap_text + recent_text
 

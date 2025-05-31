@@ -28,6 +28,20 @@ try:  # Textual 0.x
 except Exception:  # pragma: no cover - Textual >=1.0 renamed the widget
     from textual.widgets import Log as TextLog  # type: ignore
 
+
+def _safe_write_line(
+    log: TextLog, text: str, *, style: str | None = None
+) -> None:
+    """Write ``text`` to ``log`` ignoring ``style`` if unsupported."""
+    try:
+        if style is not None:
+            log.write_line(text, style=style)
+        else:
+            log.write_line(text)
+    except TypeError:
+        log.write_line(text)
+
+
 # Context variables set by run_tui
 agent: Agent
 store: JsonNpyVectorStore
@@ -53,7 +67,10 @@ class StatusMixin(Screen):
     def set_status(self, message: str, *, error: bool = False) -> None:
         bar = self.query_one("#status", Static)
         if error:
-            bar.update(f"[red]{message}[/]", markup=True)
+            try:
+                bar.update(f"[red]{message}[/]", markup=True)
+            except TypeError:  # older Textual
+                bar.update(f"[red]{message}[/]")
         else:
             bar.update(message)
 
@@ -155,7 +172,7 @@ class IngestScreen(StatusMixin):
                 text = path.read_text()
             except Exception as exc:  # pragma: no cover - runtime error path
                 log = self.query_one("#log", TextLog)
-                log.write_line(f"Error: {exc}", style="red")
+                _safe_write_line(log, f"Error: {exc}", style="red")
                 self.set_status("error reading file", error=True)
                 event.input.value = ""
                 event.input.disabled = False
@@ -423,7 +440,7 @@ class ConsoleScreen(StatusMixin):
                 self.text_log.write_line(reply)
                 self.set_status("")
             except Exception as exc:  # pragma: no cover - runtime errors
-                self.text_log.write_line(f"Error: {exc}", style="red")
+                _safe_write_line(self.text_log, f"Error: {exc}", style="red")
                 self.set_status("LLM error", error=True)
 
 
