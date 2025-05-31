@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from .token_utils import token_count
+
 import numpy as np
 
 
@@ -182,26 +184,7 @@ class ActiveMemoryManager:
                 agent = getattr(turn, "agent_response", "")
                 text = f"{user}\n{agent}".strip()
 
-            if hasattr(llm_tokenizer, "tokenize"):
-                try:
-                    tokens = llm_tokenizer.tokenize(text)
-                except Exception:
-                    tokens = llm_tokenizer(text, return_tensors=None).get(
-                        "input_ids", []
-                    )
-            else:
-                tokens = llm_tokenizer(text, return_tensors=None).get(
-                    "input_ids", []
-                )
-
-            if isinstance(tokens, (list, tuple)):
-                if tokens and isinstance(tokens[0], (list, tuple)):
-                    token_list = list(tokens[0])
-                else:
-                    token_list = list(tokens)
-            else:
-                token_list = [tokens]
-            n_tokens = len(token_list)
+            n_tokens = token_count(llm_tokenizer, text)
 
             if current_tokens + n_tokens <= max_tokens_for_history:
                 kept_ids.add(id(turn))

@@ -10,6 +10,7 @@ if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from .agent import Agent
 
 from .importance_filter import dynamic_importance_filter
+from .token_utils import token_count
 
 try:  # heavy dependency only when needed
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -102,7 +103,7 @@ class LocalChatModel:
             except Exception:
                 ids = [ids_raw]  # type: ignore[list-item]
 
-        if len(ids) > max_input_len:
+        if token_count(self.tokenizer, prompt) > max_input_len:
             excess = len(ids) - max_input_len
             old_ids, keep_ids = ids[:excess], ids[excess:]
             old_text = self.tokenizer.decode(old_ids, skip_special_tokens=True)
@@ -170,7 +171,7 @@ class LocalChatModel:
 
         max_len = self._context_length()
         tokens = self.tokenizer(prompt, return_tensors="pt")["input_ids"][0]
-        if len(tokens) <= max_len:
+        if token_count(self.tokenizer, prompt) <= max_len:
             return prompt
 
         old_tokens = tokens[:-recent_tokens]
