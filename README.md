@@ -141,9 +141,8 @@ pytest
 
 ## Onboarding Demo
 
-A small example is provided under `examples/` so new users can quickly see the
-agent in action.  The demo ingests short excerpts from the Apollo&nbsp;11 moon
-landing transcripts and prints which prototypes were created or updated.
+Code examples live under `examples/` while sample_data holds sample documents.
+A small onboarding demo shows the agent in action by ingesting short excerpts from the Apollo 11 moon landing transcripts and prints which prototypes were created or updated.
 
 Run the demo after installing dependencies and pre-downloading the local
 embedding model:
@@ -157,7 +156,7 @@ gist-memory download-model --model-name all-MiniLM-L6-v2
 python examples/onboarding_demo.py
 ```
 
-The script loads all `*.txt` files from `examples/moon_landing`, stores them in a
+The script loads all `*.txt` files from `sample_data/moon_landing`, stores them in a
 local database and displays the prototype assignments along with a final memory
 and prototype count.
 

@@ -175,7 +175,6 @@ def test_get_statistics_ephemeral_store(tmp_path):
     stats = agent.get_statistics()
     assert stats["disk_usage"] == 0
 
-
 def test_add_memory_tqdm_notebook(monkeypatch, tmp_path):
     store = JsonNpyVectorStore(path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunker=SentenceWindowChunker())
@@ -201,6 +200,7 @@ def test_add_memory_tqdm_notebook(monkeypatch, tmp_path):
 
     assert sum(updates) == len(agent.chunker.chunk("alpha bravo"))
     assert DummyBar.closed
+
 
 class DummyChunker(Chunker):
     id = "dummy"
