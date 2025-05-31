@@ -104,8 +104,9 @@ def test_local_chat_model_failure(monkeypatch):
         "gist_memory.local_llm.AutoModelForCausalLM.from_pretrained", err
     )
 
+    model = LocalChatModel(model_name="foo")
     with pytest.raises(RuntimeError) as exc:
-        LocalChatModel(model_name="foo")
+        model.load_model()
     msg = str(exc.value)
     assert "download-chat-model" in msg
     assert "foo" in msg
