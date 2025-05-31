@@ -14,6 +14,9 @@ class DummyTokenizer:
     ):
         return {"input_ids": [text.split()]}
 
+    def tokenize(self, text):
+        return text.split()
+
 
 def count_tokens(turns, tok):
     return sum(len(tok(t.text)["input_ids"][0]) for t in turns)
@@ -61,3 +64,16 @@ def test_handles_single_candidate_turn_exceeding_budget():
     turn = ConversationTurn("one two three four five")
     result = mgr.finalize_history_for_prompt([turn], 4, tok)
     assert result == []
+
+
+class TokenizeOnlyTokenizer(DummyTokenizer):
+    def __call__(self, *a, **k):
+        raise AssertionError("should not call __call__")
+
+
+def test_finalize_uses_tokenize_when_available():
+    tok = TokenizeOnlyTokenizer()
+    mgr = ActiveMemoryManager()
+    turn = ConversationTurn(" ".join(f"w{i}" for i in range(20)))
+    result = mgr.finalize_history_for_prompt([turn], 25, tok)
+    assert result == [turn]
