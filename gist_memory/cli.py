@@ -14,7 +14,6 @@ from .logging_utils import configure_logging
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
-from .chunker import SentenceWindowChunker
 from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
 from .utils import load_agent
 from .config import DEFAULT_BRAIN_PATH
