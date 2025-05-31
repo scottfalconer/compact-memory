@@ -1,9 +1,28 @@
-from pathlib import Path
+from __future__ import annotations
 
-from .agent import Agent
+import os
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 from .json_npy_store import JsonNpyVectorStore
 from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
 from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
+
+
+def get_disk_usage(path: Path) -> int:
+    """Return total size of files under ``path`` in bytes."""
+    size = 0
+    for root, _, files in os.walk(path):
+        for name in files:
+            fp = Path(root) / name
+            try:
+                size += fp.stat().st_size
+            except OSError:
+                pass
+    return size
+
+if TYPE_CHECKING:  # pragma: no cover - for type hints only
+    from .agent import Agent
 
 
 def load_agent(path: Path) -> Agent:
@@ -12,6 +31,8 @@ def load_agent(path: Path) -> Agent:
     If the stored embedding dimension does not match the current model,
     the store is re-initialized with the correct dimension.
     """
+    from .agent import Agent
+
     try:
         store = JsonNpyVectorStore(path=str(path))
     except FileNotFoundError as exc:
@@ -28,4 +49,4 @@ def load_agent(path: Path) -> Agent:
     return Agent(store, chunker=chunker_cls(), similarity_threshold=tau)
 
 
-__all__ = ["load_agent"]
+__all__ = ["load_agent", "get_disk_usage"]

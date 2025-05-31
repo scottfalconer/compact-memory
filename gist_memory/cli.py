@@ -251,16 +251,14 @@ def list_beliefs(
     """List all belief prototypes."""
     path = Path(agent_name)
     agent = _load_agent(path)
-    protos = agent.store.prototypes
-    if sort == "strength":
-        protos = sorted(protos, key=lambda p: p.strength, reverse=True)
+    protos = agent.get_prototypes_view(sort_by=sort or None)
     table = Table("id", "strength", "confidence", "summary", title="Beliefs")
     for p in protos:
         table.add_row(
-            p.prototype_id,
-            f"{p.strength:.2f}",
-            f"{p.confidence:.2f}",
-            p.summary_text[:60],
+            p["id"],
+            f"{p['strength']:.2f}",
+            f"{p['confidence']:.2f}",
+            p["summary"][:60],
         )
     console.print(table)
 
@@ -279,18 +277,8 @@ def stats(
             err=True,
         )
         raise typer.Exit(code=1)
-    try:
-        store = JsonNpyVectorStore(path=str(path))
-    except Exception as exc:
-        _corrupt_exit(path, exc)
-    size = shutil.disk_usage(path).used
-    data = {
-        "prototypes": len(store.prototypes),
-        "active_memories": len(store.memories),
-        "archived_memories": 0,
-        "disk_size": size,
-        "last_decay": store.meta.get("last_decay_ts"),
-    }
+    agent = _load_agent(path)
+    data = agent.get_statistics()
     if json_output:
         typer.echo(json.dumps(data))
     else:

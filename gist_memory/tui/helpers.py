@@ -1,20 +1,6 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
-
-
-def _disk_usage(path: Path) -> int:
-    """Return total size of files under ``path`` in bytes."""
-    size = 0
-    for root, _, files in os.walk(path):
-        for name in files:
-            fp = Path(root) / name
-            try:
-                size += fp.stat().st_size
-            except OSError:
-                pass
-    return size
 
 
 def _install_models(
@@ -56,6 +42,10 @@ def _path_suggestions(prefix: str, limit: int = 5) -> list[str]:
 
 def _brain_path_suggestions(base: Path, prefix: str, limit: int = 5) -> list[str]:
     """Return sub directories under ``base`` that look like brains."""
+    path = Path(prefix)
+    if path.is_absolute():
+        base = path.parent
+        prefix = path.name
     suggestions: list[str] = []
     for p in base.glob(prefix + "*"):
         if (p / "meta.yaml").exists():
@@ -66,7 +56,6 @@ def _brain_path_suggestions(base: Path, prefix: str, limit: int = 5) -> list[str
 
 
 __all__ = [
-    "_disk_usage",
     "_install_models",
     "_path_suggestions",
     "_brain_path_suggestions",

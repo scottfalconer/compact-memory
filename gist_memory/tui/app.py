@@ -8,7 +8,7 @@ from ..config import DEFAULT_BRAIN_PATH
 from ..embedding_pipeline import embed_text
 from ..talk_session import TalkSessionManager
 
-from .helpers import _disk_usage, _install_models
+from .helpers import _install_models
 from .screens import WizardApp, set_context
 
 
@@ -45,4 +45,4 @@ def run_tui(path: str = DEFAULT_BRAIN_PATH) -> None:
     WizardApp().run()
 
 
-__all__ = ["run_tui", "_disk_usage", "_install_models"]
+__all__ = ["run_tui", "_install_models"]
