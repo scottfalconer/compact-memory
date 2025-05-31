@@ -24,12 +24,9 @@ except Exception:  # pragma: no cover - tqdm not installed or different API
 
 import numpy as np
 
-try:  # optional heavy deps
-    import torch
-    from sentence_transformers import SentenceTransformer
-except Exception:  # pragma: no cover - during tests torch may be missing
-    torch = None
-    SentenceTransformer = None
+# Lazy heavy imports will occur in ``_load_model``
+torch = None  # type: ignore
+SentenceTransformer = None  # type: ignore
 
 
 class EmbeddingDimensionMismatchError(ValueError):
@@ -60,9 +57,22 @@ _BATCH_SIZE = 32
 
 
 def _load_model(model_name: str, device: str) -> SentenceTransformer:
+    global _MODEL, _MODEL_NAME, _DEVICE, SentenceTransformer, torch
     if SentenceTransformer is None:
-        raise ImportError("sentence-transformers is required for embedding")
-    global _MODEL, _MODEL_NAME, _DEVICE
+        try:
+            from sentence_transformers import SentenceTransformer as _ST
+            SentenceTransformer = _ST
+        except Exception as exc:  # pragma: no cover - optional dependency
+            raise ImportError(
+                "sentence-transformers is required for embedding"
+            ) from exc
+    if torch is None:
+        try:
+            import torch as _torch
+            torch = _torch  # type: ignore
+        except Exception:  # pragma: no cover - torch not installed
+            torch = None  # type: ignore
+
     if _MODEL is None or model_name != _MODEL_NAME or device != _DEVICE:
         if torch is not None:
             torch.manual_seed(0)

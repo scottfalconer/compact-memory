@@ -4,18 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import inspect
-from typing import Optional, TYPE_CHECKING, Iterable
+from typing import Optional, TYPE_CHECKING, Iterable, Any
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from .agent import Agent
 
 from .importance_filter import dynamic_importance_filter
 
-try:  # heavy dependency only when needed
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-except Exception:  # pragma: no cover – optional
-    AutoModelForCausalLM = None  # type: ignore
-    AutoTokenizer = None  # type: ignore
+AutoModelForCausalLM: Any | None = None
+AutoTokenizer: Any | None = None
 
 
 @dataclass
@@ -51,8 +48,14 @@ class LocalChatModel:
     # Initialisation
     # ------------------------------------------------------------------
     def __post_init__(self) -> None:
+        global AutoModelForCausalLM, AutoTokenizer
         if AutoModelForCausalLM is None or AutoTokenizer is None:
-            raise ImportError("transformers is required for LocalChatModel")
+            try:
+                from transformers import AutoModelForCausalLM as _Model, AutoTokenizer as _Tok
+                AutoModelForCausalLM = _Model
+                AutoTokenizer = _Tok
+            except Exception as exc:  # pragma: no cover – optional
+                raise ImportError("transformers is required for LocalChatModel") from exc
 
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(

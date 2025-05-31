@@ -1,65 +1,82 @@
-"""Gist Memory Agent package."""
+"""Gist Memory Agent package with lazy loading of submodules."""
 
-from .cli import app  # noqa: F401
-from .models import (  # noqa: F401
-    BeliefPrototype,
-    RawMemory,
-    ConversationalTurn,
-)
-from .json_npy_store import JsonNpyVectorStore, VectorStore  # noqa: F401
-from .agent import Agent, QueryResult, PrototypeHit, MemoryHit  # noqa: F401
-from .embedding_pipeline import embed_text  # noqa: F401
-from .chunker import SentenceWindowChunker, FixedSizeChunker  # noqa: F401
-from .config import DEFAULT_BRAIN_PATH  # noqa: F401
-from .local_llm import LocalChatModel  # noqa: F401
-from .canonical import render_five_w_template  # noqa: F401
-from .memory_cues import MemoryCueRenderer  # noqa: F401
-from .conflict_flagging import ConflictFlagger, ConflictLogger  # noqa: F401
-from .experiment_runner import ExperimentConfig, run_experiment  # noqa: F401
-from .history_experiment import (  # noqa: F401
-    HistoryExperimentConfig,
-    run_history_experiment,
-)
-from .conflict import SimpleConflictLogger, negation_conflict  # noqa: F401
-from .talk_session import TalkSessionManager  # noqa: F401
-from .utils import load_agent  # noqa: F401
+from __future__ import annotations
+
+import importlib
+from typing import Any
+
+__all__ = [
+    "app",
+    "BeliefPrototype",
+    "RawMemory",
+    "ConversationalTurn",
+    "JsonNpyVectorStore",
+    "VectorStore",
+    "Agent",
+    "QueryResult",
+    "PrototypeHit",
+    "MemoryHit",
+    "embed_text",
+    "SentenceWindowChunker",
+    "FixedSizeChunker",
+    "DEFAULT_BRAIN_PATH",
+    "LocalChatModel",
+    "render_five_w_template",
+    "MemoryCueRenderer",
+    "ConflictFlagger",
+    "ConflictLogger",
+    "SimpleConflictLogger",
+    "ExperimentConfig",
+    "run_experiment",
+    "HistoryExperimentConfig",
+    "run_history_experiment",
+    "negation_conflict",
+    "TalkSessionManager",
+    "load_agent",
+]
+
+_lazy_map = {
+    "app": "gist_memory.cli",
+    "BeliefPrototype": "gist_memory.models",
+    "RawMemory": "gist_memory.models",
+    "ConversationalTurn": "gist_memory.models",
+    "JsonNpyVectorStore": "gist_memory.json_npy_store",
+    "VectorStore": "gist_memory.json_npy_store",
+    "Agent": "gist_memory.agent",
+    "QueryResult": "gist_memory.agent",
+    "PrototypeHit": "gist_memory.agent",
+    "MemoryHit": "gist_memory.agent",
+    "embed_text": "gist_memory.embedding_pipeline",
+    "SentenceWindowChunker": "gist_memory.chunker",
+    "FixedSizeChunker": "gist_memory.chunker",
+    "DEFAULT_BRAIN_PATH": "gist_memory.config",
+    "LocalChatModel": "gist_memory.local_llm",
+    "render_five_w_template": "gist_memory.canonical",
+    "MemoryCueRenderer": "gist_memory.memory_cues",
+    "ConflictFlagger": "gist_memory.conflict_flagging",
+    "ConflictLogger": "gist_memory.conflict_flagging",
+    "SimpleConflictLogger": "gist_memory.conflict",
+    "ExperimentConfig": "gist_memory.experiment_runner",
+    "run_experiment": "gist_memory.experiment_runner",
+    "HistoryExperimentConfig": "gist_memory.history_experiment",
+    "run_history_experiment": "gist_memory.history_experiment",
+    "negation_conflict": "gist_memory.conflict",
+    "TalkSessionManager": "gist_memory.talk_session",
+    "load_agent": "gist_memory.utils",
+}
 
 
-# Exported symbols.  ``dict.fromkeys`` ensures each value only appears once
-# while preserving the explicit ordering of the list below.
-__all__ = list(
-    dict.fromkeys(
-        [
-            "app",
-            "BeliefPrototype",
-            "RawMemory",
-            "ConversationalTurn",
-            "JsonNpyVectorStore",
-            "VectorStore",
-            "Agent",
-            "QueryResult",
-            "PrototypeHit",
-            "MemoryHit",
-            "embed_text",
-            "SentenceWindowChunker",
-            "FixedSizeChunker",
-            "DEFAULT_BRAIN_PATH",
-            "LocalChatModel",
-            "render_five_w_template",
-            "MemoryCueRenderer",
-            "ConflictFlagger",
-            "ConflictLogger",
-            "SimpleConflictLogger",
-            "ExperimentConfig",
-            "run_experiment",
-            "HistoryExperimentConfig",
-            "run_history_experiment",
-            "negation_conflict",
-            "TalkSessionManager",
-            "load_agent",
-        ]
-    )
-)
+def __getattr__(name: str) -> Any:  # pragma: no cover - simple passthrough
+    if name in _lazy_map:
+        module = importlib.import_module(_lazy_map[name])
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-# Semantic version of the package
+
+def __dir__() -> list[str]:  # pragma: no cover - for completeness
+    return sorted(list(globals().keys()) + list(_lazy_map.keys()))
+
+
 __version__ = "0.1.0"
