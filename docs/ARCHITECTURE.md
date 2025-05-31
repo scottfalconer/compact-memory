@@ -90,8 +90,9 @@ quickly.
 ## CLI
 
 `gist-memory` is implemented using Typer and exposes subcommands for
-initialising a brain, ingesting text and querying memories.  A Colab
-notebook will provide a graphical interface in the future.
+initialising a brain, ingesting text and querying memories. The CLI is
+the primary interface, and a Colab notebook will provide a graphical
+option in the future.
 
 ## Testing
 
