@@ -162,7 +162,7 @@ and prototype count.
 
 ## Segmentation Playbook
 
-See [docs/SEGMENTATION_PLAYBOOK.md](docs/SEGMENTATION_PLAYBOOK.md) for a detailed workflow on splitting long documents into belief-sized ideas before ingestion. You can enable this behaviour in the CLI via `--memory-creator agentic`.
+See [docs/SEGMENTATION_PLAYBOOK.md](docs/SEGMENTATION_PLAYBOOK.md) for a detailed workflow on splitting long documents into belief-sized ideas before ingestion. The advanced `AgenticChunker` implements this strategy and can be used via `gist-memory init brain --chunker agentic` or programmatically with `agent.chunker = AgenticChunker()`.
 
 ## Querying Playbook
 

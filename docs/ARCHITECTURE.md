@@ -65,7 +65,8 @@ They are stored in JSON and referenced by ID in the NPY vector arrays.
 ## Ingestion flow
 
 1. **Chunking** – text is split into sentence windows using
-   `SentenceWindowChunker` (or another registered chunker).
+   `SentenceWindowChunker` or into belief-sized ideas with
+   `AgenticChunker` (both are registered chunkers).
 2. **Embedding** – each chunk is converted into a normalised vector via
    `embed_text`.
 3. **Prototype search** – the store finds the nearest prototype by
