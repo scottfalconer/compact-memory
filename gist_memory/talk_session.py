@@ -11,11 +11,6 @@ from .active_memory_manager import ActiveMemoryManager
 from .utils import load_agent
 
 
-def _load_agent(path: Path) -> Agent:
-    """Load a persisted agent from ``path``."""
-    return load_agent(path)
-
-
 @dataclass
 class TalkSession:
     session_id: str
@@ -42,7 +37,7 @@ class TalkSessionManager:
         managers: Dict[str, ActiveMemoryManager] = {}
         for p in agent_paths:
             path = Path(p)
-            agents[str(path)] = _load_agent(path)
+            agents[str(path)] = load_agent(path)
             managers[str(path)] = ActiveMemoryManager()
         self._sessions[sid] = TalkSession(
             session_id=sid,
@@ -104,7 +99,7 @@ class TalkSessionManager:
         key = str(path)
         if key in session.agents:
             return
-        agent = _load_agent(path)
+        agent = load_agent(path)
         for _sender, msg, _ts in session.log:
             agent.add_memory(msg)
         session.agents[key] = agent

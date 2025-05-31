@@ -11,7 +11,7 @@ from .json_npy_store import JsonNpyVectorStore
 from .active_memory_manager import ActiveMemoryManager
 from .chunker import Chunker, SentenceWindowChunker
 from .memory_creation import MemoryCreator, ExtractiveSummaryCreator
-from .embedding_pipeline import embed_text
+from .embedding_pipeline import embed_text, get_embedding_dim
 
 
 @dataclass
@@ -30,7 +30,7 @@ def run_experiment(config: ExperimentConfig) -> Dict[str, Any]:
     """Ingest ``config.dataset`` and return metrics."""
 
     work = config.work_dir or Path(tempfile.mkdtemp())
-    dim = int(embed_text(["dim"]).shape[1])
+    dim = get_embedding_dim()
     store = JsonNpyVectorStore(
         path=str(work), embedding_model="experiment", embedding_dim=dim
     )

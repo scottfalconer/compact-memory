@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 
 from gist_memory import Agent, JsonNpyVectorStore
-from gist_memory.embedding_pipeline import embed_text
+from gist_memory.embedding_pipeline import embed_text, get_embedding_dim
 from gist_memory.config import DEFAULT_BRAIN_PATH
 
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
@@ -18,7 +18,7 @@ def main() -> None:
     if (path / "meta.yaml").exists():
         store = JsonNpyVectorStore(str(path))
     else:
-        dim = int(embed_text(["dim"]).shape[1])
+        dim = get_embedding_dim()
         store = JsonNpyVectorStore(
             str(path), embedding_model="all-MiniLM-L6-v2", embedding_dim=dim
         )

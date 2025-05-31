@@ -14,7 +14,7 @@ from .logging_utils import configure_logging
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
-from .embedding_pipeline import embed_text, EmbeddingDimensionMismatchError
+from .embedding_pipeline import get_embedding_dim, EmbeddingDimensionMismatchError
 from .utils import load_agent
 from .config import DEFAULT_BRAIN_PATH
 
@@ -98,7 +98,7 @@ def init(
         )
         raise typer.Exit(code=1)
     try:
-        dim = int(embed_text(["dim"]).shape[1])
+        dim = get_embedding_dim()
     except RuntimeError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1)
