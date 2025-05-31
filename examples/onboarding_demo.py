@@ -11,7 +11,8 @@ os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 
 def main() -> None:
-    folder = Path(__file__).parent / "moon_landing"
+    # Load demo data from the shared sample_data directory
+    folder = Path(__file__).parent.parent / "sample_data" / "moon_landing"
     texts = [p.read_text() for p in sorted(folder.glob("*.txt"))]
 
     path = Path(DEFAULT_BRAIN_PATH)
