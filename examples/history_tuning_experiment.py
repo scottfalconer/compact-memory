@@ -6,7 +6,8 @@ from gist_memory.history_experiment import HistoryExperimentConfig, run_history_
 
 
 def main() -> None:
-    dataset = Path(__file__).parent / "history_dialogues.yaml"
+    # Use the shared test dataset packaged under tests/data
+    dataset = Path(__file__).parents[1] / "tests" / "data" / "history_dialogues.yaml"
     param_grid = [
         {
             "config_prompt_num_forced_recent_turns": 1,
