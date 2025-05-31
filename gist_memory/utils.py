@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterable, List
 
 from .json_npy_store import JsonNpyVectorStore
 from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
@@ -20,6 +20,7 @@ def get_disk_usage(path: Path) -> int:
             except OSError:
                 pass
     return size
+
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from .agent import Agent
@@ -49,4 +50,24 @@ def load_agent(path: Path) -> Agent:
     return Agent(store, chunker=chunker_cls(), similarity_threshold=tau)
 
 
-__all__ = ["load_agent", "get_disk_usage"]
+def format_ingest_results(
+    agent: "Agent", results: Iterable[dict[str, object]]
+) -> List[str]:
+    """Return user-friendly messages for ``agent.add_memory`` results."""
+
+    proto_map = {p.prototype_id: p for p in agent.store.prototypes}
+    lines: List[str] = []
+    for res in results:
+        if res.get("duplicate"):
+            lines.append("Duplicate text skipped")
+            continue
+        action = "Spawned new prototype" if res.get("spawned") else "Updated prototype"
+        sim = res.get("sim")
+        proto = proto_map.get(res.get("prototype_id", ""))
+        summary = proto.summary_text if proto else ""
+        sim_str = f" (similarity: {sim:.2f})" if sim is not None else ""
+        lines.append(f"{action} {res['prototype_id']}{sim_str}. Summary: '{summary}'")
+    return lines
+
+
+__all__ = ["load_agent", "get_disk_usage", "format_ingest_results"]

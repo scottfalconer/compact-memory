@@ -15,6 +15,7 @@ from ..logging_utils import configure_logging
 from ..agent import Agent
 from ..json_npy_store import JsonNpyVectorStore
 from ..talk_session import TalkSessionManager
+from ..utils import format_ingest_results
 
 from .helpers import (
     _install_models,
@@ -164,12 +165,8 @@ class IngestScreen(StatusMixin):
 
         results = agent.add_memory(text)
         log = self.query_one("#log", TextLog)
-        for res in results:
-            if res.get("spawned"):
-                msg = f"spawned prototype {res['prototype_id']}"
-            else:
-                msg = f"added to {res['prototype_id']}"
-            log.write_line(msg)
+        for line in format_ingest_results(agent, results):
+            log.write_line(line)
         event.input.value = ""
         self.set_status("Memory ingested.")
         event.input.disabled = False
@@ -253,9 +250,9 @@ class QueryScreen(StatusMixin):
         log = self.query_one("#answers", TextLog)
         log.clear()
         for p in res.get("prototypes", []):
-            log.write_line(f"{p['sim']:.2f} {p['summary']}")
+            log.write_line(f"{p['id']} {p['summary']} ({p['sim']:.2f})")
         for m in res.get("memories", []):
-            log.write_line(f"  {m['text']}")
+            log.write_line(f"  {m['text']} ({m['sim']:.2f})")
         event.input.value = ""
         event.input.disabled = False
         self.set_status("")
@@ -344,12 +341,8 @@ class ConsoleScreen(StatusMixin):
             self.set_status("Ingesting...")
             event.input.disabled = True
             results = agent.add_memory(text)
-            for res in results:
-                if res.get("spawned"):
-                    msg = f"spawned prototype {res['prototype_id']}"
-                else:
-                    msg = f"added to {res['prototype_id']}"
-                self.text_log.write_line(msg)
+            for line in format_ingest_results(agent, results):
+                self.text_log.write_line(line)
             self.set_status("Memory ingested.")
             event.input.disabled = False
         elif cmd.startswith("/query "):
@@ -360,9 +353,9 @@ class ConsoleScreen(StatusMixin):
             event.input.disabled = True
             res = agent.query(q, top_k_prototypes=3, top_k_memories=3)
             for p in res.get("prototypes", []):
-                self.text_log.write_line(f"{p['sim']:.2f} {p['summary']}")
+                self.text_log.write_line(f"{p['id']} {p['summary']} ({p['sim']:.2f})")
             for m in res.get("memories", []):
-                self.text_log.write_line(f"  {m['text']}")
+                self.text_log.write_line(f"  {m['text']} ({m['sim']:.2f})")
             self.set_status("")
             event.input.disabled = False
         elif cmd == "/stats":
@@ -403,12 +396,8 @@ class ConsoleScreen(StatusMixin):
             self.text_log.write_line("/exit        - quit")
         elif cmd:
             results = agent.add_memory(cmd)
-            for res in results:
-                if res.get("spawned"):
-                    msg = f"spawned prototype {res['prototype_id']}"
-                else:
-                    msg = f"added to {res['prototype_id']}"
-                self.text_log.write_line(msg)
+            for line in format_ingest_results(agent, results):
+                self.text_log.write_line(line)
             try:
                 cues = MemoryCueRenderer().render(
                     [
@@ -454,7 +443,10 @@ class GroupSessionScreen(StatusMixin):
         def suggest(value: str) -> list[str]:
             if value.startswith("/invite "):
                 prefix = value[len("/invite ") :]
-                return ["/invite " + p for p in _brain_path_suggestions(store_path.parent, prefix)]
+                return [
+                    "/invite " + p
+                    for p in _brain_path_suggestions(store_path.parent, prefix)
+                ]
             return [s for s in base_suggestions if s.startswith(value)]
 
         self.input = TabAutocompleteInput(
@@ -516,10 +508,10 @@ class StatsScreen(StatusMixin):
         table.add_columns("key", "value")
         stats = agent.get_statistics()
         table.add_row("disk", f"{stats.get('disk_usage', 0)} bytes")
-        table.add_row("memories", str(stats.get('memories', 0)))
-        table.add_row("prototypes", str(stats.get('prototypes', 0)))
-        table.add_row("tau", str(stats.get('tau', 0)))
-        table.add_row("updated", stats.get('updated', ""))
+        table.add_row("memories", str(stats.get("memories", 0)))
+        table.add_row("prototypes", str(stats.get("prototypes", 0)))
+        table.add_row("tau", str(stats.get("tau", 0)))
+        table.add_row("updated", stats.get("updated", ""))
         yield Header()
         yield table
         yield Static("", id="status")
