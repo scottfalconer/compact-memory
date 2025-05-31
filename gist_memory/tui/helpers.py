@@ -7,13 +7,11 @@ def _install_models(
     embed_model: str = "all-MiniLM-L6-v2", chat_model: str = "distilgpt2"
 ) -> str:
     """Download the default embedding and chat models."""
-    try:
-        from sentence_transformers import SentenceTransformer
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+    from ..model_utils import download_embedding_model, download_chat_model
 
-        SentenceTransformer(embed_model)
-        AutoTokenizer.from_pretrained(chat_model)
-        AutoModelForCausalLM.from_pretrained(chat_model)
+    try:
+        download_embedding_model(embed_model)
+        download_chat_model(chat_model)
     except Exception as exc:  # pragma: no cover - network / file errors
         return f"error installing models: {exc}"
 

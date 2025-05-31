@@ -388,11 +388,11 @@ def download_model(
     )
 ) -> None:
     """Pre-download a local embedding model."""
-    from sentence_transformers import SentenceTransformer
     from tqdm import tqdm
+    from .model_utils import download_embedding_model
 
     bar = tqdm(total=1, desc="Downloading model", disable=False)
-    SentenceTransformer(model_name)
+    download_embedding_model(model_name)
     bar.update(1)
     bar.close()
     typer.echo(f"Downloaded {model_name}")
@@ -403,12 +403,11 @@ def download_chat_model(
     model_name: str = typer.Option("distilgpt2", help="Local causal LM name")
 ) -> None:
     """Pre-download a local chat model for ``talk`` mode."""
-    from transformers import AutoModelForCausalLM, AutoTokenizer
     from tqdm import tqdm
+    from .model_utils import download_chat_model as _download_chat_model
 
     bar = tqdm(total=1, desc="Downloading chat model", disable=False)
-    AutoTokenizer.from_pretrained(model_name)
-    AutoModelForCausalLM.from_pretrained(model_name)
+    _download_chat_model(model_name)
     bar.update(1)
     bar.close()
     typer.echo(f"Downloaded {model_name}")
