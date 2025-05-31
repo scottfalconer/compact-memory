@@ -137,9 +137,13 @@ class Agent:
         if not 0.5 <= similarity_threshold <= 0.95:
             raise ValueError("similarity_threshold must be between 0.5 and 0.95")
         self.store = store
-        self.chunker = chunker or SentenceWindowChunker()
-        self.similarity_threshold = similarity_threshold
-        self.summary_creator = summary_creator or ExtractiveSummaryCreator(max_words=25)
+        self._chunker: Chunker = chunker or SentenceWindowChunker()
+        self.store.meta["chunker"] = getattr(self._chunker, "id", type(self._chunker).__name__)
+        self._similarity_threshold = float(similarity_threshold)
+        self.store.meta["tau"] = self._similarity_threshold
+        self._summary_creator: MemoryCreator = (
+            summary_creator or ExtractiveSummaryCreator(max_words=25)
+        )
         self.update_summaries = update_summaries
         self.metrics: Dict[str, int] = {
             "memories_ingested": 0,
@@ -161,6 +165,63 @@ class Agent:
         self._conflict_logger = SimpleConflictLogger(c)
         self._conflicts = ConflictFlagger(FlagLogger(c))
         self.prompt_budget = prompt_budget
+
+    # ------------------------------------------------------------------
+    @property
+    def chunker(self) -> Chunker:
+        """Return the current :class:`Chunker`."""
+
+        return self._chunker
+
+    @chunker.setter
+    def chunker(self, value: Chunker) -> None:
+        if not isinstance(value, Chunker):
+            raise TypeError("chunker must implement Chunker interface")
+        self._chunker = value
+        self.store.meta["chunker"] = getattr(value, "id", type(value).__name__)
+
+    # ------------------------------------------------------------------
+    @property
+    def similarity_threshold(self) -> float:
+        return self._similarity_threshold
+
+    @similarity_threshold.setter
+    def similarity_threshold(self, value: float) -> None:
+        if not 0.5 <= value <= 0.95:
+            raise ValueError("similarity_threshold must be between 0.5 and 0.95")
+        self._similarity_threshold = float(value)
+        self.store.meta["tau"] = self._similarity_threshold
+
+    # ------------------------------------------------------------------
+    @property
+    def summary_creator(self) -> MemoryCreator:
+        return self._summary_creator
+
+    @summary_creator.setter
+    def summary_creator(self, value: MemoryCreator) -> None:
+        if not isinstance(value, MemoryCreator):
+            raise TypeError("summary_creator must implement MemoryCreator")
+        self._summary_creator = value
+
+    # ------------------------------------------------------------------
+    def configure(
+        self,
+        *,
+        chunker: Chunker | None = None,
+        similarity_threshold: float | None = None,
+        summary_creator: MemoryCreator | None = None,
+        prompt_budget: PromptBudget | None = None,
+    ) -> None:
+        """Dynamically update core configuration."""
+
+        if chunker is not None:
+            self.chunker = chunker
+        if similarity_threshold is not None:
+            self.similarity_threshold = similarity_threshold
+        if summary_creator is not None:
+            self.summary_creator = summary_creator
+        if prompt_budget is not None:
+            self.prompt_budget = prompt_budget
 
     # ------------------------------------------------------------------
     def get_statistics(self) -> Dict[str, object]:
