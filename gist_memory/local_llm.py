@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import inspect
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Iterable
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from .agent import Agent
@@ -27,6 +27,25 @@ class LocalChatModel:
 
     tokenizer: Optional["AutoTokenizer"] = None  # populated in ``__post_init__``
     model: Optional["AutoModelForCausalLM"] = None
+
+    # ------------------------------------------------------------------
+    def _context_length(self) -> int:
+        """Return context window length for the underlying model."""
+        config = getattr(self.model, "config", None)
+        attrs: Iterable[str] = (
+            "n_positions",
+            "n_ctx",
+            "max_position_embeddings",
+        )
+        for name in attrs:
+            value = getattr(config, name, None)
+            if isinstance(value, int) and value > 0:
+                return value
+        if self.tokenizer is not None:
+            val = getattr(self.tokenizer, "model_max_length", None)
+            if isinstance(val, int) and val > 0 and val < 10**6:
+                return val
+        return 1024
 
     # ------------------------------------------------------------------
     # Initialisation
@@ -59,7 +78,7 @@ class LocalChatModel:
 
         # --------------------------------------------------------------
         # Token management
-        max_len = getattr(getattr(self.model, "config", None), "n_positions", 1024)
+        max_len = self._context_length()
         max_input_len = max_len - self.max_new_tokens
 
         full = self.tokenizer(prompt, return_tensors="pt")
@@ -143,7 +162,7 @@ class LocalChatModel:
         if self.tokenizer is None or self.model is None:
             raise RuntimeError("LocalChatModel not initialised")
 
-        max_len = getattr(getattr(self.model, "config", None), "n_positions", 1024)
+        max_len = self._context_length()
         tokens = self.tokenizer(prompt, return_tensors="pt")["input_ids"][0]
         if len(tokens) <= max_len:
             return prompt
