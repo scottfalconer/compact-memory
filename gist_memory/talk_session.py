@@ -8,7 +8,6 @@ import time
 
 from .agent import Agent
 from .active_memory_manager import ActiveMemoryManager
-from .chunker import Chunker
 from .utils import load_agent
 
 

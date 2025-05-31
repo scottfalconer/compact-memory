@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-from typing import Optional
 
 
 def configure_logging(log_file: Path, level: int = logging.INFO) -> None:

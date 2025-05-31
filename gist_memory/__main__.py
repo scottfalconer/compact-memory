@@ -25,7 +25,7 @@ def main(argv=None) -> None:
     if "--log-file" in args:
         idx = args.index("--log-file")
         log_file = args[idx + 1]
-        del args[idx : idx + 2]
+        del args[idx: idx + 2]
     if "--verbose" in args:
         verbose = True
         args.remove("--verbose")

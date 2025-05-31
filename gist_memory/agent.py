@@ -4,7 +4,6 @@ import hashlib
 import json
 import uuid
 from collections import OrderedDict
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, TypedDict, Callable
 
@@ -17,12 +16,11 @@ from .embedding_pipeline import embed_text
 from .json_npy_store import JsonNpyVectorStore, BeliefPrototype, RawMemory
 from .memory_creation import (
     ExtractiveSummaryCreator,
-    LLMSummaryCreator,
     MemoryCreator,
 )
 from .canonical import render_five_w_template
 from .conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
-from .conflict import SimpleConflictLogger, negation_conflict
+from .conflict import SimpleConflictLogger
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 
 
@@ -113,11 +111,15 @@ class Agent:
         update_summaries: bool = False,
     ) -> None:
         if not 0.5 <= similarity_threshold <= 0.95:
-            raise ValueError("similarity_threshold must be between 0.5 and 0.95")
+            raise ValueError(
+                "similarity_threshold must be between 0.5 and 0.95"
+            )
         self.store = store
         self.chunker = chunker or SentenceWindowChunker()
         self.similarity_threshold = similarity_threshold
-        self.summary_creator = summary_creator or ExtractiveSummaryCreator(max_words=25)
+        self.summary_creator = summary_creator or ExtractiveSummaryCreator(
+            max_words=25
+        )
         self.update_summaries = update_summaries
         self.metrics: Dict[str, int] = {
             "memories_ingested": 0,
@@ -155,7 +157,9 @@ class Agent:
         }
 
     # ------------------------------------------------------------------
-    def get_prototypes_view(self, sort_by: str | None = None) -> List[Dict[str, object]]:
+    def get_prototypes_view(
+        self, sort_by: str | None = None
+    ) -> List[Dict[str, object]]:
         """Return list of prototypes for display purposes."""
 
         protos = list(self.store.prototypes)
@@ -173,11 +177,15 @@ class Agent:
         ]
 
     # ------------------------------------------------------------------
-    def _log_conflict(self, proto_id: str, mem_a: RawMemory, mem_b: RawMemory) -> None:
+    def _log_conflict(
+        self, proto_id: str, mem_a: RawMemory, mem_b: RawMemory
+    ) -> None:
         self._conflict_logger.add(proto_id, mem_a, mem_b)
 
     # ------------------------------------------------------------------
-    def _write_evidence(self, belief_id: str, mem_id: str, weight: float) -> None:
+    def _write_evidence(
+        self, belief_id: str, mem_id: str, weight: float
+    ) -> None:
         self._evidence.add(belief_id, mem_id, weight)
 
     def _flag_conflicts(
@@ -194,7 +202,9 @@ class Agent:
             if mem.embedding is None:
                 continue
             vec_b = np.array(mem.embedding, dtype=np.float32)
-            self._conflicts.check_pair(prototype_id, new_mem, new_vec, mem, vec_b)
+            self._conflicts.check_pair(
+                prototype_id, new_mem, new_vec, mem, vec_b
+            )
 
     # ------------------------------------------------------------------
     def add_memory(
