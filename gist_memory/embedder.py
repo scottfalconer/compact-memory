@@ -3,10 +3,7 @@ from __future__ import annotations
 import numpy as np
 import openai
 
-try:  # optional dependency used for local embeddings
-    from sentence_transformers import SentenceTransformer
-except Exception:  # pragma: no cover - library may not be installed during tests
-    SentenceTransformer = None
+SentenceTransformer = None  # type: ignore  # loaded lazily in LocalEmbedder
 
 
 class Embedder:
@@ -60,8 +57,16 @@ class LocalEmbedder(Embedder):
             fully offline environments.
         """
 
+        global SentenceTransformer
         if SentenceTransformer is None:
-            raise ImportError("sentence-transformers is required for LocalEmbedder")
+            try:
+                from sentence_transformers import SentenceTransformer as _ST
+                SentenceTransformer = _ST
+            except Exception as exc:  # pragma: no cover - optional dependency
+                raise ImportError(
+                    "sentence-transformers is required for LocalEmbedder"
+                ) from exc
+
         self.model = SentenceTransformer(
             model_name,
             local_files_only=local_files_only,

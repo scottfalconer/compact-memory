@@ -1,7 +1,7 @@
 import threading
 import re
 
-import spacy
+# Heavy import done lazily in ``get_nlp``
 
 _MODEL_NAME = "en_core_web_sm"
 _lock = threading.Lock()
@@ -14,6 +14,7 @@ def get_nlp():
     if _nlp is None:
         with _lock:
             if _nlp is None:
+                import spacy
                 try:
                     _nlp = spacy.load(_MODEL_NAME)
                 except Exception:  # pragma: no cover - fallback path
