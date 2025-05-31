@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import inspect
 import logging
+import contextlib
 from typing import Optional, TYPE_CHECKING, Iterable
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
@@ -29,6 +30,7 @@ class LocalChatModel:
 
     tokenizer: Optional["AutoTokenizer"] = None  # populated in ``__post_init__``
     model: Optional["AutoModelForCausalLM"] = None
+    _loaded: bool = False
 
     # ------------------------------------------------------------------
     def _context_length(self) -> int:
@@ -53,6 +55,7 @@ class LocalChatModel:
     # Initialisation
     # ------------------------------------------------------------------
     def __post_init__(self) -> None:
+        """Ensure heavy dependencies are available but defer loading."""
         global AutoModelForCausalLM, AutoTokenizer
         if AutoModelForCausalLM is None or AutoTokenizer is None:
             try:
@@ -68,6 +71,13 @@ class LocalChatModel:
                     "transformers is required for LocalChatModel"
                 ) from exc
 
+    # ------------------------------------------------------------------
+    def load_model(self) -> None:
+        """Load the tokenizer and model if not already loaded."""
+        if self._loaded:
+            return
+        if AutoModelForCausalLM is None or AutoTokenizer is None:
+            self.__post_init__()
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name, local_files_only=True
@@ -81,14 +91,35 @@ class LocalChatModel:
                 "Please run: gist-memory download-chat-model "
                 f"--model-name {self.model_name} to install it."
             ) from exc
+        self._loaded = True
+
+    def unload_model(self) -> None:
+        """Unload the underlying tokenizer and model to free memory."""
+        self.tokenizer = None
+        self.model = None
+        self._loaded = False
+
+    @contextlib.contextmanager
+    def loaded(self):
+        """Context manager that loads and unloads the model."""
+        self.load_model()
+        try:
+            yield self
+        finally:
+            self.unload_model()
+
+    # ------------------------------------------------------------------
+    def _ensure_loaded(self) -> None:
+        if not self._loaded or self.tokenizer is None or self.model is None:
+            self.load_model()
+
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
     def reply(self, prompt: str) -> str:
         """Generate a reply to ``prompt`` trimming context if necessary."""
-        if self.tokenizer is None or self.model is None:
-            raise RuntimeError("LocalChatModel not initialised")
+        self._ensure_loaded()
 
         # --------------------------------------------------------------
         # Token management
@@ -173,8 +204,7 @@ class LocalChatModel:
     ) -> str:
         """Truncate ``prompt`` with a short recap if it exceeds context length."""
 
-        if self.tokenizer is None or self.model is None:
-            raise RuntimeError("LocalChatModel not initialised")
+        self._ensure_loaded()
 
         max_len = self._context_length()
         input_tokens = token_count(self.tokenizer, prompt)

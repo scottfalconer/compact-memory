@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import hashlib
+import contextlib
 from typing import List, Sequence
 
 import tiktoken
@@ -88,6 +89,29 @@ def _load_model(model_name: str, device: str) -> SentenceTransformer:
     return _MODEL
 
 
+def load_model(model_name: str = _MODEL_NAME, device: str = _DEVICE) -> None:
+    """Explicitly load the embedding model."""
+    _load_model(model_name, device)
+
+
+def unload_model() -> None:
+    """Unload the cached embedding model to free memory."""
+    global _MODEL
+    _MODEL = None
+
+
+@contextlib.contextmanager
+def loaded_embedding_model(
+    model_name: str = _MODEL_NAME, device: str = _DEVICE
+) -> SentenceTransformer:
+    """Context manager that loads and unloads the embedding model."""
+    model = _load_model(model_name, device)
+    try:
+        yield model
+    finally:
+        unload_model()
+
+
 @functools.lru_cache(maxsize=5000)
 def _embed_cached(
     text: str, model_name: str, device: str, batch_size: int
@@ -163,6 +187,9 @@ def register_embedding(name: str, encoder_callable) -> None:
 __all__ = [
     "EmbeddingDimensionMismatchError",
     "MockEncoder",
+    "load_model",
+    "unload_model",
+    "loaded_embedding_model",
     "embed_text",
     "get_embedding_dim",
     "register_embedding",

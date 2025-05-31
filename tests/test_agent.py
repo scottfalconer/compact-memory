@@ -7,9 +7,10 @@ from gist_memory import agent as ag
 from gist_memory.agent import Agent
 from gist_memory.embedding_pipeline import MockEncoder, _load_model, embed_text
 from gist_memory.json_npy_store import JsonNpyVectorStore
-from gist_memory.chunker import SentenceWindowChunker
+from gist_memory.chunker import SentenceWindowChunker, Chunker
 from gist_memory.active_memory_manager import ActiveMemoryManager
 from gist_memory.prompt_budget import PromptBudget
+import sys
 
 
 @pytest.fixture(autouse=True)
@@ -173,4 +174,62 @@ def test_get_statistics_ephemeral_store(tmp_path):
     agent = Agent(store, chunker=SentenceWindowChunker())
     stats = agent.get_statistics()
     assert stats["disk_usage"] == 0
+
+
+def test_add_memory_tqdm_notebook(monkeypatch, tmp_path):
+    store = JsonNpyVectorStore(path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim)
+    agent = Agent(store, chunker=SentenceWindowChunker())
+
+    updates: list[int] = []
+
+    class DummyBar:
+        closed = False
+
+        def __init__(self, *a, **k):
+            self.total = k.get("total")
+
+        def update(self, n=1):
+            updates.append(n)
+
+        def close(self):
+            DummyBar.closed = True
+
+    import types
+    monkeypatch.setitem(sys.modules, "tqdm.notebook", types.SimpleNamespace(tqdm=lambda *a, **k: DummyBar(*a, **k)))
+
+    agent.add_memory("alpha bravo", tqdm_notebook=True)
+
+    assert sum(updates) == len(agent.chunker.chunk("alpha bravo"))
+    assert DummyBar.closed
+
+class DummyChunker(Chunker):
+    id = "dummy"
+
+    def chunk(self, text: str) -> list[str]:
+        return [f"dummy:{text}"]
+
+
+def test_reconfigure_chunker(tmp_path):
+    store = JsonNpyVectorStore(path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim)
+    agent = Agent(store, chunker=SentenceWindowChunker())
+    agent.add_memory("alpha")
+    agent.chunker = DummyChunker()
+    agent.add_memory("bravo")
+    assert store.memories[-1].raw_text == "dummy:bravo"
+    assert store.meta["chunker"] == "dummy"
+
+
+def test_reconfigure_similarity_threshold(tmp_path, monkeypatch):
+    store = JsonNpyVectorStore(path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim)
+    agent = Agent(store, chunker=SentenceWindowChunker())
+    agent.add_memory("alpha")
+
+    def fake_nearest(vec, k=1):
+        return [(store.prototypes[0].prototype_id, 0.6)]
+
+    monkeypatch.setattr(store, "find_nearest", fake_nearest)
+    agent.similarity_threshold = 0.5
+    res = agent.add_memory("bravo")[0]
+    assert res["spawned"] is False
+    assert store.meta["tau"] == 0.5
 

@@ -23,6 +23,28 @@ class BeliefPrototype(BaseModel):
     )
     constituent_memory_ids: List[str] = Field(default_factory=list)
 
+    # --------------------------------------------------------------
+    def _repr_html_(self) -> str:
+        """Return a rich HTML representation for Jupyter."""
+        rows = """
+        <tr><th>Prototype ID</th><td>{pid}</td></tr>
+        <tr><th>Strength</th><td>{strength:.2f}</td></tr>
+        <tr><th>Confidence</th><td>{conf:.2f}</td></tr>
+        <tr><th>Summary</th><td>{summary}</td></tr>
+        <tr><th>Memories</th><td>{num}</td></tr>
+        <tr><th>Created</th><td>{created}</td></tr>
+        <tr><th>Updated</th><td>{updated}</td></tr>
+        """.format(
+            pid=self.prototype_id,
+            strength=self.strength,
+            conf=self.confidence,
+            summary=self.summary_text,
+            num=len(self.constituent_memory_ids),
+            created=self.creation_ts.isoformat(),
+            updated=self.last_updated_ts.isoformat(),
+        )
+        return f"<table>{rows}</table>"
+
     @field_validator("summary_text")
     def _limit_summary(cls, v: str) -> str:
         if len(v) > 256:

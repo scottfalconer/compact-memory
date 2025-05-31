@@ -226,3 +226,21 @@ class JsonNpyVectorStore(VectorStore):
 
     def add_memory(self, memory: RawMemory) -> None:
         self.memories.append(memory)
+
+    # ------------------------------------------------------------------
+    def _repr_html_(self) -> str:
+        """Return HTML summary for notebooks."""
+        meta_items = """<tr><th>Embedding model</th><td>{model}</td></tr>
+<tr><th>Dimension</th><td>{dim}</td></tr>
+<tr><th>Normalized</th><td>{norm}</td></tr>
+<tr><th>Prototypes</th><td>{pcount}</td></tr>
+<tr><th>Memories</th><td>{mcount}</td></tr>
+<tr><th>Path</th><td>{path}</td></tr>""".format(
+            model=self.embedding_model,
+            dim=self.embedding_dim,
+            norm=self.normalized,
+            pcount=len(self.prototypes),
+            mcount=len(self.memories),
+            path=self.path,
+        )
+        return f"<table>{meta_items}</table>"

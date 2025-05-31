@@ -108,14 +108,40 @@ class LLMSummarisingChunker(Chunker):
         raise NotImplementedError
 
 
+class AgenticChunker(Chunker):
+    """Segment text into belief-sized ideas using :func:`agentic_split`."""
+
+    id = "agentic"
+
+    def __init__(self, max_tokens: int = 120, sim_threshold: float = 0.3) -> None:
+        self.max_tokens = max_tokens
+        self.sim_threshold = sim_threshold
+
+    def config(self) -> Dict[str, int | str]:
+        return {
+            "id": self.id,
+            "max_tokens": self.max_tokens,
+            "sim_threshold": self.sim_threshold,
+        }
+
+    def chunk(self, text: str) -> List[str]:
+        from .segmentation import agentic_split
+
+        return agentic_split(
+            text, max_tokens=self.max_tokens, sim_threshold=self.sim_threshold
+        )
+
+
 register_chunker(SentenceWindowChunker.id, SentenceWindowChunker)
 register_chunker(FixedSizeChunker.id, FixedSizeChunker)
 register_chunker(LLMSummarisingChunker.id, LLMSummarisingChunker)
+register_chunker(AgenticChunker.id, AgenticChunker)
 
 __all__ = [
     "Chunker",
     "SentenceWindowChunker",
     "FixedSizeChunker",
+    "AgenticChunker",
     "LLMSummarisingChunker",
     "register_chunker",
     "_CHUNKER_REGISTRY",

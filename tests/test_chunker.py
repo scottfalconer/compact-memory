@@ -1,4 +1,4 @@
-from gist_memory.chunker import SentenceWindowChunker
+from gist_memory.chunker import SentenceWindowChunker, AgenticChunker
 
 
 class DummyTokenizer:
@@ -21,4 +21,11 @@ def test_sentence_window_chunker_overlap():
     tok = chunker.tokenizer.encode(chunks[0])[-32:]
     tok2 = chunker.tokenizer.encode(chunks[1])[:32]
     assert tok == tok2
+
+
+def test_agentic_chunker_basic():
+    text = "A. B. C. D."
+    chunker = AgenticChunker(max_tokens=2, sim_threshold=0.1)
+    chunks = chunker.chunk(text)
+    assert len(chunks) >= 2
 

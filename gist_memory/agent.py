@@ -91,12 +91,33 @@ class MemoryHit(TypedDict):
     sim: float
 
 
-class QueryResult(TypedDict):
-    """Return type for :meth:`Agent.query`."""
+class QueryResult(dict):
+    """Result object returned by :meth:`Agent.query` with HTML representation."""
 
     prototypes: List[PrototypeHit]
     memories: List[MemoryHit]
     status: str
+
+    def __init__(self, prototypes: List[PrototypeHit], memories: List[MemoryHit], status: str) -> None:
+        super().__init__(prototypes=prototypes, memories=memories, status=status)
+
+    # --------------------------------------------------------------
+    def _repr_html_(self) -> str:
+        proto_rows = "".join(
+            f"<tr><td>{p['id']}</td><td>{p['summary']}</td><td>{p['sim']:.2f}</td></tr>"
+            for p in self.get('prototypes', [])
+        )
+        mem_rows = "".join(
+            f"<tr><td>{m['id']}</td><td>{m['text']}</td><td>{m['sim']:.2f}</td></tr>"
+            for m in self.get('memories', [])
+        )
+        html = """<h4>Prototypes</h4><table><tr><th>ID</th><th>Summary</th><th>Sim</th></tr>{p_rows}</table>""".format(
+            p_rows=proto_rows
+        )
+        html += """<h4>Memories</h4><table><tr><th>ID</th><th>Text</th><th>Sim</th></tr>{m_rows}</table>""".format(
+            m_rows=mem_rows
+        )
+        return html
 
 
 class Agent:
@@ -116,9 +137,13 @@ class Agent:
         if not 0.5 <= similarity_threshold <= 0.95:
             raise ValueError("similarity_threshold must be between 0.5 and 0.95")
         self.store = store
-        self.chunker = chunker or SentenceWindowChunker()
-        self.similarity_threshold = similarity_threshold
-        self.summary_creator = summary_creator or ExtractiveSummaryCreator(max_words=25)
+        self._chunker: Chunker = chunker or SentenceWindowChunker()
+        self.store.meta["chunker"] = getattr(self._chunker, "id", type(self._chunker).__name__)
+        self._similarity_threshold = float(similarity_threshold)
+        self.store.meta["tau"] = self._similarity_threshold
+        self._summary_creator: MemoryCreator = (
+            summary_creator or ExtractiveSummaryCreator(max_words=25)
+        )
         self.update_summaries = update_summaries
         self.metrics: Dict[str, int] = {
             "memories_ingested": 0,
@@ -142,6 +167,63 @@ class Agent:
         self.prompt_budget = prompt_budget
 
     # ------------------------------------------------------------------
+    @property
+    def chunker(self) -> Chunker:
+        """Return the current :class:`Chunker`."""
+
+        return self._chunker
+
+    @chunker.setter
+    def chunker(self, value: Chunker) -> None:
+        if not isinstance(value, Chunker):
+            raise TypeError("chunker must implement Chunker interface")
+        self._chunker = value
+        self.store.meta["chunker"] = getattr(value, "id", type(value).__name__)
+
+    # ------------------------------------------------------------------
+    @property
+    def similarity_threshold(self) -> float:
+        return self._similarity_threshold
+
+    @similarity_threshold.setter
+    def similarity_threshold(self, value: float) -> None:
+        if not 0.5 <= value <= 0.95:
+            raise ValueError("similarity_threshold must be between 0.5 and 0.95")
+        self._similarity_threshold = float(value)
+        self.store.meta["tau"] = self._similarity_threshold
+
+    # ------------------------------------------------------------------
+    @property
+    def summary_creator(self) -> MemoryCreator:
+        return self._summary_creator
+
+    @summary_creator.setter
+    def summary_creator(self, value: MemoryCreator) -> None:
+        if not isinstance(value, MemoryCreator):
+            raise TypeError("summary_creator must implement MemoryCreator")
+        self._summary_creator = value
+
+    # ------------------------------------------------------------------
+    def configure(
+        self,
+        *,
+        chunker: Chunker | None = None,
+        similarity_threshold: float | None = None,
+        summary_creator: MemoryCreator | None = None,
+        prompt_budget: PromptBudget | None = None,
+    ) -> None:
+        """Dynamically update core configuration."""
+
+        if chunker is not None:
+            self.chunker = chunker
+        if similarity_threshold is not None:
+            self.similarity_threshold = similarity_threshold
+        if summary_creator is not None:
+            self.summary_creator = summary_creator
+        if prompt_budget is not None:
+            self.prompt_budget = prompt_budget
+
+    # ------------------------------------------------------------------
     def get_statistics(self) -> Dict[str, object]:
         """Return summary statistics about the current store."""
 
@@ -157,6 +239,15 @@ class Agent:
             "updated": self.store.meta.get("updated_at"),
             "disk_usage": disk_usage,
         }
+
+    # ------------------------------------------------------------------
+    def _repr_html_(self) -> str:
+        """HTML summary for notebooks."""
+        stats = self.get_statistics()
+        rows = "".join(
+            f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in stats.items()
+        )
+        return f"<h3>Agent</h3><table>{rows}</table>"
 
     # ------------------------------------------------------------------
     def get_prototypes_view(
@@ -215,10 +306,15 @@ class Agent:
         progress_callback: Optional[
             Callable[[int, int, bool, str, Optional[float]], None]
         ] = None,
+        tqdm_notebook: bool = False,
         save: bool = True,
         source_document_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
-        """Ingest ``text`` into the store and return per-chunk statuses."""
+        """Ingest ``text`` into the store and return per-chunk statuses.
+
+        When ``tqdm_notebook`` is ``True`` and ``progress_callback`` is not
+        provided a ``tqdm.notebook`` progress bar is used if available.
+        """
 
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
         if digest in self._dedup:
@@ -238,6 +334,20 @@ class Agent:
         vecs = embed_text(canonical)
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
+
+        bar = None
+        if tqdm_notebook and progress_callback is None:
+            try:  # pragma: no cover - optional dependency
+                from tqdm.notebook import tqdm as notebook_tqdm
+            except Exception:  # pragma: no cover - tqdm not installed
+                pass
+            else:
+                bar = notebook_tqdm(total=len(chunks), desc="Adding")
+
+                def _default_cb(i: int, total: int, spawned: bool, pid: str, sim: Optional[float]) -> None:
+                    bar.update(1)
+
+                progress_callback = _default_cb
 
         results: List[Dict[str, object]] = []
         total = len(chunks)
@@ -296,6 +406,12 @@ class Agent:
             if progress_callback:
                 progress_callback(idx, total, spawned, pid, sim)
 
+        if bar is not None:
+            try:  # pragma: no cover - just cleanup
+                bar.close()
+            except Exception:
+                pass
+
         if save:
             self.store.save()
         return results
@@ -316,11 +432,7 @@ class Agent:
             vec = vec.reshape(-1)
         nearest = self.store.find_nearest(vec, k=top_k_prototypes)
         if not nearest:
-            return {
-                "prototypes": [],
-                "memories": [],
-                "status": "no_match",
-            }
+            return QueryResult([], [], "no_match")
 
         logging.info(
             "[query] '%s' → %d protos, top sim %.2f",
@@ -355,11 +467,7 @@ class Agent:
             for s, m in memory_candidates[:top_k_memories]
         ]
 
-        return {
-            "prototypes": proto_results,
-            "memories": mem_results,
-            "status": "ok",
-        }
+        return QueryResult(proto_results, mem_results, "ok")
 
     # ------------------------------------------------------------------
     def process_conversational_turn(

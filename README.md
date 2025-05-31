@@ -11,6 +11,7 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 - Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
 - Chunks are rendered using a canonical ``WHO/WHAT/WHEN/WHERE/WHY`` template before embedding.
+- The CLI runs smoothly in Colab.
 - A Colab notebook will provide an interactive GUI in the future.
 - Python API provides helpers to decode and summarise prototypes.
 - Chat with a brain using a local LLM via the `talk` command.
@@ -101,6 +102,8 @@ gist-memory clear --yes
 
 Additional functions such as decoding or summarising a prototype are
 available via the Python API.
+When working in a Jupyter notebook you can display a progress bar during
+ingestion by passing ``tqdm_notebook=True`` to ``Agent.add_memory``.
 
 The local embedder loads the model from the Hugging Face cache only and will not
 attempt any network downloads. Ensure the embedding and chat models are
@@ -161,7 +164,7 @@ and prototype count.
 
 ## Segmentation Playbook
 
-See [docs/SEGMENTATION_PLAYBOOK.md](docs/SEGMENTATION_PLAYBOOK.md) for a detailed workflow on splitting long documents into belief-sized ideas before ingestion. You can enable this behaviour in the CLI via `--memory-creator agentic`.
+See [docs/SEGMENTATION_PLAYBOOK.md](docs/SEGMENTATION_PLAYBOOK.md) for a detailed workflow on splitting long documents into belief-sized ideas before ingestion. The advanced `AgenticChunker` implements this strategy and can be used via `gist-memory init brain --chunker agentic` or programmatically with `agent.chunker = AgenticChunker()`.
 
 ## Querying Playbook
 
