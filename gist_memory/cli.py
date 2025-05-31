@@ -12,7 +12,6 @@ from rich.console import Console
 from .logging_utils import configure_logging
 
 
-
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from .chunker import SentenceWindowChunker
@@ -129,6 +128,10 @@ def add(
     file: Optional[Path] = typer.Option(None, help="Text file to add"),
     source_id: Optional[str] = typer.Option(None, help="Source id"),
     actor: Optional[str] = typer.Option(None, help="Actor"),
+    what: Optional[str] = typer.Option(None, help="What"),
+    when: Optional[str] = typer.Option(None, help="When"),
+    where: Optional[str] = typer.Option(None, help="Where"),
+    why: Optional[str] = typer.Option(None, help="Why"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Do not modify the store"),
 ) -> None:
     """Ingest new text into the agent."""
@@ -156,49 +159,46 @@ def add(
     with PersistenceLock(path):
         agent = _load_agent(path)
         try:
-            results = agent.add_memory(input_text, who=actor)
+            chunks = agent.chunker.chunk(input_text)
+            from tqdm import tqdm
+
+            bar = tqdm(total=len(chunks), desc="Adding", disable=False)
+
+            def cb(i, total, spawned, pid, sim):
+                bar.update(1)
+                if VERBOSE:
+                    act = "spawned" if spawned else "updated"
+                    sim_str = f" (similarity: {sim:.2f})" if sim is not None else ""
+                    typer.echo(f"Chunk {i}/{total}: {act} {pid}{sim_str}")
+
+            results = agent.add_memory(
+                input_text,
+                who=actor,
+                what=what,
+                when=when,
+                where=where,
+                why=why,
+                source_document_id=source_id,
+                progress_callback=cb,
+                save=not dry_run,
+            )
+            bar.close()
+            if not dry_run:
+                agent.store.save()
         except RuntimeError as exc:
             typer.echo(str(exc), err=True)
             raise typer.Exit(code=1)
-        agent.store.save()
-        chunks = agent.chunker.chunk(input_text)
-        from tqdm import tqdm
-
-        bar = tqdm(total=len(chunks), desc="Adding", disable=False)
-
-        def cb(i, total, spawned, pid, sim):
-            bar.update(1)
-            if VERBOSE:
-                act = "spawned" if spawned else "updated"
-                sim_str = f" (similarity: {sim:.2f})" if sim is not None else ""
-                typer.echo(f"Chunk {i}/{total}: {act} {pid}{sim_str}")
-
-        results = agent.add_memory(
-            input_text, who=actor, progress_callback=cb, save=not dry_run
-        )
-        bar.close()
-        if not dry_run:
-            agent.store.save()
     if dry_run:
         spawned = sum(1 for r in results if r.get("spawned"))
         updated = sum(1 for r in results if not r.get("spawned"))
         typer.echo(
-            f"Would spawn {spawned} new prototype{'s' if spawned!=1 else ''} and update {updated} existing ones."
+            f"Would spawn {spawned} new prototype{'s' if spawned != 1 else ''} and update {updated} existing ones."
         )
         return
-    proto_map = {p.prototype_id: p for p in agent.store.prototypes}
-    for r in results:
-        if r.get("duplicate"):
-            typer.echo("Duplicate text skipped")
-            continue
-        action = "Spawned new prototype" if r.get("spawned") else "Updated prototype"
-        sim = r.get("sim")
-        proto = proto_map.get(r["prototype_id"])
-        summary = proto.summary_text if proto else ""
-        sim_str = f" (similarity: {sim:.2f})" if sim is not None else ""
-        typer.echo(
-            f"Successfully added memory. {action} {r['prototype_id']}{sim_str}. Summary: '{summary}'"
-        )
+    from .utils import format_ingest_results
+
+    for line in format_ingest_results(agent, results):
+        typer.echo(line)
 
 
 @app.command()
@@ -385,7 +385,7 @@ def clear(
 def download_model(
     model_name: str = typer.Option(
         "all-MiniLM-L6-v2", help="SentenceTransformer model name"
-    )
+    ),
 ) -> None:
     """Pre-download a local embedding model."""
     from tqdm import tqdm
@@ -400,7 +400,7 @@ def download_model(
 
 @app.command("download-chat-model")
 def download_chat_model(
-    model_name: str = typer.Option("distilgpt2", help="Local causal LM name")
+    model_name: str = typer.Option("distilgpt2", help="Local causal LM name"),
 ) -> None:
     """Pre-download a local chat model for ``talk`` mode."""
     from tqdm import tqdm
