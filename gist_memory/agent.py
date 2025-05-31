@@ -18,6 +18,8 @@ from .memory_creation import (
     ExtractiveSummaryCreator,
     MemoryCreator,
 )
+from .prompt_budget import PromptBudget
+from .token_utils import truncate_text, token_count
 from .canonical import render_five_w_template
 from .conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
 from .conflict import SimpleConflictLogger
@@ -109,6 +111,7 @@ class Agent:
         dedup_cache: int = 128,
         summary_creator: Optional[MemoryCreator] = None,
         update_summaries: bool = False,
+        prompt_budget: PromptBudget | None = None,
     ) -> None:
         if not 0.5 <= similarity_threshold <= 0.95:
             raise ValueError(
@@ -140,6 +143,7 @@ class Agent:
             c = Path("conflicts.jsonl")
         self._conflict_logger = SimpleConflictLogger(c)
         self._conflicts = ConflictFlagger(FlagLogger(c))
+        self.prompt_budget = prompt_budget
 
     # ------------------------------------------------------------------
     def get_statistics(self) -> Dict[str, object]:
@@ -386,16 +390,48 @@ class Agent:
 
         history_candidates = manager.select_history_candidates_for_prompt(vec)
         if hasattr(llm, "_context_length"):
-            max_hist = llm._context_length() - llm.max_new_tokens
+            max_len = llm._context_length()
         else:  # fallback for test doubles
             cfg = getattr(getattr(llm, "model", None), "config", None)
             max_len = getattr(cfg, "n_positions", 1024)
-            max_hist = max_len - llm.max_new_tokens
-        history_final = manager.finalize_history_for_prompt(
-            history_candidates,
-            max_hist,
-            llm.tokenizer,
-        )
+        total_budget = max_len - llm.max_new_tokens
+
+        budget_cfg = manager.prompt_budget or getattr(self, "prompt_budget", None)
+        if budget_cfg is not None:
+            budgets = budget_cfg.resolve(total_budget)
+        else:
+            budgets = {}
+
+        b_query = budgets.get("query")
+        b_recent = budgets.get("recent_history")
+        b_older = budgets.get("older_history")
+        b_ltm = budgets.get("ltm_snippets")
+
+        def _fit(turns, limit):
+            if limit is None:
+                return list(turns)
+            kept = []
+            tokens_used = 0
+            for t in turns:
+                n = token_count(llm.tokenizer, t.text)
+                if tokens_used + n <= limit:
+                    kept.append(t)
+                    tokens_used += n
+                else:
+                    break
+            return kept
+
+        num_recent = manager.config_prompt_num_forced_recent_turns
+        if num_recent > 0:
+            recent_slice = history_candidates[-num_recent:]
+            older_slice = history_candidates[:-num_recent]
+        else:
+            recent_slice = []
+            older_slice = list(history_candidates)
+
+        older_final = _fit(older_slice, b_older)
+        recent_final = _fit(recent_slice, b_recent)
+        history_final = older_final + recent_final
 
         history_text = "\n".join(t.text for t in history_final)
 
@@ -403,14 +439,25 @@ class Agent:
         proto_summaries = "; ".join(p["summary"] for p in query_res.get("prototypes", []))
         mem_texts = "; ".join(m["text"] for m in query_res.get("memories", []))
 
+        user_text = input_message
+        if b_query:
+            user_text = truncate_text(llm.tokenizer, user_text, b_query)
+
+        ltm_parts = []
+        if proto_summaries:
+            ltm_parts.append(f"Relevant concepts: {proto_summaries}")
+        if mem_texts:
+            ltm_parts.append(f"Context: {mem_texts}")
+        ltm_text = "\n".join(ltm_parts)
+        if b_ltm:
+            ltm_text = truncate_text(llm.tokenizer, ltm_text, b_ltm)
+
         parts = []
         if history_text:
             parts.append(history_text)
-        parts.append(f"User asked: {input_message}")
-        if proto_summaries:
-            parts.append(f"Relevant concepts: {proto_summaries}")
-        if mem_texts:
-            parts.append(f"Context: {mem_texts}")
+        parts.append(f"User asked: {user_text}")
+        if ltm_text:
+            parts.append(ltm_text)
         parts.append("Answer:")
         prompt = "\n".join(parts)
         prompt = llm.prepare_prompt(self, prompt)

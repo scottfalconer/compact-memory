@@ -35,6 +35,7 @@ __all__ = [
     "load_agent",
     "tokenize_text",
     "token_count",
+    "PromptBudget",
 ]
 
 _lazy_map = {
@@ -67,6 +68,7 @@ _lazy_map = {
     "load_agent": "gist_memory.utils",
     "tokenize_text": "gist_memory.token_utils",
     "token_count": "gist_memory.token_utils",
+    "PromptBudget": "gist_memory.prompt_budget",
 }
 
 

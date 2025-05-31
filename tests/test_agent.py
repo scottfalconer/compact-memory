@@ -9,6 +9,7 @@ from gist_memory.embedding_pipeline import MockEncoder, _load_model, embed_text
 from gist_memory.json_npy_store import JsonNpyVectorStore
 from gist_memory.chunker import SentenceWindowChunker
 from gist_memory.active_memory_manager import ActiveMemoryManager
+from gist_memory.prompt_budget import PromptBudget
 
 
 @pytest.fixture(autouse=True)
@@ -136,4 +137,32 @@ def test_process_conversational_turn_updates_manager(monkeypatch, tmp_path):
     reply, info = agent.process_conversational_turn("hello?", mgr)
     assert reply == "resp"
     assert len(mgr.history) == 1
+
+
+def test_prompt_budget_truncates_prompt(monkeypatch, tmp_path):
+    store = JsonNpyVectorStore(path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim)
+    budget = PromptBudget(query=2, recent_history=0, older_history=0, ltm_snippets=0)
+    agent = Agent(store, chunker=SentenceWindowChunker(), prompt_budget=budget)
+
+    class Dummy:
+        def __init__(self, *a, **k):
+            pass
+
+        tokenizer = staticmethod(lambda text, return_tensors=None: {"input_ids": text.split()})
+        model = type("M", (), {"config": type("C", (), {"n_positions": 50})()})()
+        max_new_tokens = 10
+
+        def prepare_prompt(self, agent, prompt, **kw):
+            Dummy.prompt = prompt
+            return prompt
+
+        def reply(self, prompt):
+            return "resp"
+
+    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", Dummy)
+    mgr = ActiveMemoryManager()
+    reply, _ = agent.process_conversational_turn("one two three four five?", mgr)
+    assert reply == "resp"
+    assert "one two" in Dummy.prompt
+    assert "three" not in Dummy.prompt
 
