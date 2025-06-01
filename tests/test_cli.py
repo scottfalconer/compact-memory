@@ -14,37 +14,41 @@ def use_mock_encoder(monkeypatch):
     yield
 
 
-def test_cli_init_add_query(tmp_path):
+def test_cli_strategy_inspect(tmp_path):
     runner = CliRunner()
     result = runner.invoke(app, ["init", str(tmp_path), "--agent-name", "tester"])
     assert result.exit_code == 0
 
-    result = runner.invoke(
-        app,
-        ["add", "--agent-name", str(tmp_path), "--text", "hello world"],
-    )
-    assert result.exit_code == 0
+    from gist_memory.utils import load_agent
+
+    agent = load_agent(tmp_path)
+    agent.add_memory("hello world")
+    agent.store.save()
 
     result = runner.invoke(
         app,
         [
-            "query",
+            "strategy",
+            "inspect",
+            "prototype",
             "--agent-name",
             str(tmp_path),
-            "--query-text",
-            "hello",
-            "--json",
+            "--list-prototypes",
         ],
     )
     assert result.exit_code == 0
-    data = json.loads(result.stdout.strip())
-    assert data["memories"]
+    assert "hello world" in result.stdout
 
 
 def test_cli_stats(tmp_path):
     runner = CliRunner()
     runner.invoke(app, ["init", str(tmp_path), "--agent-name", "tester"])
-    runner.invoke(app, ["add", "--agent-name", str(tmp_path), "--text", "alpha"])
+    from gist_memory.utils import load_agent
+
+    agent = load_agent(tmp_path)
+    agent.add_memory("alpha")
+    agent.store.save()
+
     result = runner.invoke(app, ["stats", str(tmp_path), "--json"])
     assert result.exit_code == 0
     data = json.loads(result.stdout.strip())
@@ -82,7 +86,11 @@ def test_cli_validate_mismatch(tmp_path):
 def test_cli_talk(tmp_path, monkeypatch):
     runner = CliRunner()
     runner.invoke(app, ["init", str(tmp_path)])
-    runner.invoke(app, ["add", "--agent-name", str(tmp_path), "--text", "hello world"])
+    from gist_memory.utils import load_agent
+
+    agent = load_agent(tmp_path)
+    agent.add_memory("hello world")
+    agent.store.save()
 
     prompts = {}
 
@@ -182,18 +190,19 @@ def test_cli_logging(tmp_path):
     log_path = tmp_path / "cli.log"
     runner = CliRunner()
     runner.invoke(app, ["init", str(tmp_path)])
-    runner.invoke(app, ["add", "--agent-name", str(tmp_path), "--text", "alpha"])
+    from gist_memory.utils import load_agent
+
+    agent = load_agent(tmp_path)
+    agent.add_memory("alpha")
+    agent.store.save()
     result = runner.invoke(
         app,
         [
             "--log-file",
             str(log_path),
             "--verbose",
-            "query",
-            "--agent-name",
+            "stats",
             str(tmp_path),
-            "--query-text",
-            "alpha",
         ],
     )
     assert result.exit_code == 0
@@ -213,7 +222,7 @@ def test_cli_corrupt_store(tmp_path):
 
     result = runner.invoke(
         app,
-        ["query", "--agent-name", str(tmp_path), "--query-text", "hi"],
+        ["stats", str(tmp_path)],
     )
     assert result.exit_code != 0
     assert "Brain data is corrupted" in result.stderr

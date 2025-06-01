@@ -4,8 +4,8 @@ Prototype implementation of the Gist Memory Agent using a coarse prototype memor
 
 ## Features
 
-- CLI interface with `init`, `add`, `query`, `list-beliefs`, `stats`,
-  `validate`, `clear` and `download-model` commands.
+- CLI interface with `init`, `stats`, `validate`, `clear`, `download-model`,
+  `download-chat-model`, `experiment` and `strategy inspect` commands.
 - Lightweight JSON/NPY backend for prototypes and memories (default).
 - Optional Chroma vector store for scale via ``pip install \"gist-memory[chroma]\"``.
 - Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
@@ -59,29 +59,15 @@ pip install .
 
 ### Command line
 
-Initialise a new brain then ingest a memory:
+Initialise a new brain:
 
 ```bash
 gist-memory init brain
-gist-memory add --text "Some text to remember"
+# ingest text using the experiment command or Python API
 ```
 
 When using the OpenAI embedder, set the ``OPENAI_API_KEY`` environment
 variable so the library can authenticate.
-
-You can also pass a path to a text file or a directory containing ``*.txt``
-files:
-
-```bash
-gist-memory add --file notes.txt
-gist-memory add --file docs/
-```
-
-Query memories:
-
-```bash
-gist-memory query --query-text "search text" --k-memories 5
-```
 
 Chat with the entire brain using a local model:
 
@@ -93,7 +79,7 @@ Ensure the chat model is pre-downloaded using `gist-memory download-chat-model`.
 List belief prototypes and show store stats:
 
 ```bash
-gist-memory list-beliefs
+gist-memory strategy inspect prototype --list-prototypes
 gist-memory stats
 gist-memory validate
 # permanently remove all data

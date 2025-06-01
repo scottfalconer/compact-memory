@@ -42,8 +42,9 @@ experimented with.
   from raw documents. Includes identity, extractive, fixed chunk and
   LLM-driven variants so experiments can measure which produces better
   prototypes.
-- **`cli.py`** – Typer-based command line app supporting `init`, `add`,
-  `query`, `list-beliefs`, `stats` and `download-model`. Persistence is
+- **`cli.py`** – Typer-based command line app supporting `init`,
+  `stats`, `validate`, `clear`, `download-model`, `download-chat-model`,
+  `experiment` and `strategy inspect`. Persistence is
   locked during writes to avoid corruption.
 - **`embedding_pipeline.py`**, **`embedder.py`** and **`store.py`** –
   additional abstractions for embedding backends and alternative vector
@@ -91,9 +92,9 @@ quickly.
 ## CLI
 
 `gist-memory` is implemented using Typer and exposes subcommands for
-initialising a brain, ingesting text and querying memories. The CLI is
-the primary interface, and a Colab notebook will provide a graphical
-option in the future.
+initialising a brain, inspecting stored prototypes and running
+experiments. The CLI is the primary interface, and a Colab notebook will
+provide a graphical option in the future.
 
 ## Testing
 
