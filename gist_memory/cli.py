@@ -22,6 +22,12 @@ from .embedding_pipeline import (
 from .utils import load_agent
 from .config import DEFAULT_BRAIN_PATH
 from .compression import available_strategies, get_compression_strategy
+from .package_utils import (
+    load_manifest,
+    validate_manifest,
+    load_strategy_class,
+)
+from .response_experiment import ResponseExperimentConfig, run_response_experiment
 
 app = typer.Typer(help="Gist Memory command line interface")
 console = Console()
@@ -125,6 +131,12 @@ def init(
 
 strategy_app = typer.Typer(help="Inspect compression strategies")
 app.add_typer(strategy_app, name="strategy")
+
+package_app = typer.Typer(help="Manage strategy packages")
+app.add_typer(package_app, name="package")
+
+experiment_app = typer.Typer(help="Run experiments")
+app.add_typer(experiment_app, name="experiment")
 
 
 @strategy_app.command("inspect")
@@ -400,7 +412,7 @@ def download_chat_model(
     typer.echo(f"Downloaded {model_name}")
 
 
-@app.command("experiment")
+@experiment_app.command("ingest")
 def run_experiment_cmd(
     dataset: Path = typer.Argument(..., help="Text file to ingest"),
     work_dir: Optional[Path] = typer.Option(
@@ -423,6 +435,98 @@ def run_experiment_cmd(
     else:
         for k, v in metrics.items():
             typer.echo(f"{k}: {v}")
+
+
+@package_app.command("create")
+def package_create(
+    name: str = typer.Option("sample_strategy", "--name", help="Strategy name"),
+    path: Optional[Path] = typer.Option(None, "--path", help="Output directory"),
+) -> None:
+    """Generate a template strategy package."""
+    target = Path(path or name)
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "experiments").mkdir(exist_ok=True)
+    (target / "strategy.py").write_text(
+        """from gist_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace\n\n\nclass MyStrategy(CompressionStrategy):\n    id = \"{}\"\n\n    def compress(self, text_or_chunks, llm_token_budget, **kwargs):\n        return CompressedMemory(text=str(text_or_chunks)), CompressionTrace()\n""".format(
+            name
+        )
+    )
+    manifest = {
+        "package_format_version": "1.0",
+        "strategy_id": name,
+        "strategy_class_name": "MyStrategy",
+        "strategy_module": "strategy",
+        "display_name": name,
+        "version": "0.1.0",
+        "authors": [],
+        "description": "Describe the strategy",
+    }
+    import yaml
+
+    (target / "strategy_package.yaml").write_text(yaml.safe_dump(manifest))
+    (target / "requirements.txt").write_text("\n")
+    (target / "README.md").write_text(f"# {name}\n")
+    (target / "experiments" / "example.yaml").write_text(
+        """dataset: example.txt\nparam_grid:\n- {}\npackaged_strategy_config:\n  strategy_params: {}\n"""
+    )
+    typer.echo(f"Created package at {target}")
+
+
+@package_app.command("validate")
+def package_validate(package_path: Path) -> None:
+    """Validate a strategy package."""
+    manifest_path = package_path / "strategy_package.yaml"
+    if not manifest_path.exists():
+        typer.secho("strategy_package.yaml not found", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    manifest = load_manifest(manifest_path)
+    errors = validate_manifest(manifest)
+    if errors:
+        for e in errors:
+            typer.echo(e)
+        raise typer.Exit(code=1)
+    try:
+        load_strategy_class(package_path, manifest)
+    except Exception as exc:
+        typer.secho(str(exc), err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    typer.echo("Package is valid")
+
+
+@experiment_app.command("run-package")
+def run_experiment_package(
+    package_path: Path = typer.Argument(..., help="Path to strategy package"),
+    experiment: Optional[str] = typer.Option(None, "--experiment", help="Experiment config"),
+) -> None:
+    """Run an experiment from a strategy package."""
+    manifest = load_manifest(package_path / "strategy_package.yaml")
+    Strategy = load_strategy_class(package_path, manifest)
+    if experiment is None:
+        defaults = manifest.get("default_experiments", [])
+        if len(defaults) == 1:
+            experiment = defaults[0].get("path")
+    if experiment is None:
+        typer.secho("No experiment specified", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    exp_path = Path(experiment)
+    if not exp_path.is_absolute():
+        exp_path = package_path / exp_path
+    import yaml
+
+    cfg_data = yaml.safe_load(exp_path.read_text()) or {}
+    dataset = cfg_data.get("dataset")
+    if dataset and not Path(dataset).is_absolute():
+        cfg_data["dataset"] = str((package_path / dataset).resolve())
+    params = cfg_data.get("param_grid", [{}])
+    cfg = ResponseExperimentConfig(
+        dataset=Path(cfg_data["dataset"]),
+        param_grid=params,
+        validation_metrics=cfg_data.get("validation_metrics"),
+    )
+    strategy_params = cfg_data.get("packaged_strategy_config", {}).get("strategy_params", {})
+    strategy = Strategy(**strategy_params)
+    results = run_response_experiment(cfg, strategy=strategy)
+    typer.echo(json.dumps(results))
 
 
 if __name__ == "__main__":
