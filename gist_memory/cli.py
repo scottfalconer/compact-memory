@@ -17,6 +17,7 @@ from .json_npy_store import JsonNpyVectorStore
 from .embedding_pipeline import get_embedding_dim, EmbeddingDimensionMismatchError
 from .utils import load_agent
 from .config import DEFAULT_BRAIN_PATH
+from .compression import available_strategies, get_compression_strategy
 
 app = typer.Typer(help="Gist Memory command line interface")
 console = Console()
@@ -287,6 +288,12 @@ def talk(
     agent_name: str = typer.Option(DEFAULT_BRAIN_PATH, help="Agent directory"),
     message: str = typer.Option(..., help="Message to send"),
     model_name: str = typer.Option("distilgpt2", help="Local chat model"),
+    compression_strategy: Optional[str] = typer.Option(
+        None,
+        "--compression",
+        help="Compression strategy",
+        case_sensitive=False,
+    ),
 ) -> None:
     """Talk to the brain using the same pathway as chat sessions."""
 
@@ -313,12 +320,60 @@ def talk(
         from .active_memory_manager import ActiveMemoryManager
 
         mgr = ActiveMemoryManager()
-        result = agent.receive_channel_message("cli", message, mgr)
+        comp = None
+        if isinstance(compression_strategy, str) and compression_strategy:
+            try:
+                comp_cls = get_compression_strategy(compression_strategy)
+                comp = comp_cls()
+            except KeyError:
+                typer.secho(
+                    f"Unknown compression strategy '{compression_strategy}'",
+                    err=True,
+                    fg=typer.colors.RED,
+                )
+                raise typer.Exit(code=1)
+
+        try:
+            result = agent.receive_channel_message(
+                "cli", message, mgr, compression=comp
+            )
+        except TypeError:
+            result = agent.receive_channel_message("cli", message, mgr)
         reply = result.get("reply")
         if reply:
             typer.echo(reply)
 
     return
+
+
+@app.command("compress")
+def compress_text(
+    strategy: str = typer.Option(..., help="Compression strategy"),
+    text: str = typer.Option(..., help="Text to compress"),
+    budget: int = typer.Option(..., help="Token budget"),
+) -> None:
+    """Run ``strategy`` on ``text`` with ``budget`` tokens."""
+
+    try:
+        strat_cls = get_compression_strategy(strategy)
+    except KeyError:
+        typer.secho(
+            f"Unknown compression strategy '{strategy}'",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    strat = strat_cls()
+    try:
+        import tiktoken
+
+        tokenizer = tiktoken.get_encoding("gpt2")
+    except Exception:  # pragma: no cover - offline
+        tokenizer = lambda t, **k: t.split()
+
+    output = strat.compress([text], tokenizer, budget)
+    typer.echo(output)
 
 
 @app.command()
