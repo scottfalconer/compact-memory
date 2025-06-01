@@ -1,101 +1,88 @@
-**I. Vision: The Cognitively-Inspired Gist Memory Agent**
+I. Vision: The Gist Memory Experimentation Platform
 
-* **Core Mission:** To develop an agent that intelligently captures, stores, and utilizes the "gist" – the essential, abstract meaning – of information, combating information overload and enabling more effective knowledge utilization.
-* **Guiding Philosophy:** We draw inspiration from human cognitive processes, including memory, attention, and learning. Our aim is to create mechanisms that are more organic and adaptive than purely hardcoded logic. We believe this approach will lead to a more robust, flexible, and insightful agent.
-* **Development Tenet: Design for Experimentation:** A fundamental principle of this project is that components modeling cognitive functions must be designed with tunable parameters. Our experimentation framework is crucial for validating hypotheses about these mechanisms, optimizing their performance, and driving iterative improvement.
+Core Mission: To develop a platform for rapidly prototyping, testing, and validating diverse strategies for compressing textual information ("memory") to maximize its utility within Large Language Model (LLM) token budgets.
+Guiding Philosophy: While we draw inspiration from human cognitive processes for potential compression strategies, the platform itself is designed to be agnostic, allowing for the implementation and comparison of a wide range of techniques. Our aim is to foster innovation in memory management for LLMs.
+Development Tenet: Design for Experimentation and Pluggability: This is the cornerstone. The platform must feature a robust experimentation framework and clear interfaces for plugging in new compression algorithms (CompressionStrategy) and validation metrics (ValidationMetric).
 
-**II. Core Cognitive Analogs & System Architecture**
+II. Illustrative Memory Management Strategies & Platform Workflow
 
-Our system architecture distinguishes between long-term knowledge storage and a dynamic, active memory for current interactions.
+The platform supports a workflow where large texts are processed by a chosen CompressionStrategy before being passed to an LLM. The following describes existing, cognitively-inspired approaches that can be implemented as pluggable strategies within this platform.
 
-**A. Long-Term Memory (LTM): The Prototype System – Capturing the Gist**
+A. CompressionStrategy Example: The Prototype System – Capturing the Gist
 
-* **Concept:** Analogous to human semantic and episodic long-term memory, this system stores consolidated knowledge.
-* **Mechanism: Coarse Prototype Memory System**
-    * **Gist-Based Processing:** Inspired by Fuzzy-Trace Theory, we prioritize the extraction and storage of the essential meaning ("gist") over verbatim details. This promotes durable and flexible knowledge.
-    * **Prototypes as Conceptual Centroids:** Incoming information (memories) are snap-assigned to the nearest existing "prototype" (a vector representing a conceptual gist) or spawn new prototypes if sufficiently novel.
-    * **Prototype Evolution:** Prototypes are dynamic. Their vector representations and textual summaries evolve via an Exponential Moving Average (EMA) as new, related memories are assigned, reflecting how concepts can refine over time. Their `strength` increases with supporting evidence.
-    * **Schema-Driven Assimilation:** New information is integrated by relating it to these existing conceptual structures (prototypes), mirroring how human understanding is often guided by existing schemas.
-* **Key Tunable Parameters for LTM (via Experimentation Framework):**
-    * `similarity_threshold` (τ): For assigning memories to prototypes or spawning new ones.
-    * `ema_alpha` (α): Learning rate for prototype vector/summary updates.
-    * Prototype health metrics & thresholds: For potential future splitting/merging of prototypes.
-    * Parameters for `MemoryCreator` strategies (e.g., chunk size, summarization detail).
+Strategy Overview: Coarse Prototype Compression
+Gist-Based Processing: Inspired by Fuzzy-Trace Theory, this strategy prioritizes the extraction and storage of the essential meaning ("gist") over verbatim details.
+Prototypes as Conceptual Centroids: Incoming information (memories) are snap-assigned to the nearest existing "prototype" (a vector representing a conceptual gist) or spawn new prototypes if sufficiently novel.
+Prototype Evolution: Prototypes are dynamic. Their vector representations and textual summaries evolve via an Exponential Moving Average (EMA) as new, related memories are assigned. Their strength increases with supporting evidence.
+Schema-Driven Assimilation: New information is integrated by relating it to these existing conceptual structures.
+Example Tunable Parameters for this Strategy (via Experimentation Framework):
+- similarity_threshold (τ): For assigning memories to prototypes or spawning new ones.
+- ema_alpha (α): Learning rate for prototype vector/summary updates.
+- Prototype health metrics & thresholds.
+- Parameters for MemoryCreator sub-strategies (e.g., chunk size, summarization detail).
 
-**B. Active/Working Memory: Dynamic Conversational Context – Thinking in the Moment**
+B. CompressionStrategy Example: ActiveMemoryManager for Conversational Context
 
-* **Concept:** Simulates human active/working memory, providing a limited-capacity buffer that holds and processes information relevant to the current interaction, especially for the `talk` command's LLM. This is managed by the `ActiveMemoryManager`.
-* **Core Characteristics (Inspired by Human Cognition):**
-    1.  **Limited Capacity:** The total information assembled for the LLM prompt strictly adheres to the model's token limits.
-    2.  **Dynamic Content:** The content is not a fixed window but is dynamically selected and prioritized based on several factors.
-    3.  **Recency (Activation Decay):** Recently processed conversational turns have a higher baseline "activation level," making them readily available. This activation naturally decays over time or with new inputs, unless refreshed.
-    4.  **Trace Strength (Intrinsic Importance):** Each conversational turn acquires a `trace_strength` score. This reflects its inherent significance, calculated based on factors like:
-        * Semantic novelty at the time of occurrence.
-        * Presence of salient entities (e.g., identified by spaCy NER).
-        * Degree to which it activated or led to updates in LTM (prototypes).
-        * (Future) Explicit user feedback (e.g., "this is important").
-        This `trace_strength` makes a turn more resistant to being pruned from the overall history buffer.
-    5.  **Current Activation Level (Contextual Relevance & Connection):** A turn's `trace_strength` is modulated by its `current_activation_level`. This dynamic level is boosted when a historical turn is semantically similar (connected) to the *current user query* or the immediate conversational context. This models how current cues "light up" relevant past information (spreading activation).
-* **Mechanism (`ActiveMemoryManager`):**
-    * Stores `ConversationalTurn` objects, each enriched with its text, embedding, `trace_strength`, and dynamically updated `current_activation_level`.
-    * Implements algorithms for calculating `trace_strength` upon turn creation.
-    * Manages `current_activation_level` through decay and relevance-based boosting.
-    * Employs **Prioritized Pruning** for the main history buffer: When the buffer exceeds its max size, it prunes turns with the lowest combined score of recency, activation, and trace strength.
-* **Key Tunable "Meta-Parameters" for Active Memory (via Experimentation Framework):**
-    * Weights for factors contributing to `trace_strength` (e.g., `config_weight_novelty`, `config_weight_salient_entities`).
-    * Parameters for `current_activation_level` dynamics (e.g., `config_initial_activation`, `config_activation_decay_rate`, `config_relevance_boost_factor`).
-    * History buffer management (e.g., `config_max_history_buffer_turns`, weights for pruning decision).
-    * Parameters for selecting history for the prompt (see next section).
+Strategy Overview: ActiveMemoryManager for Dynamic Conversational Context Compression
+This strategy (implemented in ActiveMemoryManager) simulates a limited-capacity buffer holding and processing information relevant to the current interaction, especially for an LLM.
+Core Characteristics of this Strategy:
+- Limited Capacity Adherence: The total information assembled for the LLM prompt strictly adheres to specified token limits.
+- Dynamic Content Selection: Content is dynamically selected and prioritized.
+- Recency (Activation Decay): Recently processed conversational turns have higher baseline "activation," which decays over time unless refreshed.
+- Trace Strength (Intrinsic Importance): Each turn acquires a trace_strength (based on novelty, entities, LTM impact) making it more resistant to pruning.
+- Current Activation Level (Contextual Relevance): trace_strength is modulated by current_activation_level, boosted by semantic similarity to the current query.
+Mechanism within this Strategy (ActiveMemoryManager):
+- Stores ConversationalTurn objects with text, embedding, trace_strength, and current_activation_level.
+- Manages activation levels (decay, boosting).
+- Employs Prioritized Pruning for its history buffer.
+Example Tunable Parameters for this Strategy (via Experimentation Framework):
+- Weights for trace_strength factors.
+- Parameters for current_activation_level dynamics.
+- History buffer management parameters.
+- Parameters for selecting history for the prompt budget.
 
-**C. Attentional Focus & Prompt Assembly for LLM Interaction – Orchestrating Thought**
+C. Prompt Assembly with Compressed Memory
 
-* **Concept:** The agent constructs a focused, token-limited prompt for its internal LLM by drawing from both the prioritized Active/Working Memory and selectively retrieved LTM. This simulates an "attentional spotlight."
-* **Mechanism (Orchestrated by `talk` command logic using `ActiveMemoryManager` and `Agent`):**
-    1.  **Prioritize Current Input:** The current user message is the primary focus.
-    2.  **Select from Active Memory (STM):** The `ActiveMemoryManager` provides a selection of historical turns for the prompt. This selection (the "tree/branches" of active thought) is based on:
-        * A few *forced recent* turns.
-        * A limited number of older turns with high *current activation levels* (strong connection to the current query), further prioritized by their *trace strength*.
-        This selection is then pruned to fit a pre-defined token budget for STM within the overall prompt.
-    3.  **Retrieve Relevant Gist from LTM:** The current query (potentially augmented by context from selected STM) is used to query the `Agent`'s LTM, retrieving a small number of the most relevant prototype summaries and/or key memory snippets.
-    4.  **Combine and Finalize:** The selected STM and LTM components are combined. If this combined context still exceeds the LLM's absolute input limit, `LocalChatModel.prepare_prompt()` provides a final intelligent summarization/recap.
-* **Goal:** Maximize the density of relevant information (both recent interaction and long-term knowledge) within the LLM's context window.
-* **Key Tunable Parameters (via Experimentation Framework):**
-    * Token budget allocation ratios for STM vs. LTM within the prompt.
-    * `config_prompt_num_forced_recent_turns`, `config_prompt_max_activated_older_turns`, `config_prompt_activation_threshold_for_inclusion` (for STM selection from `ActiveMemoryManager`).
-    * `top_k_prototypes`, `top_k_memories` for LTM retrieval.
-    * Parameters for `LocalChatModel.prepare_prompt()` (recap length, etc.).
+Platform Support: The platform's workflow culminates in assembling a prompt for the LLM using the output of the selected CompressionStrategy. This involves:
+- Prioritizing Current Input: The current user message is the primary focus.
+- Incorporating Compressed Active Memory: The chosen CompressionStrategy (e.g., an adapted ActiveMemoryManager) provides a selection of historical turns/compressed data. This selection adheres to a pre-defined token budget.
+- Retrieving Relevant Gist from LTM (if applicable to the strategy): Some strategies might also involve querying a long-term store (like the Prototype System) to retrieve relevant summaries or snippets, also within a budget.
+- Combining and Finalizing: The components are combined. LocalChatModel.prepare_prompt() can provide final intelligent summarization/recap if the total still exceeds limits.
+Goal of any CompressionStrategy Outputted to LLM: Maximize the density of relevant information (both recent interaction and long-term knowledge) within the LLM's context window.
+Key Experimentation Points in Prompt Assembly (via Experimentation Framework):
+- Token budget allocation ratios for different components of compressed memory.
+- Parameters for selecting content from the CompressionStrategy's output (e.g., config_prompt_num_forced_recent_turns if using an ActiveMemoryManager-like strategy).
+- top_k parameters if the strategy involves retrieval from an LTM-like component.
+- Parameters for final recap/summarization logic.
 
-**III. Learning & Adaptation in the Agent**
+III. Learning through Experimentation on the Platform
 
-* **From New Information:** New data refines LTM prototypes (via EMA) and populates Active Memory, contributing to `trace_strength` calculation.
-* **From Interaction & Feedback (Implicit & Explicit):**
-    * User corrections or clarifications (even if just ingested as new memories with high `trace_strength`) will influence LTM and future STM selections.
-    * (Future) Direct feedback mechanisms can more explicitly adjust `trace_strength` or trigger LTM re-evaluation.
-* **Through Experimentation:** The primary mode of meta-learning and system optimization. By testing different configurations of LTM and Active Memory parameters, we refine the agent's cognitive strategies.
+Primary Learning Mode: The platform's core purpose is to enable learning about memory compression. Developers and researchers use the experimentation framework to:
+- Test hypotheses about different compression techniques.
+- Compare the performance of various CompressionStrategy implementations.
+- Optimize parameters of these strategies using diverse ValidationMetrics.
+Strategy Refinement: Results from experiments feed back into the design and refinement of CompressionStrategy implementations.
+Metric Development: The platform also supports experimentation with new ValidationMetrics to better assess the quality and utility of compressed memory.
 
-**IV. Guiding Principles for Developers**
+IV. Guiding Principles for Developers
 
-1.  **Embrace Cognitive Inspiration:** When designing new features or refining existing ones, actively consider analogies from human cognition (e.g., attention, memory consolidation, contextual recall) as a rich source of design patterns.
-2.  **Design for Tunability and Experimentation:** Identify key parameters in your algorithms that represent choices in how a cognitive process is modeled. Expose these so they can be systematically tested and optimized via the experimentation framework.
-3.  **Prioritize Clarity of Mechanism:** While inspired by complex systems, the implemented mechanisms should be understandable, debuggable, and their impact measurable.
-4.  **Modularity:** Encapsulate complex cognitive models (like the `ActiveMemoryManager` or the `PrototypeSystem`) into well-defined modules with clear interfaces.
-5.  **Iterate and Validate:** Use the experimentation framework not just for tuning, but for validating that these cognitively-inspired mechanisms actually lead to improved performance and desired emergent behaviors.
+Seek Diverse Inspirations: For novel CompressionStrategy ideas, look to cognitive science, information theory, traditional summarization, knowledge graph techniques, vector quantization, etc.
+Design for Tunability and Experimentation: Crucially, expose key parameters in your CompressionStrategy and ValidationMetric implementations so they can be systematically tested and optimized via the experimentation framework.
+Develop for Pluggability: Design strategies and metrics against the defined ABC interfaces (CompressionStrategy, ValidationMetric) to ensure seamless integration.
+Prioritize Clarity of Mechanism: Implemented mechanisms should be understandable, debuggable, and their impact measurable.
+Modularity: Encapsulate complex compression logic into well-defined, interchangeable modules.
+Iterate and Validate: Use the experimentation framework to rigorously validate that chosen strategies and parameters lead to improved performance on relevant tasks.
 
-**V. Key Unknowns & Areas for Experimental Validation (Update this section regularly)**
+V. Key Unknowns & Areas for Experimental Validation
 
-* Optimal weighting schemes for `trace_strength` factors in `ActiveMemoryManager`.
-* Most effective decay rates and boosting factors for `current_activation_level`.
-* Best strategies for pruning the `ActiveMemoryManager` history buffer (balancing recency, strength, activation).
-* Optimal parameters for selecting STM turns for the prompt (how many recent vs. how many older-but-relevant).
-* The ideal token budget allocation between STM, LTM, and current query within the final LLM prompt.
-* How to effectively measure the "quality" or "human-likeness" of the agent's active memory management.
-* Impact of different LTM prototype granularities (controlled by τ) on the quality of information retrieved for Active Memory.
+Comparative effectiveness of different classes of compression strategies (e.g., summarization vs. selective retrieval vs. structural compression vs. vector quantization).
+Trade-offs between compression ratio, information loss, and computational cost for various techniques.
+Development of novel ValidationMetrics that accurately capture the "utility" of compressed memory for specific downstream tasks (e.g., QA, reasoning, dialogue coherence).
+Optimal parameter settings for specific CompressionStrategy implementations (e.g., weighting schemes for ActiveMemoryManager's trace_strength, or summarization model choices).
+The impact of different LTM granularities (e.g., prototype τ) on the quality of information retrieved by strategies that use an LTM component.
+Scalability and performance characteristics of different compression strategies under heavy load or with very large text corpora.
+Best practices for allocating token budgets within a prompt when using different types of compressed memory.
 
-**VI. Developer Notes**
+VI. Developer Notes
 
-* The ``talk`` command routes user messages through
-  ``Agent.receive_channel_message``.  That method delegates to
-  ``Agent.process_conversational_turn`` when an ``ActiveMemoryManager`` is
-  provided, ensuring memory reduction and prompt generation behave
-  consistently across interfaces.
-
+The talk command, and generally the LLM interaction workflow, will need to be adapted to accept and utilize a chosen CompressionStrategy. If Agent.process_conversational_turn is the entry point, it will orchestrate the use of the active CompressionStrategy.
