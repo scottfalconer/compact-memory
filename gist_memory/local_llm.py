@@ -8,6 +8,8 @@ import logging
 import contextlib
 from typing import Optional, TYPE_CHECKING, Iterable
 
+from .llm_providers_abc import LLMProvider
+
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from .agent import Agent
 
@@ -22,13 +24,13 @@ except Exception:  # pragma: no cover - optional
 
 
 @dataclass
-class LocalChatModel:
+class LocalChatModel(LLMProvider):
     """Wrap a local `transformers` causal LM for offline chat."""
 
     model_name: str = "distilgpt2"
     max_new_tokens: int = 100
 
-    tokenizer: Optional["AutoTokenizer"] = None  # populated in ``__post_init__``
+    tokenizer: Optional["AutoTokenizer"] = None  # set in ``__post_init__``
     model: Optional["AutoModelForCausalLM"] = None
     _loaded: bool = False
 
@@ -113,6 +115,46 @@ class LocalChatModel:
         if not self._loaded or self.tokenizer is None or self.model is None:
             self.load_model()
 
+    # ------------------------------------------------------------------
+    # LLMProvider API
+    # ------------------------------------------------------------------
+    def get_token_budget(self, model_name: str, **kwargs) -> int:
+        if model_name != self.model_name:
+            other = LocalChatModel(
+                model_name=model_name, max_new_tokens=self.max_new_tokens
+            )
+            with other.loaded():
+                return other._context_length()
+        with self.loaded():
+            return self._context_length()
+
+    def count_tokens(self, text: str, model_name: str, **kwargs) -> int:
+        if model_name != self.model_name:
+            other = LocalChatModel(
+                model_name=model_name, max_new_tokens=self.max_new_tokens
+            )
+            with other.loaded():
+                return token_count(other.tokenizer, text)  # type: ignore[arg-type]
+        with self.loaded():
+            return token_count(self.tokenizer, text)
+
+    def generate_response(
+        self,
+        prompt: str,
+        model_name: str,
+        max_new_tokens: int,
+        **llm_kwargs,
+    ) -> str:
+        if model_name != self.model_name:
+            other = LocalChatModel(model_name=model_name, max_new_tokens=max_new_tokens)
+            with other.loaded():
+                return other.reply(prompt)
+        old = self.max_new_tokens
+        self.max_new_tokens = max_new_tokens
+        try:
+            return self.reply(prompt)
+        finally:
+            self.max_new_tokens = old
 
     # ------------------------------------------------------------------
     # Public API
@@ -202,7 +244,7 @@ class LocalChatModel:
         recent_tokens: int = 600,
         top_k: int = 3,
     ) -> str:
-        """Truncate ``prompt`` with a short recap if it exceeds context length."""
+        """Truncate prompt with a recap if it exceeds context length."""
 
         self._ensure_loaded()
 
@@ -219,7 +261,9 @@ class LocalChatModel:
         old_text = self.tokenizer.decode(old_tokens, skip_special_tokens=True)
         recent_text = self.tokenizer.decode(recent_tokens_ids, skip_special_tokens=True)
         logging.debug(
-            "[prepare_prompt] old=%d recent=%d", len(old_tokens), len(recent_tokens_ids)
+            "[prepare_prompt] old=%d recent=%d",
+            len(old_tokens),
+            len(recent_tokens_ids),
         )
 
         from .memory_creation import DefaultTemplateBuilder

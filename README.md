@@ -63,8 +63,16 @@ This project requires **Python 3.11+**.
     ```
     To run completely offline after downloads, set:
     ```
-    export HF_HUB_OFFLINE=1
-    export TRANSFORMERS_OFFLINE=1
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
+```
+
+3.  **Set API Keys for Cloud Providers:**
+    If you plan to use OpenAI or Gemini models, export your credentials as
+    environment variables before running the CLI:
+    ```bash
+    export OPENAI_API_KEY="sk-..."
+    export GEMINI_API_KEY="..."
     ```
 
 Alternatively, install the package from source:
