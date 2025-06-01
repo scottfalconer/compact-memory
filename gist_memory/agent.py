@@ -20,9 +20,9 @@ from .memory_creation import (
 )
 from .prompt_budget import PromptBudget
 from .token_utils import truncate_text, token_count
-from .canonical import render_five_w_template
-from .conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
-from .conflict import SimpleConflictLogger
+from .prototype.canonical import render_five_w_template
+from .prototype.conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
+from .prototype.conflict import SimpleConflictLogger
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 from .compression import CompressionStrategy, NoCompression
 

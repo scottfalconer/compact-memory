@@ -1,4 +1,4 @@
-from gist_memory.canonical import render_five_w_template
+from gist_memory.prototype.canonical import render_five_w_template
 
 
 def test_render_five_w_template():
