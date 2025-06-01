@@ -59,7 +59,7 @@ class EvidenceWriter:
 
 
 class PrototypeSystemStrategy(CompressionStrategy):
-    """Prototype-based long-term memory management."""
+    """Prototype-based long-term memory management. Prototypes are updated over time using an EMA so their representations evolve with new evidence."""
 
     id = "prototype"
 
@@ -80,10 +80,12 @@ class PrototypeSystemStrategy(CompressionStrategy):
         self.similarity_threshold = float(similarity_threshold)
         self.summary_creator = summary_creator or ExtractiveSummaryCreator(max_words=25)
         self.update_summaries = update_summaries
-        self.metrics: Dict[str, int] = {
+        self.metrics: Dict[str, float] = {
             "memories_ingested": 0,
             "prototypes_spawned": 0,
             "duplicates_skipped": 0,
+            "prototypes_updated": 0,
+            "prototype_vector_change_magnitude": 0.0,
         }
         self._dedup = _LRUSet(size=dedup_cache)
         if isinstance(store.path, (str, Path)):
@@ -110,7 +112,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
         save: bool = True,
         source_document_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
-        """Ingest ``text`` and return per-chunk statuses."""
+        """Ingest ``text``. Related memories update existing prototypes to evolve their gist over time."""
 
         digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
         if digest in self._dedup:
@@ -142,7 +144,13 @@ class PrototypeSystemStrategy(CompressionStrategy):
             if nearest:
                 pid, sim = nearest[0]
             if nearest and sim is not None and sim >= self.similarity_threshold:
-                self.store.update_prototype(pid, vec, mem_id)
+                change = self.store.update_prototype(pid, vec, mem_id)
+                self.metrics["prototypes_updated"] += 1
+                n = self.metrics["prototypes_updated"]
+                prev = self.metrics.get("prototype_vector_change_magnitude", 0.0)
+                self.metrics["prototype_vector_change_magnitude"] = (
+                    (prev * (n - 1) + change) / n
+                )
             else:
                 summary = self.summary_creator.create(chunk)
                 proto = BeliefPrototype(
