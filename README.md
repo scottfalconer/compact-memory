@@ -159,13 +159,13 @@ local database and displays the prototype assignments along with a final memory
 and prototype count.
 
 
-## Segmentation Playbook
+## Designing Compression Strategies
 
-See [docs/SEGMENTATION_PLAYBOOK.md](docs/SEGMENTATION_PLAYBOOK.md) for a detailed workflow on splitting long documents into belief-sized ideas before ingestion. The advanced `AgenticChunker` implements this strategy and can be used via `gist-memory init brain --chunker agentic` or programmatically with `agent.chunker = AgenticChunker()`.
+See [docs/COMPRESSION_STRATEGIES.md](docs/COMPRESSION_STRATEGIES.md) for guidance on splitting documents into belief-sized ideas and updating centroids. The advanced `AgenticChunker` implements these techniques and can be enabled via `gist-memory init brain --chunker agentic` or programmatically with `agent.chunker = AgenticChunker()`.
 
-## Querying Playbook
+## Query Tips
 
-See [docs/QUERYING_PLAYBOOK.md](docs/QUERYING_PLAYBOOK.md) for tips on shaping search queries. It explains how to bias retrieval by embedding a templated version of a question when your notes follow a structured `WHO/WHAT/WHEN` format.
+[docs/QUERY_TIPS.md](docs/QUERY_TIPS.md) explains how to shape search queries. When your notes follow a structured `WHO/WHAT/WHEN` layout you can embed a templated version of the question to bias retrieval.
 
 ## Architecture and Storage
 
