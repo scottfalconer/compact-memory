@@ -3,16 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Optional, TypedDict, Callable
 
+import numpy as np
+
 import logging
 
 
-from .chunker import Chunker, SentenceWindowChunker
+from .chunker import Chunker
 from .embedding_pipeline import embed_text
 from .json_npy_store import JsonNpyVectorStore
-from .memory_creation import (
-    ExtractiveSummaryCreator,
-    MemoryCreator,
-)
+from .memory_creation import MemoryCreator
 from .prompt_budget import PromptBudget
 from .token_utils import truncate_text, token_count
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
@@ -84,6 +83,7 @@ class Agent:
         summary_creator: Optional[MemoryCreator] = None,
         update_summaries: bool = False,
         prompt_budget: PromptBudget | None = None,
+        embed_fn: Callable[[str | List[str]], np.ndarray] | None = None,
     ) -> None:
         self.store = store
         self.prototype_system = PrototypeSystemStrategy(
@@ -93,6 +93,7 @@ class Agent:
             dedup_cache=dedup_cache,
             summary_creator=summary_creator,
             update_summaries=update_summaries,
+            embed_fn=embed_fn or embed_text,
         )
         self.metrics = self.prototype_system.metrics
         self.prompt_budget = prompt_budget
@@ -108,6 +109,11 @@ class Agent:
         if not isinstance(value, Chunker):
             raise TypeError("chunker must implement Chunker interface")
         self.prototype_system.chunker = value
+        try:
+            name = getattr(value, "id", value.__class__.__name__.lower())
+            self.store.meta["chunker"] = name
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     @property
@@ -117,6 +123,7 @@ class Agent:
     @similarity_threshold.setter
     def similarity_threshold(self, value: float) -> None:
         self.prototype_system.similarity_threshold = value
+        self.store.meta["tau"] = float(value)
 
     # ------------------------------------------------------------------
     @property
@@ -128,6 +135,15 @@ class Agent:
         self.prototype_system.summary_creator = value
 
     # ------------------------------------------------------------------
+    @property
+    def embed_fn(self) -> Callable[[str | List[str]], np.ndarray]:
+        return self.prototype_system.embed_fn
+
+    @embed_fn.setter
+    def embed_fn(self, value: Callable[[str | List[str]], np.ndarray]) -> None:
+        self.prototype_system.embed_fn = value
+
+    # ------------------------------------------------------------------
     def configure(
         self,
         *,
@@ -135,6 +151,7 @@ class Agent:
         similarity_threshold: float | None = None,
         summary_creator: MemoryCreator | None = None,
         prompt_budget: PromptBudget | None = None,
+        embed_fn: Callable[[str | List[str]], np.ndarray] | None = None,
     ) -> None:
         """Dynamically update core configuration."""
 
@@ -146,6 +163,8 @@ class Agent:
             self.summary_creator = summary_creator
         if prompt_budget is not None:
             self.prompt_budget = prompt_budget
+        if embed_fn is not None:
+            self.embed_fn = embed_fn
 
     # ------------------------------------------------------------------
     def get_statistics(self) -> Dict[str, object]:
@@ -268,7 +287,7 @@ class Agent:
             except Exception:
                 pass
 
-        vec = embed_text([input_message])
+        vec = self.embed_fn([input_message])
         if vec.ndim != 1:
             vec = vec.reshape(-1)
 
