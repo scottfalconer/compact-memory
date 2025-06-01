@@ -1,0 +1,9 @@
+package_format_version: "1.0"
+strategy_id: sample
+strategy_class_name: SampleStrategy
+strategy_module: strategy
+display_name: Sample Strategy
+version: "0.1.0"
+authors:
+  - Example Author
+description: Example packaged strategy.

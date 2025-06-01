@@ -15,6 +15,7 @@ from .json_npy_store import JsonNpyVectorStore
 from .embedding_pipeline import MockEncoder
 from .chunker import SentenceWindowChunker
 from .registry import get_validation_metric_class
+from .compression.strategies_abc import CompressionStrategy
 
 
 @dataclass
@@ -51,6 +52,7 @@ def _evaluate_sample(
     params: Dict[str, Any],
     enc: MockEncoder,
     metric_entries: List[Dict[str, Any]],
+    strategy: CompressionStrategy | None,
 ) -> Dict[str, Any]:
     mgr = ActiveMemoryManager(**params)
 
@@ -69,7 +71,10 @@ def _evaluate_sample(
 
     query = sample["query"]
     answer = sample.get("answer", "")
-    reply, info = agent.process_conversational_turn(query, mgr)
+    if strategy is not None:
+        reply, info = agent.process_conversational_turn(query, mgr, compression=strategy)
+    else:
+        reply, info = agent.process_conversational_turn(query, mgr)
     tokens = info.get("prompt_tokens", 0)
     compression_ms = 0.0
     trace = info.get("compression_trace")
@@ -89,7 +94,10 @@ def _evaluate_sample(
     return {"metrics": metric_scores, "prompt_tokens": tokens, "compression_ms": compression_ms}
 
 
-def run_response_experiment(config: ResponseExperimentConfig) -> List[Dict[str, Any]]:
+def run_response_experiment(
+    config: ResponseExperimentConfig,
+    strategy: CompressionStrategy | None = None,
+) -> List[Dict[str, Any]]:
     """Run the experiment defined by ``config``."""
 
     dataset = _load_dataset(config.dataset)
@@ -104,7 +112,7 @@ def run_response_experiment(config: ResponseExperimentConfig) -> List[Dict[str, 
         total_tokens = 0
         total_time = 0.0
         for sample in dataset:
-            res = _evaluate_sample(sample, params, enc, metric_entries)
+            res = _evaluate_sample(sample, params, enc, metric_entries, strategy)
             total_tokens += res["prompt_tokens"]
             total_time += res.get("compression_ms", 0.0)
             for mid, scores in res["metrics"].items():
