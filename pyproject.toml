@@ -33,6 +33,8 @@ dependencies = [
 test = ["pytest"]
 chroma = ["chromadb"]
 spacy = ["spacy"]
+optuna = ["optuna"]
+ray = ["ray[tune]"]
 
 [project.scripts]
 gist-memory = "gist_memory.__main__:main"
