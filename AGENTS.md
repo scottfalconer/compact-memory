@@ -86,3 +86,16 @@ Best practices for allocating token budgets within a prompt when using different
 VI. Developer Notes
 
 The talk command, and generally the LLM interaction workflow, will need to be adapted to accept and utilize a chosen CompressionStrategy. If Agent.process_conversational_turn is the entry point, it will orchestrate the use of the active CompressionStrategy.
+
+VII. Contribution Workflow Tips
+
+To minimize merge conflicts when working on this repository:
+
+- Before creating a patch, always rebase your feature branch on the latest `main`:
+
+```
+git fetch origin
+git rebase origin/main
+```
+
+- Resolve any conflicts locally and ensure the history is clean before opening a pull request.
