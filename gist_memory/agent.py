@@ -1,79 +1,29 @@
 from __future__ import annotations
 
-import hashlib
-import json
-import uuid
-from collections import OrderedDict
 from pathlib import Path
 from typing import Dict, List, Optional, TypedDict, Callable
 
 import logging
-import numpy as np
 
 
 from .chunker import Chunker, SentenceWindowChunker
 from .embedding_pipeline import embed_text
-from .json_npy_store import JsonNpyVectorStore, BeliefPrototype, RawMemory
+from .json_npy_store import JsonNpyVectorStore
 from .memory_creation import (
     ExtractiveSummaryCreator,
     MemoryCreator,
 )
 from .prompt_budget import PromptBudget
 from .token_utils import truncate_text, token_count
-from .prototype.canonical import render_five_w_template
-from .prototype.conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
-from .prototype.conflict import SimpleConflictLogger
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 from .compression import CompressionStrategy, NoCompression
+from .prototype_system_strategy import PrototypeSystemStrategy
 
 
 class VectorIndexCorrupt(RuntimeError):
     """Raised when prototype index and vectors are misaligned."""
 
 
-class _LRUSet:
-    """Simple fixed-size LRU cache for SHA hashes."""
-
-    def __init__(self, size: int = 128) -> None:
-        self.size = size
-        # OrderedDict preserves insertion order and provides an efficient
-        # LRU eviction mechanism via :meth:`popitem`.
-        self._cache: "OrderedDict[str, None]" = OrderedDict()
-
-    def add(self, item: str) -> bool:
-        """Add ``item`` and return ``True`` if it was new."""
-        if item in self._cache:
-            # Touch to mark as recently used without counting as new
-            self._cache.move_to_end(item)
-            return False
-        self._cache[item] = None
-        if len(self._cache) > self.size:
-            self._cache.popitem(last=False)
-        return True
-
-    def __contains__(self, item: str) -> bool:
-        return item in self._cache
-
-
-class EvidenceWriter:
-    """Append evidence rows to ``evidence.jsonl``."""
-
-    def __init__(self, path: Path) -> None:
-        self.path = path
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-
-    def add(self, belief_id: str, memory_id: str, weight: float) -> None:
-        with open(self.path, "a") as f:
-            f.write(
-                json.dumps(
-                    {
-                        "belief_id": belief_id,
-                        "memory_id": memory_id,
-                        "weight": weight,
-                    }
-                )
-                + "\n"
-            )
 
 
 class PrototypeHit(TypedDict):
@@ -135,74 +85,47 @@ class Agent:
         update_summaries: bool = False,
         prompt_budget: PromptBudget | None = None,
     ) -> None:
-        if not 0.5 <= similarity_threshold <= 0.95:
-            raise ValueError("similarity_threshold must be between 0.5 and 0.95")
         self.store = store
-        self._chunker: Chunker = chunker or SentenceWindowChunker()
-        self.store.meta["chunker"] = getattr(self._chunker, "id", type(self._chunker).__name__)
-        self._similarity_threshold = float(similarity_threshold)
-        self.store.meta["tau"] = self._similarity_threshold
-        self._summary_creator: MemoryCreator = (
-            summary_creator or ExtractiveSummaryCreator(max_words=25)
+        self.prototype_system = PrototypeSystemStrategy(
+            store,
+            chunker=chunker,
+            similarity_threshold=similarity_threshold,
+            dedup_cache=dedup_cache,
+            summary_creator=summary_creator,
+            update_summaries=update_summaries,
         )
-        self.update_summaries = update_summaries
-        self.metrics: Dict[str, int] = {
-            "memories_ingested": 0,
-            "prototypes_spawned": 0,
-            "duplicates_skipped": 0,
-        }
-        self._dedup = _LRUSet(size=dedup_cache)
-        if isinstance(store.path, (str, Path)):
-            p = Path(store.path) / "evidence.jsonl"
-            c = Path(store.path) / "conflicts.jsonl"
-        else:
-            p = Path("evidence.jsonl")
-            c = Path("conflicts.jsonl")
-        self._evidence = EvidenceWriter(p)
-        if isinstance(store.path, (str, Path)):
-            c = Path(store.path) / "conflicts.jsonl"
-        else:
-            c = Path("conflicts.jsonl")
-        self._conflict_logger = SimpleConflictLogger(c)
-        self._conflicts = ConflictFlagger(FlagLogger(c))
+        self.metrics = self.prototype_system.metrics
         self.prompt_budget = prompt_budget
 
     # ------------------------------------------------------------------
     @property
     def chunker(self) -> Chunker:
         """Return the current :class:`Chunker`."""
-
-        return self._chunker
+        return self.prototype_system.chunker
 
     @chunker.setter
     def chunker(self, value: Chunker) -> None:
         if not isinstance(value, Chunker):
             raise TypeError("chunker must implement Chunker interface")
-        self._chunker = value
-        self.store.meta["chunker"] = getattr(value, "id", type(value).__name__)
+        self.prototype_system.chunker = value
 
     # ------------------------------------------------------------------
     @property
     def similarity_threshold(self) -> float:
-        return self._similarity_threshold
+        return self.prototype_system.similarity_threshold
 
     @similarity_threshold.setter
     def similarity_threshold(self, value: float) -> None:
-        if not 0.5 <= value <= 0.95:
-            raise ValueError("similarity_threshold must be between 0.5 and 0.95")
-        self._similarity_threshold = float(value)
-        self.store.meta["tau"] = self._similarity_threshold
+        self.prototype_system.similarity_threshold = value
 
     # ------------------------------------------------------------------
     @property
     def summary_creator(self) -> MemoryCreator:
-        return self._summary_creator
+        return self.prototype_system.summary_creator
 
     @summary_creator.setter
     def summary_creator(self, value: MemoryCreator) -> None:
-        if not isinstance(value, MemoryCreator):
-            raise TypeError("summary_creator must implement MemoryCreator")
-        self._summary_creator = value
+        self.prototype_system.summary_creator = value
 
     # ------------------------------------------------------------------
     def configure(
@@ -271,30 +194,6 @@ class Agent:
         ]
 
     # ------------------------------------------------------------------
-    def _log_conflict(self, proto_id: str, mem_a: RawMemory, mem_b: RawMemory) -> None:
-        self._conflict_logger.add(proto_id, mem_a, mem_b)
-
-    # ------------------------------------------------------------------
-    def _write_evidence(self, belief_id: str, mem_id: str, weight: float) -> None:
-        self._evidence.add(belief_id, mem_id, weight)
-
-    def _flag_conflicts(
-        self,
-        prototype_id: str,
-        new_mem: RawMemory,
-        new_vec: np.ndarray,
-    ) -> None:
-        for mem in self.store.memories:
-            if mem.assigned_prototype_id != prototype_id:
-                continue
-            if mem.memory_id == new_mem.memory_id:
-                continue
-            if mem.embedding is None:
-                continue
-            vec_b = np.array(mem.embedding, dtype=np.float32)
-            self._conflicts.check_pair(prototype_id, new_mem, new_vec, mem, vec_b)
-
-    # ------------------------------------------------------------------
     def add_memory(
         self,
         text: str,
@@ -312,85 +211,17 @@ class Agent:
     ) -> List[Dict[str, object]]:
         """Ingest ``text`` into the store and return per-chunk statuses."""
 
-        digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
-        if digest in self._dedup:
-            self.metrics["duplicates_skipped"] += 1
-            return [{"duplicate": True}]
-        self._dedup.add(digest)
-
-        chunks = self.chunker.chunk(text)
-        if not chunks:
-            return []
-        canonical = [
-            render_five_w_template(
-                c, who=who, what=what, when=when, where=where, why=why
-            )
-            for c in chunks
-        ]
-        vecs = embed_text(canonical)
-        if vecs.ndim == 1:
-            vecs = vecs.reshape(1, -1)
-
-        results: List[Dict[str, object]] = []
-        total = len(chunks)
-        for idx, (chunk, vec) in enumerate(zip(chunks, vecs), 1):
-            mem_id = str(uuid.uuid4())
-            nearest = self.store.find_nearest(vec, k=1)
-            if not nearest and len(self.store.prototypes) > 0:
-                raise VectorIndexCorrupt("prototype index inconsistent")
-            spawned = False
-            sim: Optional[float] = None
-            if nearest:
-                pid, sim = nearest[0]
-            if nearest and sim is not None and sim >= self.similarity_threshold:
-                self.store.update_prototype(pid, vec, mem_id)
-            else:
-                # TODO density guard hook
-                summary = self.summary_creator.create(chunk)
-                proto = BeliefPrototype(
-                    prototype_id=str(uuid.uuid4()),
-                    vector_row_index=0,
-                    summary_text=summary,
-                    strength=1.0,
-                    confidence=1.0,
-                    constituent_memory_ids=[mem_id],
-                )
-                self.store.add_prototype(proto, vec)
-                pid = proto.prototype_id
-                spawned = True
-                self.metrics["prototypes_spawned"] += 1
-
-            raw_mem = RawMemory(
-                memory_id=mem_id,
-                raw_text_hash=hashlib.sha256(chunk.encode("utf-8")).hexdigest(),
-                assigned_prototype_id=pid,
-                source_document_id=source_document_id,
-                raw_text=chunk,
-                embedding=list(map(float, vec)),
-            )
-            self.store.add_memory(raw_mem)
-            self._write_evidence(pid, mem_id, 1.0)
-            self._flag_conflicts(pid, raw_mem, vec)
-            self.metrics["memories_ingested"] += 1
-            if self.update_summaries:
-                texts = [
-                    m.raw_text
-                    for m in self.store.memories
-                    if m.assigned_prototype_id == pid
-                ][:5]
-                words = " ".join(texts).split()
-                summary = " ".join(words[:25])
-                for p in self.store.prototypes:
-                    if p.prototype_id == pid:
-                        p.summary_text = summary
-                        break
-            results.append({"prototype_id": pid, "spawned": spawned, "sim": sim})
-            if progress_callback:
-                progress_callback(idx, total, spawned, pid, sim)
-
-        if save:
-            self.store.save()
-        return results
+        return self.prototype_system.add_memory(
+            text,
+            who=who,
+            what=what,
+            when=when,
+            where=where,
+            why=why,
+            progress_callback=progress_callback,
+            save=save,
+            source_document_id=source_document_id,
+        )
 
     # ------------------------------------------------------------------
     def query(
@@ -403,47 +234,13 @@ class Agent:
     ) -> QueryResult:
         """Return nearest prototypes and memories for ``text``."""
 
-        vec = embed_text(text)
-        if vec.ndim != 1:
-            vec = vec.reshape(-1)
-        nearest = self.store.find_nearest(vec, k=top_k_prototypes)
-        if not nearest:
-            return QueryResult([], [], "no_match")
-
-        logging.info(
-            "[query] '%s' → %d protos, top sim %.2f",
-            text[:40],
-            len(nearest),
-            nearest[0][1],
+        res = self.prototype_system.query(
+            text,
+            top_k_prototypes=top_k_prototypes,
+            top_k_memories=top_k_memories,
+            include_hypotheses=include_hypotheses,
         )
-
-        proto_map = {p.prototype_id: p for p in self.store.prototypes}
-        proto_results: List[Dict[str, object]] = []
-        memory_candidates: List[tuple[float, RawMemory]] = []
-
-        for pid, sim in nearest:
-            proto = proto_map.get(pid)
-            if not proto:
-                continue
-            proto_results.append({"id": pid, "summary": proto.summary_text, "sim": sim})
-            for mid in proto.constituent_memory_ids:
-                mem = next((m for m in self.store.memories if m.memory_id == mid), None)
-                if mem is None:
-                    continue
-                if mem.embedding is not None:
-                    mem_vec = np.array(mem.embedding, dtype=np.float32)
-                    mem_sim = float(np.dot(vec, mem_vec))
-                else:
-                    mem_sim = float(sim)
-                memory_candidates.append((mem_sim, mem))
-
-        memory_candidates.sort(key=lambda x: -x[0])
-        mem_results = [
-            {"id": m.memory_id, "text": m.raw_text, "sim": s}
-            for s, m in memory_candidates[:top_k_memories]
-        ]
-
-        return QueryResult(proto_results, mem_results, "ok")
+        return QueryResult(res["prototypes"], res["memories"], res["status"])
 
     # ------------------------------------------------------------------
     def process_conversational_turn(
