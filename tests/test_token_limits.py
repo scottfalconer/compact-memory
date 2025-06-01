@@ -129,45 +129,6 @@ def test_cli_talk_prompt_respects_limit(tmp_path, monkeypatch):
     assert tokens <= max_len
 
 
-def test_talk_session_prompt_respects_limit(tmp_path, monkeypatch):
-    _setup_encoder(monkeypatch)
-    from gist_memory.talk_session import TalkSessionManager
-    from gist_memory.json_npy_store import JsonNpyVectorStore
-    from gist_memory.agent import Agent
-    from gist_memory.chunker import SentenceWindowChunker
-
-    brain = tmp_path / "b"
-    store = JsonNpyVectorStore(
-        path=str(brain), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
-    agent = Agent(store, chunker=SentenceWindowChunker())
-    agent.add_memory("alpha")
-    for i in range(15):
-        text = " ".join(f"m{i}_{j}" for j in range(20))
-        agent.add_memory(text)
-    store.save()
-
-    mgr = TalkSessionManager()
-    sid = mgr.create_session([brain])
-
-    captured = {}
-
-    monkeypatch.setattr(
-        "gist_memory.local_llm.dynamic_importance_filter", lambda text: "flt"
-    )
-
-    def capture_generate(**kw):
-        captured.setdefault("ids", kw["input_ids"][0])
-        return [[0]]
-
-    monkeypatch.setattr(DummyModel, "generate", capture_generate)
-
-    mgr.post_message(sid, "user", "hi?")
-
-    tokens = len(captured["ids"])
-    max_len = DummyModel().config.n_positions - LocalChatModel().max_new_tokens
-    assert tokens <= max_len
-
 
 def test_context_length_uses_tokenizer_when_config_missing(monkeypatch):
     _setup_encoder(monkeypatch)

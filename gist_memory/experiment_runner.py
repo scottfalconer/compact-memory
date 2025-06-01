@@ -11,19 +11,8 @@ from .json_npy_store import JsonNpyVectorStore
 from .active_memory_manager import ActiveMemoryManager
 from .chunker import Chunker, SentenceWindowChunker
 from .memory_creation import MemoryCreator, ExtractiveSummaryCreator
+from .experiments.config import ExperimentConfig
 from .embedding_pipeline import embed_text, get_embedding_dim
-
-
-@dataclass
-class ExperimentConfig:
-    """Configuration for :func:`run_experiment`."""
-
-    dataset: Path
-    similarity_threshold: float = 0.8
-    chunker: Optional[Chunker] = None
-    summary_creator: Optional[MemoryCreator] = None
-    work_dir: Optional[Path] = None
-    active_memory_params: Optional[Dict[str, Any]] = None
 
 
 def run_experiment(config: ExperimentConfig) -> Dict[str, Any]:
@@ -65,3 +54,6 @@ def run_experiment(config: ExperimentConfig) -> Dict[str, Any]:
     )
     agent.store.save()
     return metrics
+
+
+__all__ = ["ExperimentConfig", "run_experiment"]
