@@ -15,5 +15,10 @@ cfg = ResponseExperimentConfig(
 ```
 
 During the run each metric is instantiated and its scores averaged across the
+Beyond task-specific accuracy, experiments should ideally capture efficiency metrics. The `CompressionTrace` object (see `gist_memory/compression/trace.py`) is designed to hold such details. Key metrics include:
+    * Final compressed prompt token count.
+    * Original uncompressed token count.
+    * Processing time of the compression strategy.
+    * Compression ratio achieved.
 dataset. Results are returned as a list of dictionaries containing the parameter
 set and metric scores.

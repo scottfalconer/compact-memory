@@ -29,11 +29,17 @@ class CompressionStrategy(ABC):
         llm_token_budget: int,
         **kwargs: Any,
     ) -> Tuple[CompressedMemory, CompressionTrace]:
-        """Return compressed form of ``text_or_chunks`` and trace.
+        """Return compressed form of ``text_or_chunks`` and a ``CompressionTrace``.
 
-        The ``CompressedMemory`` holds the data to be given to an LLM while
-        ``CompressionTrace`` captures decision steps taken during compression.
+        The trace should record input and output token/character counts and the
+        time spent compressing so efficiency can be measured.
         """
+
+    def save_learnable_components(self, path: str) -> None:  # pragma: no cover - optional
+        """Persist any trainable state to ``path``."""
+
+    def load_learnable_components(self, path: str) -> None:  # pragma: no cover - optional
+        """Load previously saved trainable state from ``path``."""
 
 
 __all__ = ["CompressedMemory", "CompressionStrategy", "CompressionTrace"]

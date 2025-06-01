@@ -16,6 +16,7 @@ from .memory_creation import (
 from .prompt_budget import PromptBudget
 from .token_utils import truncate_text, token_count
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
+from .compression.strategies_abc import CompressedMemory, CompressionTrace
 from .compression import CompressionStrategy, NoCompression
 from .prototype_system_strategy import PrototypeSystemStrategy
 
@@ -252,7 +253,11 @@ class Agent:
         *,
         compression: CompressionStrategy | None = None,
     ) -> tuple[str, dict]:
-        """Generate a reply using ``manager`` and optional ``compression``."""
+        """Generate a reply using ``manager`` and optional ``compression``.
+
+        ``manager`` controls which conversation history is supplied to the LLM. Applications may
+        pass in a custom-configured instance to tailor recency and relevance behaviour.
+        """
 
         from .local_llm import LocalChatModel
 
@@ -338,9 +343,25 @@ class Agent:
             limit = None
             if b_recent or b_older:
                 limit = (b_recent or 0) + (b_older or 0)
-            history_text = compression.compress(
-                [t.text for t in history_final], llm.tokenizer, limit
-            )
+            try:
+                compressed, trace = compression.compress(
+                    [t.text for t in history_final],
+                    limit,
+                    tokenizer=llm.tokenizer,
+                )
+                history_text = compressed.text
+            except TypeError:
+                # Legacy interface returning a string
+                history_text = compression.compress(
+                    [t.text for t in history_final], llm.tokenizer, limit
+                )
+                compressed = CompressedMemory(text=history_text)
+                trace = CompressionTrace(
+                    strategy_name=getattr(compression, "id", "legacy"),
+                    strategy_params={},
+                    input_summary={},
+                    output_summary={},
+                )
             history_tokens_final = token_count(llm.tokenizer, history_text)
 
         query_res = self.query(input_message, top_k_prototypes=2, top_k_memories=2)
@@ -412,8 +433,11 @@ class Agent:
                 turn_embedding=vec.tolist() if hasattr(vec, "tolist") else None,
             )
         )
-
-        return reply, {"query_result": query_res, "prompt_tokens": prompt_tokens}
+        return reply, {
+            "query_result": query_res,
+            "prompt_tokens": prompt_tokens,
+            "compression_trace": trace if compression is not None else None,
+        }
 
     # ------------------------------------------------------------------
     def receive_channel_message(
@@ -452,6 +476,9 @@ class Agent:
                 summary["action"] = "query"
                 summary["query_result"] = info.get("query_result", {})
                 summary["reply"] = reply
+                summary["prompt_tokens"] = info.get("prompt_tokens")
+                if info.get("compression_trace") is not None:
+                    summary["compression_trace"] = info["compression_trace"]
                 return summary
 
             result = self.query(text, top_k_prototypes=2, top_k_memories=2)

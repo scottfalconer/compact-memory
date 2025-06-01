@@ -71,6 +71,10 @@ def _evaluate_sample(
     answer = sample.get("answer", "")
     reply, info = agent.process_conversational_turn(query, mgr)
     tokens = info.get("prompt_tokens", 0)
+    compression_ms = 0.0
+    trace = info.get("compression_trace")
+    if trace and isinstance(trace, dict):
+        compression_ms = trace.get("processing_ms", 0.0) or 0.0
 
     metric_scores: Dict[str, Dict[str, float]] = {}
     for entry in metric_entries:
@@ -82,7 +86,7 @@ def _evaluate_sample(
             original_query=query,
         )
 
-    return {"metrics": metric_scores, "prompt_tokens": tokens}
+    return {"metrics": metric_scores, "prompt_tokens": tokens, "compression_ms": compression_ms}
 
 
 def run_response_experiment(config: ResponseExperimentConfig) -> List[Dict[str, Any]]:
@@ -98,9 +102,11 @@ def run_response_experiment(config: ResponseExperimentConfig) -> List[Dict[str, 
             m["id"]: {} for m in metric_entries
         }
         total_tokens = 0
+        total_time = 0.0
         for sample in dataset:
             res = _evaluate_sample(sample, params, enc, metric_entries)
             total_tokens += res["prompt_tokens"]
+            total_time += res.get("compression_ms", 0.0)
             for mid, scores in res["metrics"].items():
                 agg = aggregates[mid]
                 for name, val in scores.items():
@@ -114,6 +120,7 @@ def run_response_experiment(config: ResponseExperimentConfig) -> List[Dict[str, 
             {
                 "params": params,
                 "avg_prompt_tokens": total_tokens / n,
+                "avg_compression_ms": total_time / n,
                 "metrics": avg_scores,
             }
         )

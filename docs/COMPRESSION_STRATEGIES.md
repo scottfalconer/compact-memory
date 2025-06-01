@@ -1,6 +1,7 @@
 # Designing Compression Strategies
 
 This guide collects techniques for slicing documents into belief-sized ideas and updating prototypes. A compression strategy can mix and match these steps depending on the data source.
+While LLMs with large context windows and RAG are powerful, Gist Memory explores strategies for more deeply processed, long-term, and adaptive memory. The techniques described here aim to create dynamic memory structures that evolve with new information, offering capabilities beyond simple retrieval of verbatim text chunks.
 
 ## Segmenting source documents
 
@@ -19,6 +20,7 @@ Boundaries fall on real topic shifts, so retrieval returns fewer irrelevant neig
 ### 3. LLM assisted proposition extraction
 - Prompt the model to list distinct factual statements or extract subject/predicate/object triples.
 - Summaries with bullets retain a human-readable gist.
+This step can itself be powered by a smaller fine-tuned model, illustrating how learned components plug into a `CompressionStrategy`.
 
 Batching through a local model keeps the cost manageable and only long segments need a full LLM pass.
 
@@ -28,6 +30,7 @@ Batching through a local model keeps the cost manageable and only long segments 
 3. **Embed** the idea and assign it to the nearest centroid.
 4. **Update the centroid** using your EMA rule and merge metadata from prior evidence.
 
+This ongoing centroid update process is what allows a prototype to gradually "learn" from accumulated evidence—a key distinction from static retrieval systems.
 This mirrors the hippocampus→cortex flow: raw episode → event boundary → gist proposition → integrated belief.
 
 ## Reference pipeline

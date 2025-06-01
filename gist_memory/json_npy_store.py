@@ -183,8 +183,12 @@ class JsonNpyVectorStore(VectorStore):
         memory_id: str,
         *,
         alpha: float | None = None,
-    ) -> None:
-        """Update ``proto_id`` towards ``new_vec`` using EMA."""
+    ) -> float:
+        """Update ``proto_id`` towards ``new_vec`` using EMA and return the vector change magnitude.
+
+        This method incrementally evolves the prototype representation, enabling long-term
+        learning from accumulated evidence.
+        """
 
         idx = self.index[proto_id]
         assert self.proto_vectors is not None
@@ -193,6 +197,7 @@ class JsonNpyVectorStore(VectorStore):
         if alpha is None:
             alpha = 1.0 / (proto.strength + 1.0) if proto.strength > 0 else 1.0
         updated = (1 - alpha) * current + alpha * new_vec
+        change = float(np.linalg.norm(updated - current))
         if self.normalized:
             norm = np.linalg.norm(updated) or 1.0
             updated = updated / norm
@@ -201,6 +206,7 @@ class JsonNpyVectorStore(VectorStore):
         proto.constituent_memory_ids.append(memory_id)
         proto.strength += 1.0
         self._index_dirty = True
+        return change
 
     def find_nearest(self, vec: np.ndarray, k: int) -> List[Tuple[str, float]]:
         """Return ``k`` nearest prototypes by cosine similarity."""

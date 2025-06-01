@@ -25,16 +25,27 @@ class ConversationTurn:
 class ActiveMemoryManager:
     """Manage a history buffer of conversation turns."""
 
+    # Maximum number of turns kept in short-term memory
     config_max_history_buffer_turns: int = 100
+    # Number of most recent turns always included in the prompt
     config_prompt_num_forced_recent_turns: int = 0
+    # Maximum count of older activated turns allowed in the prompt
     config_prompt_max_activated_older_turns: int = 5
+    # Minimum activation level required for an older turn to be considered
     config_prompt_activation_threshold_for_inclusion: float = 0.0
+    # Weight of trace strength when pruning history
     config_pruning_weight_trace_strength: float = 1.0
+    # Weight of current activation level when pruning history
     config_pruning_weight_current_activation: float = 1.0
+    # Weight of simple recency when pruning history
     config_pruning_weight_recency: float = 0.1
+    # Initial activation assigned to a new turn
     config_initial_activation: float = 0.0
+    # Proportion of activation lost each cycle
     config_activation_decay_rate: float = 0.1
+    # Floor below which activation will not decay
     config_min_activation_floor: float = 0.0
+    # Factor controlling similarity-based activation boosts
     config_relevance_boost_factor: float = 1.0
     history: List[ConversationTurn] = field(default_factory=list)
     prompt_budget: Optional[PromptBudget] = None
@@ -85,7 +96,8 @@ class ActiveMemoryManager:
                 )
                 scores.append(score)
             min_index = scores.index(min(scores))
-            candidates.pop(min_index)
+            removed = candidates.pop(min_index)
+            logging.debug("[prune] removing turn with score %.3f", scores[min_index])
 
         self.history = candidates + keep_slice
 
@@ -95,8 +107,15 @@ class ActiveMemoryManager:
         rate = self.config_activation_decay_rate
         floor = self.config_min_activation_floor
         for t in self.history:
+            before = t.current_activation_level
             t.current_activation_level = max(
                 floor, t.current_activation_level * (1.0 - rate)
+            )
+            logging.debug(
+                "[decay] %s %.3f -> %.3f",
+                t.text[:20],
+                before,
+                t.current_activation_level,
             )
 
     # --------------------------------------------------------------
@@ -122,6 +141,12 @@ class ActiveMemoryManager:
             t.current_activation_level += boost
             if t.current_activation_level < self.config_min_activation_floor:
                 t.current_activation_level = self.config_min_activation_floor
+            logging.debug(
+                "[boost] %s sim=%.3f new_level=%.3f",
+                t.text[:20],
+                similarity,
+                t.current_activation_level,
+            )
 
     # --------------------------------------------------------------
     def select_history_candidates_for_prompt(

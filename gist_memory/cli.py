@@ -6,6 +6,7 @@ import logging
 
 import typer
 import portalocker
+from .token_utils import token_count
 from rich.table import Table
 from rich.console import Console
 
@@ -200,6 +201,11 @@ def talk(
         help="Compression strategy",
         case_sensitive=False,
     ),
+    show_prompt_tokens: bool = typer.Option(
+        False,
+        "--show-prompt-tokens",
+        help="Display token count of the prompt sent to the LLM",
+    ),
 ) -> None:
     """Talk to the brain using the same pathway as chat sessions."""
 
@@ -249,6 +255,8 @@ def talk(
         reply = result.get("reply")
         if reply:
             typer.echo(reply)
+        if show_prompt_tokens and result.get("prompt_tokens") is not None:
+            typer.echo(f"Prompt tokens: {result['prompt_tokens']}")
 
     return
 
@@ -258,6 +266,9 @@ def compress_text(
     strategy: str = typer.Option(..., help="Compression strategy"),
     text: str = typer.Option(..., help="Text to compress"),
     budget: int = typer.Option(..., help="Token budget"),
+    verbose_stats: bool = typer.Option(
+        False, "--verbose-stats", help="Show token counts and processing time"
+    ),
 ) -> None:
     """Run ``strategy`` on ``text`` with ``budget`` tokens."""
 
@@ -279,8 +290,23 @@ def compress_text(
     except Exception:  # pragma: no cover - offline
         tokenizer = lambda t, **k: t.split()
 
-    output = strat.compress([text], tokenizer, budget)
-    typer.echo(output)
+    import time
+    start = time.time()
+    result = strat.compress(text, budget, tokenizer=tokenizer)
+    if isinstance(result, tuple):
+        compressed, trace = result
+    else:
+        compressed, trace = result, None
+    elapsed = (time.time() - start) * 1000
+    if trace and trace.processing_ms is None:
+        trace.processing_ms = elapsed
+    if verbose_stats:
+        orig_tokens = token_count(tokenizer, text)
+        comp_tokens = token_count(tokenizer, compressed.text)
+        typer.echo(
+            f"Original tokens: {orig_tokens}\nCompressed tokens: {comp_tokens}\nTime ms: {elapsed:.1f}"
+        )
+    typer.echo(compressed.text)
 
 
 @app.command()

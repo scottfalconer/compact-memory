@@ -28,9 +28,10 @@ It provides a framework to implement and compare different approaches to making 
 
 * **Experimentation Framework:** Systematically test and validate memory compression strategies against defined datasets.
 * **Pluggable `CompressionStrategy` Interface:** Easily implement and integrate diverse memory processing techniques. Examples include:
-    * Active memory management (inspired by human working memory).
+        * Active memory management (e.g., `ActiveMemoryManager`), simulating human working memory with mechanisms for recency, activation decay, and relevance boosting, crucial for coherent, long-running, and dynamic interactions.
     * Gist-based prototype systems for long-term knowledge consolidation.
     * Extractive summarization, and more.
+    * Support for strategies that enable *evolving memory representations* and long-term learning, not just static chunk retrieval.
 * **Pluggable `ValidationMetric` Interface:** Define and apply custom metrics to evaluate the effectiveness of compressed memory in LLM interactions (e.g., information recall, ROUGE, BLEU). Metrics can leverage the Hugging Face `evaluate` library.
 * **Command-Line Interface (CLI):** Manage experiments, test strategies, and interact with the system.
 * **Local LLM Interaction:** Test compressed memory with local LLMs for end-to-end validation.
@@ -42,6 +43,9 @@ It provides a framework to implement and compare different approaches to making 
 * **Developers:** Find the most effective way to fit large amounts of contextual data into limited LLM prompt windows for your application.
 * **Community:** Share and discover new techniques for efficient LLM memory management.
 
+* Go beyond standard Retrieval Augmented Generation (RAG) by creating an *evolving understanding*. Gist Memory allows for strategies that don't just retrieve static chunks, but can consolidate, update, and form conceptual gists from information over time, much like human memory.
+* Optimize LLM interactions in resource-constrained settings. Gist Memory helps reduce token counts for prompts, leading to lower API costs, faster response times, and improved viability for local or smaller LLMs.
+* Facilitate research into *learned compression*. The platform is designed to test and validate strategies that adapt and improve their compression techniques based on data, moving beyond hand-crafted rules.
 ## Setup
 
 This project requires **Python 3.11+**.
