@@ -14,7 +14,10 @@ from .logging_utils import configure_logging
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
-from .embedding_pipeline import get_embedding_dim, EmbeddingDimensionMismatchError
+from .embedding_pipeline import (
+    get_embedding_dim,
+    EmbeddingDimensionMismatchError,
+)
 from .utils import load_agent
 from .config import DEFAULT_BRAIN_PATH
 from .compression import available_strategies, get_compression_strategy
@@ -118,99 +121,26 @@ def init(
     typer.echo(f"Initialized agent at {directory}")
 
 
-@app.command()
-def add(
-    *,
-    agent_name: str = typer.Option(
-        DEFAULT_BRAIN_PATH, help="Path to the agent directory"
-    ),
-    text: Optional[str] = typer.Option(None, help="Text to add"),
-    file: Optional[Path] = typer.Option(None, help="Text file to add"),
-    source_id: Optional[str] = typer.Option(None, help="Source id"),
-    actor: Optional[str] = typer.Option(None, help="Actor"),
-    what: Optional[str] = typer.Option(None, help="What"),
-    when: Optional[str] = typer.Option(None, help="When"),
-    where: Optional[str] = typer.Option(None, help="Where"),
-    why: Optional[str] = typer.Option(None, help="Why"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Do not modify the store"),
-) -> None:
-    """Ingest new text into the agent."""
-    path = Path(agent_name)
-    if not path.exists():
-        typer.secho(
-            f"Error: Agent directory '{path}' not found or is invalid.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
-    try:
-        file_text = file.read_text() if file else ""
-    except Exception as exc:
-        typer.secho(
-            f"Error: Could not read file '{file}'. Reason: {exc}",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
-    input_text = text or file_text
-    if not input_text:
-        typer.secho("No text provided", err=True, fg=typer.colors.RED)
-        raise typer.Exit(code=1)
-    with PersistenceLock(path):
-        agent = _load_agent(path)
-        try:
-            chunks = agent.chunker.chunk(input_text)
-            from tqdm import tqdm
 
-            bar = tqdm(total=len(chunks), desc="Adding", disable=False)
-
-            def cb(i, total, spawned, pid, sim):
-                bar.update(1)
-                if VERBOSE:
-                    act = "spawned" if spawned else "updated"
-                    sim_str = f" (similarity: {sim:.2f})" if sim is not None else ""
-                    typer.echo(f"Chunk {i}/{total}: {act} {pid}{sim_str}")
-
-            results = agent.add_memory(
-                input_text,
-                who=actor,
-                what=what,
-                when=when,
-                where=where,
-                why=why,
-                source_document_id=source_id,
-                progress_callback=cb,
-                save=not dry_run,
-            )
-            bar.close()
-            if not dry_run:
-                agent.store.save()
-        except RuntimeError as exc:
-            typer.echo(str(exc), err=True)
-            raise typer.Exit(code=1)
-    if dry_run:
-        spawned = sum(1 for r in results if r.get("spawned"))
-        updated = sum(1 for r in results if not r.get("spawned"))
-        typer.echo(
-            f"Would spawn {spawned} new prototype{'s' if spawned != 1 else ''} and update {updated} existing ones."
-        )
-        return
-    from .utils import format_ingest_results
-
-    for line in format_ingest_results(agent, results):
-        typer.echo(line)
+strategy_app = typer.Typer(help="Inspect compression strategies")
+app.add_typer(strategy_app, name="strategy")
 
 
-@app.command()
-def query(
+@strategy_app.command("inspect")
+def strategy_inspect(
+    strategy_name: str,
     *,
     agent_name: str = typer.Option(DEFAULT_BRAIN_PATH, help="Agent directory"),
-    query_text: str = typer.Option(..., help="Query text"),
-    k_prototypes: int = typer.Option(1, help="Number of prototypes"),
-    k_memories: int = typer.Option(3, help="Number of memories"),
-    json_output: bool = typer.Option(False, "--json", help="JSON output"),
+    list_prototypes: bool = typer.Option(
+        False, "--list-prototypes", help="List prototypes for the strategy"
+    ),
 ) -> None:
-    """Query stored beliefs."""
+    """Inspect a specific LTM compression strategy."""
+
+    if strategy_name != "prototype":
+        typer.echo(f"Unknown strategy: {strategy_name}", err=True)
+        raise typer.Exit(code=1)
+
     path = Path(agent_name)
     if not path.exists():
         typer.secho(
@@ -219,44 +149,20 @@ def query(
             err=True,
         )
         raise typer.Exit(code=1)
-    with PersistenceLock(path):
-        agent = _load_agent(path)
-        try:
-            res = agent.query(
-                query_text, top_k_prototypes=k_prototypes, top_k_memories=k_memories
-            )
-        except RuntimeError as exc:
-            typer.echo(str(exc), err=True)
-            raise typer.Exit(code=1)
-    if json_output:
-        typer.echo(json.dumps(res))
-        return
-    for proto in res["prototypes"]:
-        console.print(
-            f"[bold]{proto['id']}[/bold] {proto['summary']} ({proto['sim']:.2f})"
-        )
-    for mem in res["memories"]:
-        console.print(f"  {mem['text']} ({mem['sim']:.2f})")
 
-
-@app.command("list-beliefs")
-def list_beliefs(
-    agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
-    sort: str = typer.Option("", help="Sort order"),
-) -> None:
-    """List all belief prototypes."""
-    path = Path(agent_name)
     agent = _load_agent(path)
-    protos = agent.get_prototypes_view(sort_by=sort or None)
-    table = Table("id", "strength", "confidence", "summary", title="Beliefs")
-    for p in protos:
-        table.add_row(
-            p["id"],
-            f"{p['strength']:.2f}",
-            f"{p['confidence']:.2f}",
-            p["summary"][:60],
-        )
-    console.print(table)
+
+    if list_prototypes:
+        protos = agent.get_prototypes_view()
+        table = Table("id", "strength", "confidence", "summary", title="Beliefs")
+        for p in protos:
+            table.add_row(
+                p["id"],
+                f"{p['strength']:.2f}",
+                f"{p['confidence']:.2f}",
+                p["summary"][:60],
+            )
+        console.print(table)
 
 
 @app.command()

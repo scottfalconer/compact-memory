@@ -1,4 +1,24 @@
-# Gist Memory: An Experimentation Platform for LLM Memory Compression
+# Gist Memory Agent
+
+Prototype implementation of the Gist Memory Agent using a coarse prototype memory system.
+
+## Features
+
+- CLI interface with `init`, `stats`, `validate`, `clear`, `download-model`,
+  `download-chat-model`, `experiment` and `strategy inspect` commands.
+- Lightweight JSON/NPY backend for prototypes and memories (default).
+- Optional Chroma vector store for scale via ``pip install \"gist-memory[chroma]\"``.
+- Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
+- Pluggable embedding backends: random (default), OpenAI, or local sentence-transformer.
+- Chunks are rendered using a canonical ``WHO/WHAT/WHEN/WHERE/WHY`` template before embedding.
+- The CLI runs smoothly in Colab.
+- A Colab notebook will provide an interactive GUI in the future.
+- Python API provides helpers to decode and summarise prototypes.
+- Chat with a brain using a local LLM via the `talk` command.
+- Enable debug logging with `--log-file`.
+- Conflicts are heuristically flagged and written to `conflicts.jsonl` for
+  HITL review.
+
 
 **Gist Memory is a Python-based platform designed for rapidly prototyping, testing, and validating diverse strategies for compressing textual information ("memory") to maximize its utility within Large Language Model (LLM) token budgets.**
 
@@ -56,41 +76,7 @@ Run `gist-memory --help` to see available commands.
 ## Core Workflow
 The platform facilitates the following general workflow:
 
-1. **Ingest Text:** Provide a large text corpus or conversational data.
-2. **Apply CompressionStrategy:** Choose and configure a strategy to process and compress the input text according to a specified token budget.
-3. **Prepare LLM Prompt:** Combine the compressed memory with a user query/task.
-4. **Interact with LLM:** Send the assembled prompt to an LLM.
-5. **Validate Results:** Apply chosen ValidationMetric(s) to the LLM's response and the compressed context to evaluate effectiveness.
 
-## Usage
-
-### Running Experiments
-The primary way to use Gist Memory is through its experimentation framework.
-
-```bash
-# Example: Run an experiment defined in a configuration file
-gist-memory experiment --config path/to/experiment_config.yaml
-```
-(The CLI for experiment will need to be updated to accept CompressionStrategy, ValidationMetric, and their parameters).
-Refer to [docs/RUNNING_EXPERIMENTS.md](docs/RUNNING_EXPERIMENTS.md) for details on setting up and interpreting experiments.
-
-### Developing New Strategies & Metrics
-Gist Memory is designed to be extensible:
-
-* **To create a new CompressionStrategy:** Implement the CompressionStrategy interface (see `gist_memory/compression/strategies_abc.py` - to be created) and register it.
-* **To create a new ValidationMetric:** Implement the ValidationMetric interface (see `gist_memory/validation/metrics_abc.py` - to be created) and register it.
-
-Detailed guides will be available in:
-
-* [docs/DEVELOPING_COMPRESSION_STRATEGIES.md](docs/DEVELOPING_COMPRESSION_STRATEGIES.md)
-* [docs/DEVELOPING_VALIDATION_METRICS.md](docs/DEVELOPING_VALIDATION_METRICS.md)
-
-### Basic CLI Interactions (for testing individual components)
-
-Initialize a "Brain" (for LTM-based strategies): Some strategies (like the prototype-based one) might require initializing a persistent store.
-```bash
-gist-memory init my_ltm_store # Optional, if your strategy needs it
-```
 
 Test a Compression Strategy (New/Revised Command):
 ```bash
