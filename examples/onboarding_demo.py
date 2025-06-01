@@ -12,7 +12,11 @@ from gist_memory import (
     run_history_experiment,
     run_response_experiment,
 )
-from gist_memory.compression import CompressionStrategy, CompressedMemory
+from gist_memory.compression import (
+    CompressionStrategy,
+    CompressedMemory,
+    CompressionTrace,
+)
 from gist_memory.registry import register_compression_strategy
 
 
@@ -26,7 +30,16 @@ class TruncateStrategy(CompressionStrategy):
             text = " ".join(text_or_chunks)
         else:
             text = str(text_or_chunks)
-        return CompressedMemory(text=text[:llm_token_budget])
+        compressed = CompressedMemory(text=text[:llm_token_budget])
+        trace = CompressionTrace(
+            strategy_name=self.id,
+            strategy_params={"llm_token_budget": llm_token_budget},
+            input_summary={"input_length": len(text)},
+            steps=[{"type": "truncate", "new_length": len(compressed.text)}],
+            output_summary={"final_length": len(compressed.text)},
+            final_compressed_object_preview=compressed.text[:50],
+        )
+        return compressed, trace
 
 
 register_compression_strategy(TruncateStrategy.id, TruncateStrategy)

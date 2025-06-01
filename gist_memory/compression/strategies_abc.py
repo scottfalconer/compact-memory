@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Union, Any, Optional
+from typing import Dict, List, Union, Any, Optional, Tuple
+
+from .trace import CompressionTrace
 
 
 @dataclass
@@ -26,8 +28,12 @@ class CompressionStrategy(ABC):
         text_or_chunks: Union[str, List[str]],
         llm_token_budget: int,
         **kwargs: Any,
-    ) -> CompressedMemory:
-        """Return compressed form of ``text_or_chunks`` within ``llm_token_budget``."""
+    ) -> Tuple[CompressedMemory, CompressionTrace]:
+        """Return compressed form of ``text_or_chunks`` and trace.
+
+        The ``CompressedMemory`` holds the data to be given to an LLM while
+        ``CompressionTrace`` captures decision steps taken during compression.
+        """
 
 
-__all__ = ["CompressedMemory", "CompressionStrategy"]
+__all__ = ["CompressedMemory", "CompressionStrategy", "CompressionTrace"]
