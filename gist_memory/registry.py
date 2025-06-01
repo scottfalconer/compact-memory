@@ -4,23 +4,8 @@ from __future__ import annotations
 
 from typing import Dict, Type
 
-
-class CompressionStrategy:
-    """Base interface for text compression strategies."""
-
-    id: str
-
-    def compress(self, text: str) -> str:  # pragma: no cover - interface
-        raise NotImplementedError
-
-
-class ValidationMetric:
-    """Base interface for evaluating predictions."""
-
-    id: str
-
-    def compute(self, reference: str, prediction: str) -> float:  # pragma: no cover
-        raise NotImplementedError
+from .compression import CompressionStrategy
+from .validation.metrics_abc import ValidationMetric
 
 
 _COMPRESSION_REGISTRY: Dict[str, Type[CompressionStrategy]] = {}
