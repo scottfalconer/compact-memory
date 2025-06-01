@@ -1,4 +1,8 @@
-from gist_memory.compression import CompressionStrategy, CompressedMemory
+from gist_memory.compression import (
+    CompressionStrategy,
+    CompressedMemory,
+    CompressionTrace,
+)
 
 
 class DummyStrategy(CompressionStrategy):
@@ -9,12 +13,22 @@ class DummyStrategy(CompressionStrategy):
             text = " ".join(text_or_chunks)
         else:
             text = text_or_chunks
-        return CompressedMemory(text=text[:llm_token_budget])
+        compressed = CompressedMemory(text=text[:llm_token_budget])
+        trace = CompressionTrace(
+            strategy_name=self.id,
+            strategy_params={"llm_token_budget": llm_token_budget},
+            input_summary={"input_length": len(text)},
+            steps=[{"type": "truncate"}],
+            output_summary={"final_length": len(compressed.text)},
+            final_compressed_object_preview=compressed.text,
+        )
+        return compressed, trace
 
 
 def test_dummy_strategy():
     strat = DummyStrategy()
-    result = strat.compress(["alpha", "bravo"], llm_token_budget=10)
-    assert isinstance(result, CompressedMemory)
-    assert result.text == "alpha bravo"[:10]
+    compressed, trace = strat.compress(["alpha", "bravo"], llm_token_budget=10)
+    assert isinstance(compressed, CompressedMemory)
+    assert isinstance(trace, CompressionTrace)
+    assert compressed.text == "alpha bravo"[:10]
 
