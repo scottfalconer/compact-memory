@@ -422,9 +422,7 @@ def default_chroma_client() -> "chromadb.Client":  # pragma: no cover - helper
     return chromadb.PersistentClient(path)
 
 
-# Backwards compatible alias
-PrototypeStore = JSONVectorStore
-summarize_prototype = JSONVectorStore.summarize_prototype
+
 
 __all__ = [
     "Memory",
@@ -433,7 +431,5 @@ __all__ = [
     "JSONVectorStore",
     "ChromaVectorStore",
     "CloudVectorStore",
-    "PrototypeStore",
     "default_chroma_client",
-    "summarize_prototype",
 ]
