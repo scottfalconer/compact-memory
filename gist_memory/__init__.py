@@ -61,7 +61,7 @@ _lazy_map = {
     "ConflictFlagger": "gist_memory.conflict_flagging",
     "ConflictLogger": "gist_memory.conflict_flagging",
     "SimpleConflictLogger": "gist_memory.conflict",
-    "ExperimentConfig": "gist_memory.experiment_runner",
+    "ExperimentConfig": "gist_memory.experiments.config",
     "run_experiment": "gist_memory.experiment_runner",
     "HistoryExperimentConfig": "gist_memory.history_experiment",
     "run_history_experiment": "gist_memory.history_experiment",
