@@ -1,40 +1,65 @@
-"""Simple onboarding demo for Gist Memory."""
+"""Quick start demonstration of the experimentation workflow."""
+from __future__ import annotations
+
 from pathlib import Path
-import os
+import yaml
 
-from gist_memory import Agent, JsonNpyVectorStore
-from gist_memory.embedding_pipeline import embed_text, get_embedding_dim
-from gist_memory.config import DEFAULT_BRAIN_PATH
+from gist_memory import (
+    ExperimentConfig,
+    HistoryExperimentConfig,
+    ResponseExperimentConfig,
+    run_experiment,
+    run_history_experiment,
+    run_response_experiment,
+)
+from gist_memory.compression import CompressionStrategy, CompressedMemory
+from gist_memory.registry import register_compression_strategy
 
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
-os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+
+class TruncateStrategy(CompressionStrategy):
+    """Very small example compression strategy."""
+
+    id = "truncate"
+
+    def compress(self, text_or_chunks, llm_token_budget, **kwargs):
+        if isinstance(text_or_chunks, list):
+            text = " ".join(text_or_chunks)
+        else:
+            text = str(text_or_chunks)
+        return CompressedMemory(text=text[:llm_token_budget])
+
+
+register_compression_strategy(TruncateStrategy.id, TruncateStrategy)
 
 
 def main() -> None:
-    # Load demo data from the shared sample_data directory
-    folder = Path(__file__).parent.parent / "sample_data" / "moon_landing"
-    texts = [p.read_text() for p in sorted(folder.glob("*.txt"))]
+    # Ingest a single moon landing excerpt
+    data_file = (
+        Path(__file__).parents[1] / "sample_data" / "moon_landing" / "01_landing.txt"
+    )
+    cfg = ExperimentConfig(dataset=data_file)
+    metrics = run_experiment(cfg)
+    print("Ingestion metrics:\n" + yaml.safe_dump(metrics, sort_keys=False))
 
-    path = Path(DEFAULT_BRAIN_PATH)
-    if (path / "meta.yaml").exists():
-        store = JsonNpyVectorStore(str(path))
-    else:
-        dim = get_embedding_dim()
-        store = JsonNpyVectorStore(
-            str(path), embedding_model="all-MiniLM-L6-v2", embedding_dim=dim
-        )
-    agent = Agent(store)
+    # Demonstrate compression on some text
+    sample_text = Path(data_file).read_text()
+    strategy = TruncateStrategy()
+    compressed = strategy.compress(sample_text, llm_token_budget=40)
+    print(f"Compressed preview: {compressed.text!r}\n")
 
-    for text in texts:
-        results = agent.add_memory(text)
-        for res in results:
-            action = "Created" if res.get("spawned") else "Updated"
-            pid = res.get("prototype_id")
-            print(f"{action} prototype {pid}")
-
-    print()
-    print(f"Total memories: {len(agent.store.memories)}")
-    print(f"Total prototypes: {len(agent.store.prototypes)}")
+    # Evaluate retrieval and response quality using small test datasets
+    hist_dataset = Path(__file__).parents[1] / "tests" / "data" / "history_dialogues.yaml"
+    resp_dataset = Path(__file__).parents[1] / "tests" / "data" / "response_dialogues.yaml"
+    params = [
+        {"config_prompt_num_forced_recent_turns": 1},
+        {"config_prompt_num_forced_recent_turns": 2},
+    ]
+    hist_cfg = HistoryExperimentConfig(dataset=hist_dataset, param_grid=params)
+    resp_cfg = ResponseExperimentConfig(dataset=resp_dataset, param_grid=params)
+    hist_results = run_history_experiment(hist_cfg)
+    resp_results = run_response_experiment(resp_cfg)
+    print("History experiment results:\n" + yaml.safe_dump(hist_results, sort_keys=False))
+    print("Response experiment results:\n" + yaml.safe_dump(resp_results, sort_keys=False))
 
 
 if __name__ == "__main__":
