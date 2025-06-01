@@ -12,7 +12,6 @@ from typing import Callable, Dict, List, Optional
 import numpy as np
 
 from .chunker import Chunker, SentenceWindowChunker
-from .embedding_pipeline import embed_text
 from .json_npy_store import JsonNpyVectorStore, BeliefPrototype, RawMemory
 from .memory_creation import ExtractiveSummaryCreator, MemoryCreator
 from .prototype.canonical import render_five_w_template
@@ -126,7 +125,8 @@ class PrototypeSystemStrategy(CompressionStrategy):
             render_five_w_template(c, who=who, what=what, when=when, where=where, why=why)
             for c in chunks
         ]
-        vecs = embed_text(canonical)
+        from . import agent as _agent
+        vecs = _agent.embed_text(canonical)
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
 
@@ -218,7 +218,8 @@ class PrototypeSystemStrategy(CompressionStrategy):
     ) -> Dict[str, object]:
         """Return nearest prototypes and memories for ``text``."""
 
-        vec = embed_text(text)
+        from . import agent as _agent
+        vec = _agent.embed_text(text)
         if vec.ndim != 1:
             vec = vec.reshape(-1)
         nearest = self.store.find_nearest(vec, k=top_k_prototypes)

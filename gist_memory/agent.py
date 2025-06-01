@@ -108,6 +108,7 @@ class Agent:
         if not isinstance(value, Chunker):
             raise TypeError("chunker must implement Chunker interface")
         self.prototype_system.chunker = value
+        self.store.meta["chunker"] = getattr(value, "id", type(value).__name__)
 
     # ------------------------------------------------------------------
     @property
@@ -117,6 +118,7 @@ class Agent:
     @similarity_threshold.setter
     def similarity_threshold(self, value: float) -> None:
         self.prototype_system.similarity_threshold = value
+        self.store.meta["tau"] = float(value)
 
     # ------------------------------------------------------------------
     @property
