@@ -69,7 +69,6 @@ _lazy_map = {
     "run_experiment": "gist_memory.experiment_runner",
     "HistoryExperimentConfig": "gist_memory.history_experiment",
     "run_history_experiment": "gist_memory.history_experiment",
-    "negation_conflict": "gist_memory.conflict",
     "negation_conflict": "gist_memory.prototype.conflict",
     "load_agent": "gist_memory.utils",
     "tokenize_text": "gist_memory.token_utils",

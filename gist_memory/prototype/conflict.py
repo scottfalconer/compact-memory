@@ -6,7 +6,7 @@ import json
 import re
 from pathlib import Path
 
-from .models import RawMemory
+from ..models import RawMemory
 
 
 # naive regex for "X is Y" / "X is not Y" style statements
