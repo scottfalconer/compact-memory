@@ -128,6 +128,13 @@ python examples/onboarding_demo.py
 * **ValidationMetric:** A method to evaluate the quality or utility of the compressed memory, often by assessing an LLM's performance on a task using that compressed memory.
 * **Experimentation Framework:** The tools and processes within Gist Memory for systematically running tests with different strategies, datasets, and metrics.
 
+## Designing Compression Strategies
+
+See [docs/COMPRESSION_STRATEGIES.md](docs/COMPRESSION_STRATEGIES.md) for guidance on splitting documents into belief-sized ideas and updating centroids. The advanced `AgenticChunker` implements these techniques and can be enabled via `gist-memory init brain --chunker agentic` or programmatically with `agent.chunker = AgenticChunker()`.
+
+## Query Tips
+
+[docs/QUERY_TIPS.md](docs/QUERY_TIPS.md) explains how to shape search queries. When your notes follow a structured `WHO/WHAT/WHEN` layout you can embed a templated version of the question to bias retrieval.
 For deeper insights into the concepts behind some of the example strategies (like Active Memory and Prototypes), refer to the Conceptual Guide (`AGENTS.md`).
 
 ## Architecture and Storage
