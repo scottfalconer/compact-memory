@@ -38,8 +38,14 @@ def test_response_experiment_runs(monkeypatch, tmp_path):
     monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", DummyLLM)
 
     params = [{"config_prompt_num_forced_recent_turns": 1}]
-    cfg = ResponseExperimentConfig(dataset=data, param_grid=params)
+    cfg = ResponseExperimentConfig(
+        dataset=data,
+        param_grid=params,
+        validation_metrics=[{"id": "exact_match", "params": {}}],
+    )
     results = run_response_experiment(cfg)
     assert len(results) == 1
     res = results[0]
-    assert "avg_f1" in res and "avg_prompt_tokens" in res
+    assert res["metrics"]["exact_match"]["exact_match"] == 1.0
+    assert "avg_prompt_tokens" in res
+

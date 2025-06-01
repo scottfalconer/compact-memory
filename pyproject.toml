@@ -26,6 +26,7 @@ dependencies = [
     "portalocker",
     "rich>=13.6",
     "google-generativeai",
+    "evaluate",
 ]
 
 [project.optional-dependencies]

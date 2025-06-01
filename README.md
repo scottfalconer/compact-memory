@@ -31,7 +31,7 @@ It provides a framework to implement and compare different approaches to making 
     * Active memory management (inspired by human working memory).
     * Gist-based prototype systems for long-term knowledge consolidation.
     * Extractive summarization, and more.
-* **Pluggable `ValidationMetric` Interface:** Define and apply custom metrics to evaluate the effectiveness of compressed memory in LLM interactions (e.g., information recall, F1 score, coherence).
+* **Pluggable `ValidationMetric` Interface:** Define and apply custom metrics to evaluate the effectiveness of compressed memory in LLM interactions (e.g., information recall, ROUGE, BLEU). Metrics can leverage the Hugging Face `evaluate` library.
 * **Command-Line Interface (CLI):** Manage experiments, test strategies, and interact with the system.
 * **Local LLM Interaction:** Test compressed memory with local LLMs for end-to-end validation.
 * **Flexible Storage Backend:** Includes a lightweight JSON/NPY backend for components of strategies that require persistence (like LTM prototypes). (ChromaDB support can be mentioned if it remains relevant for specific strategies).

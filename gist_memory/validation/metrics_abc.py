@@ -3,24 +3,35 @@ from __future__ import annotations
 """Abstract base class for validation metrics."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
-if TYPE_CHECKING:  # pragma: no cover - type hints only
-    from ..memory_creation import CompressedMemoryObject
+if TYPE_CHECKING:  # pragma: no cover - imports for type hints only
+    from ..compression.strategies_abc import CompressedMemory
+    from ..compression.trace import CompressionTrace
 else:  # pragma: no cover - avoid runtime dependency
-    CompressedMemoryObject = Any
+    CompressedMemory = Any
+    CompressionTrace = Any
 
 
 class ValidationMetric(ABC):
     """Interface for evaluating compression strategies and LLM responses."""
 
+    metric_id: str
+
+    def __init__(self, **kwargs: Any) -> None:  # pragma: no cover - simple init
+        """Store metric-specific configuration parameters."""
+        self.config_params = kwargs
+
     @abstractmethod
     def evaluate(
         self,
-        original_query: str,
         llm_response: str,
-        compressed_context: CompressedMemoryObject,
-        reference_data: Any,
+        reference_answer: str,
+        original_query: Optional[str] = None,
+        compressed_context: Optional[CompressedMemory] = None,
+        compression_trace: Optional[CompressionTrace] = None,
+        llm_provider_info: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, float]:
         """Return metric results as a dictionary."""
+        
