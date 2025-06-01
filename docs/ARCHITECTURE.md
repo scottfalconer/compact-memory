@@ -46,10 +46,10 @@ experimented with.
   `stats`, `validate`, `clear`, `download-model`, `download-chat-model`,
   `experiment` and `strategy inspect`. Persistence is
   locked during writes to avoid corruption.
-- **`embedding_pipeline.py`**, **`embedder.py`** and **`store.py`** –
-  additional abstractions for embedding backends and alternative vector
-  stores (e.g. ChromaDB). These allow switching to different storage or
-  model providers without rewriting the agent logic.
+- Additional vector store implementations can be developed by
+  extending the interfaces used by `JsonNpyVectorStore`. This keeps
+  the agent decoupled from any particular storage backend or embedding
+  provider.
 
 ### Data models
 

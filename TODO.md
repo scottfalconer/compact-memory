@@ -49,5 +49,4 @@ _Completed in v0.1.1._
 - List third‑party license notices.
 
 ## 10 · Future-Facing Stubs
-- Stub out `ChromaVectorStore` with `NotImplemented` methods.
 - Leave TODOs for advanced health checks and split/merge logic.
