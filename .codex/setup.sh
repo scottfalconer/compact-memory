@@ -20,7 +20,16 @@ pip3 install --no-cache-dir flake8 pytest
 pip3 install --no-cache-dir rich typer portalocker
 
 # Pre-download the default local embedding model so it is available offline
-#python3 -m gist_memory download-model --model-name all-MiniLM-L6-v2
+python3 - <<'EOF'
+from sentence_transformers import SentenceTransformer
+
+SentenceTransformer("all-MiniLM-L6-v2")
+EOF
 # Pre-download the default chat model for talk mode
-#python3 -m gist_memory download-chat-model --model-name distilgpt2
+python3 - <<'EOF'
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+AutoTokenizer.from_pretrained("distilgpt2")
+AutoModelForCausalLM.from_pretrained("distilgpt2")
+EOF
 
