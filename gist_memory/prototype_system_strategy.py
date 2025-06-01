@@ -12,7 +12,7 @@ from typing import Callable, Dict, List, Optional
 import numpy as np
 
 from .chunker import Chunker, SentenceWindowChunker
-from .embedding_pipeline import embed_text
+from .embedding_pipeline import embed_text as _embed_text
 from .json_npy_store import JsonNpyVectorStore, BeliefPrototype, RawMemory
 from .memory_creation import ExtractiveSummaryCreator, MemoryCreator
 from .prototype.canonical import render_five_w_template
@@ -73,6 +73,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
         dedup_cache: int = 128,
         summary_creator: Optional[MemoryCreator] = None,
         update_summaries: bool = False,
+        embed_fn: Callable[[str | List[str]], np.ndarray] | None = None,
     ) -> None:
         if not 0.5 <= similarity_threshold <= 0.95:
             raise ValueError("similarity_threshold must be between 0.5 and 0.95")
@@ -81,6 +82,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
         self.similarity_threshold = float(similarity_threshold)
         self.summary_creator = summary_creator or ExtractiveSummaryCreator(max_words=25)
         self.update_summaries = update_summaries
+        self.embed_fn = embed_fn or _embed_text
         self.metrics: Dict[str, int] = {
             "memories_ingested": 0,
             "prototypes_spawned": 0,
@@ -126,7 +128,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
             render_five_w_template(c, who=who, what=what, when=when, where=where, why=why)
             for c in chunks
         ]
-        vecs = embed_text(canonical)
+        vecs = self.embed_fn(canonical)
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
 
@@ -218,7 +220,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
     ) -> Dict[str, object]:
         """Return nearest prototypes and memories for ``text``."""
 
-        vec = embed_text(text)
+        vec = self.embed_fn(text)
         if vec.ndim != 1:
             vec = vec.reshape(-1)
         nearest = self.store.find_nearest(vec, k=top_k_prototypes)

@@ -93,6 +93,7 @@ class Agent:
             dedup_cache=dedup_cache,
             summary_creator=summary_creator,
             update_summaries=update_summaries,
+            embed_fn=embed_text,
         )
         self.metrics = self.prototype_system.metrics
         self.prompt_budget = prompt_budget
@@ -108,6 +109,11 @@ class Agent:
         if not isinstance(value, Chunker):
             raise TypeError("chunker must implement Chunker interface")
         self.prototype_system.chunker = value
+        try:
+            name = getattr(value, "id", value.__class__.__name__.lower())
+            self.store.meta["chunker"] = name
+        except Exception:
+            pass
 
     # ------------------------------------------------------------------
     @property
@@ -117,6 +123,7 @@ class Agent:
     @similarity_threshold.setter
     def similarity_threshold(self, value: float) -> None:
         self.prototype_system.similarity_threshold = value
+        self.store.meta["tau"] = float(value)
 
     # ------------------------------------------------------------------
     @property

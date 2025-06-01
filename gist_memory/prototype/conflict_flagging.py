@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .models import RawMemory
+from ..models import RawMemory
 
 
 _NEG_WORDS = {"not", "no", "never", "n't"}
