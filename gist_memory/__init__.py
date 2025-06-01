@@ -37,6 +37,9 @@ __all__ = [
     "tokenize_text",
     "token_count",
     "PromptBudget",
+    "CompressionStrategy",
+    "NoCompression",
+    "ImportanceCompression",
     "ValidationMetric",
 ]
 
@@ -62,7 +65,7 @@ _lazy_map = {
     "ConflictFlagger": "gist_memory.conflict_flagging",
     "ConflictLogger": "gist_memory.conflict_flagging",
     "SimpleConflictLogger": "gist_memory.conflict",
-    "ExperimentConfig": "gist_memory.experiment_runner",
+    "ExperimentConfig": "gist_memory.experiments.config",
     "run_experiment": "gist_memory.experiment_runner",
     "HistoryExperimentConfig": "gist_memory.history_experiment",
     "run_history_experiment": "gist_memory.history_experiment",
@@ -72,6 +75,9 @@ _lazy_map = {
     "tokenize_text": "gist_memory.token_utils",
     "token_count": "gist_memory.token_utils",
     "PromptBudget": "gist_memory.prompt_budget",
+    "CompressionStrategy": "gist_memory.compression",
+    "NoCompression": "gist_memory.compression",
+    "ImportanceCompression": "gist_memory.compression",
     "ValidationMetric": "gist_memory.validation.metrics_abc",
 }
 

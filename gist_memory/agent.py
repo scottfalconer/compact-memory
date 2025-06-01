@@ -24,6 +24,7 @@ from .canonical import render_five_w_template
 from .conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
 from .conflict import SimpleConflictLogger
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
+from .compression import CompressionStrategy, NoCompression
 
 
 class VectorIndexCorrupt(RuntimeError):
@@ -449,8 +450,10 @@ class Agent:
         self,
         input_message: str,
         manager: ActiveMemoryManager,
+        *,
+        compression: CompressionStrategy | None = None,
     ) -> tuple[str, dict]:
-        """Generate a reply to ``input_message`` using ``manager`` for context."""
+        """Generate a reply using ``manager`` and optional ``compression``."""
 
         from .local_llm import LocalChatModel
 
@@ -458,6 +461,15 @@ class Agent:
         if llm is None:
             llm = LocalChatModel()
             self._chat_model = llm
+
+        if compression is None:
+            compression = NoCompression()
+
+        if getattr(llm, "tokenizer", None) is None:
+            try:
+                llm.load_model()
+            except Exception:
+                pass
 
         vec = embed_text([input_message])
         if vec.ndim != 1:
@@ -523,6 +535,14 @@ class Agent:
             len(history_final),
             history_tokens_final,
         )
+        if compression is not None:
+            limit = None
+            if b_recent or b_older:
+                limit = (b_recent or 0) + (b_older or 0)
+            history_text = compression.compress(
+                [t.text for t in history_final], llm.tokenizer, limit
+            )
+            history_tokens_final = token_count(llm.tokenizer, history_text)
 
         query_res = self.query(input_message, top_k_prototypes=2, top_k_memories=2)
         proto_summaries = "; ".join(
@@ -602,6 +622,8 @@ class Agent:
         source_id: str,
         message_text: str,
         manager: Optional[ActiveMemoryManager] = None,
+        *,
+        compression: CompressionStrategy | None = None,
     ) -> dict[str, object]:
         """Process ``message_text`` posted to the shared channel by ``source_id``.
 
@@ -625,7 +647,9 @@ class Agent:
         if text.endswith("?"):
             # -------------------------------------------------- Option A: query
             if manager is not None:
-                reply, info = self.process_conversational_turn(text, manager)
+                reply, info = self.process_conversational_turn(
+                    text, manager, compression=compression
+                )
                 summary["action"] = "query"
                 summary["query_result"] = info.get("query_result", {})
                 summary["reply"] = reply
