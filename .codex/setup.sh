@@ -1,35 +1,40 @@
 #!/usr/bin/env bash
+# Setup script executed during Codex container setup.
+# Codex loses network access after this step, so we download all assets
+# needed for tests here to ensure offline execution.
+
 set -euo pipefail
 
 # Update package lists
 apt-get update
 
-# Install Python and pip if not already installed
+# Install Python and basic tools
 apt-get install -y --no-install-recommends python3 python3-pip git
 
-# Install Python dependencies when using the repository
+# Install Python dependencies for the repository and download spaCy model
 if [ -f requirements.txt ]; then
     pip3 install --no-cache-dir -r requirements.txt
     python3 -m spacy download en_core_web_sm
 fi
 
-# Tools for linting and testing
+# Tools used by CI for linting and testing
 pip3 install --no-cache-dir flake8 pytest
 
-# Ensure CLI dependencies are available even when not listed in requirements
+# CLI dependencies that may not be declared in requirements.txt
 pip3 install --no-cache-dir rich typer portalocker
 
-# Pre-download the default local embedding model so it is available offline
-python3 - <<'EOF'
+# Pre-download the default local embedding model so tests work offline
+python3 - <<'PY'
 from sentence_transformers import SentenceTransformer
 
 SentenceTransformer("all-MiniLM-L6-v2")
-EOF
-# Pre-download the default chat model for talk mode
-python3 - <<'EOF'
+PY
+
+# Pre-download the default chat model used in talk mode
+python3 - <<'PY'
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 AutoTokenizer.from_pretrained("distilgpt2")
 AutoModelForCausalLM.from_pretrained("distilgpt2")
-EOF
+PY
 
