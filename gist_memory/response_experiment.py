@@ -14,7 +14,7 @@ from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 from .json_npy_store import JsonNpyVectorStore
 from .embedding_pipeline import MockEncoder
 from .chunker import SentenceWindowChunker
-from .token_utils import token_count
+from .registry import get_validation_metric_class
 
 
 @dataclass
@@ -23,6 +23,7 @@ class ResponseExperimentConfig:
 
     dataset: Path
     param_grid: List[Dict[str, Any]]
+    validation_metrics: List[Dict[str, Any]] | None = None
 
 
 def _load_dataset(path: Path) -> List[Dict[str, Any]]:
@@ -45,7 +46,12 @@ def _simple_f1(reference: str, prediction: str) -> float:
     return 2 * precision * recall / (precision + recall)
 
 
-def _evaluate_sample(sample: Dict[str, Any], params: Dict[str, Any], enc: MockEncoder) -> Dict[str, Any]:
+def _evaluate_sample(
+    sample: Dict[str, Any],
+    params: Dict[str, Any],
+    enc: MockEncoder,
+    metric_entries: List[Dict[str, Any]],
+) -> Dict[str, Any]:
     mgr = ActiveMemoryManager(**params)
 
     work_dir = tempfile.mkdtemp()
@@ -64,9 +70,19 @@ def _evaluate_sample(sample: Dict[str, Any], params: Dict[str, Any], enc: MockEn
     query = sample["query"]
     answer = sample.get("answer", "")
     reply, info = agent.process_conversational_turn(query, mgr)
-    score = _simple_f1(answer, reply)
     tokens = info.get("prompt_tokens", 0)
-    return {"score": score, "prompt_tokens": tokens}
+
+    metric_scores: Dict[str, Dict[str, float]] = {}
+    for entry in metric_entries:
+        MetricClass = get_validation_metric_class(entry["id"])
+        metric = MetricClass(**entry.get("params", {}))
+        metric_scores[entry["id"]] = metric.evaluate(
+            llm_response=reply,
+            reference_answer=answer,
+            original_query=query,
+        )
+
+    return {"metrics": metric_scores, "prompt_tokens": tokens}
 
 
 def run_response_experiment(config: ResponseExperimentConfig) -> List[Dict[str, Any]]:
@@ -74,20 +90,31 @@ def run_response_experiment(config: ResponseExperimentConfig) -> List[Dict[str, 
 
     dataset = _load_dataset(config.dataset)
     enc = MockEncoder()
+    metric_entries = config.validation_metrics or [{"id": "exact_match", "params": {}}]
+
     results = []
     for params in config.param_grid:
-        total_score = 0.0
+        aggregates: Dict[str, Dict[str, float]] = {
+            m["id"]: {} for m in metric_entries
+        }
         total_tokens = 0
         for sample in dataset:
-            res = _evaluate_sample(sample, params, enc)
-            total_score += res["score"]
+            res = _evaluate_sample(sample, params, enc, metric_entries)
             total_tokens += res["prompt_tokens"]
+            for mid, scores in res["metrics"].items():
+                agg = aggregates[mid]
+                for name, val in scores.items():
+                    agg[name] = agg.get(name, 0.0) + val
         n = len(dataset) or 1
+        avg_scores = {
+            mid: {name: val / n for name, val in scores.items()}
+            for mid, scores in aggregates.items()
+        }
         results.append(
             {
                 "params": params,
-                "avg_f1": total_score / n,
                 "avg_prompt_tokens": total_tokens / n,
+                "metrics": avg_scores,
             }
         )
     return results

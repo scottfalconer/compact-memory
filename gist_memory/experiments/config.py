@@ -35,8 +35,7 @@ class ExperimentConfig:
     llm_api_key: Optional[str] = None
 
     # Validation metrics to compute and their individual configs
-    metrics: List[str] = field(default_factory=list)
-    metric_params: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    validation_metrics: List[Dict[str, Any]] = field(default_factory=list)
 
     # Optional experiment specific settings from legacy experiments
     work_dir: Optional[Path] = None

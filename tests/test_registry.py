@@ -3,8 +3,9 @@ from gist_memory.registry import (
     ValidationMetric,
     register_compression_strategy,
     register_validation_metric,
+    get_validation_metric_class,
     _COMPRESSION_REGISTRY,
-    _VALIDATION_REGISTRY,
+    _VALIDATION_METRIC_REGISTRY,
 )
 
 
@@ -23,8 +24,9 @@ def test_register_validation_metric():
     class DummyMetric(ValidationMetric):
         id = "metric"
 
-        def compute(self, reference: str, prediction: str) -> float:
-            return 0.0
+        def evaluate(self, llm_response: str, reference_answer: str, **kw):
+            return {"score": 0.0}
 
     register_validation_metric(DummyMetric.id, DummyMetric)
-    assert _VALIDATION_REGISTRY["metric"] is DummyMetric
+    assert _VALIDATION_METRIC_REGISTRY["metric"] is DummyMetric
+    assert get_validation_metric_class("metric") is DummyMetric

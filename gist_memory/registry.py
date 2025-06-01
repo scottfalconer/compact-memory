@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Plugin registries for compression strategies and validation metrics."""
 
-from typing import Dict, Type
+from typing import Any, Dict, Type
 
 
 class CompressionStrategy:
@@ -19,12 +19,17 @@ class ValidationMetric:
 
     id: str
 
-    def compute(self, reference: str, prediction: str) -> float:  # pragma: no cover
+    def evaluate(
+        self,
+        llm_response: str,
+        reference_answer: str,
+        **kwargs: Any,
+    ) -> Dict[str, float]:  # pragma: no cover - interface
         raise NotImplementedError
 
 
 _COMPRESSION_REGISTRY: Dict[str, Type[CompressionStrategy]] = {}
-_VALIDATION_REGISTRY: Dict[str, Type[ValidationMetric]] = {}
+_VALIDATION_METRIC_REGISTRY: Dict[str, Type[ValidationMetric]] = {}
 
 
 def register_compression_strategy(id: str, strategy_class: Type[CompressionStrategy]) -> None:
@@ -36,7 +41,13 @@ def register_compression_strategy(id: str, strategy_class: Type[CompressionStrat
 def register_validation_metric(id: str, metric_class: Type[ValidationMetric]) -> None:
     """Register ``metric_class`` under ``id``."""
 
-    _VALIDATION_REGISTRY[id] = metric_class
+    _VALIDATION_METRIC_REGISTRY[id] = metric_class
+
+
+def get_validation_metric_class(id: str) -> Type[ValidationMetric]:
+    """Return the metric class registered under ``id``."""
+
+    return _VALIDATION_METRIC_REGISTRY[id]
 
 
 __all__ = [
@@ -44,6 +55,7 @@ __all__ = [
     "ValidationMetric",
     "register_compression_strategy",
     "register_validation_metric",
+    "get_validation_metric_class",
     "_COMPRESSION_REGISTRY",
-    "_VALIDATION_REGISTRY",
+    "_VALIDATION_METRIC_REGISTRY",
 ]
