@@ -2,28 +2,17 @@ from __future__ import annotations
 
 import tempfile
 import time
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Dict, Any
+
+from .experiments.config import ExperimentConfig
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from .active_memory_manager import ActiveMemoryManager
 from .chunker import Chunker, SentenceWindowChunker
 from .memory_creation import MemoryCreator, ExtractiveSummaryCreator
-from .embedding_pipeline import embed_text, get_embedding_dim
-
-
-@dataclass
-class ExperimentConfig:
-    """Configuration for :func:`run_experiment`."""
-
-    dataset: Path
-    similarity_threshold: float = 0.8
-    chunker: Optional[Chunker] = None
-    summary_creator: Optional[MemoryCreator] = None
-    work_dir: Optional[Path] = None
-    active_memory_params: Optional[Dict[str, Any]] = None
+from .embedding_pipeline import get_embedding_dim
 
 
 def run_experiment(config: ExperimentConfig) -> Dict[str, Any]:
@@ -50,7 +39,12 @@ def run_experiment(config: ExperimentConfig) -> Dict[str, Any]:
         or ExtractiveSummaryCreator(max_words=25),
     )
 
-    text = Path(config.dataset).read_text()
+    if callable(config.dataset):
+        text = str(config.dataset())
+    elif isinstance(config.dataset, (list, tuple)):
+        text = "\n".join(Path(p).read_text() for p in config.dataset)
+    else:
+        text = Path(config.dataset).read_text()
     start = time.perf_counter()
     agent.add_memory(text)
     duration = time.perf_counter() - start

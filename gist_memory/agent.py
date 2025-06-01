@@ -458,6 +458,8 @@ class Agent:
         if llm is None:
             llm = LocalChatModel()
             self._chat_model = llm
+        if hasattr(llm, "load_model"):
+            llm.load_model()
 
         vec = embed_text([input_message])
         if vec.ndim != 1:

@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Any
 
+from .experiments.config import ExperimentConfig
+
 import tempfile
 import yaml
 
@@ -17,16 +19,18 @@ from .chunker import SentenceWindowChunker
 from .token_utils import token_count
 
 
-@dataclass
-class ResponseExperimentConfig:
+@dataclass(kw_only=True)
+class ResponseExperimentConfig(ExperimentConfig):
     """Configuration for :func:`run_response_experiment`."""
 
-    dataset: Path
     param_grid: List[Dict[str, Any]]
 
 
-def _load_dataset(path: Path) -> List[Dict[str, Any]]:
-    data = yaml.safe_load(path.read_text())
+def _load_dataset(source: Any) -> List[Dict[str, Any]]:
+    if callable(source):
+        data = source()
+    else:
+        data = yaml.safe_load(Path(source).read_text())
     return list(data)
 
 

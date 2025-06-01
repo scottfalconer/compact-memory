@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from gist_memory.experiment_runner import ExperimentConfig, run_experiment
+from gist_memory.experiments.config import ExperimentConfig
+from gist_memory.experiment_runner import run_experiment
 from gist_memory.active_memory_manager import ActiveMemoryManager
 from gist_memory.utils import load_agent
 from gist_memory.embedding_pipeline import MockEncoder

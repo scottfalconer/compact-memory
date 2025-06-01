@@ -4,23 +4,27 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Any
 
+from .experiments.config import ExperimentConfig
+
 import yaml
 
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 from .embedding_pipeline import MockEncoder
 
 
-@dataclass
-class HistoryExperimentConfig:
+@dataclass(kw_only=True)
+class HistoryExperimentConfig(ExperimentConfig):
     """Configuration for :func:`run_history_experiment`."""
 
-    dataset: Path
     param_grid: List[Dict[str, Any]]
 
 
 # --------------------------------------------------------------
-def _load_dataset(path: Path) -> List[Dict[str, Any]]:
-    data = yaml.safe_load(path.read_text())
+def _load_dataset(source: Any) -> List[Dict[str, Any]]:
+    if callable(source):
+        data = source()
+    else:
+        data = yaml.safe_load(Path(source).read_text())
     return list(data)
 
 

@@ -424,7 +424,8 @@ def run_experiment_cmd(
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ) -> None:
     """Run a simple ingestion experiment."""
-    from .experiment_runner import ExperimentConfig, run_experiment
+    from .experiments.config import ExperimentConfig
+    from .experiment_runner import run_experiment
 
     cfg = ExperimentConfig(
         dataset=dataset, similarity_threshold=similarity_threshold, work_dir=work_dir
