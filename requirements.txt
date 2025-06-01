@@ -13,3 +13,4 @@ rich>=13.6
 spacy
 typer[all]
 portalocker
+google-generativeai

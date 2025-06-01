@@ -1,0 +1,23 @@
+# Mapping of model ids to provider configuration
+
+# Example defaults - extend as needed
+
+gpt-4-turbo:
+  provider: openai
+  model_name: gpt-4-turbo
+  token_budget: 128000
+
+gpt-3.5-turbo:
+  provider: openai
+  model_name: gpt-3.5-turbo
+  token_budget: 4096
+
+gemini-1.5-pro-latest:
+  provider: gemini
+  model_name: gemini-1.5-pro-latest
+  token_budget: 1048576
+
+distilgpt2:
+  provider: local
+  model_name: distilgpt2
+  token_budget: 1024

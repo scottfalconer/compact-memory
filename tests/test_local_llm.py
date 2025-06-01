@@ -7,7 +7,6 @@ def test_local_chat_model(monkeypatch):
         def __init__(self, *a, **k):
             pass
 
-
         def __call__(
             self, prompt, return_tensors=None, truncation=None, max_length=None
         ):
@@ -98,7 +97,8 @@ def test_local_chat_model_failure(monkeypatch):
         raise OSError("missing")
 
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoTokenizer.from_pretrained", err
+        "gist_memory.local_llm.AutoTokenizer.from_pretrained",
+        err,
     )
     monkeypatch.setattr(
         "gist_memory.local_llm.AutoModelForCausalLM.from_pretrained", err
@@ -110,3 +110,39 @@ def test_local_chat_model_failure(monkeypatch):
     msg = str(exc.value)
     assert "download-chat-model" in msg
     assert "foo" in msg
+
+
+def test_provider_interface(monkeypatch):
+    class DummyTokenizer:
+        def __init__(self, *a, **k):
+            pass
+
+        def __call__(self, text, return_tensors=None, truncation=None, max_length=None):
+            return {"input_ids": [0]}
+
+        def decode(self, ids, skip_special_tokens=True):
+            return "prompt response"
+
+    class DummyModel:
+        def __init__(self, *a, **k):
+            self.config = type("cfg", (), {"n_positions": 50})()
+
+        def generate(self, **kw):
+            return [[0]]
+
+    monkeypatch.setattr(
+        "gist_memory.local_llm.AutoTokenizer.from_pretrained",
+        lambda *a, **k: DummyTokenizer(),
+    )
+    monkeypatch.setattr(
+        "gist_memory.local_llm.AutoModelForCausalLM.from_pretrained",
+        lambda *a, **k: DummyModel(),
+    )
+
+    model = LocalChatModel()
+    budget = model.get_token_budget("distilgpt2")
+    assert isinstance(budget, int) and budget > 0
+    tokens = model.count_tokens("hello", "distilgpt2")
+    assert tokens == 1
+    reply = model.generate_response("prompt", "distilgpt2", 10)
+    assert reply == "response"
