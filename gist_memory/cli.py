@@ -140,6 +140,9 @@ app.add_typer(package_app, name="package")
 experiment_app = typer.Typer(help="Run experiments")
 app.add_typer(experiment_app, name="experiment")
 
+trace_app = typer.Typer(help="Inspect compression traces")
+app.add_typer(trace_app, name="trace")
+
 
 @strategy_app.command("inspect")
 def strategy_inspect(
@@ -528,6 +531,34 @@ def run_experiment_package(
     strategy = Strategy(**strategy_params)
     results = run_response_experiment(cfg, strategy=strategy)
     typer.echo(json.dumps(results))
+
+
+@trace_app.command("inspect")
+def trace_inspect(
+    trace_file: Path = typer.Argument(..., help="Path to trace JSON"),
+    step_type: Optional[str] = typer.Option(None, "--type", help="Filter by step type"),
+) -> None:
+    """Print a summary of a saved ``CompressionTrace``."""
+
+    if not trace_file.exists():
+        typer.secho(f"Trace file '{trace_file}' not found", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    import json
+    from rich.table import Table
+
+    data = json.loads(trace_file.read_text())
+    steps = data.get("steps", [])
+
+    console.print(f"Strategy: {data.get('strategy_name', '')}")
+    table = Table("idx", "type", "details")
+    for idx, step in enumerate(steps):
+        stype = step.get("type")
+        if step_type and stype != step_type:
+            continue
+        preview = json.dumps(step.get("details", {}))[:50]
+        table.add_row(str(idx), stype or "", preview)
+    console.print(table)
 
 
 if __name__ == "__main__":

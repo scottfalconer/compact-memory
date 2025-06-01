@@ -14,3 +14,26 @@ Some compression approaches may incorporate trainable components—for example a
 ### Strategies for Conversational AI and Dynamic Contexts
 
 The `ActiveMemoryManager` shows one pattern for maintaining dialogue context. Learnable strategies might extend this with models that predict relevance scores, or with reinforcement learning to optimize pruning decisions.
+
+## Creating Informative Compression Traces
+
+Every `CompressionStrategy` should return a `CompressionTrace` detailing the
+steps performed. Use the standard vocabulary from
+`docs/EXPLAINABLE_COMPRESSION.md` for the `type` field and include contextual
+information in a `details` dictionary. A minimal example:
+
+```python
+trace.steps.append({
+    "type": "prune_history_turn",
+    "details": {
+        "turn_id": "abc-123",
+        "text_preview": "User: Yes, that sounds right...",
+        "reason_for_action": "lowest_retention_score",
+        "retention_score": 0.15,
+    },
+})
+```
+
+These rich traces make strategies easier to debug and analyse. When designing a
+new strategy, think about what decisions are being made and record them as steps
+in the trace.

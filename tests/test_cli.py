@@ -3,6 +3,7 @@ from typer.testing import CliRunner
 from gist_memory.cli import app
 from gist_memory.embedding_pipeline import MockEncoder
 import pytest
+import json
 
 
 @pytest.fixture(autouse=True)
@@ -234,3 +235,18 @@ def test_cli_corrupt_store(tmp_path):
     assert "Brain data is corrupted" in result.stderr
 
 
+
+def test_cli_trace_inspect(tmp_path):
+    runner = CliRunner()
+    trace_file = tmp_path / "trace.json"
+    data = {
+        "strategy_name": "dummy",
+        "strategy_params": {},
+        "input_summary": {},
+        "steps": [{"type": "filter_item", "details": {"reason": "test"}}],
+    }
+    trace_file.write_text(json.dumps(data))
+    result = runner.invoke(app, ["trace", "inspect", str(trace_file)])
+    assert result.exit_code == 0
+    assert "dummy" in result.stdout
+    assert "filter_item" in result.stdout
