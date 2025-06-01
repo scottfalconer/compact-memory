@@ -94,6 +94,9 @@ def test_cli_talk(tmp_path, monkeypatch):
         model = type("M", (), {"config": type("C", (), {"n_positions": 50})()})()
         max_new_tokens = 10
 
+        def load_model(self):
+            pass
+
         def prepare_prompt(self, agent, prompt, **kw):
             return prompt
 
@@ -137,6 +140,9 @@ def test_talk_command_calls_receive_channel_message(tmp_path, monkeypatch):
 
         def reply(self, prompt):
             return "ok"
+
+        def load_model(self):
+            pass
 
         model = type("M", (), {"config": type("C", (), {"n_positions": 50})()})()
         max_new_tokens = 10

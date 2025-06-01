@@ -313,6 +313,7 @@ def talk(
 
         try:
             agent._chat_model = LocalChatModel(model_name=model_name)
+            agent._chat_model.load_model()
         except RuntimeError as exc:
             typer.echo(str(exc), err=True)
             raise typer.Exit(code=1)
