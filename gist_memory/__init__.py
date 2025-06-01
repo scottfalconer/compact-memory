@@ -42,6 +42,7 @@ __all__ = [
     "ImportanceCompression",
     "PrototypeSystemStrategy",
     "ValidationMetric",
+    "run_params_trial",
 ]
 
 _lazy_map = {
@@ -81,6 +82,7 @@ _lazy_map = {
     "ImportanceCompression": "gist_memory.compression",
     "PrototypeSystemStrategy": "gist_memory.prototype_system_strategy",
     "ValidationMetric": "gist_memory.validation.metrics_abc",
+    "run_params_trial": "gist_memory.hpo",
 }
 
 

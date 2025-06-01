@@ -130,7 +130,6 @@ def init(
     typer.echo(f"Initialized agent at {directory}")
 
 
-
 strategy_app = typer.Typer(help="Inspect compression strategies")
 app.add_typer(strategy_app, name="strategy")
 
@@ -308,6 +307,7 @@ def compress_text(
         tokenizer = lambda t, **k: t.split()
 
     import time
+
     start = time.time()
     result = strat.compress(text, budget, tokenizer=tokenizer)
     if isinstance(result, tuple):
@@ -493,7 +493,9 @@ def package_validate(package_path: Path) -> None:
 @experiment_app.command("run-package")
 def run_experiment_package(
     package_path: Path = typer.Argument(..., help="Path to strategy package"),
-    experiment: Optional[str] = typer.Option(None, "--experiment", help="Experiment config"),
+    experiment: Optional[str] = typer.Option(
+        None, "--experiment", help="Experiment config"
+    ),
 ) -> None:
     """Run an experiment from a strategy package."""
     manifest = load_manifest(package_path / "strategy_package.yaml")
@@ -527,10 +529,25 @@ def run_experiment_package(
         param_grid=params,
         validation_metrics=cfg_data.get("validation_metrics"),
     )
-    strategy_params = cfg_data.get("packaged_strategy_config", {}).get("strategy_params", {})
+    strategy_params = cfg_data.get("packaged_strategy_config", {}).get(
+        "strategy_params", {}
+    )
     strategy = Strategy(**strategy_params)
     results = run_response_experiment(cfg, strategy=strategy)
     typer.echo(json.dumps(results))
+
+
+@experiment_app.command("optimize")
+def optimize_experiment(
+    script: Path = typer.Argument(..., help="Python script")
+) -> None:
+    """Run a hyperparameter optimisation script."""
+    if not script.exists():
+        typer.secho(f"Script '{script}' not found", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    import runpy
+
+    runpy.run_path(str(script), run_name="__main__")
 
 
 @trace_app.command("inspect")
@@ -541,7 +558,9 @@ def trace_inspect(
     """Print a summary of a saved ``CompressionTrace``."""
 
     if not trace_file.exists():
-        typer.secho(f"Trace file '{trace_file}' not found", err=True, fg=typer.colors.RED)
+        typer.secho(
+            f"Trace file '{trace_file}' not found", err=True, fg=typer.colors.RED
+        )
         raise typer.Exit(code=1)
 
     import json
