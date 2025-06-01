@@ -26,6 +26,8 @@ from .package_utils import (
     load_manifest,
     validate_manifest,
     load_strategy_class,
+    validate_package_dir,
+    check_requirements_installed,
 )
 from .response_experiment import ResponseExperimentConfig, run_response_experiment
 
@@ -475,20 +477,12 @@ def package_create(
 @package_app.command("validate")
 def package_validate(package_path: Path) -> None:
     """Validate a strategy package."""
-    manifest_path = package_path / "strategy_package.yaml"
-    if not manifest_path.exists():
-        typer.secho("strategy_package.yaml not found", err=True, fg=typer.colors.RED)
-        raise typer.Exit(code=1)
-    manifest = load_manifest(manifest_path)
-    errors = validate_manifest(manifest)
+    errors, warnings = validate_package_dir(package_path)
+    for w in warnings:
+        typer.secho(f"Warning: {w}", fg=typer.colors.YELLOW)
     if errors:
         for e in errors:
             typer.echo(e)
-        raise typer.Exit(code=1)
-    try:
-        load_strategy_class(package_path, manifest)
-    except Exception as exc:
-        typer.secho(str(exc), err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1)
     typer.echo("Package is valid")
 
@@ -501,6 +495,13 @@ def run_experiment_package(
     """Run an experiment from a strategy package."""
     manifest = load_manifest(package_path / "strategy_package.yaml")
     Strategy = load_strategy_class(package_path, manifest)
+
+    missing = check_requirements_installed(package_path / "requirements.txt")
+    if missing:
+        typer.secho(
+            f"Warning: missing requirements - {', '.join(missing)}",
+            fg=typer.colors.YELLOW,
+        )
     if experiment is None:
         defaults = manifest.get("default_experiments", [])
         if len(defaults) == 1:

@@ -3,6 +3,7 @@ from __future__ import annotations
 """Utilities for working with strategy packages."""
 
 import importlib.util
+import importlib
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Dict
@@ -58,9 +59,70 @@ def load_strategy_class(package_dir: Path, manifest: Dict[str, Any]) -> type[Com
         raise TypeError(f"{class_name} is not a CompressionStrategy")
     return cls
 
+
+def check_requirements_installed(req_file: Path) -> list[str]:
+    """Return a list of requirement names that are not currently importable."""
+    missing: list[str] = []
+    if not req_file.exists():
+        return missing
+    for line in req_file.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        pkg = line.split("==")[0].split(">=")[0].split("<=")[0]
+        pkg = pkg.split("[")[0].strip()
+        module_name = pkg.replace("-", "_")
+        try:
+            importlib.import_module(module_name)
+        except ImportError:
+            missing.append(pkg)
+    return missing
+
+
+def validate_package_dir(package_dir: Path) -> tuple[list[str], list[str]]:
+    """Validate a strategy package directory.
+
+    Returns a tuple of (errors, warnings).
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    manifest_path = package_dir / "strategy_package.yaml"
+    if not manifest_path.exists():
+        errors.append("strategy_package.yaml not found")
+        return errors, warnings
+
+    try:
+        manifest = load_manifest(manifest_path)
+    except Exception as exc:
+        errors.append(f"Invalid strategy_package.yaml: {exc}")
+        return errors, warnings
+
+    errors.extend(validate_manifest(manifest))
+
+    module_name = manifest.get("strategy_module")
+    if module_name:
+        module_path = package_dir / f"{module_name}.py"
+        if not module_path.exists():
+            errors.append(f"{module_path.name} not found")
+        else:
+            try:
+                load_strategy_class(package_dir, manifest)
+            except Exception as exc:
+                errors.append(str(exc))
+
+    if not (package_dir / "requirements.txt").exists():
+        warnings.append("requirements.txt not found")
+    if not (package_dir / "README.md").exists():
+        warnings.append("README.md not found")
+
+    return errors, warnings
+
 __all__ = [
     "load_manifest",
     "validate_manifest",
     "import_module_from_path",
     "load_strategy_class",
+    "check_requirements_installed",
+    "validate_package_dir",
 ]
