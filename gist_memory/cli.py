@@ -1,9 +1,10 @@
 import json
+from typing import Union # TODO: remove this, only here for backwards compatibility
 import shutil
 import os
 import yaml
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, List
 import logging
 
 import typer
@@ -12,6 +13,7 @@ from .token_utils import token_count
 from rich.table import Table
 from rich.console import Console
 
+from gist_memory import __version__
 from .logging_utils import configure_logging
 
 
@@ -38,9 +40,17 @@ from .package_utils import (
 )
 from .response_experiment import ResponseExperimentConfig, run_response_experiment
 
-app = typer.Typer(help="Gist Memory command line interface")
+app = typer.Typer(
+    help="Gist Memory: A CLI for managing and interacting with a memory agent that uses advanced compression strategies to store and retrieve information. Primary actions like ingest, query, and talk are available as subcommands, along with advanced features for managing strategies, metrics, and experiments."
+)
 console = Console()
 VERBOSE = False
+
+
+def version_callback(value: bool):
+    if value:
+        typer.echo(f"Gist Memory version: {__version__}")
+        raise typer.Exit()
 
 
 @app.callback(invoke_without_command=False)
@@ -50,6 +60,14 @@ def main(
         None, "--log-file", help="Write debug logs to this file"
     ),
     verbose: bool = typer.Option(False, "--verbose", help="Enable debug logging"),
+    version: Optional[bool] = typer.Option(
+        None,
+        "-v",
+        "--version",
+        callback=version_callback,
+        is_eager=True,
+        help="Show the version and exit.",
+    ),
 ) -> None:
     """Configure logging before executing commands."""
     if log_file:
@@ -102,7 +120,16 @@ def init(
     alpha: float = 0.1,
     chunker: str = "sentence_window",
 ) -> None:
-    """Create a new agent store."""
+    """
+    Creates and initializes a new agent data store at the specified directory.
+
+    This command sets up the necessary file structure and metadata for a new
+    Gist Memory agent. You can specify parameters like the agent name,
+    embedding model, similarity threshold (tau), and chunking strategy.
+
+    Usage Example:
+        gist-memory init path/to/my_agent --model-name sentence-transformers/all-mpnet-base-v2 --tau 0.8
+    """
     path = Path(directory)
     if path.exists() and any(path.iterdir()):
         typer.secho(
@@ -138,25 +165,37 @@ def init(
     typer.echo(f"Initialized agent at {directory}")
 
 
-strategy_app = typer.Typer(help="Inspect compression strategies")
+strategy_app = typer.Typer(
+    help="Manage and inspect Long-Term Memory (LTM) compression strategies."
+)
 app.add_typer(strategy_app, name="strategy")
 
-metric_app = typer.Typer(help="Inspect validation metrics")
+metric_app = typer.Typer(
+    help="Manage and inspect validation metrics for compression and LLM responses."
+)
 app.add_typer(metric_app, name="metric")
 
-package_app = typer.Typer(help="Manage strategy packages")
+package_app = typer.Typer(help="Manage custom strategy packages.")
 app.add_typer(package_app, name="package")
 
-experiment_app = typer.Typer(help="Run experiments")
+experiment_app = typer.Typer(
+    help="Run various experiments for ingestion, responses, and hyperparameter optimization."
+)
 app.add_typer(experiment_app, name="experiment")
 
-trace_app = typer.Typer(help="Inspect compression traces")
+trace_app = typer.Typer(help="Inspect and analyze compression traces.")
 app.add_typer(trace_app, name="trace")
 
 
 @metric_app.command("list")
 def metric_list() -> None:
-    """List available validation metric IDs."""
+    """
+    Lists all available validation metric IDs that can be used with
+    `evaluate-compression` and `evaluate-llm-response` commands.
+
+    Usage Example:
+        gist-memory metric list
+    """
     from .registry import _VALIDATION_METRIC_REGISTRY
 
     for mid in sorted(_VALIDATION_METRIC_REGISTRY):
@@ -172,7 +211,16 @@ def strategy_inspect(
         False, "--list-prototypes", help="List prototypes for the strategy"
     ),
 ) -> None:
-    """Inspect a specific LTM compression strategy."""
+    """
+    Inspect the details of a compression strategy, particularly its prototypes.
+
+    This command allows you to inspect the details of a compression strategy.
+    For the 'prototype' strategy, you can list the learned prototypes, which are
+    representative summaries of related memories within the specified agent.
+
+    Usage Example:
+        gist-memory strategy inspect prototype --agent-name path/to/agent --list-prototypes
+    """
 
     if strategy_name != "prototype":
         typer.echo(f"Unknown strategy: {strategy_name}", err=True)
@@ -204,7 +252,13 @@ def strategy_inspect(
 
 @strategy_app.command("list")
 def strategy_list() -> None:
-    """List available compression strategies with metadata."""
+    """
+    Lists all available Long-Term Memory (LTM) compression strategies
+    along with their metadata such as display name, version, and source.
+
+    Usage Example:
+        gist-memory strategy list
+    """
     load_plugins()
     table = Table("Strategy ID", "Display Name", "Version", "Source", "Status")
     meta = all_strategy_metadata()
@@ -228,7 +282,17 @@ def stats(
     agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ) -> None:
-    """Show statistics about the store."""
+    """
+    Show statistics about the agent's data store.
+
+    This command displays various statistics about the specified agent's memory,
+    such as the number of prototypes and memories.
+    Use the --json option to dump these statistics in a machine-readable JSON format,
+    which can be useful for scripting or further analysis.
+
+    Usage Example (dump to JSON and redirect to a file):
+        gist-memory stats path/to/agent --json > agent_stats.json
+    """
     path = Path(agent_name)
     if not path.exists():
         typer.secho(
@@ -265,7 +329,18 @@ def talk(
         help="Display token count of the prompt sent to the LLM",
     ),
 ) -> None:
-    """Talk to the brain using the same pathway as chat sessions."""
+    """
+    Interact with the memory agent by sending it a message.
+
+    This command allows you to have a conversation with the agent. The agent uses its
+    stored knowledge, organized into prototypes, to understand and respond to your messages.
+
+    Prototypes are representative summaries of related memories. When you talk to the
+    agent, it uses these prototypes to retrieve relevant information to formulate a response.
+
+    Usage Example:
+        gist-memory talk --agent-name path/to/agent --message "What do you know about topic X?"
+    """
 
     path = Path(agent_name)
     if not path.exists():
@@ -490,9 +565,18 @@ def compress_text(
         False, "--verbose-stats", help="Show token counts and processing time"
     ),
 ) -> None:
-    """Compress ``input_source`` using the chosen ``strategy``.
+    """
+    Compress input text, file, or directory using a specified strategy to create a summary.
 
-    Run ``gist-memory strategy list`` to see available strategy IDs.
+    This command takes an input string, a single file, or all files in a directory (optionally recursively)
+    and compresses the content using the chosen strategy and token budget.
+    The result is a condensed version (summary) of the input.
+
+    Use 'gist-memory strategy list' to see available strategy IDs.
+
+    Usage Example:
+        gist-memory compress "This is a long text that needs to be summarized effectively." --strategy prototype --budget 50
+        gist-memory compress path/to/document.txt --strategy my_custom_strategy --budget 200 -o path/to/summary.txt
     """
 
     try:
@@ -565,7 +649,16 @@ def evaluate_compression(
     metric_params_json: Optional[str] = typer.Option(None, "--metric-params", help="Metric parameters as JSON"),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ) -> None:
-    """Evaluate compression quality using a validation metric."""
+    """
+    Evaluates the quality of compressed text against the original using a specified metric.
+
+    This command helps quantify how well the compression performed based on criteria
+    like information retention, size reduction, etc. Use `gist-memory metric list`
+    to see available metric IDs.
+
+    Usage Example:
+        gist-memory evaluate-compression "Original long text..." "Compressed summary." --metric compression_ratio
+    """
     import sys
     import json
     from .registry import get_validation_metric_class
@@ -624,7 +717,16 @@ def llm_prompt(
     llm_config_file: Optional[Path] = typer.Option(Path("llm_models_config.yaml"), "--llm-config", exists=True, dir_okay=False, resolve_path=True, help="LLM config file"),
     api_key_env_var: Optional[str] = typer.Option(None, help="Env var for API key"),
 ) -> None:
-    """Send a prompt to an LLM using compressed context."""
+    """
+    Sends a constructed prompt (context + query) to a specified Language Model (LLM).
+
+    This command is useful for testing how an LLM responds when provided with
+    context that has been compressed by one of the strategies. You can specify
+    the model, system prompt, and other parameters.
+
+    Usage Example:
+        gist-memory llm-prompt --context "My compressed context about AI." --query "What are the key points?" --model-id gpt-3.5-turbo
+    """
     import sys
     import json
     import yaml
@@ -692,7 +794,16 @@ def evaluate_llm_response(
     metric_params_json: Optional[str] = typer.Option(None, "--metric-params", help="Metric parameters as JSON"),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ) -> None:
-    """Evaluate an LLM response against a reference."""
+    """
+    Evaluates an LLM's response against a reference (ground truth) answer using a specified metric.
+
+    This helps in assessing the performance of an LLM in tasks like question answering
+    or summarization when its responses are compared to known good answers.
+    Use `gist-memory metric list` to see available metric IDs.
+
+    Usage Example:
+        gist-memory evaluate-llm-response "LLM Output: The capital is Paris." "Reference Answer: Paris." --metric exact_match
+    """
     import sys
     import json
     from .registry import get_validation_metric_class
@@ -743,7 +854,16 @@ def evaluate_llm_response(
 def validate(
     agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
 ) -> None:
-    """Validate the store metadata and embeddings."""
+    """
+    Checks the integrity and validity of an existing agent data store.
+
+    This command verifies that the agent's metadata, embedding dimensions,
+    and file structures are correct and consistent. It's useful for diagnosing
+    potential issues with an agent store.
+
+    Usage Example:
+        gist-memory validate path/to/my_agent
+    """
     path = Path(agent_name)
     if not path.exists():
         typer.secho(
@@ -771,7 +891,18 @@ def clear(
     yes: bool = typer.Option(False, "--yes", help="Confirm deletion"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Do not delete files"),
 ) -> None:
-    """Delete all data in the store."""
+    """
+    Deletes all data within the specified agent store, including memories and prototypes.
+
+    This is a destructive operation and requires confirmation via the --yes flag
+    unless --dry-run is used. Use with caution.
+
+    Usage Example (will prompt for confirmation):
+        gist-memory clear path/to/my_agent
+
+    Usage Example (will not prompt, immediately deletes):
+        gist-memory clear path/to/my_agent --yes
+    """
     path = Path(agent_name)
     if not path.exists():
         typer.secho(
@@ -804,7 +935,16 @@ def download_model(
         "all-MiniLM-L6-v2", help="SentenceTransformer model name"
     ),
 ) -> None:
-    """Pre-download a local embedding model."""
+    """
+    Pre-downloads a specified sentence transformer model for generating embeddings.
+
+    This is useful to ensure the model is available locally, especially in
+    environments with limited internet access or to avoid download delays
+    during agent initialization or operation.
+
+    Usage Example:
+        gist-memory download-model --model-name sentence-transformers/all-MiniLM-L12-v2
+    """
     from tqdm import tqdm
     from .model_utils import download_embedding_model
 
@@ -819,7 +959,15 @@ def download_model(
 def download_chat_model(
     model_name: str = typer.Option("distilgpt2", help="Local causal LM name"),
 ) -> None:
-    """Pre-download a local chat model for ``talk`` mode."""
+    """
+    Pre-downloads a specified local language model for use with the `talk` command.
+
+    This ensures the chat model is available locally, which can speed up
+    the `talk` command's first run and is helpful for offline usage.
+
+    Usage Example:
+        gist-memory download-chat-model --model-name distilgpt2
+    """
     from tqdm import tqdm
     from .model_utils import download_chat_model as _download_chat_model
 
@@ -841,7 +989,18 @@ def run_experiment_cmd(
     ),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ) -> None:
-    """Run a simple ingestion experiment."""
+    """
+    Run a simple ingestion experiment.
+
+    This command processes a dataset (e.g., a text file) to build or update the agent's memory.
+    During ingestion, new information is chunked and then either assigned to an existing
+    prototype or used to create a new one based on similarity.
+
+    Prototypes are representative summaries of related memories.
+
+    Usage Example:
+        gist-memory experiment ingest path/to/dataset.txt --tau 0.75
+    """
     from .experiment_runner import ExperimentConfig, run_experiment
 
     cfg = ExperimentConfig(
@@ -860,7 +1019,15 @@ def package_create(
     name: str = typer.Option("sample_strategy", "--name", help="Strategy name"),
     path: Optional[Path] = typer.Option(None, "--path", help="Output directory"),
 ) -> None:
-    """Generate a template strategy package."""
+    """
+    Generates a template for creating a new custom strategy package.
+
+    This command creates a directory with the basic structure and files needed
+    to develop and package a new compression strategy.
+
+    Usage Example:
+        gist-memory package create --name my_new_strategy
+    """
     target = Path(path or name)
     target.mkdir(parents=True, exist_ok=True)
     (target / "experiments").mkdir(exist_ok=True)
@@ -892,7 +1059,15 @@ def package_create(
 
 @package_app.command("validate")
 def package_validate(package_path: Path) -> None:
-    """Validate a strategy package."""
+    """
+    Validates the structure, manifest file (strategy_package.yaml), and other
+    requirements for a custom strategy package.
+
+    This helps ensure the package is correctly formatted before sharing or use.
+
+    Usage Example:
+        gist-memory package validate path/to/my_package
+    """
     errors, warnings = validate_package_dir(package_path)
     for w in warnings:
         typer.secho(f"Warning: {w}", fg=typer.colors.YELLOW)
@@ -910,7 +1085,15 @@ def run_experiment_package(
         None, "--experiment", help="Experiment config"
     ),
 ) -> None:
-    """Run an experiment from a strategy package."""
+    """
+    Runs an experiment defined within a specified strategy package.
+
+    Experiments are typically defined in YAML files within the package and
+    can be used to evaluate the packaged strategy's performance.
+
+    Usage Example:
+        gist-memory experiment run-package path/to/my_package --experiment experiment_config.yaml
+    """
     manifest = load_manifest(package_path / "strategy_package.yaml")
     Strategy = load_strategy_class(package_path, manifest)
 
@@ -954,7 +1137,15 @@ def run_experiment_package(
 def optimize_experiment(
     script: Path = typer.Argument(..., help="Python script")
 ) -> None:
-    """Run a hyperparameter optimisation script."""
+    """
+    Runs a hyperparameter optimization script for finding optimal strategy parameters.
+
+    The script should use a library like Optuna or Ray Tune to explore
+    different parameter combinations for a compression strategy.
+
+    Usage Example:
+        gist-memory experiment optimize path/to/optimization_script.py
+    """
     if not script.exists():
         typer.secho(f"Script '{script}' not found", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1)
@@ -968,7 +1159,15 @@ def trace_inspect(
     trace_file: Path = typer.Argument(..., help="Path to trace JSON"),
     step_type: Optional[str] = typer.Option(None, "--type", help="Filter by step type"),
 ) -> None:
-    """Print a summary of a saved ``CompressionTrace``."""
+    """
+    Prints a summary of a saved CompressionTrace JSON file.
+
+    This command helps in analyzing the steps taken by a compression strategy.
+    You can filter the displayed steps by their type (e.g., 'chunk', 'embed', 'cluster').
+
+    Usage Example:
+        gist-memory trace inspect path/to/trace.json --type filter_item
+    """
 
     if not trace_file.exists():
         typer.secho(
