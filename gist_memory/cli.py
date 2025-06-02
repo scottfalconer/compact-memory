@@ -1,11 +1,15 @@
 import json
-from typing import Union # TODO: remove this, only here for backwards compatibility
 import shutil
 import os
 import yaml
 from pathlib import Path
-from typing import Optional, Any, List
+from typing import Optional, Any # List removed
 import logging
+import time # Moved from _process_string_compression
+from dataclasses import asdict # Moved from _process_string_compression
+import sys # Moved from local imports
+from tqdm import tqdm # Moved from download_model and download_chat_model
+import runpy # Moved from optimize_experiment
 
 import typer
 import portalocker
@@ -19,6 +23,11 @@ from .logging_utils import configure_logging
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
+from .local_llm import LocalChatModel # Moved from talk
+from .active_memory_manager import ActiveMemoryManager # Moved from talk
+from .registry import _VALIDATION_METRIC_REGISTRY, get_validation_metric_class # Moved from metric_list, evaluate_compression, evaluate_llm_response
+from .llm_providers import OpenAIProvider, GeminiProvider, LocalTransformersProvider # Moved from llm_prompt
+from .model_utils import download_embedding_model, download_chat_model as _download_chat_model # Moved from download_model, download_chat_model
 from .embedding_pipeline import (
     get_embedding_dim,
     EmbeddingDimensionMismatchError,
@@ -39,12 +48,13 @@ from .package_utils import (
     check_requirements_installed,
 )
 from .response_experiment import ResponseExperimentConfig, run_response_experiment
+from .experiment_runner import ExperimentConfig, run_experiment # Moved from run_experiment_cmd
 
 app = typer.Typer(
     help="Gist Memory: A CLI for managing and interacting with a memory agent that uses advanced compression strategies to store and retrieve information. Primary actions like ingest, query, and talk are available as subcommands, along with advanced features for managing strategies, metrics, and experiments."
 )
 console = Console()
-VERBOSE = False
+# VERBOSE = False # Unused global variable
 
 
 def version_callback(value: bool):
@@ -75,8 +85,8 @@ def main(
         configure_logging(log_file, level)
     elif verbose:
         logging.basicConfig(level=logging.DEBUG)
-    global VERBOSE
-    VERBOSE = verbose
+    # global VERBOSE # Unused global variable
+    # VERBOSE = verbose # Unused global variable
     load_plugins()
     ctx.obj = {"verbose": verbose}
 
@@ -196,7 +206,7 @@ def metric_list() -> None:
     Usage Example:
         gist-memory metric list
     """
-    from .registry import _VALIDATION_METRIC_REGISTRY
+    # from .registry import _VALIDATION_METRIC_REGISTRY # Moved to top
 
     for mid in sorted(_VALIDATION_METRIC_REGISTRY):
         typer.echo(mid)
@@ -354,7 +364,7 @@ def talk(
     with PersistenceLock(path):
         agent = _load_agent(path)
 
-        from .local_llm import LocalChatModel
+        # from .local_llm import LocalChatModel # Moved to top
 
         try:
             agent._chat_model = LocalChatModel(model_name=model_name)
@@ -363,11 +373,11 @@ def talk(
             typer.echo(str(exc), err=True)
             raise typer.Exit(code=1)
 
-        from .active_memory_manager import ActiveMemoryManager
+        # from .active_memory_manager import ActiveMemoryManager # Moved to top
 
         mgr = ActiveMemoryManager()
         comp = None
-        if isinstance(compression_strategy, str) and compression_strategy:
+        if compression_strategy: # Simplified condition
             try:
                 comp_cls = get_compression_strategy(compression_strategy)
                 comp = comp_cls()
@@ -415,7 +425,7 @@ def _process_string_compression(
         raise typer.Exit(code=1)
 
     strat = strat_cls()
-    import time
+    # import time # Moved to top
 
     start = time.time()
     result = strat.compress(text_content, budget, tokenizer=tokenizer)
@@ -444,12 +454,11 @@ def _process_string_compression(
         typer.echo(compressed.text)
 
     if trace_file and trace:
-        import json
-        from dataclasses import asdict
+        # from dataclasses import asdict # Moved to top
 
         try:
             trace_file.parent.mkdir(parents=True, exist_ok=True)
-            trace_file.write_text(json.dumps(asdict(trace)))
+            trace_file.write_text(json.dumps(asdict(trace))) # json is imported globally
         except (IOError, OSError, PermissionError) as exc:
             typer.secho(f"Error writing {trace_file}: {exc}", err=True, fg=typer.colors.RED)
             raise typer.Exit(code=1)
@@ -659,9 +668,9 @@ def evaluate_compression(
     Usage Example:
         gist-memory evaluate-compression "Original long text..." "Compressed summary." --metric compression_ratio
     """
-    import sys
-    import json
-    from .registry import get_validation_metric_class
+    # import sys # Moved to top
+    # import json # Global import
+    # from .registry import get_validation_metric_class # Moved to top
 
     def read_input(value: str, allow_stdin: bool) -> str:
         if value == "-":
@@ -727,10 +736,10 @@ def llm_prompt(
     Usage Example:
         gist-memory llm-prompt --context "My compressed context about AI." --query "What are the key points?" --model-id gpt-3.5-turbo
     """
-    import sys
-    import json
-    import yaml
-    from .llm_providers import OpenAIProvider, GeminiProvider, LocalTransformersProvider
+    # import sys # Moved to top
+    # import json # Global import
+    # import yaml # Global import
+    # from .llm_providers import OpenAIProvider, GeminiProvider, LocalTransformersProvider # Moved to top
 
     def read_val(val: str) -> str:
         if val == "-":
@@ -804,9 +813,9 @@ def evaluate_llm_response(
     Usage Example:
         gist-memory evaluate-llm-response "LLM Output: The capital is Paris." "Reference Answer: Paris." --metric exact_match
     """
-    import sys
-    import json
-    from .registry import get_validation_metric_class
+    # import sys # Moved to top
+    # import json # Global import
+    # from .registry import get_validation_metric_class # Moved to top
 
     def read_value(val: str, allow_stdin: bool) -> str:
         if val == "-":
@@ -945,8 +954,8 @@ def download_model(
     Usage Example:
         gist-memory download-model --model-name sentence-transformers/all-MiniLM-L12-v2
     """
-    from tqdm import tqdm
-    from .model_utils import download_embedding_model
+    # from tqdm import tqdm # Moved to top
+    # from .model_utils import download_embedding_model # Moved to top
 
     bar = tqdm(total=1, desc="Downloading model", disable=False)
     download_embedding_model(model_name)
@@ -968,8 +977,8 @@ def download_chat_model(
     Usage Example:
         gist-memory download-chat-model --model-name distilgpt2
     """
-    from tqdm import tqdm
-    from .model_utils import download_chat_model as _download_chat_model
+    # from tqdm import tqdm # Moved to top
+    # from .model_utils import download_chat_model as _download_chat_model # Moved to top
 
     bar = tqdm(total=1, desc="Downloading chat model", disable=False)
     _download_chat_model(model_name)
@@ -1001,7 +1010,7 @@ def run_experiment_cmd(
     Usage Example:
         gist-memory experiment ingest path/to/dataset.txt --tau 0.75
     """
-    from .experiment_runner import ExperimentConfig, run_experiment
+    # from .experiment_runner import ExperimentConfig, run_experiment # Moved to top
 
     cfg = ExperimentConfig(
         dataset=dataset, similarity_threshold=similarity_threshold, work_dir=work_dir
@@ -1046,7 +1055,7 @@ def package_create(
         "authors": [],
         "description": "Describe the strategy",
     }
-    import yaml
+    # import yaml # Global import
 
     (target / "strategy_package.yaml").write_text(yaml.safe_dump(manifest))
     (target / "requirements.txt").write_text("\n")
@@ -1113,7 +1122,7 @@ def run_experiment_package(
     exp_path = Path(experiment)
     if not exp_path.is_absolute():
         exp_path = package_path / exp_path
-    import yaml
+    # import yaml # Global import
 
     cfg_data = yaml.safe_load(exp_path.read_text()) or {}
     dataset = cfg_data.get("dataset")
@@ -1149,7 +1158,7 @@ def optimize_experiment(
     if not script.exists():
         typer.secho(f"Script '{script}' not found", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1)
-    import runpy
+    # import runpy # Moved to top
 
     runpy.run_path(str(script), run_name="__main__")
 
@@ -1175,8 +1184,8 @@ def trace_inspect(
         )
         raise typer.Exit(code=1)
 
-    import json
-    from rich.table import Table
+    # import json # Global import
+    # from rich.table import Table # Global import
 
     data = json.loads(trace_file.read_text())
     steps = data.get("steps", [])
