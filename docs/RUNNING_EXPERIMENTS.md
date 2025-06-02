@@ -1,5 +1,7 @@
 # Running Experiments
 
+This document explains how to use the Gist Memory experimentation framework to evaluate and compare different `CompressionStrategy` implementations. It covers configuring experiments, specifying validation metrics, and understanding the results.
+
 Experiments are configured with `ExperimentConfig` or `ResponseExperimentConfig`.
 Validation metrics are listed in the `validation_metrics` field:
 

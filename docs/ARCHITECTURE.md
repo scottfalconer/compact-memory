@@ -1,5 +1,7 @@
 # Gist Memory Architecture
 
+This document provides a detailed technical explanation of the Gist Memory platform's architecture, intended for developers contributing to the core or those seeking a deep understanding of its internal workings.
+
 ## Overview
 
 `gist-memory` implements a coarse prototype memory system for storing and
@@ -24,6 +26,7 @@ experimented with.
 ```
 
 ### Core modules
+<!-- SUGGESTION: A diagram illustrating the interaction between core modules (agent.py, json_npy_store.py, embedding_pipeline.py, chunker.py, etc.) could be helpful here. -->
 
 - **`agent.py`** – orchestrates ingestion and querying using a
   `JsonNpyVectorStore`. It handles deduplication, chunking, embedding and
@@ -52,6 +55,7 @@ experimented with.
   provider.
 
 ### Data models
+<!-- SUGGESTION: A simple diagram showing the relationship between BeliefPrototype and RawMemory data models would be useful. -->
 
 `models.py` defines two `pydantic` models:
 
@@ -64,6 +68,7 @@ experimented with.
 They are stored in JSON and referenced by ID in the NPY vector arrays.
 
 ## Ingestion flow
+<!-- SUGGESTION: A diagram illustrating the ingestion flow (Chunking -> Embedding -> Prototype Search -> Updating) would be beneficial here. -->
 
 1. **Chunking** – text is split into sentence windows using
    `SentenceWindowChunker` or into belief-sized ideas with
@@ -83,6 +88,7 @@ The agent keeps an LRU cache of recent SHA‑256 hashes to skip duplicates
 quickly.
 
 ## Querying
+<!-- SUGGESTION: A diagram illustrating the querying process (Query Embedding -> Prototype Retrieval -> Memory Scoring) would be beneficial here. -->
 
 1. The query text is embedded and the top `k` prototypes are retrieved.
 2. Constituent memories from those prototypes are scored by similarity to

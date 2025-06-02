@@ -1,3 +1,5 @@
+This document serves as a conceptual guide to the Gist Memory platform. It covers the vision behind the project, illustrates key memory management strategies (such as the Prototype System and ActiveMemoryManager), discusses prompt assembly techniques, and highlights important areas for experimentation and learning within the Gist Memory framework. Its aim is to provide a foundational understanding of the principles and ideas driving the development of Gist Memory.
+
 I. Vision: The Gist Memory Experimentation Platform
 
 Core Mission: To develop a platform for rapidly prototyping, testing, and validating diverse strategies for compressing textual information ("memory") to maximize its utility—including long-term coherence, evolving understanding, and efficient recall—within Large Language Model (LLM) token budgets. This is particularly crucial for applications where computational resources, API costs, or latency are significant concerns, and for enabling effective use of local/smaller LLMs with inherent token limitations.
