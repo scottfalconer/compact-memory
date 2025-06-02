@@ -27,7 +27,10 @@ pip3 install --no-cache-dir rich typer portalocker
 python3 - <<'PY'
 from sentence_transformers import SentenceTransformer
 
-SentenceTransformer("all-MiniLM-L6-v2")
+# Use the fully qualified model name to ensure the cached path
+# matches calls within the repo which expect
+# "sentence-transformers/all-MiniLM-L6-v2".
+SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 PY
 
 # Pre-download the default chat model used in talk mode
