@@ -23,7 +23,12 @@ from .embedding_pipeline import (
 )
 from .utils import load_agent
 from .config import DEFAULT_BRAIN_PATH
-from .compression import available_strategies, get_compression_strategy
+from .compression import (
+    available_strategies,
+    get_compression_strategy,
+    all_strategy_metadata,
+)
+from .plugin_loader import load_plugins
 from .package_utils import (
     load_manifest,
     validate_manifest,
@@ -54,6 +59,7 @@ def main(
         logging.basicConfig(level=logging.DEBUG)
     global VERBOSE
     VERBOSE = verbose
+    load_plugins()
     ctx.obj = {"verbose": verbose}
 
 
@@ -198,9 +204,23 @@ def strategy_inspect(
 
 @strategy_app.command("list")
 def strategy_list() -> None:
-    """List available compression strategy IDs."""
+    """List available compression strategies with metadata."""
+    load_plugins()
+    table = Table("Strategy ID", "Display Name", "Version", "Source", "Status")
+    meta = all_strategy_metadata()
     for sid in available_strategies():
-        typer.echo(sid)
+        info = meta.get(sid, {})
+        status = ""
+        if info.get("overrides"):
+            status = f"Overrides {info['overrides']}"
+        table.add_row(
+            sid,
+            info.get("display_name", sid) or sid,
+            info.get("version", "N/A") or "N/A",
+            info.get("source", "built-in") or "built-in",
+            status,
+        )
+    console.print(table)
 
 
 @app.command()
@@ -470,7 +490,10 @@ def compress_text(
         False, "--verbose-stats", help="Show token counts and processing time"
     ),
 ) -> None:
-    """Compress ``input_source`` using the chosen ``strategy``."""
+    """Compress ``input_source`` using the chosen ``strategy``.
+
+    Run ``gist-memory strategy list`` to see available strategy IDs.
+    """
 
     try:
         import tiktoken

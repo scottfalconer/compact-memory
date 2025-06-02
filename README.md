@@ -204,6 +204,7 @@ For more detailed information on Gist Memory's architecture, development guides,
 -   **Developing Compression Strategies:** Learn how to create your own strategies in `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`.
 -   **Developing Validation Metrics:** Find guidance on building custom metrics in `docs/DEVELOPING_VALIDATION_METRICS.md`.
 -   **Running Experiments:** Details on the experimentation framework can be found in `docs/RUNNING_EXPERIMENTS.md`.
+-   **Plugins:** Learn how to install or develop strategy plugins in `docs/SHARING_STRATEGIES.md`.
 -   **Conceptual Guides:** Explore the ideas behind memory strategies in `AGENTS.md`.
 
 ## Designing Compression Strategies

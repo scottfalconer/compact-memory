@@ -27,6 +27,8 @@ ImportanceCompression = _legacy.ImportanceCompression
 register_compression_strategy = _legacy.register_compression_strategy
 get_compression_strategy = _legacy.get_compression_strategy
 available_strategies = _legacy.available_strategies
+get_strategy_metadata = _legacy.get_strategy_metadata
+all_strategy_metadata = _legacy.all_strategy_metadata
 
 __all__ = [
     "CompressedMemory",
@@ -37,5 +39,7 @@ __all__ = [
     "register_compression_strategy",
     "get_compression_strategy",
     "available_strategies",
+    "get_strategy_metadata",
+    "all_strategy_metadata",
     "StrategyConfig",
 ]
