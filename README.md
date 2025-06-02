@@ -177,7 +177,7 @@ This example:
 To ensure Gist Memory is functioning correctly, especially after making changes or setting up the environment:
 Install development dependencies (if not already done during setup):
 ```bash
-pip install -r requirements.txt # Ensure test dependencies are included or use a separate requirements-dev.txt
+pip install -r requirements.txt  # Ensure test dependencies are included
 pytest
 ```
 
