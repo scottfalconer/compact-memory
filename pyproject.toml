@@ -38,3 +38,9 @@ ray = ["ray[tune]"]
 
 [project.scripts]
 gist-memory = "gist_memory.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["gist_memory*"]
+
+[tool.setuptools.package-data]
+"gist_memory" = ["py.typed"]
