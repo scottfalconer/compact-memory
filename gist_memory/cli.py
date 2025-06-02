@@ -1,7 +1,7 @@
 import json
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 import logging
 
 import typer
@@ -278,39 +278,30 @@ def talk(
     return
 
 
-@app.command("compress")
-def compress_text(
-    strategy: str = typer.Option(..., help="Compression strategy"),
-    text: str = typer.Option(..., help="Text to compress"),
-    budget: int = typer.Option(..., help="Token budget"),
-    verbose_stats: bool = typer.Option(
-        False, "--verbose-stats", help="Show token counts and processing time"
-    ),
+def _process_string_compression(
+    text_content: str,
+    strategy_id: str,
+    budget: int,
+    output_file: Optional[Path],
+    verbose_stats: bool,
+    tokenizer: Any,
 ) -> None:
-    """Run ``strategy`` on ``text`` with ``budget`` tokens."""
-
+    """Compress a string and handle output."""
     try:
-        strat_cls = get_compression_strategy(strategy)
+        strat_cls = get_compression_strategy(strategy_id)
     except KeyError:
         typer.secho(
-            f"Unknown compression strategy '{strategy}'",
+            f"Unknown compression strategy '{strategy_id}'. Available: {', '.join(available_strategies())}",
             err=True,
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
 
     strat = strat_cls()
-    try:
-        import tiktoken
-
-        tokenizer = tiktoken.get_encoding("gpt2")
-    except Exception:  # pragma: no cover - offline
-        tokenizer = lambda t, **k: t.split()
-
     import time
 
     start = time.time()
-    result = strat.compress(text, budget, tokenizer=tokenizer)
+    result = strat.compress(text_content, budget, tokenizer=tokenizer)
     if isinstance(result, tuple):
         compressed, trace = result
     else:
@@ -319,12 +310,179 @@ def compress_text(
     if trace and trace.processing_ms is None:
         trace.processing_ms = elapsed
     if verbose_stats:
-        orig_tokens = token_count(tokenizer, text)
+        orig_tokens = token_count(tokenizer, text_content)
         comp_tokens = token_count(tokenizer, compressed.text)
         typer.echo(
             f"Original tokens: {orig_tokens}\nCompressed tokens: {comp_tokens}\nTime ms: {elapsed:.1f}"
         )
-    typer.echo(compressed.text)
+    if output_file:
+        try:
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            output_file.write_text(compressed.text)
+        except (IOError, OSError, PermissionError) as exc:
+            typer.secho(f"Error writing {output_file}: {exc}", err=True, fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+        typer.echo(f"Saved compressed output to {output_file}")
+    else:
+        typer.echo(compressed.text)
+
+
+def _process_file_compression(
+    file_path: Path,
+    strategy_id: str,
+    budget: int,
+    output_file: Optional[Path],
+    verbose_stats: bool,
+    tokenizer: Any,
+) -> None:
+    """Compress text loaded from ``file_path``."""
+    if not file_path.exists() or not file_path.is_file():
+        typer.secho(f"File not found: {file_path}", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    try:
+        text_content = file_path.read_text()
+    except (IOError, OSError, PermissionError) as exc:
+        typer.secho(f"Error reading {file_path}: {exc}", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    _process_string_compression(text_content, strategy_id, budget, output_file, verbose_stats, tokenizer)
+
+
+def _process_directory_compression(
+    dir_path: Path,
+    strategy_id: str,
+    budget: int,
+    output_dir_param: Optional[Path],
+    recursive: bool,
+    pattern: str,
+    verbose_stats: bool,
+    tokenizer: Any,
+) -> None:
+    """Compress all files in ``dir_path`` matching ``pattern``."""
+    if not dir_path.exists() or not dir_path.is_dir():
+        typer.secho(f"Directory not found: {dir_path}", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    files = list(dir_path.rglob(pattern) if recursive else dir_path.glob(pattern))
+    if not files:
+        typer.echo("No matching files found.")
+        return
+
+    count = 0
+    for input_file in files:
+        typer.echo(f"Processing {input_file}...")
+        if output_dir_param:
+            try:
+                output_dir_param.mkdir(parents=True, exist_ok=True)
+            except (IOError, OSError, PermissionError) as exc:
+                typer.secho(f"Error creating {output_dir_param}: {exc}", err=True, fg=typer.colors.RED)
+                raise typer.Exit(code=1)
+            rel = input_file.relative_to(dir_path)
+            out_path = output_dir_param / rel
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            out_path = input_file.with_name(f"{input_file.stem}_compressed{input_file.suffix}")
+
+        _process_file_compression(input_file, strategy_id, budget, out_path, verbose_stats, tokenizer)
+        count += 1
+
+    if verbose_stats:
+        typer.echo(f"Processed {count} files.")
+
+
+@app.command("compress")
+def compress_text(
+    input_source: str = typer.Argument(
+        ...,
+        help="Input text directly or path to a file or directory to compress",
+    ),
+    *,
+    strategy: str = typer.Option(..., help="Compression strategy"),
+    output_path: Optional[Path] = typer.Option(
+        None,
+        "-o",
+        "--output",
+        resolve_path=True,
+        help=(
+            "Path to write compressed output. For directories, this specifies the"
+            " root output directory."
+        ),
+    ),
+    recursive: bool = typer.Option(
+        False,
+        "-r",
+        "--recursive",
+        help="Process directories recursively",
+    ),
+    pattern: str = typer.Option(
+        "*.txt",
+        "-p",
+        "--pattern",
+        help="File glob pattern when reading from a directory",
+    ),
+    budget: int = typer.Option(..., help="Token budget"),
+    verbose_stats: bool = typer.Option(
+        False, "--verbose-stats", help="Show token counts and processing time"
+    ),
+) -> None:
+    """Compress ``input_source`` using the chosen ``strategy``."""
+
+    try:
+        import tiktoken
+
+        enc = tiktoken.get_encoding("gpt2")
+
+        def tokenizer(text: str, return_tensors=None) -> dict:
+            return {"input_ids": enc.encode(text)}
+
+    except Exception:  # pragma: no cover - offline
+        tokenizer = lambda t, **k: t.split()
+
+    source_as_path = Path(input_source)
+
+    if source_as_path.is_file():
+        if recursive or pattern != "*.txt":
+            if recursive:
+                typer.secho("--recursive ignored for file input", fg=typer.colors.YELLOW)
+            if pattern != "*.txt":
+                typer.secho("--pattern ignored for file input", fg=typer.colors.YELLOW)
+        _process_file_compression(
+            source_as_path,
+            strategy,
+            budget,
+            output_path,
+            verbose_stats,
+            tokenizer,
+        )
+    elif source_as_path.is_dir():
+        if "**" in pattern and not recursive:
+            typer.secho(
+                "Pattern includes '**' but --recursive not set; matching may miss subdirectories",
+                fg=typer.colors.YELLOW,
+            )
+        _process_directory_compression(
+            source_as_path,
+            strategy,
+            budget,
+            output_path,
+            recursive,
+            pattern,
+            verbose_stats,
+            tokenizer,
+        )
+    else:
+        if recursive or pattern != "*.txt":
+            if recursive:
+                typer.secho("--recursive ignored for string input", fg=typer.colors.YELLOW)
+            if pattern != "*.txt":
+                typer.secho("--pattern ignored for string input", fg=typer.colors.YELLOW)
+        _process_string_compression(
+            input_source,
+            strategy,
+            budget,
+            output_path,
+            verbose_stats,
+            tokenizer,
+        )
 
 
 @app.command()
