@@ -78,7 +78,11 @@ def _load_model(model_name: str, device: str) -> SentenceTransformer:
         if torch is not None:
             torch.manual_seed(0)
         try:
-            _MODEL = SentenceTransformer(model_name, device=device)
+            _MODEL = SentenceTransformer(
+                model_name,
+                device=device,
+                local_files_only=True,
+            )
         except Exception as exc:  # pragma: no cover - depends on local files
             raise RuntimeError(
                 f"Error: Embedding Model '{model_name}' not found. "
