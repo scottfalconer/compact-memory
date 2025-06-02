@@ -8,6 +8,7 @@ import yaml
 
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 from .embedding_pipeline import MockEncoder
+from .compression.strategies_abc import CompressionStrategy
 
 
 @dataclass
@@ -47,7 +48,10 @@ def _evaluate_dialogue(sample: Dict[str, Any], params: Dict[str, Any], encoder: 
 
 
 # --------------------------------------------------------------
-def run_history_experiment(config: HistoryExperimentConfig) -> List[Dict[str, Any]]:
+def run_history_experiment(
+    config: HistoryExperimentConfig,
+    strategy: CompressionStrategy | None = None,
+) -> List[Dict[str, Any]]:
     """Run history parameter tuning experiment on ``config.dataset``."""
 
     dataset = _load_dataset(config.dataset)
