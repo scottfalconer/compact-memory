@@ -1,6 +1,6 @@
 # Developing Compression Strategies
 
-Guidelines and examples for implementing new `CompressionStrategy` classes will be documented here.
+This document is a practical guide for developers on how to implement new `CompressionStrategy` modules within the Gist Memory framework. While `docs/COMPRESSION_STRATEGIES.md` covers the conceptual and theoretical aspects of designing such strategies (the "what" and "why"), this document focuses on the "how-to" – the specific interfaces, methods, and considerations for writing the code.
 
 ## Designing Learnable Compression Strategies
 

@@ -1,5 +1,7 @@
 # Developing Validation Metrics
 
+This document guides developers and researchers on creating custom `ValidationMetric` classes to evaluate the quality and utility of compressed memory produced by different `CompressionStrategy` implementations. These metrics are crucial for the Gist Memory experimentation framework.
+
 Validation metrics assess how well an LLM performs when using compressed memory.
 All metrics must subclass `ValidationMetric` and register themselves with the
 registry so experiment configurations can reference them.
