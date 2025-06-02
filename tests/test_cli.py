@@ -250,3 +250,80 @@ def test_cli_trace_inspect(tmp_path):
     assert result.exit_code == 0
     assert "dummy" in result.stdout
     assert "filter_item" in result.stdout
+
+
+def test_cli_compress_string_stdout():
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        ["compress", "alpha bravo charlie delta", "--strategy", "none", "--budget", "3"],
+    )
+    assert result.exit_code == 0
+    assert "alpha bravo charlie" in result.stdout
+
+
+def test_cli_compress_string_to_file(tmp_path):
+    runner = CliRunner()
+    out_file = tmp_path / "out.txt"
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "alpha bravo charlie delta",
+            "--strategy",
+            "none",
+            "--budget",
+            "3",
+            "-o",
+            str(out_file),
+        ],
+    )
+    assert result.exit_code == 0
+    assert out_file.read_text() == "alpha bravo charlie"
+
+
+def test_cli_compress_file(tmp_path):
+    runner = CliRunner()
+    input_file = tmp_path / "in.txt"
+    input_file.write_text("one two three four")
+    out_file = tmp_path / "out.txt"
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            str(input_file),
+            "--strategy",
+            "none",
+            "--budget",
+            "2",
+            "-o",
+            str(out_file),
+        ],
+    )
+    assert result.exit_code == 0
+    assert out_file.read_text() == "one two"
+
+
+def test_cli_compress_directory(tmp_path):
+    runner = CliRunner()
+    dir_in = tmp_path / "inputs"
+    dir_in.mkdir()
+    (dir_in / "a.txt").write_text("alpha bravo charlie")
+    (dir_in / "b.txt").write_text("delta echo foxtrot")
+    result = runner.invoke(
+        app,
+        ["compress", str(dir_in), "--strategy", "none", "--budget", "2"],
+    )
+    assert result.exit_code == 0
+    assert (dir_in / "a_compressed.txt").read_text() == "alpha bravo"
+    assert (dir_in / "b_compressed.txt").read_text() == "delta echo"
+
+
+def test_cli_compress_invalid_strategy():
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        ["compress", "text", "--strategy", "bogus", "--budget", "3"],
+    )
+    assert result.exit_code != 0
+    assert "Unknown compression strategy" in result.stderr

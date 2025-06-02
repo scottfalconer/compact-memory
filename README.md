@@ -93,7 +93,7 @@ Run `gist-memory --help` to see available commands.
 Use the CLI to experiment with different compression strategies:
 
 ```bash
-gist-memory compress --strategy <strategy_name> --text "Your large text here..." --budget 500
+gist-memory compress "Your large text here..." --strategy <strategy_name> --budget 500
 gist-memory talk --strategy <strategy_name> --message "What can you tell me based on the compressed context?"
 ```
 
