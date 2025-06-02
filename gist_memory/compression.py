@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import List, Optional, Dict, Type, Any
 
 from .token_utils import truncate_text
+from .compression.strategies_abc import (
+    CompressedMemory,
+    CompressionStrategy,
+    CompressionTrace,
+)
 
 try:
     import tiktoken
@@ -29,18 +34,8 @@ def available_strategies() -> List[str]:
     return sorted(_COMPRESSION_REGISTRY)
 
 
-class CompressionStrategy:
-    """Interface for reducing text to fit a token budget."""
-
-    id: str = "base"
-
-    def compress(
-        self,
-        texts: List[str],
-        tokenizer: Any = None,
-        max_tokens: Optional[int] = None,
-    ) -> str:  # pragma: no cover - interface
-        raise NotImplementedError
+# Maintain alias for backward compatibility
+LegacyCompressionStrategy = CompressionStrategy
 
 
 class NoCompression(CompressionStrategy):
@@ -50,15 +45,27 @@ class NoCompression(CompressionStrategy):
 
     def compress(
         self,
-        texts: List[str],
+        text_or_chunks: List[str] | str,
+        llm_token_budget: int | None,
+        *,
         tokenizer: Any = None,
-        max_tokens: Optional[int] = None,
-    ) -> str:
+        **kwargs: Any,
+    ) -> tuple[CompressedMemory, CompressionTrace]:
         tokenizer = tokenizer or _DEFAULT_TOKENIZER or (lambda t, **k: t.split())
-        text = "\n".join(texts)
-        if max_tokens is not None:
-            text = truncate_text(tokenizer, text, max_tokens)
-        return text
+        if isinstance(text_or_chunks, list):
+            text = "\n".join(text_or_chunks)
+        else:
+            text = text_or_chunks
+        if llm_token_budget is not None:
+            text = truncate_text(tokenizer, text, llm_token_budget)
+        compressed = CompressedMemory(text=text)
+        trace = CompressionTrace(
+            strategy_name=self.id,
+            strategy_params={"llm_token_budget": llm_token_budget},
+            input_summary={"input_length": len(text)},
+            output_summary={"output_length": len(text)},
+        )
+        return compressed, trace
 
 
 class ImportanceCompression(CompressionStrategy):
@@ -68,17 +75,29 @@ class ImportanceCompression(CompressionStrategy):
 
     def compress(
         self,
-        texts: List[str],
+        text_or_chunks: List[str] | str,
+        llm_token_budget: int | None,
+        *,
         tokenizer: Any = None,
-        max_tokens: Optional[int] = None,
-    ) -> str:
+        **kwargs: Any,
+    ) -> tuple[CompressedMemory, CompressionTrace]:
         from .importance_filter import dynamic_importance_filter
 
         tokenizer = tokenizer or _DEFAULT_TOKENIZER or (lambda t, **k: t.split())
-        text = dynamic_importance_filter("\n".join(texts))
-        if max_tokens is not None:
-            text = truncate_text(tokenizer, text, max_tokens)
-        return text
+        if isinstance(text_or_chunks, list):
+            text = dynamic_importance_filter("\n".join(text_or_chunks))
+        else:
+            text = dynamic_importance_filter(text_or_chunks)
+        if llm_token_budget is not None:
+            text = truncate_text(tokenizer, text, llm_token_budget)
+        compressed = CompressedMemory(text=text)
+        trace = CompressionTrace(
+            strategy_name=self.id,
+            strategy_params={"llm_token_budget": llm_token_budget},
+            input_summary={"input_length": len(text)},
+            output_summary={"output_length": len(text)},
+        )
+        return compressed, trace
 
 
 register_compression_strategy(NoCompression.id, NoCompression)

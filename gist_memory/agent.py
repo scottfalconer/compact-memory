@@ -343,25 +343,12 @@ class Agent:
             limit = None
             if b_recent or b_older:
                 limit = (b_recent or 0) + (b_older or 0)
-            try:
-                compressed, trace = compression.compress(
-                    [t.text for t in history_final],
-                    limit,
-                    tokenizer=llm.tokenizer,
-                )
-                history_text = compressed.text
-            except TypeError:
-                # Legacy interface returning a string
-                history_text = compression.compress(
-                    [t.text for t in history_final], llm.tokenizer, limit
-                )
-                compressed = CompressedMemory(text=history_text)
-                trace = CompressionTrace(
-                    strategy_name=getattr(compression, "id", "legacy"),
-                    strategy_params={},
-                    input_summary={},
-                    output_summary={},
-                )
+            compressed, trace = compression.compress(
+                [t.text for t in history_final],
+                limit,
+                tokenizer=llm.tokenizer,
+            )
+            history_text = compressed.text
             history_tokens_final = token_count(llm.tokenizer, history_text)
 
         query_res = self.query(input_message, top_k_prototypes=2, top_k_memories=2)
