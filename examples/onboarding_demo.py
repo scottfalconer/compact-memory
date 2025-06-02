@@ -57,7 +57,7 @@ def main() -> None:
     # Demonstrate compression on some text
     sample_text = Path(data_file).read_text()
     strategy = TruncateStrategy()
-    compressed = strategy.compress(sample_text, llm_token_budget=40)
+    compressed, _ = strategy.compress(sample_text, llm_token_budget=40)
     print(f"Compressed preview: {compressed.text!r}\n")
 
     # Evaluate retrieval and response quality using small test datasets

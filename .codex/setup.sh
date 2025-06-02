@@ -41,3 +41,9 @@ AutoTokenizer.from_pretrained("distilgpt2")
 AutoModelForCausalLM.from_pretrained("distilgpt2")
 PY
 
+# Ensure the GPT-2 tokenizer files are available for tiktoken
+python3 - <<'PY'
+import tiktoken
+tiktoken.get_encoding("gpt2")
+PY
+
