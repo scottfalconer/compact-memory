@@ -198,6 +198,7 @@ def stats(
         raise typer.Exit(code=1)
     agent = _load_agent(path)
     data = agent.get_statistics()
+    logging.debug("Collected statistics: %s", data)
     if json_output:
         typer.echo(json.dumps(data))
     else:

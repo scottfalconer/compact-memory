@@ -40,7 +40,8 @@ ray = ["ray[tune]"]
 gist-memory = "gist_memory.__main__:main"
 
 [tool.setuptools.packages.find]
-include = ["gist_memory*"]
+where = ["."]
+include = ["gist_memory", "gist_memory.*"]
 
 [tool.setuptools.package-data]
 "gist_memory" = ["py.typed"]
