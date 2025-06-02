@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Dict, Any
 
+from .compression.strategies_abc import CompressionStrategy
+
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from .active_memory_manager import ActiveMemoryManager
@@ -15,7 +17,10 @@ from .experiments.config import ExperimentConfig
 from .embedding_pipeline import embed_text, get_embedding_dim
 
 
-def run_experiment(config: ExperimentConfig) -> Dict[str, Any]:
+def run_experiment(
+    config: ExperimentConfig,
+    strategy: CompressionStrategy | None = None,
+) -> Dict[str, Any]:
     """Ingest ``config.dataset`` and return metrics."""
 
     work = config.work_dir or Path(tempfile.mkdtemp())

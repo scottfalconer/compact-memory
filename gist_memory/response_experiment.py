@@ -15,6 +15,7 @@ from .json_npy_store import JsonNpyVectorStore
 from .embedding_pipeline import MockEncoder
 from .chunker import SentenceWindowChunker
 from .registry import get_validation_metric_class
+from . import validation  # ensure metrics are registered
 from .compression.strategies_abc import CompressionStrategy
 
 
