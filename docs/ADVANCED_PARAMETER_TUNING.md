@@ -52,3 +52,24 @@ pip install gist-memory[optuna]
 # or
 pip install gist-memory[ray]
 ```
+
+## Suggested AutoML Improvements
+
+Leveraging AutoML libraries to tune compression strategies can greatly speed up
+experimentation. The ideas below help refine search spaces and evaluation
+workflows:
+
+1. **Diversify the search space** – sample across different `CompressionStrategy`
+   implementations and vary key parameters such as summary length, similarity
+   thresholds and token budgets.
+2. **Early stopping callbacks** – abort unpromising trials early to save compute
+   when LLM evaluations are expensive.
+3. **Custom validation metrics** – extend beyond exact match to measure memory
+   retention, dialogue coherence or cost efficiency.
+4. **Multi-objective optimisation** – balance competing metrics like answer
+   quality versus token usage.
+5. **Cross-validation** – split small datasets to ensure tuned parameters
+   generalise to new conversations.
+
+These practices help AutoML tooling uncover robust configurations faster and can
+drive new insights into effective compression techniques.
