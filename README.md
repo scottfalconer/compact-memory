@@ -90,11 +90,19 @@ This project requires **Python 3.11+**.
 Run `gist-memory --help` to see available commands.
 
 ## Core Workflow
-Use the CLI to experiment with different compression strategies:
+Use the CLI to experiment with different compression strategies and metrics:
 
 ```bash
 gist-memory compress "Your large text here..." --strategy <strategy_name> --budget 500
 gist-memory talk --strategy <strategy_name> --message "What can you tell me based on the compressed context?"
+
+# Evaluate compression quality directly
+gist-memory evaluate-compression original.txt compressed.txt --metric compression_ratio --json
+
+# Pipeline: compress -> prompt -> evaluate
+gist-memory compress file.txt --strategy none --budget 50 --output-trace trace.json \
+  | gist-memory llm-prompt --context - --query "Summarize" --model distilgpt2 \
+  | gist-memory evaluate-llm-response - "expected summary" --metric exact_match --json
 ```
 
 ### Running Tests

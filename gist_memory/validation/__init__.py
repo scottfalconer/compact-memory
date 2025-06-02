@@ -7,6 +7,7 @@ from .hf_metrics import (
     BertScoreHFMetric,
     ExactMatchMetric,
 )
+from .compression_metrics import CompressionRatioMetric
 
 __all__ = [
     "ValidationMetric",
@@ -16,4 +17,5 @@ __all__ = [
     "MeteorHFMetric",
     "BertScoreHFMetric",
     "ExactMatchMetric",
+    "CompressionRatioMetric",
 ]

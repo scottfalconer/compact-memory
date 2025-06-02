@@ -1,5 +1,7 @@
 import json
 import shutil
+import os
+import yaml
 from pathlib import Path
 from typing import Optional, Any
 import logging
@@ -133,6 +135,9 @@ def init(
 strategy_app = typer.Typer(help="Inspect compression strategies")
 app.add_typer(strategy_app, name="strategy")
 
+metric_app = typer.Typer(help="Inspect validation metrics")
+app.add_typer(metric_app, name="metric")
+
 package_app = typer.Typer(help="Manage strategy packages")
 app.add_typer(package_app, name="package")
 
@@ -141,6 +146,15 @@ app.add_typer(experiment_app, name="experiment")
 
 trace_app = typer.Typer(help="Inspect compression traces")
 app.add_typer(trace_app, name="trace")
+
+
+@metric_app.command("list")
+def metric_list() -> None:
+    """List available validation metric IDs."""
+    from .registry import _VALIDATION_METRIC_REGISTRY
+
+    for mid in sorted(_VALIDATION_METRIC_REGISTRY):
+        typer.echo(mid)
 
 
 @strategy_app.command("inspect")
@@ -180,6 +194,13 @@ def strategy_inspect(
                 p["summary"][:60],
             )
         console.print(table)
+
+
+@strategy_app.command("list")
+def strategy_list() -> None:
+    """List available compression strategy IDs."""
+    for sid in available_strategies():
+        typer.echo(sid)
 
 
 @app.command()
@@ -283,6 +304,7 @@ def _process_string_compression(
     strategy_id: str,
     budget: int,
     output_file: Optional[Path],
+    trace_file: Optional[Path],
     verbose_stats: bool,
     tokenizer: Any,
 ) -> None:
@@ -326,6 +348,17 @@ def _process_string_compression(
     else:
         typer.echo(compressed.text)
 
+    if trace_file and trace:
+        import json
+        from dataclasses import asdict
+
+        try:
+            trace_file.parent.mkdir(parents=True, exist_ok=True)
+            trace_file.write_text(json.dumps(asdict(trace)))
+        except (IOError, OSError, PermissionError) as exc:
+            typer.secho(f"Error writing {trace_file}: {exc}", err=True, fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+
 
 def _process_file_compression(
     file_path: Path,
@@ -334,6 +367,7 @@ def _process_file_compression(
     output_file: Optional[Path],
     verbose_stats: bool,
     tokenizer: Any,
+    trace_file: Optional[Path],
 ) -> None:
     """Compress text loaded from ``file_path``."""
     if not file_path.exists() or not file_path.is_file():
@@ -344,7 +378,7 @@ def _process_file_compression(
     except (IOError, OSError, PermissionError) as exc:
         typer.secho(f"Error reading {file_path}: {exc}", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1)
-    _process_string_compression(text_content, strategy_id, budget, output_file, verbose_stats, tokenizer)
+    _process_string_compression(text_content, strategy_id, budget, output_file, trace_file, verbose_stats, tokenizer)
 
 
 def _process_directory_compression(
@@ -356,6 +390,7 @@ def _process_directory_compression(
     pattern: str,
     verbose_stats: bool,
     tokenizer: Any,
+    trace_file: Optional[Path],
 ) -> None:
     """Compress all files in ``dir_path`` matching ``pattern``."""
     if not dir_path.exists() or not dir_path.is_dir():
@@ -366,6 +401,9 @@ def _process_directory_compression(
     if not files:
         typer.echo("No matching files found.")
         return
+    if trace_file is not None:
+        typer.secho("--output-trace ignored for directory input", fg=typer.colors.YELLOW)
+        trace_file = None
 
     count = 0
     for input_file in files:
@@ -382,7 +420,9 @@ def _process_directory_compression(
         else:
             out_path = input_file.with_name(f"{input_file.stem}_compressed{input_file.suffix}")
 
-        _process_file_compression(input_file, strategy_id, budget, out_path, verbose_stats, tokenizer)
+        _process_file_compression(
+            input_file, strategy_id, budget, out_path, verbose_stats, tokenizer, None
+        )
         count += 1
 
     if verbose_stats:
@@ -406,6 +446,12 @@ def compress_text(
             "Path to write compressed output. For directories, this specifies the"
             " root output directory."
         ),
+    ),
+    output_trace: Optional[Path] = typer.Option(
+        None,
+        "--output-trace",
+        resolve_path=True,
+        help="Write CompressionTrace JSON to this file",
     ),
     recursive: bool = typer.Option(
         False,
@@ -452,6 +498,7 @@ def compress_text(
             output_path,
             verbose_stats,
             tokenizer,
+            output_trace,
         )
     elif source_as_path.is_dir():
         if "**" in pattern and not recursive:
@@ -468,6 +515,7 @@ def compress_text(
             pattern,
             verbose_stats,
             tokenizer,
+            output_trace,
         )
     else:
         if recursive or pattern != "*.txt":
@@ -480,9 +528,192 @@ def compress_text(
             strategy,
             budget,
             output_path,
+            output_trace,
             verbose_stats,
             tokenizer,
         )
+
+
+@app.command("evaluate-compression")
+def evaluate_compression(
+    original_input: str = typer.Argument(..., help="Original text or file path"),
+    compressed_input: str = typer.Argument(..., help="Compressed text or file path, or '-' for stdin"),
+    metric_id: str = typer.Option(..., "--metric", "-m", help="Metric ID"),
+    metric_params_json: Optional[str] = typer.Option(None, "--metric-params", help="Metric parameters as JSON"),
+    json_output: bool = typer.Option(False, "--json", help="JSON output"),
+) -> None:
+    """Evaluate compression quality using a validation metric."""
+    import sys
+    import json
+    from .registry import get_validation_metric_class
+
+    def read_input(value: str, allow_stdin: bool) -> str:
+        if value == "-":
+            if not allow_stdin:
+                typer.secho("stdin already used", err=True, fg=typer.colors.RED)
+                raise typer.Exit(code=1)
+            return sys.stdin.read()
+        p = Path(value)
+        if p.exists() and p.is_file():
+            return p.read_text()
+        return value
+
+    orig_text = read_input(original_input, True)
+    comp_text = read_input(compressed_input, compressed_input == "-")
+
+    try:
+        Metric = get_validation_metric_class(metric_id)
+    except KeyError:
+        typer.secho(f"Unknown metric '{metric_id}'", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    params = {}
+    if metric_params_json:
+        try:
+            params = json.loads(metric_params_json)
+        except json.JSONDecodeError as exc:
+            typer.secho(f"Invalid metric params: {exc}", err=True, fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+
+    metric = Metric(**params)
+    try:
+        scores = metric.evaluate(original_text=orig_text, compressed_text=comp_text)
+    except Exception as exc:
+        typer.secho(f"Metric error: {exc}", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    if json_output:
+        typer.echo(json.dumps(scores))
+    else:
+        for k, v in scores.items():
+            typer.echo(f"{k}: {v}")
+
+
+@app.command("llm-prompt")
+def llm_prompt(
+    *,
+    context_input: str = typer.Option(..., "--context", "-c", help="Compressed context string, path, or '-' for stdin"),
+    query: str = typer.Option(..., "--query", "-q", help="User query"),
+    model_id: str = typer.Option("distilgpt2", "--model", help="Model ID"),
+    system_prompt: Optional[str] = typer.Option(None, "--system-prompt", "-s", help="Optional system prompt"),
+    max_new_tokens: int = typer.Option(150, help="Max new tokens"),
+    output_llm_response_file: Optional[Path] = typer.Option(None, "--output-response", help="File to save response"),
+    llm_config_file: Optional[Path] = typer.Option(Path("llm_models_config.yaml"), "--llm-config", exists=True, dir_okay=False, resolve_path=True, help="LLM config file"),
+    api_key_env_var: Optional[str] = typer.Option(None, help="Env var for API key"),
+) -> None:
+    """Send a prompt to an LLM using compressed context."""
+    import sys
+    import json
+    import yaml
+    from .llm_providers import OpenAIProvider, GeminiProvider, LocalTransformersProvider
+
+    def read_val(val: str) -> str:
+        if val == "-":
+            return sys.stdin.read()
+        p = Path(val)
+        if p.exists() and p.is_file():
+            return p.read_text()
+        return val
+
+    context_text = read_val(context_input)
+
+    cfg = {}
+    if llm_config_file:
+        try:
+            cfg = yaml.safe_load(llm_config_file.read_text()) or {}
+        except Exception as exc:
+            typer.secho(f"Error loading config: {exc}", err=True, fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+
+    model_cfg = cfg.get(model_id, {"provider": "local", "model_name": model_id})
+    provider_name = model_cfg.get("provider")
+    model_name = model_cfg.get("model_name", model_id)
+
+    if provider_name == "openai":
+        provider = OpenAIProvider()
+    elif provider_name == "gemini":
+        provider = GeminiProvider()
+    else:
+        provider = LocalTransformersProvider()
+
+    api_key = os.getenv(api_key_env_var) if api_key_env_var else None
+
+    prompt_parts = []
+    if system_prompt:
+        prompt_parts.append(system_prompt)
+    prompt_parts.append(context_text)
+    prompt_parts.append(query)
+    prompt = "\n".join(part for part in prompt_parts if part)
+
+    try:
+        response = provider.generate_response(prompt, model_name=model_name, max_new_tokens=max_new_tokens, api_key=api_key)
+    except Exception as exc:
+        typer.secho(f"LLM error: {exc}", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    if output_llm_response_file:
+        try:
+            output_llm_response_file.write_text(response)
+        except Exception as exc:
+            typer.secho(f"Error writing {output_llm_response_file}: {exc}", err=True, fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+    else:
+        typer.echo(response)
+
+
+@app.command("evaluate-llm-response")
+def evaluate_llm_response(
+    response_input: str = typer.Argument(..., help="LLM response text or file, or '-' for stdin"),
+    reference_input: str = typer.Argument(..., help="Reference answer text or file"),
+    metric_id: str = typer.Option(..., "--metric", "-m", help="Metric ID"),
+    metric_params_json: Optional[str] = typer.Option(None, "--metric-params", help="Metric parameters as JSON"),
+    json_output: bool = typer.Option(False, "--json", help="JSON output"),
+) -> None:
+    """Evaluate an LLM response against a reference."""
+    import sys
+    import json
+    from .registry import get_validation_metric_class
+
+    def read_value(val: str, allow_stdin: bool) -> str:
+        if val == "-":
+            if not allow_stdin:
+                typer.secho("stdin already used", err=True, fg=typer.colors.RED)
+                raise typer.Exit(code=1)
+            return sys.stdin.read()
+        p = Path(val)
+        if p.exists() and p.is_file():
+            return p.read_text()
+        return val
+
+    resp_text = read_value(response_input, True)
+    ref_text = read_value(reference_input, False)
+
+    try:
+        Metric = get_validation_metric_class(metric_id)
+    except KeyError:
+        typer.secho(f"Unknown metric '{metric_id}'", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    params = {}
+    if metric_params_json:
+        try:
+            params = json.loads(metric_params_json)
+        except json.JSONDecodeError as exc:
+            typer.secho(f"Invalid metric params: {exc}", err=True, fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+
+    metric = Metric(**params)
+    try:
+        scores = metric.evaluate(llm_response=resp_text, reference_answer=ref_text)
+    except Exception as exc:
+        typer.secho(f"Metric error: {exc}", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+    if json_output:
+        typer.echo(json.dumps(scores))
+    else:
+        for k, v in scores.items():
+            typer.echo(f"{k}: {v}")
 
 
 @app.command()

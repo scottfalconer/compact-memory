@@ -3,7 +3,6 @@ from typer.testing import CliRunner
 from gist_memory.cli import app
 from gist_memory.embedding_pipeline import MockEncoder
 import pytest
-import json
 
 
 @pytest.fixture(autouse=True)
@@ -327,3 +326,118 @@ def test_cli_compress_invalid_strategy():
     )
     assert result.exit_code != 0
     assert "Unknown compression strategy" in result.stderr
+
+
+def test_cli_output_trace(tmp_path):
+    runner = CliRunner()
+    trace_file = tmp_path / "trace.json"
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "hello world",
+            "--strategy",
+            "none",
+            "--budget",
+            "5",
+            "--output-trace",
+            str(trace_file),
+        ],
+    )
+    assert result.exit_code == 0
+    assert trace_file.exists()
+
+
+def test_cli_strategy_and_metric_list():
+    runner = CliRunner()
+    res = runner.invoke(app, ["strategy", "list"])
+    assert res.exit_code == 0
+    assert "none" in res.stdout
+    res = runner.invoke(app, ["metric", "list"])
+    assert res.exit_code == 0
+    assert "exact_match" in res.stdout
+
+
+def test_cli_evaluate_compression():
+    runner = CliRunner()
+    res = runner.invoke(
+        app,
+        [
+            "evaluate-compression",
+            "abcde",
+            "abcd",
+            "--metric",
+            "compression_ratio",
+            "--json",
+        ],
+    )
+    assert res.exit_code == 0
+    data = json.loads(res.stdout.strip())
+    assert "compression_ratio" in data
+
+
+def test_cli_llm_prompt(monkeypatch, tmp_path):
+    runner = CliRunner()
+
+    class DummyProvider:
+        def generate_response(self, prompt, model_name, max_new_tokens, **kw):
+            DummyProvider.prompt = prompt
+            return "ok"
+
+        def get_token_budget(self, model_name, **kw):
+            return 100
+
+        def count_tokens(self, text, model_name, **kw):
+            return len(text.split())
+
+    monkeypatch.setattr(
+        "gist_memory.llm_providers.OpenAIProvider",
+        lambda: DummyProvider(),
+    )
+    monkeypatch.setattr(
+        "gist_memory.llm_providers.GeminiProvider",
+        lambda: DummyProvider(),
+    )
+    monkeypatch.setattr(
+        "gist_memory.llm_providers.LocalTransformersProvider",
+        lambda: DummyProvider(),
+    )
+
+    cfg = tmp_path / "cfg.yaml"
+    cfg.write_text("modelx:\n  provider: openai\n  model_name: modelx")
+    res = runner.invoke(
+        app,
+        [
+            "llm-prompt",
+            "--context",
+            "foo",
+            "--query",
+            "bar",
+            "--model",
+            "modelx",
+            "--llm-config",
+            str(cfg),
+        ],
+    )
+    assert res.exit_code == 0
+    assert "ok" in res.stdout
+    assert "foo" in DummyProvider.prompt
+    assert "bar" in DummyProvider.prompt
+
+
+def test_cli_evaluate_llm_response():
+    runner = CliRunner()
+    res = runner.invoke(
+        app,
+        [
+            "evaluate-llm-response",
+            "foo",
+            "bar",
+            "--metric",
+            "exact_match",
+            "--json",
+        ],
+    )
+    assert res.exit_code == 0
+    data = json.loads(res.stdout.strip())
+    assert "exact_match" in data
