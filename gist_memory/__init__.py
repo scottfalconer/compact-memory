@@ -45,6 +45,7 @@ __all__ = [
     "PrototypeSystemStrategy",
     "ValidationMetric",
     "run_params_trial",
+    "StrategyConfig",
 ]
 
 _lazy_map = {
@@ -87,6 +88,7 @@ _lazy_map = {
     "PrototypeSystemStrategy": "gist_memory.prototype_system_strategy",
     "ValidationMetric": "gist_memory.validation.metrics_abc",
     "run_params_trial": "gist_memory.hpo",
+    "StrategyConfig": "gist_memory.compression",
 }
 
 

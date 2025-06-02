@@ -6,6 +6,7 @@ from importlib import util
 from pathlib import Path
 
 from .strategies_abc import CompressedMemory, CompressionStrategy, CompressionTrace
+from .config import StrategyConfig
 
 # ---------------------------------------------------------------------------
 # Support legacy simple compression strategies defined in ``compression.py``.
@@ -16,9 +17,7 @@ from .strategies_abc import CompressedMemory, CompressionStrategy, CompressionTr
 #     from gist_memory.compression import NoCompression
 #
 _legacy_path = Path(__file__).resolve().parent.parent / "compression.py"
-_spec = util.spec_from_file_location(
-    "gist_memory._compression_legacy", _legacy_path
-)
+_spec = util.spec_from_file_location("gist_memory._compression_legacy", _legacy_path)
 _legacy = util.module_from_spec(_spec)
 assert _spec.loader is not None  # for mypy/static checkers
 _spec.loader.exec_module(_legacy)
@@ -38,4 +37,5 @@ __all__ = [
     "register_compression_strategy",
     "get_compression_strategy",
     "available_strategies",
+    "StrategyConfig",
 ]

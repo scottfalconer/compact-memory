@@ -12,7 +12,7 @@ import yaml
 from .agent import Agent
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 from .json_npy_store import JsonNpyVectorStore
-from .embedding_pipeline import embed_text, get_embedding_dim
+from .embedding_pipeline import embed_text, get_embedding_dim, MockEncoder
 from .chunker import SentenceWindowChunker
 from .registry import get_validation_metric_class
 from . import validation  # ensure metrics are registered
@@ -58,7 +58,9 @@ def _evaluate_sample(
 
     work_dir = tempfile.mkdtemp()
     dim = get_embedding_dim()
-    store = JsonNpyVectorStore(path=work_dir, embedding_model="experiment", embedding_dim=dim)
+    store = JsonNpyVectorStore(
+        path=work_dir, embedding_model="experiment", embedding_dim=dim
+    )
     agent = Agent(store, chunker=SentenceWindowChunker())
 
     for turn in sample["turns"]:
@@ -73,7 +75,9 @@ def _evaluate_sample(
     query = sample["query"]
     answer = sample.get("answer", "")
     if strategy is not None:
-        reply, info = agent.process_conversational_turn(query, mgr, compression=strategy)
+        reply, info = agent.process_conversational_turn(
+            query, mgr, compression=strategy
+        )
     else:
         reply, info = agent.process_conversational_turn(query, mgr)
     tokens = info.get("prompt_tokens", 0)
@@ -92,7 +96,11 @@ def _evaluate_sample(
             original_query=query,
         )
 
-    return {"metrics": metric_scores, "prompt_tokens": tokens, "compression_ms": compression_ms}
+    return {
+        "metrics": metric_scores,
+        "prompt_tokens": tokens,
+        "compression_ms": compression_ms,
+    }
 
 
 def run_response_experiment(
@@ -106,9 +114,7 @@ def run_response_experiment(
 
     results = []
     for params in config.param_grid:
-        aggregates: Dict[str, Dict[str, float]] = {
-            m["id"]: {} for m in metric_entries
-        }
+        aggregates: Dict[str, Dict[str, float]] = {m["id"]: {} for m in metric_entries}
         total_tokens = 0
         total_time = 0.0
         for sample in dataset:
@@ -135,5 +141,4 @@ def run_response_experiment(
     return results
 
 
-__all__ = ["ResponseExperimentConfig", "run_response_experiment"]
-
+__all__ = ["ResponseExperimentConfig", "run_response_experiment", "MockEncoder"]
