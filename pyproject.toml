@@ -9,7 +9,6 @@ description = "Prototype implementation of the Gist Memory Agent"
 authors = [{name = "Scott Falconer", email = "scottfalconer@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.11"
 dependencies = [
     "openai",
     "tiktoken",
@@ -22,7 +21,7 @@ dependencies = [
     "sentence-transformers",
     "transformers",
     "spacy",
-    "typer[all]>=0.12",
+    "typer[all]>=0.16.0",
     "portalocker",
     "rich>=13.6",
     "google-generativeai",
