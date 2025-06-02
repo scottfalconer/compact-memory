@@ -2,7 +2,7 @@ openai
 tiktoken
 numpy
 faiss-cpu
-click
+click>=8.2
 tqdm
 pydantic
 pyyaml
@@ -11,7 +11,7 @@ sentence-transformers
 transformers
 rich>=13.6
 spacy
-typer[all]
+typer[all]>=0.12
 portalocker
 google-generativeai
 evaluate
