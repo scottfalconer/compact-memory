@@ -45,14 +45,29 @@ This platform offers pluggable interfaces for memory strategies and validation m
 ## Setup
 This project requires **Python 3.11+**.
 
-1.  **Install Dependencies:**
+0.  **Run `setup.sh` (optional):**
+    To prepare an offline-friendly environment quickly, execute the provided
+    script while you still have internet access:
+    ```bash
+    ./setup.sh
+    ```
+
+1.  **Install Dependencies**
     ```bash
     pip install -r requirements.txt
     # Download the spaCy model for sentence segmentation (used by some strategies/chunkers)
     python -m spacy download en_core_web_sm
     ```
 
-2.  **Download Models for Testing (Optional but Recommended):**
+2.  **Install `gist-memory`** – required for the CLI and examples.
+    When working in an offline environment use `--no-build-isolation` or simply
+    add the repository to your `PYTHONPATH`:
+    ```bash
+    pip install -e . --no-build-isolation  # or
+    export PYTHONPATH="$(pwd):$PYTHONPATH"
+    ```
+
+3.  **Download Models for Testing (Optional but Recommended):**
     These models are used by example strategies or for testing LLM interactions with compressed memory.
     ```bash
     # Fetch the "all-MiniLM-L6-v2" model for embedding (used by default LTM components)
@@ -62,22 +77,16 @@ This project requires **Python 3.11+**.
     ```
     To run completely offline after downloads, set:
     ```
-export HF_HUB_OFFLINE=1
-export TRANSFORMERS_OFFLINE=1
-```
+    export HF_HUB_OFFLINE=1
+    export TRANSFORMERS_OFFLINE=1
+    ```
 
-3.  **Set API Keys for Cloud Providers:**
-    If you plan to use OpenAI or Gemini models, export your credentials as
-    environment variables before running the CLI:
+4.  **Set API Keys for Cloud Providers (Optional):**
+    If you plan to use OpenAI or Gemini models, export your credentials as environment variables before running the CLI:
     ```bash
     export OPENAI_API_KEY="sk-..."
     export GEMINI_API_KEY="..."
     ```
-
-Alternatively, install the package from source:
-```bash
-pip install .
-```
 Run `gist-memory --help` to see available commands.
 
 ## Core Workflow
@@ -105,7 +114,7 @@ The `examples/onboarding_demo.py` script demonstrates the experimentation workfl
 
 Run the demo (after setup):
 ```bash
-python examples/onboarding_demo.py
+python examples/onboarding_demo.py  # ensure `gist-memory` is installed or PYTHONPATH is set
 ```
 ## Key Concepts
 

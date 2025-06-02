@@ -14,6 +14,9 @@ apt-get install -y --no-install-recommends python3 python3-pip git
 # Install Python dependencies for the repository and download spaCy model
 if [ -f requirements.txt ]; then
     pip3 install --no-cache-dir -r requirements.txt
+    # Install the package in editable mode so the CLI is available for demos
+    pip3 install -e . --no-build-isolation
+    # Download the spaCy model needed by the chunkers
     python3 -m spacy download en_core_web_sm
 fi
 
