@@ -61,6 +61,23 @@ For contributors or those looking to build custom solutions on top of Gist Memor
 - Local chat interface via the `talk` command.
 - Debug logging with `--log-file` and conflict heuristics written to `conflicts.jsonl` for HITL review.
 
+## Memory Strategies
+
+| ID | Description |
+| --- | ----------- |
+| `prototype` | Prototype-based long-term memory with evolving summaries |
+| `active_memory_neuro` | Dynamic short-term memory for conversations |
+| `rationale_episode` | Captures rationales and groups interactions into episodes |
+
+Enable a strategy via `gist_memory_config.yaml`:
+
+```yaml
+memory:
+  strategy: rationale_episode
+  store: json
+  importance_threshold: 0.7
+```
+
 ## Why Gist Memory?
 
 Gist Memory offers unique advantages for advancing LLM memory capabilities:
