@@ -14,7 +14,7 @@ set -euo pipefail
 
 # Install Python dependencies for the repository and download spaCy model
 if [ -f requirements.txt ]; then
-    pip3 install --no-cache-dir -r requirements.txt
+    pip3 install -r requirements.txt
     # Install the package in editable mode so the CLI is available for demos
     pip3 install -e . --no-build-isolation
     # Download the spaCy model needed by the chunkers
@@ -22,10 +22,10 @@ if [ -f requirements.txt ]; then
 fi
 
 # Tools used by CI for linting and testing
-pip3 install --no-cache-dir flake8 pytest
+pip3 install flake8 pytest
 
 # CLI dependencies that may not be declared in requirements.txt
-pip3 install --no-cache-dir rich typer portalocker
+pip3 install rich typer portalocker
 
 # Pre-download the default local embedding model so tests work offline
 python3 - <<'PY'
