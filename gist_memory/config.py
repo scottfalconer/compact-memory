@@ -102,27 +102,31 @@ class Config:
         Source can be specified, defaults to runtime override.
         Returns True if successful, False otherwise.
         """
-        original_type = None
-        if key in DEFAULT_CONFIG:
-            original_type = type(DEFAULT_CONFIG[key])
-            # Attempt to cast the input string value to the original type
-            if isinstance(value, str): # All values from CLI Argument are strings initially
-                try:
-                    if original_type is bool:
-                        value = value.lower() in ("true", "1", "yes", "on")
-                    elif original_type is int:
-                        value = int(value)
-                    elif original_type is float:
-                        value = float(value)
-                    # Add other type conversions if necessary
-                    # If original_type is str, no conversion needed for string input
-                except ValueError:
-                    print(f"Error: Invalid value format for '{key}'. Cannot convert '{value}' to {original_type}.")
-                    return False # Indicate failure
-            elif not isinstance(value, original_type): # If not a string and not the right type
-                 print(f"Error: Invalid type for '{key}'. Expected {original_type}, got {type(value)}.")
-                 return False # Indicate failure
-        # If key is not in DEFAULT_CONFIG, we allow setting it but without type validation based on defaults.
+        if key not in DEFAULT_CONFIG:
+            print(f"Error: Configuration key '{key}' is not a recognized setting. Allowed keys are: {', '.join(DEFAULT_CONFIG.keys())}")
+            # Or raise ValueError(f"Invalid configuration key: {key}")
+            return False
+
+        original_type = type(DEFAULT_CONFIG[key])
+
+        # Attempt to cast the input string value to the original type
+        if isinstance(value, str): # All values from CLI Argument are strings initially
+            try:
+                if original_type is bool:
+                    value = value.lower() in ("true", "1", "yes", "on")
+                elif original_type is int:
+                    value = int(value)
+                elif original_type is float:
+                    value = float(value)
+                # Add other type conversions if necessary
+                # If original_type is str, no conversion needed for string input
+            except ValueError:
+                print(f"Error: Invalid value format for '{key}'. Cannot convert '{value}' to {original_type}.")
+                return False # Indicate failure
+        elif not isinstance(value, original_type): # If not a string and not the right type
+             print(f"Error: Invalid type for '{key}'. Expected {original_type}, got {type(value)}.")
+             return False # Indicate failure
+        # Type validation passed or value was already correct type
 
         self._config[key] = value
         self._sources[key] = source # Runtime source

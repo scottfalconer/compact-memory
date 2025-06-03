@@ -51,37 +51,45 @@ For contributors or those looking to build custom solutions on top of Gist Memor
 
 ## Features
 
-- Command-line interface for initialization, stats, validation, downloads, experiments, and strategy inspection.
+- Command-line interface for agent management (`agent init`, `agent stats`, `agent validate`, `agent clear`), data processing (`ingest`, `query`, `summarize`), configuration (`config set`, `config show`), and developer tools (`dev list-strategies`, `dev evaluate-compression`, etc.).
+- Global configuration options settable via CLI, environment variables, or config files.
 - Lightweight JSON/NPY backend for prototypes and memories with optional Chroma vector store for scale (`pip install "gist-memory[chroma]"`).
-- Pluggable memory creation engines (identity, extractive, chunk, LLM summary, or agentic splitting).
+- Pluggable memory compression strategies.
 - Pluggable embedding backends: random (default), OpenAI, or local sentence transformers.
 - Chunks rendered using a canonical **WHO/WHAT/WHEN/WHERE/WHY** template before embedding.
 - Runs smoothly in Colab; a notebook-based GUI is planned.
 - Python API for decoding and summarizing prototypes.
-- Local chat interface via the `talk` command.
+- Interactive query interface via the `query` command.
 - Debug logging with `--log-file` and conflict heuristics written to `conflicts.jsonl` for HITL review.
 
 ## Memory Strategies
 
-| ID | Description |
-| --- | ----------- |
-| `prototype` | Prototype-based long-term memory with evolving summaries |
-| `active_memory_neuro` | Dynamic short-term memory for conversations |
-| `rationale_episode` | *(Plugin)* Captures rationales and groups interactions into episodes |
-
-Enable a strategy via `gist_memory_config.yaml`:
-
-```yaml
-memory:
-  strategy: rationale_episode
-  store: json
-  importance_threshold: 0.7
+Gist Memory supports various compression strategies. You can list available strategies, including those from plugins:
+```bash
+gist-memory dev list-strategies
 ```
 
-The `rationale_episode` strategy lives in the optional
+| ID (Examples)       | Description                                           |
+| ------------------- | ----------------------------------------------------- |
+| `prototype`         | Prototype-based long-term memory with evolving summaries |
+| `first_last`        | Simple extractive: first and last N tokens/sentences  |
+| `your_custom_plugin`| A strategy you develop and load as a plugin          |
+*(This table is illustrative; use `dev list-strategies` for the current list)*
+
+To use a specific strategy, you can set it as a global default or specify it per command:
+```bash
+# Set default strategy globally
+gist-memory config set default_strategy_id prototype
+
+# Use a specific strategy for a summarize command
+gist-memory summarize "My text..." --strategy first_last --budget 100
+```
+
+Plugins can add more strategies. For example, the `rationale_episode` strategy lives in the optional
 `gist_memory_rationale_episode_strategy` package. Install it with
-`pip install gist_memory_rationale_episode_strategy` to enable these
-settings and gain access to its CLI commands.
+`pip install gist_memory_rationale_episode_strategy` to enable it.
+You can then set it via `gist-memory config set default_strategy_id rationale_episode`.
+Note: The old method of enabling strategies via `gist_memory_config.yaml` directly is being phased out in favor of the `config set` command and plugin system.
 
 ## Why Gist Memory?
 
@@ -138,9 +146,9 @@ This project requires **Python 3.11+**.
     These models are used by some of the example strategies and for testing LLM interactions with compressed memory.
     ```bash
     # Fetch the "all-MiniLM-L6-v2" model for embedding (used by default LTM components)
-    gist-memory download-model --model-name all-MiniLM-L6-v2
-    # Fetch a default chat model for the 'talk' command and LLM-based validation
-    gist-memory download-chat-model --model-name tiny-gpt2
+    gist-memory dev download-embedding-model --model-name all-MiniLM-L6-v2
+    # Fetch a default chat model for the 'query' command and LLM-based validation
+    gist-memory dev download-chat-model --model-name tiny-gpt2
     ```
     Note: Specific `CompressionStrategy` implementations might have other model dependencies not covered here. Always check the documentation for the strategy you intend to use.
     To run completely offline after all downloads, set:
@@ -158,49 +166,97 @@ This project requires **Python 3.11+**.
 
 Run `gist-memory --help` to see available commands and verify installation.
 
-You can also set a default location for the on-disk memory store with the
-`GIST_MEMORY_PATH` environment variable:
+You can also set a default location for the on-disk memory store and other global settings. See the "Configuration" section below.
 
+## Configuration
+
+Gist Memory uses a hierarchical configuration system:
+1.  **Command-line arguments:** Highest precedence (e.g., `gist-memory --memory-path ./my_agent ingest ...`).
+2.  **Environment variables:** (e.g., `GIST_MEMORY_PATH`, `GIST_MEMORY_DEFAULT_MODEL_ID`, `GIST_MEMORY_DEFAULT_STRATEGY_ID`).
+3.  **Local project config:** `.gmconfig.yaml` in the current directory.
+4.  **User global config:** `~/.config/gist_memory/config.yaml`.
+5.  **Hardcoded defaults.**
+
+You can manage the user global configuration using the `config` commands:
+-   `gist-memory config show`: Displays the current effective configuration and where each value originates.
+-   `gist-memory config set <KEY> <VALUE>`: Sets a key in the user global config file.
+
+For example, to set your default memory path globally:
 ```bash
-export GIST_MEMORY_PATH=~/my_memory
+gist-memory config set gist_memory_path ~/my_gist_memories
+# Subsequent commands will use this path unless overridden by --memory-path or an environment variable.
+```
+Or, set it using an environment variable for the current session:
+```bash
+export GIST_MEMORY_PATH=~/my_gist_memories
 ```
 
-## Core Workflow
+## Quick Start / Core Workflow
 
-The `gist-memory` Command-Line Interface (CLI) is your primary tool for experimenting with different compression strategies and evaluating their effectiveness. Here are some examples of common operations:
+The `gist-memory` Command-Line Interface (CLI) is your primary tool for managing memory agents, ingesting data, querying, and summarizing.
 
-**1. Basic Compression:**
-Compress a piece of text using a chosen strategy and token budget.
+**1. Initialize an Agent:**
+First, create a new memory agent. This directory will store the agent's data.
 ```bash
-gist-memory compress "Your large text here... or path/to/file.txt" --strategy <strategy_name> --budget 500
+gist-memory agent init ./my_agent --model-name sentence-transformers/all-MiniLM-L6-v2
 ```
-This command will output the compressed version of your text. Replace `<strategy_name>` with an available strategy (e.g., `extractive`, `summary_llm`).
+This creates an agent at `./my_agent`. The specified embedding model will be downloaded if not already present.
 
-**2. Interactive Chat with Compressed Context:**
-Engage in a conversation where the LLM's context is managed by a compression strategy.
-```bash
-gist-memory talk --strategy <strategy_name> --message "What can you tell me based on the compressed context?"
-```
-The LLM will use the compressed memory generated by the specified strategy to answer your questions.
+**2. Configure Memory Path (Optional but Recommended for Convenience):**
+To avoid specifying `--memory-path ./my_agent` for every command that interacts with this agent, you can set it globally for your user or for the current terminal session.
 
-**3. Direct Evaluation of Compression:**
-Assess how much a text was compressed.
-```bash
-gist-memory evaluate-compression original.txt compressed.txt --metric compression_ratio --json
-```
-This compares the original text with its compressed version using a specific metric like `compression_ratio`.
+*   **Set globally (user config):**
+    ```bash
+    gist-memory config set gist_memory_path ./my_agent
+    ```
+    Now, `gist-memory` commands like `ingest` and `query` will default to using `./my_agent`.
+*   **Set for current session (environment variable):**
+    ```bash
+    export GIST_MEMORY_PATH=$(pwd)/my_agent
+    ```
 
-**4. Pipeline Evaluation (Compress -> Prompt LLM -> Evaluate Response):**
-A more complex workflow that simulates a full cycle: compress information, use it to prompt an LLM, and then evaluate the LLM's response.
+**3. Ingest Data:**
+Add information to the agent's memory.
 ```bash
-gist-memory compress file.txt --strategy none --budget 50 --output-trace trace.json \
-  | gist-memory llm-prompt --context - --query "Summarize the provided text." --model tiny-gpt2 \
-  | gist-memory evaluate-llm-response - "An accurate summary would be..." --metric exact_match --json
+# If gist_memory_path is set (globally or via env var):
+gist-memory ingest path/to/your_document.txt
+gist-memory ingest path/to/your_data_directory/
+
+# Or, specify the memory path directly for a specific command:
+gist-memory --memory-path ./my_agent ingest path/to/your_document.txt
 ```
-This example:
-- Compresses `file.txt` using a (hypothetical) `none` strategy with a budget of 50 tokens, saving a trace.
- - Pipes the compressed output (`-`) to `llm-prompt` to ask a tiny-gpt2 model to summarize it.
-- Pipes the LLM's response (`-`) to `evaluate-llm-response` to check if it matches an expected summary using the `exact_match` metric.
+
+**4. Query the Agent:**
+Ask questions based on the ingested information. The agent uses its configured default model and strategy unless overridden.
+```bash
+# If gist_memory_path is set:
+gist-memory query "What was mentioned about project X?"
+
+# Or, specify the memory path directly:
+gist-memory --memory-path ./my_agent query "What was mentioned about project X?"
+
+# You can also override the default model or strategy for a specific query:
+gist-memory query "Summarize recent findings on AI ethics" --model-id openai/gpt-4-turbo --strategy-id prototype
+```
+
+**5. Summarize Text (Standalone Utility):**
+Compress text using a specific strategy without necessarily interacting with an agent's stored memory. This is useful for quick text compression tasks.
+```bash
+gist-memory summarize "This is a very long piece of text that needs to be shorter." --strategy first_last --budget 50
+gist-memory summarize path/to/another_document.txt -s prototype -b 200 -o compressed_summary.txt
+```
+
+**Developer Tools & Evaluation:**
+Gist Memory also includes tools for developers and researchers, such as evaluating compression strategies or testing LLM prompts. These are typically found under the `dev` subcommand group.
+
+For example, to evaluate compression quality:
+```bash
+gist-memory dev evaluate-compression original.txt compressed_version.txt --metric compression_ratio
+```
+To list available strategies (including plugins):
+```bash
+gist-memory dev list-strategies
+```
 
 ### Running Tests
 To ensure Gist Memory is functioning correctly, especially after making changes or setting up the environment:
@@ -244,7 +300,7 @@ Gist Memory is designed to support a wide variety of `CompressionStrategy` imple
 -   `docs/COMPRESSION_STRATEGIES.md`
 -   `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`
 
-The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during memory initialization (e.g., `gist-memory init --memory-path my_memory --chunker agentic`) or programmatically within your custom strategy (e.g., `agent.chunker = AgenticChunker()`).
+The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during agent initialization (e.g., `gist-memory agent init ./my_memory --chunker agentic`) or programmatically within your custom strategy (e.g., `agent.chunker = AgenticChunker()`).
 
 ## Query Tips
 
