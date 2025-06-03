@@ -82,7 +82,7 @@ You can set default values for key options to avoid typing them repeatedly. Thes
     ```bash
     gist-memory config set default_strategy_id prototype
     ```
-    Commands like `gist-memory summarize` will use this strategy by default if you don't specify one with `--strategy`.
+    Commands like `gist-memory compress` will use this strategy by default if you don't specify one with `--strategy`.
 
 *(Note: While `log_file` and `verbose` can be set in config files manually, they are primarily controlled via CLI options for runtime flexibility. The `config set` command currently supports `gist_memory_path`, `default_model_id`, and `default_strategy_id` as these are the most common global defaults users might want to persist.)*
 

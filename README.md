@@ -51,7 +51,7 @@ For contributors or those looking to build custom solutions on top of Gist Memor
 
 ## Features
 
-- Command-line interface for agent management (`agent init`, `agent stats`, `agent validate`, `agent clear`), data processing (`ingest`, `query`, `summarize`), configuration (`config set`, `config show`), and developer tools (`dev list-strategies`, `dev evaluate-compression`, etc.).
+- Command-line interface for agent management (`agent init`, `agent stats`, `agent validate`, `agent clear`), data processing (`ingest`, `query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-strategies`, `dev evaluate-compression`, etc.).
 - Global configuration options settable via CLI, environment variables, or config files.
 - Lightweight JSON/NPY backend for prototypes and memories with optional Chroma vector store for scale (`pip install "gist-memory[chroma]"`).
 - Pluggable memory compression strategies.
@@ -81,8 +81,8 @@ To use a specific strategy, you can set it as a global default or specify it per
 # Set default strategy globally
 gist-memory config set default_strategy_id prototype
 
-# Use a specific strategy for a summarize command
-gist-memory summarize "My text..." --strategy first_last --budget 100
+# Use a specific strategy for a compress command
+gist-memory compress "My text..." --strategy first_last --budget 100
 ```
 
 Plugins can add more strategies. For example, the `rationale_episode` strategy lives in the optional
@@ -239,11 +239,11 @@ gist-memory --memory-path ./my_agent query "What was mentioned about project X?"
 gist-memory query "Summarize recent findings on AI ethics" --model-id openai/gpt-4-turbo --strategy-id prototype
 ```
 
-**5. Summarize Text (Standalone Utility):**
+**5. Compress Text (Standalone Utility):**
 Compress text using a specific strategy without necessarily interacting with an agent's stored memory. This is useful for quick text compression tasks.
 ```bash
-gist-memory summarize "This is a very long piece of text that needs to be shorter." --strategy first_last --budget 50
-gist-memory summarize path/to/another_document.txt -s prototype -b 200 -o compressed_summary.txt
+gist-memory compress "This is a very long piece of text that needs to be shorter." --strategy first_last --budget 50
+gist-memory compress path/to/another_document.txt -s prototype -b 200 -o compressed_summary.txt
 ```
 
 **Developer Tools & Evaluation:**

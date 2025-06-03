@@ -58,14 +58,14 @@ Queries an agent (specified by `--memory-path` or configuration) with the provid
 **Options:**
 *   `--show-prompt-tokens`: Display the token count of the final prompt sent to the LLM.
 
-### `gist-memory summarize`
+### `gist-memory compress`
 
 Compresses text content from a string, file, or directory using a specified strategy and token budget. This is a standalone utility.
 
-**Usage:** `gist-memory summarize [OPTIONS] INPUT_SOURCE`
+**Usage:** `gist-memory compress [OPTIONS] INPUT_SOURCE`
 
 **Arguments:**
-*   `INPUT_SOURCE`: Input text directly, or a path to a text file or directory of text files to summarize. (Required)
+*   `INPUT_SOURCE`: Input text directly, or a path to a text file or directory of text files to compress. (Required)
 
 **Options:**
 *   `--strategy / -s TEXT`: Compression strategy ID to use. Overrides the global default strategy. (Required if no global default is set)

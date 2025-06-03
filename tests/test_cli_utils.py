@@ -131,4 +131,3 @@ def test_pkvp_equals_in_value():
     assert parse_key_value_pairs(["formula=e=mc^2"]) == {"formula": "e=mc^2"}
     assert parse_key_value_pairs(["json_val={\"equation\": \"e=mc^2\"}"]) == \
            {"json_val": {"equation": "e=mc^2"}}
-```
