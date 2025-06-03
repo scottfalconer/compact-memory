@@ -73,8 +73,27 @@ class QueryResult(dict):
 
 
 class Agent:
-    """Core ingestion logic operating on a :class:`JsonNpyVectorStore`."""
+    """
+    Core component for managing and interacting with a memory store.
 
+    The Agent class encapsulates the logic for ingesting text into a
+    `JsonNpyVectorStore`, managing memory prototypes, querying the memory,
+    and processing conversational turns with optional compression.
+
+    It utilizes a `PrototypeSystemStrategy` internally to handle the
+    mechanics of memory consolidation and retrieval. Developers typically
+    interact with the Agent by providing it with a pre-configured store
+    and then using its methods like `add_memory`, `query`, and
+    `receive_channel_message`.
+
+    Attributes:
+        store (JsonNpyVectorStore): The underlying vector store for memories and prototypes.
+        prototype_system (PrototypeSystemStrategy): Handles memory consolidation and querying logic.
+        metrics (Dict[str, Any]): A dictionary of metrics collected during operations
+                                  (primarily from `PrototypeSystemStrategy`).
+        prompt_budget (Optional[PromptBudget]): Configuration for managing prompt sizes
+                                             when interacting with LLMs.
+    """
     def __init__(
         self,
         store: JsonNpyVectorStore,
@@ -86,6 +105,27 @@ class Agent:
         update_summaries: bool = False,
         prompt_budget: PromptBudget | None = None,
     ) -> None:
+        """
+        Initializes the Agent.
+
+        Args:
+            store: The `JsonNpyVectorStore` instance to be used for storing
+                   and retrieving memories and prototypes.
+            chunker: A `Chunker` instance for splitting text during ingestion.
+                     Defaults to `SentenceWindowChunker` if None.
+            similarity_threshold: The threshold (tau) for determining if a new memory
+                                  should be merged with an existing prototype.
+                                  Value between 0.0 and 1.0.
+            dedup_cache: The size of the cache used for deduplicating recent memories
+                         to avoid redundant processing.
+            summary_creator: A `MemoryCreator` instance responsible for generating
+                             summaries for new prototypes. Defaults to
+                             `ExtractiveSummaryCreator` if None.
+            update_summaries: If True, summaries of existing prototypes may be updated
+                              when new, highly similar memories are ingested.
+            prompt_budget: A `PromptBudget` object to manage and allocate token budgets
+                           for different parts of an LLM prompt (e.g., query, history, LTM).
+        """
         self.store = store
         self.prototype_system = PrototypeSystemStrategy(
             store,
@@ -212,8 +252,31 @@ class Agent:
         save: bool = True,
         source_document_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
-        """Ingest ``text`` into the store and return per-chunk statuses."""
+        """
+        Ingests a piece of text into the agent's memory store.
 
+        The text is processed by the configured chunker, and each chunk is then
+        added to the memory system. This may involve creating new prototypes or
+        merging with existing ones based on similarity.
+
+        Args:
+            text: The text content to ingest.
+            who, what, when, where, why: Optional metadata fields that can be associated
+                                        with the ingested memory (currently passed to
+                                        the underlying prototype system but full support
+                                        may vary).
+            progress_callback: An optional function that can be called to report
+                               progress during the ingestion of multiple chunks.
+                               The callback might receive (current_chunk, total_chunks,
+                               is_new_prototype, status_message, similarity_score).
+            save: If True (default), the memory store is saved to disk after ingestion.
+            source_document_id: An optional identifier for the source of the text
+                                (e.g., a filename or URL).
+
+        Returns:
+            A list of dictionaries, where each dictionary represents the status or
+            outcome of processing a single chunk from the input text.
+        """
         return self.prototype_system.add_memory(
             text,
             who=who,
@@ -235,8 +298,27 @@ class Agent:
         top_k_memories: int = 3,
         include_hypotheses: bool = False,
     ) -> QueryResult:
-        """Return nearest prototypes and memories for ``text``."""
+        """
+        Queries the agent's memory store based on the input text.
 
+        This method embeds the input text and searches for the most similar
+        prototypes and individual memories in the store.
+
+        Args:
+            text: The query text.
+            top_k_prototypes: The maximum number of most similar prototypes to return.
+            top_k_memories: The maximum number of most similar individual memories
+                            (associated with the top prototypes) to return.
+            include_hypotheses: If True, may include hypothetical or inferred data
+                                as part of the query process (specific behavior depends
+                                on the underlying `PrototypeSystemStrategy`).
+
+        Returns:
+            A `QueryResult` object (which is a dict subclass) containing:
+                - "prototypes": A list of `PrototypeHit` dicts.
+                - "memories": A list of `MemoryHit` dicts.
+                - "status": A status message about the query.
+        """
         res = self.prototype_system.query(
             text,
             top_k_prototypes=top_k_prototypes,
@@ -435,20 +517,39 @@ class Agent:
         *,
         compression: CompressionStrategy | None = None,
     ) -> dict[str, object]:
-        """Process ``message_text`` posted to the shared channel by ``source_id``.
-
-        The default behaviour is intentionally simple:
-
-        * If the message looks like a question (ends with ``?``) the agent
-          performs a :meth:`query` and attempts to generate a short textual
-          reply using :class:`~compact_memory.local_llm.LocalChatModel`.
-        * Otherwise the message is ingested as a new memory with a
-          ``source_document_id`` that references the sender.
-
-        A dictionary summarising the chosen action is returned.  This provides
-        lightweight observability for higher level session management code.
         """
+        Processes a message received from a channel or user.
 
+        This method provides a high-level interface for an agent to react to
+        incoming messages. The default behavior is:
+        - If the message ends with "?", it's treated as a query. The agent
+          will attempt to generate a response using its memory and an LLM
+          (if available and configured).
+        - Otherwise, the message is ingested as a new memory into the store.
+
+        Developers can override or extend this method for more complex agent behaviors.
+
+        Args:
+            source_id: An identifier for the source of the message (e.g., user ID, channel name).
+            message_text: The content of the message.
+            manager: An `ActiveMemoryManager` instance to control which conversation
+                     history is used when generating a response to a query. If None,
+                     a simpler query without conversational history management is performed.
+            compression: An optional `CompressionStrategy` instance to compress
+                         the conversational history or context before sending it to an LLM.
+                         If None, no compression is applied (or `NoCompression` strategy is used).
+
+        Returns:
+            A dictionary summarizing the action taken by the agent and any results.
+            Common keys include:
+                - "source": The `source_id`.
+                - "action": "query" or "ingest".
+                - "query_result": Result from `agent.query()` if it was a query.
+                - "reply": The LLM-generated reply string, if applicable.
+                - "prompt_tokens": Number of tokens in the prompt sent to the LLM.
+                - "compression_trace": `CompressionTrace` object if compression was used.
+                - "chunks_ingested": Number of chunks ingested if it was an ingest action.
+        """
         logging.info("[receive] from %s: %s", source_id, message_text[:40])
 
         summary: dict[str, object] = {"source": source_id}
