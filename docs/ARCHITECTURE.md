@@ -100,7 +100,7 @@ quickly.
 ## CLI
 
 `gist-memory` is implemented using Typer and exposes subcommands for
-initialising a brain, inspecting stored prototypes and running
+initialising a memory store, inspecting stored prototypes and running
 experiments. The CLI is the primary interface, and a Colab notebook will
 provide a graphical option in the future.
 

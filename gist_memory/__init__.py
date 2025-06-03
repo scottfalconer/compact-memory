@@ -20,7 +20,7 @@ __all__ = [
     "SentenceWindowChunker",
     "FixedSizeChunker",
     "AgenticChunker",
-    "DEFAULT_BRAIN_PATH",
+    "DEFAULT_MEMORY_PATH",
     "LocalChatModel",
     "render_five_w_template",
     "MemoryCueRenderer",
@@ -63,7 +63,7 @@ _lazy_map = {
     "SentenceWindowChunker": "gist_memory.chunker",
     "FixedSizeChunker": "gist_memory.chunker",
     "AgenticChunker": "gist_memory.chunker",
-    "DEFAULT_BRAIN_PATH": "gist_memory.config",
+    "DEFAULT_MEMORY_PATH": "gist_memory.config",
     "LocalChatModel": "gist_memory.local_llm",
     "render_five_w_template": "gist_memory.prototype.canonical",
     "MemoryCueRenderer": "gist_memory.prototype.memory_cues",
@@ -105,4 +105,4 @@ def __dir__() -> list[str]:  # pragma: no cover - for completeness
     return sorted(list(globals().keys()) + list(_lazy_map.keys()))
 
 
-__version__ = "0.4.0"
+__version__ = "1.0.0"

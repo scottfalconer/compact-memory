@@ -16,7 +16,7 @@ def use_mock_encoder(monkeypatch):
 
 def test_cli_strategy_inspect(tmp_path):
     runner = CliRunner()
-    result = runner.invoke(app, ["init", str(tmp_path), "--agent-name", "tester"])
+    result = runner.invoke(app, ["init", "--memory-path", str(tmp_path), "--name", "tester"])
     assert result.exit_code == 0
 
     from gist_memory.utils import load_agent
@@ -31,7 +31,7 @@ def test_cli_strategy_inspect(tmp_path):
             "strategy",
             "inspect",
             "prototype",
-            "--agent-name",
+            "--memory-path",
             str(tmp_path),
             "--list-prototypes",
         ],
@@ -42,14 +42,14 @@ def test_cli_strategy_inspect(tmp_path):
 
 def test_cli_stats(tmp_path):
     runner = CliRunner()
-    runner.invoke(app, ["init", str(tmp_path), "--agent-name", "tester"])
+    runner.invoke(app, ["init", "--memory-path", str(tmp_path), "--name", "tester"])
     from gist_memory.utils import load_agent
 
     agent = load_agent(tmp_path)
     agent.add_memory("alpha")
     agent.store.save()
 
-    result = runner.invoke(app, ["stats", str(tmp_path), "--json"])
+    result = runner.invoke(app, ["stats", "--memory-path", str(tmp_path), "--json"])
     assert result.exit_code == 0
     data = json.loads(result.stdout.strip())
     assert data["prototypes"] == 1
@@ -57,20 +57,20 @@ def test_cli_stats(tmp_path):
 
 def test_cli_validate_and_clear(tmp_path):
     runner = CliRunner()
-    runner.invoke(app, ["init", str(tmp_path)])
+    runner.invoke(app, ["init", "--memory-path", str(tmp_path)])
 
-    result = runner.invoke(app, ["validate", str(tmp_path)])
+    result = runner.invoke(app, ["validate", "--memory-path", str(tmp_path)])
     assert result.exit_code == 0
     assert "valid" in result.stdout.lower()
 
-    result = runner.invoke(app, ["clear", str(tmp_path), "--yes"])
+    result = runner.invoke(app, ["clear", "--memory-path", str(tmp_path), "--yes"])
     assert result.exit_code == 0
     assert not tmp_path.exists()
 
 
 def test_cli_validate_mismatch(tmp_path):
     runner = CliRunner()
-    runner.invoke(app, ["init", str(tmp_path)])
+    runner.invoke(app, ["init", "--memory-path", str(tmp_path)])
 
     meta_path = tmp_path / "meta.yaml"
     import yaml
@@ -79,13 +79,13 @@ def test_cli_validate_mismatch(tmp_path):
     meta["embedding_dim"] = 2
     meta_path.write_text(yaml.safe_dump(meta))
 
-    result = runner.invoke(app, ["validate", str(tmp_path)])
+    result = runner.invoke(app, ["validate", "--memory-path", str(tmp_path)])
     assert result.exit_code != 0
 
 
 def test_cli_talk(tmp_path, monkeypatch):
     runner = CliRunner()
-    runner.invoke(app, ["init", str(tmp_path)])
+    runner.invoke(app, ["init", "--memory-path", str(tmp_path)])
     from gist_memory.utils import load_agent
 
     agent = load_agent(tmp_path)
@@ -114,7 +114,7 @@ def test_cli_talk(tmp_path, monkeypatch):
 
     monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", Dummy)
     result = runner.invoke(
-        app, ["talk", "--agent-name", str(tmp_path), "--message", "hi?"]
+        app, ["talk", "--memory-path", str(tmp_path), "--message", "hi?"]
     )
     assert result.exit_code == 0
     assert "response" in result.stdout
@@ -158,7 +158,7 @@ def test_talk_command_calls_receive_channel_message(tmp_path, monkeypatch):
     monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", DummyLLM)
 
     result = runner.invoke(
-        app, ["talk", "--agent-name", str(tmp_path), "--message", "hi?"]
+        app, ["talk", "--memory-path", str(tmp_path), "--message", "hi?"]
     )
     assert result.exit_code == 0
     assert called["src"] == "cli"
@@ -195,7 +195,7 @@ def test_cli_download_chat_model(monkeypatch):
 def test_cli_logging(tmp_path):
     log_path = tmp_path / "cli.log"
     runner = CliRunner()
-    runner.invoke(app, ["init", str(tmp_path)])
+    runner.invoke(app, ["init", "--memory-path", str(tmp_path)])
     from gist_memory.utils import load_agent
 
     agent = load_agent(tmp_path)
@@ -208,6 +208,7 @@ def test_cli_logging(tmp_path):
             str(log_path),
             "--verbose",
             "stats",
+            "--memory-path",
             str(tmp_path),
         ],
     )
@@ -218,7 +219,7 @@ def test_cli_logging(tmp_path):
 
 def test_cli_corrupt_store(tmp_path):
     runner = CliRunner()
-    runner.invoke(app, ["init", str(tmp_path)])
+    runner.invoke(app, ["init", "--memory-path", str(tmp_path)])
     meta_path = tmp_path / "meta.yaml"
     import yaml
 
@@ -228,7 +229,7 @@ def test_cli_corrupt_store(tmp_path):
 
     result = runner.invoke(
         app,
-        ["stats", str(tmp_path)],
+        ["stats", "--memory-path", str(tmp_path)],
     )
     assert result.exit_code != 0
     assert "Brain data is corrupted" in result.stderr

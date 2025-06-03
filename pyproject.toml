@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gist-memory"
-version = "0.1.0"
+version = "1.0.0"
 description = "Prototype implementation of the Gist Memory Agent"
 authors = [{name = "Scott Falconer", email = "scottfalconer@gmail.com"}]
 license = {text = "MIT"}

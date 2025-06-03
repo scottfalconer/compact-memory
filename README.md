@@ -153,6 +153,13 @@ This project requires **Python 3.11+**.
 
 Run `gist-memory --help` to see available commands and verify installation.
 
+You can also set a default location for the on-disk memory store with the
+`GIST_MEMORY_PATH` environment variable:
+
+```bash
+export GIST_MEMORY_PATH=~/my_memory
+```
+
 ## Core Workflow
 
 The `gist-memory` Command-Line Interface (CLI) is your primary tool for experimenting with different compression strategies and evaluating their effectiveness. Here are some examples of common operations:
@@ -232,7 +239,7 @@ Gist Memory is designed to support a wide variety of `CompressionStrategy` imple
 -   `docs/COMPRESSION_STRATEGIES.md`
 -   `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`
 
-The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during memory initialization (e.g., `gist-memory init brain --chunker agentic`) or programmatically within your custom strategy (e.g., `agent.chunker = AgenticChunker()`).
+The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during memory initialization (e.g., `gist-memory init --memory-path my_memory --chunker agentic`) or programmatically within your custom strategy (e.g., `agent.chunker = AgenticChunker()`).
 
 ## Query Tips
 
