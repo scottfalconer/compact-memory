@@ -31,8 +31,8 @@ from .registry import (
 )
 from . import llm_providers
 from .model_utils import (
-    download_embedding_model as util_download_embedding_model, # Renamed to avoid clash
-    download_chat_model as util_download_chat_model, # Renamed to avoid clash
+    download_embedding_model as util_download_embedding_model,
+    download_chat_model as util_download_chat_model,
 )
 from .embedding_pipeline import (
     get_embedding_dim,
@@ -110,7 +110,22 @@ def main(
     if resolved_memory_path:
         resolved_memory_path = str(Path(resolved_memory_path).expanduser())
 
-    if not resolved_memory_path and not any(cmd_name in ctx.invoked_subcommand for cmd_name in ["config", "dev"]): # Skip prompt for config and dev commands
+    # Determine if the command is one that requires memory_path to be set
+    command_requires_memory_path = True # Assume true by default
+    if ctx.invoked_subcommand:
+        # Commands that DON'T require a memory path immediately
+        no_mem_path_commands = ["config", "dev"]
+        # Top level commands that might also not need it (e.g. if they are just info commands)
+        # For now, assume all other top-level commands (like ingest, query, summarize) will need it.
+        if ctx.invoked_subcommand in no_mem_path_commands:
+            command_requires_memory_path = False
+        else: # Check if it's a subcommand of a group that doesn't need it
+            parent_command = ctx.invoked_subcommand.split('.')[0] # Simplistic check, assumes one level of nesting
+            if parent_command in no_mem_path_commands:
+                 command_requires_memory_path = False
+
+
+    if command_requires_memory_path and not resolved_memory_path :
         is_interactive = sys.stdin.isatty()
         prompt_default_path = config.get("gist_memory_path")
 
@@ -124,11 +139,10 @@ def main(
             else:
                 typer.secho("Memory path is required to proceed.", fg=typer.colors.RED, err=True)
                 raise typer.Exit(code=1)
-        elif ctx.invoked_subcommand not in ["ingest", "query", "summarize", "agent"]: # Only error if essential commands are called non-interactively without path
+        else:
             typer.secho("Error: Gist Memory path is not set.", fg=typer.colors.RED, err=True)
             typer.secho("Please set it using the --memory-path option, the GIST_MEMORY_PATH environment variable, or in a config file (~/.config/gist_memory/config.yaml or .gmconfig.yaml).", err=True)
             raise typer.Exit(code=1)
-
 
     load_plugins()
 
@@ -200,9 +214,70 @@ def clear(ctx: typer.Context, memory_path_arg: Optional[str] = typer.Option(None
     else: typer.secho("Directory not found", err=True, fg=typer.colors.RED)
 
 # --- Top-Level Commands ---
-@app.command("ingest")
-def ingest_placeholder(ctx: typer.Context, text_or_path: str = typer.Argument(..., help="Text content or path to a file/directory to ingest.")):
-    typer.echo(f"Placeholder for ingest command. Input: {text_or_path}"); typer.echo(f"Using memory path: {ctx.obj.get('gist_memory_path')}")
+@app.command("ingest", help="Ingests a text file or files in a directory into the agent's memory.")
+def ingest(
+    ctx: typer.Context,
+    source: Path = typer.Argument(..., help="Path to the text file or directory to ingest.", exists=True, file_okay=True, dir_okay=True, resolve_path=True),
+    tau: Optional[float] = typer.Option(None, "--tau", "-t", help="Similarity threshold for memory consolidation. Overrides agent's existing tau. If path is new, this tau is used."),
+    json_output: bool = typer.Option(False, "--json", help="Output ingestion statistics as JSON.")
+) -> None:
+    """
+    Ingests text from a file or directory into the agent's memory specified by the global --memory-path.
+    """
+    memory_path_str = ctx.obj.get("gist_memory_path")
+    if not memory_path_str:
+        typer.secho("Error: Memory path not set. Use --memory-path or set in config.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+
+    agent_path = Path(memory_path_str)
+    final_tau = tau # Use CLI tau if provided
+
+    if final_tau is None: # If no CLI tau, try to load from existing agent or use default
+        if agent_path.exists() and (agent_path / "meta.json").is_file():
+            try:
+                with open(agent_path / "meta.json", "r") as f:
+                    meta_data = json.load(f)
+                agent_default_tau = meta_data.get("tau")
+                if agent_default_tau is not None:
+                    final_tau = agent_default_tau
+                else:
+                    final_tau = 0.8 # Default if not in meta
+                if tau is not None: # CLI tau overrides agent's tau
+                    final_tau = tau
+                    typer.echo(f"Using provided tau: {final_tau} (overriding agent's tau: {agent_default_tau or 'Not Set'})")
+                else:
+                    typer.echo(f"Using agent's existing tau: {final_tau}")
+            except Exception as e:
+                typer.secho(f"Could not load agent metadata to determine tau: {e}. Using default 0.8.", fg=typer.colors.YELLOW)
+                final_tau = 0.8
+        else:
+            final_tau = 0.8 # Default for new agent
+            typer.echo(f"No agent found at {agent_path}. Initializing with tau: {final_tau}")
+    elif tau is not None: # CLI tau provided
+         typer.echo(f"Using provided tau for ingestion: {final_tau}")
+
+
+    # ExperimentConfig expects 'dataset', 'similarity_threshold', and 'work_dir'.
+    # We use 'source' for dataset, 'final_tau' for similarity_threshold,
+    # and the global 'agent_path' as the 'work_dir' for ingestion.
+    cfg = ExperimentConfig(
+        dataset=source,  # source is a Path object from Typer
+        similarity_threshold=final_tau,
+        work_dir=agent_path  # Ingest directly into the specified agent directory
+    )
+
+    typer.echo(f"Ingesting data from '{source}' into agent at '{agent_path}' with tau={final_tau}...")
+    try:
+        metrics = run_experiment(cfg)
+        if json_output:
+            typer.echo(json.dumps(metrics))
+        else:
+            for k, v_val in metrics.items(): # renamed v to v_val
+                typer.echo(f"{k}: {v_val}")
+        typer.echo("Ingestion complete.")
+    except Exception as e:
+        typer.secho(f"Error during ingestion: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
 
 @app.command("query", help="Queries the agent with the provided text and returns a response.")
 def query(ctx: typer.Context, query_text: str = typer.Argument(..., help="Query to ask the agent."), show_prompt_tokens: bool = typer.Option(False, "--show-prompt-tokens", help="Display token count of the prompt sent to the LLM")) -> None:
@@ -392,14 +467,14 @@ def evaluate_llm_response_cmd(response_input: str = typer.Argument(..., help="LL
 
 @dev_app.command("download-embedding-model")
 def download_embedding_model_cli(model_name: str = typer.Option("all-MiniLM-L6-v2", help="SentenceTransformer model name")) -> None:
-    bar = tqdm(total=1, desc="Downloading embedding model", disable=False) # Corrected description
-    util_download_embedding_model(model_name) # Use aliased import
+    bar = tqdm(total=1, desc="Downloading embedding model", disable=False)
+    util_download_embedding_model(model_name)
     bar.update(1); bar.close(); typer.echo(f"Downloaded {model_name}")
 
 @dev_app.command("download-chat-model")
 def download_chat_model_cli(model_name: str = typer.Option("tiny-gpt2", help="Local causal LM name")) -> None:
     bar = tqdm(total=1, desc="Downloading chat model", disable=False)
-    util_download_chat_model(model_name) # Use aliased import
+    util_download_chat_model(model_name)
     bar.update(1); bar.close(); typer.echo(f"Downloaded {model_name}")
 
 @dev_app.command("create-strategy-package")
@@ -459,7 +534,7 @@ def inspect_trace(trace_file: Path = typer.Argument(..., help="Path to trace JSO
 
 # Commands still under @app.command that need to be moved or have their functionality subsumed
 # @app.command()
-# def validate_cmd(...)
+# def validate_cmd(...) # This should be agent_app.command("validate")
 # @app.command("download-model") -> now dev_app.command("download-embedding-model")
 # @app.command("download-chat-model") -> now dev_app.command("download-chat-model")
 
