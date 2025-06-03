@@ -1,4 +1,4 @@
-from gist_memory.registry import (
+from compact_memory.registry import (
     CompressionStrategy,
     ValidationMetric,
     register_compression_strategy,
@@ -8,7 +8,7 @@ from gist_memory.registry import (
     _VALIDATION_METRIC_REGISTRY,
 )
 
-from gist_memory.compression.strategies_abc import (
+from compact_memory.compression.strategies_abc import (
     CompressedMemory,
     CompressionTrace,
 )

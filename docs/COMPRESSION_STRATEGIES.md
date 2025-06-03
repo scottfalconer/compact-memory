@@ -1,7 +1,7 @@
 # Designing Compression Strategies
 
 This guide collects techniques for slicing documents into belief-sized ideas and updating prototypes. A compression strategy can mix and match these steps depending on the data source.
-While LLMs with large context windows and RAG are powerful, Gist Memory explores strategies for more deeply processed, long-term, and adaptive memory. The techniques described here aim to create dynamic memory structures that evolve with new information, offering capabilities beyond simple retrieval of verbatim text chunks.
+While LLMs with large context windows and RAG are powerful, Compact Memory explores strategies for more deeply processed, long-term, and adaptive memory. The techniques described here aim to create dynamic memory structures that evolve with new information, offering capabilities beyond simple retrieval of verbatim text chunks.
 
 ## Segmenting source documents
 
@@ -75,7 +75,7 @@ the `rationale_episode` strategy provides rationale-enhanced episodic memory and
 related CLI tools. Install it via:
 
 ```bash
-pip install gist_memory_rationale_episode_strategy
+pip install compact_memory_rationale_episode_strategy
 ```
 
-Once installed, its commands are available through the main `gist-memory` CLI.
+Once installed, its commands are available through the main `compact-memory` CLI.

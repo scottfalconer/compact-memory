@@ -1,6 +1,6 @@
-This document serves as a conceptual guide to the Gist Memory platform. It covers the vision behind the project, illustrates key memory management strategies (such as the Prototype System and ActiveMemoryManager), discusses prompt assembly techniques, and highlights important areas for experimentation and learning within the Gist Memory framework. Its aim is to provide a foundational understanding of the principles and ideas driving the development of Gist Memory.
+This document serves as a conceptual guide to the Compact Memory platform. It covers the vision behind the project, illustrates key memory management strategies (such as the Prototype System and ActiveMemoryManager), discusses prompt assembly techniques, and highlights important areas for experimentation and learning within the Compact Memory framework. Its aim is to provide a foundational understanding of the principles and ideas driving the development of Compact Memory.
 
-I. Vision: The Gist Memory Experimentation Platform
+I. Vision: The Compact Memory Experimentation Platform
 
 Core Mission: To develop a platform for rapidly prototyping, testing, and validating diverse strategies for compressing textual information ("memory") to maximize its utility—including long-term coherence, evolving understanding, and efficient recall—within Large Language Model (LLM) token budgets. This is particularly crucial for applications where computational resources, API costs, or latency are significant concerns, and for enabling effective use of local/smaller LLMs with inherent token limitations.
 Guiding Philosophy: While we draw inspiration from human cognitive processes for potential compression strategies, the platform itself is designed to be agnostic, allowing for the implementation and comparison of a wide range of techniques, including those involving learned components or adaptive parameter tuning based on performance. Our aim is to foster innovation in memory management for LLMs.
@@ -166,7 +166,7 @@ Chainable strategies are now supported via `PipelineCompressionStrategy`, enabli
 
 Specialized strategies with unique storage needs, such as the former
 `rationale_episode` episodic memory system, are provided as optional
-plugins. Install `gist_memory_rationale_episode_strategy` to add that
+plugins. Install `compact_memory_rationale_episode_strategy` to add that
 strategy and its related CLI commands.
 
 VII. Contribution Workflow Tips

@@ -1,7 +1,7 @@
 import numpy as np
-from gist_memory.agent import Agent
-from gist_memory.json_npy_store import JsonNpyVectorStore
-from gist_memory.embedding_pipeline import MockEncoder
+from compact_memory.agent import Agent
+from compact_memory.json_npy_store import JsonNpyVectorStore
+from compact_memory.embedding_pipeline import MockEncoder
 
 
 def test_add_memory_uses_canonical(monkeypatch, tmp_path):
@@ -12,7 +12,7 @@ def test_add_memory_uses_canonical(monkeypatch, tmp_path):
         captured['texts'] = list(texts) if isinstance(texts, (list, tuple)) else [texts]
         return np.zeros((len(captured['texts']), MockEncoder.dim), dtype=np.float32)
 
-    monkeypatch.setattr('gist_memory.agent.embed_text', fake_embed)
+    monkeypatch.setattr('compact_memory.agent.embed_text', fake_embed)
 
     store = JsonNpyVectorStore(path=str(tmp_path), embedding_model='mock', embedding_dim=MockEncoder.dim)
     agent = Agent(store)

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from gist_memory.segmentation import agentic_split, _sentences
+from compact_memory.segmentation import agentic_split, _sentences
 
 
 def test_agentic_split_long_text():

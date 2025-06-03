@@ -1,4 +1,4 @@
-from gist_memory_rationale_episode_strategy import (
+from compact_memory_rationale_episode_strategy import (
     Episode,
     Decision,
     EpisodeStorage,
@@ -30,9 +30,9 @@ def test_manager_finalize_creates_file(tmp_path, monkeypatch):
             return 2
 
     monkeypatch.setattr(
-        "gist_memory.embedding_pipeline._load_model", lambda *a, **k: DummyModel()
+        "compact_memory.embedding_pipeline._load_model", lambda *a, **k: DummyModel()
     )
-    import gist_memory.embedding_pipeline as ep
+    import compact_memory.embedding_pipeline as ep
 
     ep._embed_cached.cache_clear()
     store = EpisodeStorage(tmp_path)
@@ -73,9 +73,9 @@ def test_retrieve_returns_episode(tmp_path, monkeypatch):
 
     dummy = DummyModel()
     monkeypatch.setattr(
-        "gist_memory.embedding_pipeline._load_model", lambda *a, **k: dummy
+        "compact_memory.embedding_pipeline._load_model", lambda *a, **k: dummy
     )
-    import gist_memory.embedding_pipeline as ep
+    import compact_memory.embedding_pipeline as ep
 
     ep._embed_cached.cache_clear()
 

@@ -1,6 +1,6 @@
 import numpy as np
 from datetime import datetime
-from gist_memory.models import ConversationalTurn
+from compact_memory.models import ConversationalTurn
 
 
 def test_conversational_turn_creation_with_defaults():

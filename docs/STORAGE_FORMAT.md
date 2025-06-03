@@ -1,6 +1,6 @@
 # Storage Format
 
-This document describes how a Gist Memory memory store is kept on disk.  A memory store is a directory containing several JSON and NPY files along with a small YAML metadata file.  The layout is intentionally simple so that the contents can be inspected or backed up with regular tools.
+This document describes how a Compact Memory memory store is kept on disk.  A memory store is a directory containing several JSON and NPY files along with a small YAML metadata file.  The layout is intentionally simple so that the contents can be inspected or backed up with regular tools.
 
 ```
 memory/

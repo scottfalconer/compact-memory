@@ -3,14 +3,14 @@ from __future__ import annotations
 from typing import List, Optional, Any, Dict, Union, Tuple
 
 import numpy as np
-from gist_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory
-from gist_memory.compression.trace import CompressionTrace
-from gist_memory.active_memory_manager import ActiveMemoryManager, ConversationTurn
-from gist_memory.prompt_budget import PromptBudget
-from gist_memory import agent as _agent_utils # For embed_text
-from gist_memory.compression import register_compression_strategy # Added for registration
+from compact_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory
+from compact_memory.compression.trace import CompressionTrace
+from compact_memory.active_memory_manager import ActiveMemoryManager, ConversationTurn
+from compact_memory.prompt_budget import PromptBudget
+from compact_memory import agent as _agent_utils # For embed_text
+from compact_memory.compression import register_compression_strategy # Added for registration
 
-# from gist_memory.token_utils import token_count # token_count is used within ActiveMemoryManager
+# from compact_memory.token_utils import token_count # token_count is used within ActiveMemoryManager
 
 class ActiveMemoryStrategy(CompressionStrategy):
     """

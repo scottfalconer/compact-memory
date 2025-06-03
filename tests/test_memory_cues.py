@@ -1,4 +1,4 @@
-from gist_memory.prototype.memory_cues import MemoryCueRenderer
+from compact_memory.prototype.memory_cues import MemoryCueRenderer
 
 
 def test_memory_cue_renderer_basic():

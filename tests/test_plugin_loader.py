@@ -3,9 +3,9 @@ from importlib.metadata import EntryPoint
 import yaml
 from typer.testing import CliRunner
 
-from gist_memory.cli import app
-from gist_memory import plugin_loader
-from gist_memory.compression import get_compression_strategy, get_strategy_metadata
+from compact_memory.cli import app
+from compact_memory import plugin_loader
+from compact_memory.compression import get_compression_strategy, get_strategy_metadata
 
 
 def _write_local_plugin(path, name, text):
@@ -29,7 +29,7 @@ def _write_local_plugin(path, name, text):
 def test_plugin_override_chain(tmp_path, monkeypatch):
     ep_mod = tmp_path / "epmod.py"
     ep_mod.write_text(
-        "from gist_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace\n"
+        "from compact_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace\n"
         "class EpStrategy(CompressionStrategy):\n"
         "    id='none'\n"
         "    display_name='EP'\n"
@@ -49,7 +49,7 @@ def test_plugin_override_chain(tmp_path, monkeypatch):
     _write_local_plugin(
         plugin_dir,
         "none",
-        "from gist_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace\n"
+        "from compact_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace\n"
         "class LocalStrategy(CompressionStrategy):\n"
         "    id='none'\n"
         "    display_name='Local'\n"
@@ -80,7 +80,7 @@ def test_cli_plugin_entrypoint(tmp_path, monkeypatch):
     )
     monkeypatch.syspath_prepend(tmp_path)
 
-    from gist_memory import cli_plugins
+    from compact_memory import cli_plugins
 
     ep = EntryPoint(
         name="extras",

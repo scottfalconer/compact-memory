@@ -3,19 +3,19 @@ import uuid
 
 import pytest
 
-from gist_memory import agent as ag
-from gist_memory.agent import Agent
-from gist_memory.embedding_pipeline import MockEncoder, _load_model, embed_text
-from gist_memory.json_npy_store import JsonNpyVectorStore
-from gist_memory.chunker import SentenceWindowChunker, Chunker
-from gist_memory.active_memory_manager import ActiveMemoryManager
-from gist_memory.prompt_budget import PromptBudget
+from compact_memory import agent as ag
+from compact_memory.agent import Agent
+from compact_memory.embedding_pipeline import MockEncoder, _load_model, embed_text
+from compact_memory.json_npy_store import JsonNpyVectorStore
+from compact_memory.chunker import SentenceWindowChunker, Chunker
+from compact_memory.active_memory_manager import ActiveMemoryManager
+from compact_memory.prompt_budget import PromptBudget
 
 
 @pytest.fixture(autouse=True)
 def use_mock_encoder(monkeypatch):
     enc = MockEncoder()
-    monkeypatch.setattr("gist_memory.embedding_pipeline._load_model", lambda *a, **k: enc)
+    monkeypatch.setattr("compact_memory.embedding_pipeline._load_model", lambda *a, **k: enc)
     yield
 
 
@@ -107,7 +107,7 @@ def test_receive_channel_query(monkeypatch, tmp_path):
         def reply(self, prompt):
             return "pong"
 
-    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", Dummy)
+    monkeypatch.setattr("compact_memory.local_llm.LocalChatModel", Dummy)
     res = agent.receive_channel_message("user", "alpha?")
     assert res["action"] == "query"
     assert res["reply"] == "pong"
@@ -132,7 +132,7 @@ def test_process_conversational_turn_updates_manager(monkeypatch, tmp_path):
         def reply(self, prompt):
             return "resp"
 
-    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", Dummy)
+    monkeypatch.setattr("compact_memory.local_llm.LocalChatModel", Dummy)
     mgr = ActiveMemoryManager()
     reply, info = agent.process_conversational_turn("hello?", mgr)
     assert reply == "resp"
@@ -159,7 +159,7 @@ def test_prompt_budget_truncates_prompt(monkeypatch, tmp_path):
         def reply(self, prompt):
             return "resp"
 
-    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", Dummy)
+    monkeypatch.setattr("compact_memory.local_llm.LocalChatModel", Dummy)
     mgr = ActiveMemoryManager()
     reply, _ = agent.process_conversational_turn("one two three four five?", mgr)
     assert reply == "resp"

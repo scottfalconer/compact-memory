@@ -13,7 +13,7 @@ from .logging_utils import configure_logging
 
 
 def main(argv=None) -> None:
-    """Entry point for the ``gist-memory`` command.
+    """Entry point for the ``compact-memory`` command.
 
     This entry point always delegates directly to the Typer-based CLI,
     which runs well in Colab or any terminal.

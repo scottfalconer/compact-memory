@@ -1,6 +1,6 @@
-# Sample Strategy Package for Gist Memory
+# Sample Strategy Package for Compact Memory
 
-This directory provides a template for packaging a custom compression strategy for use with the Gist Memory platform. Packaging allows your strategy to be more easily discovered, shared, and used within the Gist Memory ecosystem.
+This directory provides a template for packaging a custom compression strategy for use with the Compact Memory platform. Packaging allows your strategy to be more easily discovered, shared, and used within the Compact Memory ecosystem.
 
 ## Purpose
 
@@ -18,7 +18,7 @@ A typical strategy package includes the following:
 *   **`strategy.py`**:
     *   This is where you implement your custom `CompressionStrategy`.
     *   In this example, `strategy.py` contains `SampleStrategy`, a trivial strategy that returns the input text unchanged.
-    *   Your strategy should inherit from `gist_memory.compression.strategies_abc.CompressionStrategy` and implement the `compress` method. It must also have a unique `id` attribute.
+    *   Your strategy should inherit from `compact_memory.compression.strategies_abc.CompressionStrategy` and implement the `compress` method. It must also have a unique `id` attribute.
 
 *   **`strategy_package.yaml`**:
     *   This metadata file describes your strategy package. It includes:
@@ -55,8 +55,8 @@ A typical strategy package includes the following:
 
 ## Making Your Packaged Strategy Discoverable
 
-Gist Memory can discover strategies packaged in this format if they are placed in a directory that the system scans. (The exact mechanism for registration or scanning might be detailed in the main Gist Memory documentation - e.g., by setting an environment variable or placing packages in a predefined location).
+Compact Memory can discover strategies packaged in this format if they are placed in a directory that the system scans. (The exact mechanism for registration or scanning might be detailed in the main Compact Memory documentation - e.g., by setting an environment variable or placing packages in a predefined location).
 
-For local development and testing, you can often make your strategy available by ensuring the directory containing your package is in your `PYTHONPATH`, or by using local installation options if provided by Gist Memory's CLI or main setup.
+For local development and testing, you can often make your strategy available by ensuring the directory containing your package is in your `PYTHONPATH`, or by using local installation options if provided by Compact Memory's CLI or main setup.
 
-Refer to the main Gist Memory documentation on "Sharing Strategies" ([`docs/SHARING_STRATEGIES.md`](../../docs/SHARING_STRATEGIES.md)) and "Developing Compression Strategies" ([`docs/DEVELOPING_COMPRESSION_STRATEGIES.md`](../../docs/DEVELOPING_COMPRESSION_STRATEGIES.md)) for more details on how strategies are loaded and best practices for development.
+Refer to the main Compact Memory documentation on "Sharing Strategies" ([`docs/SHARING_STRATEGIES.md`](../../docs/SHARING_STRATEGIES.md)) and "Developing Compression Strategies" ([`docs/DEVELOPING_COMPRESSION_STRATEGIES.md`](../../docs/DEVELOPING_COMPRESSION_STRATEGIES.md)) for more details on how strategies are loaded and best practices for development.

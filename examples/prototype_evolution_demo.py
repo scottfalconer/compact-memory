@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from gist_memory.json_npy_store import JsonNpyVectorStore
-from gist_memory.prototype_system_strategy import PrototypeSystemStrategy
-from gist_memory.embedding_pipeline import MockEncoder
-import gist_memory.agent as agent_mod
+from compact_memory.json_npy_store import JsonNpyVectorStore
+from compact_memory.prototype_system_strategy import PrototypeSystemStrategy
+from compact_memory.embedding_pipeline import MockEncoder
+import compact_memory.agent as agent_mod
 
 
 def main() -> None:

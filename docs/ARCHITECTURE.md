@@ -1,14 +1,14 @@
-# Gist Memory Architecture
+# Compact Memory Architecture
 
-This document provides a detailed technical explanation of the Gist Memory platform's architecture, intended for developers contributing to the core or those seeking a deep understanding of its internal workings.
+This document provides a detailed technical explanation of the Compact Memory platform's architecture, intended for developers contributing to the core or those seeking a deep understanding of its internal workings.
 
 ## Overview
 
-`gist-memory` implements a coarse prototype memory system for storing and
+`compact-memory` implements a coarse prototype memory system for storing and
 retrieving textual information. Incoming text is converted into vector
 embeddings and "snap-assigned" to belief prototypes which act as stable
 centroids. The codebase is organised into a library providing Python APIs and
-a CLI (`gist-memory`).
+a CLI (`compact-memory`).
 
 The design follows the hypotheses documented in `AGENTS.md`:
 prototypes reduce storage and search cost while providing more robust
@@ -19,7 +19,7 @@ experimented with.
 ## Package layout
 
 ```
-├── gist_memory/           # main library
+├── compact_memory/           # main library
 ├── examples/              # onboarding demo
 ├── tests/                 # unit tests using mock embeddings
 └── docs/                  # documentation
@@ -99,7 +99,7 @@ quickly.
 
 ## CLI
 
-`gist-memory` is implemented using Typer and exposes subcommands for
+`compact-memory` is implemented using Typer and exposes subcommands for
 initialising a memory store, inspecting stored prototypes and running
 experiments. The CLI is the primary interface, and a Colab notebook will
 provide a graphical option in the future.

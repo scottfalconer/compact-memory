@@ -30,22 +30,22 @@ authors:
 description: Short description.
 ```
 
-Use `gist-memory package create` to generate a template. Validate your package
-with `gist-memory package validate <path>`.
+Use `compact-memory package create` to generate a template. Validate your package
+with `compact-memory package validate <path>`.
 
 Run an experiment from a package with:
 
 ```
-gist-memory experiment run-package /path/to/package --experiment experiments/example.yaml
+compact-memory experiment run-package /path/to/package --experiment experiments/example.yaml
 ```
 
 ## Using Strategy Packages as Plugins
 
 Installable Python packages can register a strategy via the
-`gist_memory.strategies` entry point group. A minimal `pyproject.toml` snippet:
+`compact_memory.strategies` entry point group. A minimal `pyproject.toml` snippet:
 
 ```toml
-[project.entry-points."gist_memory.strategies"]
+[project.entry-points."compact_memory.strategies"]
 my_strategy = "my_package.module:MyStrategy"
 ```
 
@@ -53,9 +53,9 @@ When such a package is installed, the strategy is automatically discovered on
 startup.
 
 For local experimentation, place a strategy package directory inside
-`$GIST_MEMORY_PLUGINS_PATH` or the default user plugin directory
-`$(platformdirs.user_data_dir('gist_memory','GistMemoryTeam'))/plugins`. Multiple
-paths may be provided in `GIST_MEMORY_PLUGINS_PATH` separated by the system path
+`$COMPACT_MEMORY_PLUGINS_PATH` or the default user plugin directory
+`$(platformdirs.user_data_dir('compact_memory','CompactMemoryTeam'))/plugins`. Multiple
+paths may be provided in `COMPACT_MEMORY_PLUGINS_PATH` separated by the system path
 separator. Paths listed first take precedence.
 
 The override order is:
@@ -64,7 +64,7 @@ The override order is:
 2. Entry point plugins
 3. Local plugin directories (highest precedence)
 
-Use `gist-memory strategy list` to verify which strategy implementation is active
+Use `compact-memory strategy list` to verify which strategy implementation is active
 and its source.
 
 **Security Warning:** Loading plugins executes arbitrary code. Only install or

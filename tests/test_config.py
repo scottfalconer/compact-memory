@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 import yaml # PyYAML needed
 
-from gist_memory.config import Config, DEFAULT_CONFIG, ENV_VAR_PREFIX, USER_CONFIG_DIR, USER_CONFIG_PATH, LOCAL_CONFIG_PATH
+from compact_memory.config import Config, DEFAULT_CONFIG, ENV_VAR_PREFIX, USER_CONFIG_DIR, USER_CONFIG_PATH, LOCAL_CONFIG_PATH
 
 # Define a fixture for a temporary config directory structure
 @pytest.fixture
@@ -22,11 +22,11 @@ def temp_config_env(tmp_path, monkeypatch):
     # we might need to reload it or pass paths, but Config() should pick it up.
 
     # Create user config dir structure based on the patched Path.home()
-    # USER_CONFIG_DIR is usually ~/.config/gist_memory
+    # USER_CONFIG_DIR is usually ~/.config/compact_memory
     # USER_CONFIG_PATH is USER_CONFIG_DIR / "config.yaml"
-    # We use tmp_path as mocked home, so user_config_dir_test becomes tmp_path / ".config" / "gist_memory"
+    # We use tmp_path as mocked home, so user_config_dir_test becomes tmp_path / ".config" / "compact_memory"
 
-    user_config_dir_test = tmp_path / ".config" / "gist_memory" # This matches how USER_CONFIG_DIR would resolve
+    user_config_dir_test = tmp_path / ".config" / "compact_memory" # This matches how USER_CONFIG_DIR would resolve
     user_config_dir_test.mkdir(parents=True, exist_ok=True)
     user_config_file_test = user_config_dir_test / "config.yaml"
 
@@ -46,9 +46,9 @@ def temp_config_env(tmp_path, monkeypatch):
     # For this test, we'll rely on the monkeypatched Path.home() being effective for USER_CONFIG_PATH
     # and os.getcwd() for LOCAL_CONFIG_PATH's relative resolution if it's just Path(".gmconfig.yaml").
 
-    # Clear relevant GIST_MEMORY environment variables
+    # Clear relevant COMPACT_MEMORY environment variables
     env_vars_to_clear = [
-        f"{ENV_VAR_PREFIX}GIST_MEMORY_PATH", # Adjusted to match how Config class generates them
+        f"{ENV_VAR_PREFIX}COMPACT_MEMORY_PATH", # Adjusted to match how Config class generates them
         f"{ENV_VAR_PREFIX}DEFAULT_MODEL_ID",
         f"{ENV_VAR_PREFIX}DEFAULT_STRATEGY_ID",
         f"{ENV_VAR_PREFIX}LOG_FILE",
@@ -89,8 +89,8 @@ def test_config_default_values(temp_config_env):
     config = Config()
     for key, default_value in DEFAULT_CONFIG.items():
         expected_value = default_value
-        if key == "gist_memory_path": # Path.home() is monkeypatched
-            expected_value = str(Path(tmp_path) / ".local" / "share" / "gist_memory")
+        if key == "compact_memory_path": # Path.home() is monkeypatched
+            expected_value = str(Path(tmp_path) / ".local" / "share" / "compact_memory")
         elif isinstance(default_value, Path):
              expected_value = str(default_value) # Convert Path objects in defaults to string for comparison if needed
 
@@ -104,7 +104,7 @@ def test_config_user_global_file(temp_config_env):
     if local_cfg_file.exists(): local_cfg_file.unlink()
 
     user_settings = {
-        "gist_memory_path": "/user/path/test_global", # Using a more unique path
+        "compact_memory_path": "/user/path/test_global", # Using a more unique path
         "default_model_id": "user_model_global",
         "verbose": True # DEFAULT_CONFIG has 'verbose': False
     }
@@ -113,12 +113,12 @@ def test_config_user_global_file(temp_config_env):
 
     config = Config() # Config will use the monkeypatched Path.home() to find user_cfg_file
 
-    assert config.get("gist_memory_path") == "/user/path/test_global"
+    assert config.get("compact_memory_path") == "/user/path/test_global"
     assert config.get("default_model_id") == "user_model_global"
     assert config.get("verbose") is True
     assert config.get("default_strategy_id") == DEFAULT_CONFIG["default_strategy_id"] # From default
 
-    _, source = config.get_with_source("gist_memory_path")
+    _, source = config.get_with_source("compact_memory_path")
     # The source description in Config uses the resolved USER_CONFIG_PATH
     # which is now influenced by monkeypatching Path.home()
     expected_user_config_path_str = str(user_cfg_file.resolve())
@@ -132,7 +132,7 @@ def test_config_local_project_file(temp_config_env):
     if user_cfg_file.exists(): user_cfg_file.unlink() # Ensure no user global for this test
 
     local_settings = {
-        "gist_memory_path": "./project_memory_data", # Relative path
+        "compact_memory_path": "./project_memory_data", # Relative path
         "default_strategy_id": "project_strategy_local"
     }
     with open(local_cfg_file, "w") as f:
@@ -144,10 +144,10 @@ def test_config_local_project_file(temp_config_env):
     project_dir_path = Path(os.getcwd())
     expected_project_path = str((project_dir_path / "project_memory_data").resolve())
 
-    assert config.get("gist_memory_path") == expected_project_path
+    assert config.get("compact_memory_path") == expected_project_path
     assert config.get("default_strategy_id") == "project_strategy_local"
 
-    _, source = config.get_with_source("gist_memory_path")
+    _, source = config.get_with_source("compact_memory_path")
     expected_local_config_path_str = str(local_cfg_file.resolve())
     assert source == f"local project config file ({expected_local_config_path_str})"
 
@@ -158,17 +158,17 @@ def test_config_environment_variables(temp_config_env):
     if local_cfg_file.exists(): local_cfg_file.unlink()
 
     # Use ENV_VAR_PREFIX and .upper() as defined in Config class for env var names
-    monkeypatch.setenv(f"{ENV_VAR_PREFIX}GIST_MEMORY_PATH", "/env/path_test")
+    monkeypatch.setenv(f"{ENV_VAR_PREFIX}COMPACT_MEMORY_PATH", "/env/path_test")
     monkeypatch.setenv(f"{ENV_VAR_PREFIX}DEFAULT_MODEL_ID", "env_model_test")
     monkeypatch.setenv(f"{ENV_VAR_PREFIX}VERBOSE", "true") # Test string to bool conversion
 
     config = Config()
-    assert config.get("gist_memory_path") == "/env/path_test"
+    assert config.get("compact_memory_path") == "/env/path_test"
     assert config.get("default_model_id") == "env_model_test"
     assert config.get("verbose") is True # Should be converted to bool
 
-    _, source = config.get_with_source("gist_memory_path")
-    assert source == f"environment variable ({ENV_VAR_PREFIX}GIST_MEMORY_PATH)"
+    _, source = config.get_with_source("compact_memory_path")
+    assert source == f"environment variable ({ENV_VAR_PREFIX}COMPACT_MEMORY_PATH)"
     _, source = config.get_with_source("verbose")
     assert source == f"environment variable ({ENV_VAR_PREFIX}VERBOSE)"
 
@@ -180,17 +180,17 @@ def test_config_precedence(temp_config_env):
 
     # 2. User Global Config (will be created at user_cfg_file path)
     with open(user_cfg_file, "w") as f:
-        yaml.dump({"gist_memory_path": "/user/path_prec",
+        yaml.dump({"compact_memory_path": "/user/path_prec",
                      "default_model_id": "user_model_prec",
                      "verbose": False}, f)
 
     # 3. Local Project Config (will be created at local_cfg_file path)
     with open(local_cfg_file, "w") as f:
-        yaml.dump({"gist_memory_path": "./local/path_prec", # Relative to project_dir
+        yaml.dump({"compact_memory_path": "./local/path_prec", # Relative to project_dir
                      "default_model_id": "local_model_prec"}, f) # verbose not set here
 
     # 4. Environment Variables (highest precedence among these)
-    monkeypatch.setenv(f"{ENV_VAR_PREFIX}GIST_MEMORY_PATH", "/env/path_prec")
+    monkeypatch.setenv(f"{ENV_VAR_PREFIX}COMPACT_MEMORY_PATH", "/env/path_prec")
     # default_model_id not set by env var, so local should take precedence over user
 
     config = Config()
@@ -200,9 +200,9 @@ def test_config_precedence(temp_config_env):
     expected_local_config_path_str = str(local_cfg_file.resolve())
 
 
-    assert config.get("gist_memory_path") == "/env/path_prec" # Env overrides local and user
-    _, source = config.get_with_source("gist_memory_path")
-    assert source == f"environment variable ({ENV_VAR_PREFIX}GIST_MEMORY_PATH)"
+    assert config.get("compact_memory_path") == "/env/path_prec" # Env overrides local and user
+    _, source = config.get_with_source("compact_memory_path")
+    assert source == f"environment variable ({ENV_VAR_PREFIX}COMPACT_MEMORY_PATH)"
 
     assert config.get("default_model_id") == "local_model_prec" # Local overrides user
     _, source = config.get_with_source("default_model_id")
@@ -257,9 +257,9 @@ def test_config_set_and_get_all_with_sources(temp_config_env):
     assert all_sources["log_file"][1] == f"user global config file ({expected_user_config_path_str})"
 
     # Default value check from reloaded config
-    expected_default_path = str(Path(tmp_path) / ".local" / "share" / "gist_memory")
-    assert all_sources["gist_memory_path"][0] == expected_default_path
-    assert all_sources["gist_memory_path"][1] == "application default"
+    expected_default_path = str(Path(tmp_path) / ".local" / "share" / "compact_memory")
+    assert all_sources["compact_memory_path"][0] == expected_default_path
+    assert all_sources["compact_memory_path"][1] == "application default"
 
     # Test setting an invalid key (Config.set should prevent this)
     assert config.set("invalid_key_here", "some_value") is False
@@ -269,13 +269,13 @@ def test_config_malformed_yaml(temp_config_env, capsys):
     user_cfg_file, local_cfg_file, _ = temp_config_env
     if local_cfg_file.exists(): local_cfg_file.unlink()
 
-    user_cfg_file.write_text("gist_memory_path: /malformed_path\nverbose: [true") # Malformed YAML
+    user_cfg_file.write_text("compact_memory_path: /malformed_path\nverbose: [true") # Malformed YAML
 
     config = Config() # Should not crash
 
     # Check that it fell back to defaults
-    expected_default_path = str(Path(tmp_path) / ".local" / "share" / "gist_memory")
-    assert config.get("gist_memory_path") == expected_default_path
+    expected_default_path = str(Path(tmp_path) / ".local" / "share" / "compact_memory")
+    assert config.get("compact_memory_path") == expected_default_path
     assert config.get("verbose") == DEFAULT_CONFIG["verbose"]
 
     # Check for error message (printed by Config class)

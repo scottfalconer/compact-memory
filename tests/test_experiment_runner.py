@@ -1,16 +1,16 @@
 from pathlib import Path
 
-from gist_memory.experiment_runner import ExperimentConfig, run_experiment
-from gist_memory.active_memory_manager import ActiveMemoryManager
-from gist_memory.utils import load_agent
-from gist_memory.embedding_pipeline import MockEncoder
+from compact_memory.experiment_runner import ExperimentConfig, run_experiment
+from compact_memory.active_memory_manager import ActiveMemoryManager
+from compact_memory.utils import load_agent
+from compact_memory.embedding_pipeline import MockEncoder
 import pytest
 
 
 @pytest.fixture(autouse=True)
 def use_mock_encoder(monkeypatch):
     enc = MockEncoder()
-    monkeypatch.setattr("gist_memory.embedding_pipeline._load_model", lambda *a, **k: enc)
+    monkeypatch.setattr("compact_memory.embedding_pipeline._load_model", lambda *a, **k: enc)
     yield
 
 

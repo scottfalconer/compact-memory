@@ -114,7 +114,7 @@ class LocalChatModel(LLMProvider):
         except Exception as exc:  # pragma: no cover – depends on local files
             raise RuntimeError(
                 f"Error: Local Chat Model '{self.model_name}' not found. "
-                "Please run: gist-memory download-chat-model "
+                "Please run: compact-memory download-chat-model "
                 f"--model-name {self.model_name} to install it."
             ) from exc
         self._loaded = True

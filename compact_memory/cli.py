@@ -17,7 +17,7 @@ from .token_utils import token_count
 from rich.table import Table
 from rich.console import Console
 
-from gist_memory import __version__
+from compact_memory import __version__
 from .logging_utils import configure_logging
 
 
@@ -39,7 +39,7 @@ from .embedding_pipeline import (
     EmbeddingDimensionMismatchError,
 )
 from .utils import load_agent
-from gist_memory.config import Config, DEFAULT_CONFIG, USER_CONFIG_PATH
+from compact_memory.config import Config, DEFAULT_CONFIG, USER_CONFIG_PATH
 
 from .compression import (
     available_strategies,
@@ -62,7 +62,7 @@ from .experiment_runner import (
 )
 
 app = typer.Typer(
-    help="Gist Memory: A CLI for intelligent information management using memory agents and advanced compression. Ingest, query, and compress information. Manage agent configurations and developer tools."
+    help="Compact Memory: A CLI for intelligent information management using memory agents and advanced compression. Ingest, query, and compress information. Manage agent configurations and developer tools."
 )
 console = Console()
 
@@ -70,7 +70,7 @@ console = Console()
 agent_app = typer.Typer(
     help="Manage memory agents: initialize, inspect statistics, validate, and clear."
 )
-config_app = typer.Typer(help="Manage Gist Memory application configuration settings.")
+config_app = typer.Typer(help="Manage Compact Memory application configuration settings.")
 dev_app = typer.Typer(
     help="Developer tools for testing, evaluation, and managing extension packages."
 )
@@ -83,7 +83,7 @@ app.add_typer(dev_app, name="dev")
 
 def version_callback(value: bool):
     if value:
-        typer.echo(f"Gist Memory version: {__version__}")
+        typer.echo(f"Compact Memory version: {__version__}")
         raise typer.Exit()
 
 
@@ -105,17 +105,17 @@ def main(
         None,
         "--memory-path",
         "-m",
-        help="Path to the Gist Memory agent directory. Overrides GIST_MEMORY_PATH env var and configuration files.",
+        help="Path to the Compact Memory agent directory. Overrides COMPACT_MEMORY_PATH env var and configuration files.",
     ),
     model_id: Optional[str] = typer.Option(
         None,
         "--model-id",
-        help="Default model ID for LLM interactions. Overrides GIST_MEMORY_DEFAULT_MODEL_ID env var and configuration files.",
+        help="Default model ID for LLM interactions. Overrides COMPACT_MEMORY_DEFAULT_MODEL_ID env var and configuration files.",
     ),
     strategy_id: Optional[str] = typer.Option(
         None,
         "--strategy-id",
-        help="Default compression strategy ID. Overrides GIST_MEMORY_DEFAULT_STRATEGY_ID env var and configuration files.",
+        help="Default compression strategy ID. Overrides COMPACT_MEMORY_DEFAULT_STRATEGY_ID env var and configuration files.",
     ),
     version: Optional[bool] = typer.Option(
         None,
@@ -146,7 +146,7 @@ def main(
         logging.basicConfig(level=logging.DEBUG)
 
     resolved_memory_path = (
-        memory_path if memory_path is not None else config.get("gist_memory_path")
+        memory_path if memory_path is not None else config.get("compact_memory_path")
     )
     resolved_model_id = (
         model_id if model_id is not None else config.get("default_model_id")
@@ -176,12 +176,12 @@ def main(
 
     if command_requires_memory_path and not resolved_memory_path:
         is_interactive = sys.stdin.isatty()
-        prompt_default_path = config.get("gist_memory_path")
+        prompt_default_path = config.get("compact_memory_path")
 
         if is_interactive:
-            typer.secho("The Gist Memory path is not set.", fg=typer.colors.YELLOW)
+            typer.secho("The Compact Memory path is not set.", fg=typer.colors.YELLOW)
             new_path_input = typer.prompt(
-                "Please enter the path for Gist Memory storage",
+                "Please enter the path for Compact Memory storage",
                 default=(
                     str(Path(prompt_default_path).expanduser())
                     if prompt_default_path
@@ -194,7 +194,7 @@ def main(
                     f"Using memory path: {resolved_memory_path}", fg=typer.colors.GREEN
                 )
                 typer.echo(
-                    f'To set this path permanently, run: gist-memory config set gist_memory_path "{resolved_memory_path}"'
+                    f'To set this path permanently, run: compact-memory config set compact_memory_path "{resolved_memory_path}"'
                 )
             else:
                 typer.secho(
@@ -203,10 +203,10 @@ def main(
                 raise typer.Exit(code=1)
         else:
             typer.secho(
-                "Error: Gist Memory path is not set.", fg=typer.colors.RED, err=True
+                "Error: Compact Memory path is not set.", fg=typer.colors.RED, err=True
             )
             typer.secho(
-                "Please set it using the --memory-path option, the GIST_MEMORY_PATH environment variable, or in a config file (~/.config/gist_memory/config.yaml or .gmconfig.yaml).",
+                "Please set it using the --memory-path option, the COMPACT_MEMORY_PATH environment variable, or in a config file (~/.config/compact_memory/config.yaml or .gmconfig.yaml).",
                 err=True,
             )
             raise typer.Exit(code=1)
@@ -218,7 +218,7 @@ def main(
         {
             "verbose": resolved_verbose,
             "log_file": resolved_log_file,
-            "gist_memory_path": resolved_memory_path,
+            "compact_memory_path": resolved_memory_path,
             "default_model_id": resolved_model_id,
             "default_strategy_id": resolved_strategy_id,
             # "config": config, # Already present
@@ -242,7 +242,7 @@ class PersistenceLock:
 def _corrupt_exit(path: Path, exc: Exception) -> None:
     typer.echo(f"Error: Brain data is corrupted. {exc}", err=True)
     typer.echo(
-        f"Try running gist-memory validate {path} for more details or restore from a backup.",
+        f"Try running compact-memory validate {path} for more details or restore from a backup.",
         err=True,
     )
     raise typer.Exit(code=1)
@@ -258,7 +258,7 @@ def _load_agent(path: Path) -> Agent:
 # --- Agent Commands ---
 @agent_app.command(
     "init",
-    help="Initializes a new Gist Memory agent in a specified directory.\n\nUsage Examples:\n  gist-memory agent init ./my_agent_dir\n  gist-memory agent init /path/to/another_agent --name 'research_agent' --model-name 'sentence-transformers/all-mpnet-base-v2' --tau 0.75",
+    help="Initializes a new Compact Memory agent in a specified directory.\n\nUsage Examples:\n  compact-memory agent init ./my_agent_dir\n  compact-memory agent init /path/to/another_agent --name 'research_agent' --model-name 'sentence-transformers/all-mpnet-base-v2' --tau 0.75",
 )
 def init(
     target_directory: Path = typer.Argument(
@@ -310,12 +310,12 @@ def init(
         {"agent_name": name, "tau": tau, "alpha": alpha, "chunker": chunker}
     )
     store.save()
-    typer.echo(f"Successfully initialized Gist Memory agent at {path}")
+    typer.echo(f"Successfully initialized Compact Memory agent at {path}")
 
 
 @agent_app.command(
     "stats",
-    help="Displays statistics about the Gist Memory agent.\n\nUsage Examples:\n  gist-memory agent stats\n  gist-memory agent stats --memory-path path/to/my_agent --json",
+    help="Displays statistics about the Compact Memory agent.\n\nUsage Examples:\n  compact-memory agent stats\n  compact-memory agent stats --memory-path path/to/my_agent --json",
 )
 def stats(
     ctx: typer.Context,
@@ -332,7 +332,7 @@ def stats(
     final_memory_path_str = (
         memory_path_arg
         if memory_path_arg is not None
-        else ctx.obj.get("gist_memory_path")
+        else ctx.obj.get("compact_memory_path")
     )
     if final_memory_path_str is None:
         typer.secho(
@@ -372,7 +372,7 @@ def validate_agent_storage(
     final_memory_path_str = (
         memory_path_arg
         if memory_path_arg is not None
-        else ctx.obj.get("gist_memory_path")
+        else ctx.obj.get("compact_memory_path")
     )
     if final_memory_path_str is None:
         typer.secho(
@@ -404,7 +404,7 @@ def validate_agent_storage(
 
 @agent_app.command(
     "clear",
-    help="Deletes all data from an agent's memory. This action is irreversible.\n\nUsage Examples:\n  gist-memory agent clear --force\n  gist-memory agent clear --memory-path path/to/another_agent --dry-run",
+    help="Deletes all data from an agent's memory. This action is irreversible.\n\nUsage Examples:\n  compact-memory agent clear --force\n  compact-memory agent clear --memory-path path/to/another_agent --dry-run",
 )
 def clear(
     ctx: typer.Context,
@@ -429,7 +429,7 @@ def clear(
     final_memory_path_str = (
         memory_path_arg
         if memory_path_arg is not None
-        else ctx.obj.get("gist_memory_path")
+        else ctx.obj.get("compact_memory_path")
     )
     if final_memory_path_str is None:
         typer.secho(
@@ -470,7 +470,7 @@ def clear(
 # --- Top-Level Commands ---
 @app.command(
     "ingest",
-    help="Ingests text from a file or directory into the agent's memory.\n\nUsage Examples:\n  gist-memory ingest path/to/my_data.txt --tau 0.7\n  gist-memory ingest path/to/my_directory/",
+    help="Ingests text from a file or directory into the agent's memory.\n\nUsage Examples:\n  compact-memory ingest path/to/my_data.txt --tau 0.7\n  compact-memory ingest path/to/my_directory/",
 )
 def ingest(
     ctx: typer.Context,
@@ -497,10 +497,10 @@ def ingest(
     The agent is determined by the global --memory-path option or configuration settings.
     If the agent does not exist, it will be initialized with the provided --tau (or default).
     """
-    memory_path_str = ctx.obj.get("gist_memory_path")
+    memory_path_str = ctx.obj.get("compact_memory_path")
     if not memory_path_str:
         typer.secho(
-            "Error: Gist Memory path not set. Use --memory-path option, GIST_MEMORY_PATH env var, or set in config.",
+            "Error: Compact Memory path not set. Use --memory-path option, COMPACT_MEMORY_PATH env var, or set in config.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -573,7 +573,7 @@ def ingest(
 
 @app.command(
     "query",
-    help='Queries the Gist Memory agent and returns an AI-generated response.\n\nUsage Examples:\n  gist-memory query "What is the capital of France?"\n  gist-memory query "Explain the theory of relativity in simple terms" --show-prompt-tokens',
+    help='Queries the Compact Memory agent and returns an AI-generated response.\n\nUsage Examples:\n  compact-memory query "What is the capital of France?"\n  compact-memory query "Explain the theory of relativity in simple terms" --show-prompt-tokens',
 )
 def query(
     ctx: typer.Context,
@@ -584,7 +584,7 @@ def query(
         help="Display the token count of the final prompt sent to the LLM.",
     ),
 ) -> None:
-    final_memory_path_str = ctx.obj.get("gist_memory_path")
+    final_memory_path_str = ctx.obj.get("compact_memory_path")
     if final_memory_path_str is None:
         typer.secho(
             "Critical Error: Memory path could not be resolved for query.",
@@ -595,7 +595,7 @@ def query(
     path = Path(final_memory_path_str)
     if not path.exists():
         typer.secho(
-            f"Error: Gist Memory path '{path}' not found or is invalid. Initialize an agent first using 'agent init'.",
+            f"Error: Compact Memory path '{path}' not found or is invalid. Initialize an agent first using 'agent init'.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -657,7 +657,7 @@ def query(
 
 @app.command(
     "compress",
-    help='Compresses text content from a string, file, or directory using a specified strategy and budget.\n\nUsage Examples:\n  gist-memory compress "Some very long text..." --strategy first_last --budget 100\n  gist-memory compress path/to/document.txt -s prototype -b 200 -o summary.txt\n  gist-memory compress input_dir/ -s custom_package_strat -b 500 -o output_dir/ --recursive -p "*.md"',
+    help='Compresses text content from a string, file, or directory using a specified strategy and budget.\n\nUsage Examples:\n  compact-memory compress "Some very long text..." --strategy first_last --budget 100\n  compact-memory compress path/to/document.txt -s prototype -b 200 -o summary.txt\n  compact-memory compress input_dir/ -s custom_package_strat -b 500 -o output_dir/ --recursive -p "*.md"',
 )
 def compress(
     ctx: typer.Context,
@@ -712,7 +712,7 @@ def compress(
     )
     if not final_strategy_id:
         typer.secho(
-            "Error: Compression strategy not specified. Use --strategy option or set GIST_MEMORY_DEFAULT_STRATEGY_ID / config.",
+            "Error: Compression strategy not specified. Use --strategy option or set COMPACT_MEMORY_DEFAULT_STRATEGY_ID / config.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -1004,7 +1004,7 @@ def inspect_strategy(
         final_memory_path_str = (
             memory_path_arg
             if memory_path_arg is not None
-            else ctx.obj.get("gist_memory_path")
+            else ctx.obj.get("compact_memory_path")
         )
         if not final_memory_path_str:
             typer.secho(
@@ -1017,7 +1017,7 @@ def inspect_strategy(
         path = Path(final_memory_path_str)
         if not path.exists():
             typer.secho(
-                f"Error: Gist Memory path '{path}' not found or is invalid.",
+                f"Error: Compact Memory path '{path}' not found or is invalid.",
                 fg=typer.colors.RED,
                 err=True,
             )
@@ -1051,7 +1051,7 @@ def inspect_strategy(
 
 @dev_app.command(
     "evaluate-compression",
-    help='Evaluates compressed text against original text using a specified metric.\n\nUsage Examples:\n  gist-memory dev evaluate-compression original.txt summary.txt --metric compression_ratio\n  echo "original text" | gist-memory dev evaluate-compression - summary.txt --metric some_other_metric --metric-params \'{"param": "value"}\'',
+    help='Evaluates compressed text against original text using a specified metric.\n\nUsage Examples:\n  compact-memory dev evaluate-compression original.txt summary.txt --metric compression_ratio\n  echo "original text" | compact-memory dev evaluate-compression - summary.txt --metric some_other_metric --metric-params \'{"param": "value"}\'',
 )
 def evaluate_compression_cmd(
     original_input: str = typer.Argument(
@@ -1143,7 +1143,7 @@ def evaluate_compression_cmd(
 
 @dev_app.command(
     "test-llm-prompt",
-    help='Tests a Language Model (LLM) prompt with specified context and query.\n\nUsage Examples:\n  gist-memory dev test-llm-prompt --context "AI is rapidly evolving." --query "Tell me more." --model-id tiny-gpt2\n  cat context.txt | gist-memory dev test-llm-prompt --context - -q "What are the implications?" --model-id openai/gpt-3.5-turbo --output-response response.txt --llm-config my_llm_config.yaml',
+    help='Tests a Language Model (LLM) prompt with specified context and query.\n\nUsage Examples:\n  compact-memory dev test-llm-prompt --context "AI is rapidly evolving." --query "Tell me more." --model-id tiny-gpt2\n  cat context.txt | compact-memory dev test-llm-prompt --context - -q "What are the implications?" --model-id openai/gpt-3.5-turbo --output-response response.txt --llm-config my_llm_config.yaml',
 )
 def test_llm_prompt(
     *,
@@ -1462,7 +1462,7 @@ def create_strategy_package(
     target_dir.mkdir(parents=True, exist_ok=True)
     (target_dir / "experiments").mkdir(exist_ok=True)
 
-    strategy_py_content = f"""from gist_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace
+    strategy_py_content = f"""from compact_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace
 # Add any other necessary imports here
 
 class MyStrategy(CompressionStrategy):
@@ -1525,7 +1525,7 @@ class MyStrategy(CompressionStrategy):
 
 @dev_app.command(
     "validate-strategy-package",
-    help="Validates the structure and manifest of a compression strategy extension package.\n\nUsage Examples:\n  gist-memory dev validate-strategy-package path/to/my_strategy_pkg",
+    help="Validates the structure and manifest of a compression strategy extension package.\n\nUsage Examples:\n  compact-memory dev validate-strategy-package path/to/my_strategy_pkg",
 )
 def validate_strategy_package(
     package_path: Path = typer.Argument(
@@ -1549,7 +1549,7 @@ def validate_strategy_package(
 
 @dev_app.command(
     "run-package-experiment",
-    help="Runs an experiment defined within a compression strategy extension package.\n\nUsage Examples:\n  gist-memory dev run-package-experiment path/to/my_package --experiment main_test.yaml",
+    help="Runs an experiment defined within a compression strategy extension package.\n\nUsage Examples:\n  compact-memory dev run-package-experiment path/to/my_package --experiment main_test.yaml",
 )
 def run_package_experiment(
     package_path: Path = typer.Argument(
@@ -1654,7 +1654,7 @@ def run_package_experiment(
 
 @dev_app.command(
     "run-hpo-script",
-    help="Executes a Python script, typically for Hyperparameter Optimization (HPO).\n\nUsage Examples:\n  gist-memory dev run-hpo-script path/to/my_hpo_optimizer.py",
+    help="Executes a Python script, typically for Hyperparameter Optimization (HPO).\n\nUsage Examples:\n  compact-memory dev run-hpo-script path/to/my_hpo_optimizer.py",
 )
 def run_hpo_script(
     script_path: Path = typer.Argument(
@@ -1734,7 +1734,7 @@ def inspect_trace(
 # --- Config App Commands ---
 @config_app.command(
     "set",
-    help="Sets a Gist Memory configuration key to a new value in the user's global config file.\n\nUsage Examples:\n  gist-memory config set default_model_id openai/gpt-4-turbo\n  gist-memory config set gist_memory_path /mnt/my_data/gist_memory_store",
+    help="Sets a Compact Memory configuration key to a new value in the user's global config file.\n\nUsage Examples:\n  compact-memory config set default_model_id openai/gpt-4-turbo\n  compact-memory config set compact_memory_path /mnt/my_data/compact_memory_store",
 )
 def config_set_command(
     ctx: typer.Context,
@@ -1769,7 +1769,7 @@ def config_set_command(
 
 @config_app.command(
     "show",
-    help="Displays current Gist Memory configuration values, their effective settings, and their sources.\n\nUsage Examples:\n  gist-memory config show\n  gist-memory config show --key default_strategy_id",
+    help="Displays current Compact Memory configuration values, their effective settings, and their sources.\n\nUsage Examples:\n  compact-memory config show\n  compact-memory config show --key default_strategy_id",
 )
 def config_show_command(
     ctx: typer.Context,
@@ -1782,7 +1782,7 @@ def config_show_command(
 ) -> None:
     config: Config = ctx.obj["config"]
     console = Console(width=200)
-    table = Table(title="Gist Memory Configuration")
+    table = Table(title="Compact Memory Configuration")
     table.add_column("Key", style="cyan", no_wrap=True)
     table.add_column("Effective Value", style="magenta", overflow="fold")
     table.add_column("Source", style="green", no_wrap=True, overflow="fold")

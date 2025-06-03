@@ -1,5 +1,5 @@
 import pytest
-from gist_memory.importance_filter import dynamic_importance_filter
+from compact_memory.importance_filter import dynamic_importance_filter
 
 
 def test_dynamic_importance_filter():

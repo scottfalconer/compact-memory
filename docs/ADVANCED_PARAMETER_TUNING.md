@@ -1,18 +1,18 @@
 # Advanced Parameter Tuning
 
-Gist Memory experiments can be optimised with external Hyperparameter
+Compact Memory experiments can be optimised with external Hyperparameter
 Optimisation (HPO) tools such as **Optuna** or **Ray Tune**. The
-`gist_memory.hpo.run_params_trial` helper executes a single experiment
+`compact_memory.hpo.run_params_trial` helper executes a single experiment
 with a set of parameters and returns the chosen validation metric. This
-makes it easy to plug Gist Memory into your favourite HPO library.
+makes it easy to plug Compact Memory into your favourite HPO library.
 
 ## Quick Example using Optuna
 
 ```python
 from pathlib import Path
 import optuna
-from gist_memory.response_experiment import ResponseExperimentConfig
-from gist_memory.hpo import run_params_trial
+from compact_memory.response_experiment import ResponseExperimentConfig
+from compact_memory.hpo import run_params_trial
 
 base = ResponseExperimentConfig(
     dataset=Path("dialogues.yaml"),
@@ -37,10 +37,10 @@ print(study.best_params, study.best_value)
 Create a Python script similar to the example above and run it with:
 
 ```bash
-gist-memory experiment optimize path/to/optimize_script.py
+compact-memory experiment optimize path/to/optimize_script.py
 ```
 
-The script has full access to the Gist Memory API, so you can define
+The script has full access to the Compact Memory API, so you can define
 custom search spaces or strategies.
 
 ## Optional Dependencies
@@ -48,9 +48,9 @@ custom search spaces or strategies.
 Install `optuna` or `ray[tune]` to enable these features:
 
 ```bash
-pip install gist-memory[optuna]
+pip install compact-memory[optuna]
 # or
-pip install gist-memory[ray]
+pip install compact-memory[ray]
 ```
 
 ## Suggested AutoML Improvements

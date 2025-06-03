@@ -1,6 +1,6 @@
 # Explainable Compression and Trace Visualization
 
-Gist Memory aims to make compression strategies transparent and debuggable. A
+Compact Memory aims to make compression strategies transparent and debuggable. A
 `CompressionTrace` records the internal decisions of a strategy so that
 experiments can be analysed after the fact. The following guidelines describe how
 to produce informative traces and inspect them.
@@ -39,11 +39,11 @@ Consistent fields help downstream tooling display and compare traces.
 
 ## Inspecting Traces
 
-Use ``gist-memory trace inspect <trace.json>`` to print a human-readable summary
+Use ``compact-memory trace inspect <trace.json>`` to print a human-readable summary
 of a saved ``CompressionTrace``. A ``--type`` option filters steps by type.
 
 ```
-$ gist-memory trace inspect trace.json --type filter_item
+$ compact-memory trace inspect trace.json --type filter_item
 ```
 
 The command prints the strategy name, then lists the matching steps with a short
@@ -53,6 +53,6 @@ items were kept or removed during compression.
 ## Visualisation (Experimental)
 
 Traces may also include saliency information so that selected text can be
-highlighted. The optional ``gist-memory trace visualize`` command renders an HTML
+highlighted. The optional ``compact-memory trace visualize`` command renders an HTML
 file showing which parts of the original input influenced the output. This feature
 is experimental and only supported by certain strategies.

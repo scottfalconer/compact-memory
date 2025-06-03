@@ -1,4 +1,4 @@
-from gist_memory.chunker import SentenceWindowChunker, AgenticChunker
+from compact_memory.chunker import SentenceWindowChunker, AgenticChunker
 
 
 class DummyTokenizer:

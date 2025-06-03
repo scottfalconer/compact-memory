@@ -441,7 +441,7 @@ class Agent:
 
         * If the message looks like a question (ends with ``?``) the agent
           performs a :meth:`query` and attempts to generate a short textual
-          reply using :class:`~gist_memory.local_llm.LocalChatModel`.
+          reply using :class:`~compact_memory.local_llm.LocalChatModel`.
         * Otherwise the message is ingested as a new memory with a
           ``source_document_id`` that references the sender.
 

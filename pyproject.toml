@@ -3,9 +3,9 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gist-memory"
+name = "compact-memory"
 version = "1.0.0"
-description = "Prototype implementation of the Gist Memory Agent"
+description = "Prototype implementation of the Compact Memory Agent"
 authors = [{name = "Scott Falconer", email = "scottfalconer@gmail.com"}]
 license = {text = "MIT"}
 readme = "README.md"
@@ -36,11 +36,11 @@ optuna = ["optuna"]
 ray = ["ray[tune]"]
 
 [project.scripts]
-gist-memory = "gist_memory.__main__:main"
+compact-memory = "compact_memory.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["gist_memory", "gist_memory.*"]
+include = ["compact_memory", "compact_memory.*"]
 
 [tool.setuptools.package-data]
-"gist_memory" = ["py.typed"]
+"compact_memory" = ["py.typed"]

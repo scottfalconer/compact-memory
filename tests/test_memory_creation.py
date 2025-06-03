@@ -1,4 +1,4 @@
-from gist_memory.memory_creation import (
+from compact_memory.memory_creation import (
     IdentityMemoryCreator,
     ExtractiveSummaryCreator,
     ChunkMemoryCreator,
@@ -30,7 +30,7 @@ def test_chunk_memory_creator():
 
 
 def test_agentic_memory_creator():
-    from gist_memory.memory_creation import AgenticMemoryCreator
+    from compact_memory.memory_creation import AgenticMemoryCreator
 
     text = "A. B. C. D. E."
     creator = AgenticMemoryCreator(max_tokens=2, sim_threshold=0.1)

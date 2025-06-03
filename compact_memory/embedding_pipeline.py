@@ -86,7 +86,7 @@ def _load_model(model_name: str, device: str) -> SentenceTransformer:
         except Exception as exc:  # pragma: no cover - depends on local files
             raise RuntimeError(
                 f"Error: Embedding Model '{model_name}' not found. "
-                f"Please run: gist-memory download-model --model-name {model_name} to install it."
+                f"Please run: compact-memory download-model --model-name {model_name} to install it."
             ) from exc
         _MODEL_NAME = model_name
         _DEVICE = device

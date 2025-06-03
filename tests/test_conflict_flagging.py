@@ -1,16 +1,16 @@
 import json
 import pytest
-from gist_memory.agent import Agent
-from gist_memory.json_npy_store import JsonNpyVectorStore
-from gist_memory.embedding_pipeline import MockEncoder
-from gist_memory.chunker import SentenceWindowChunker
+from compact_memory.agent import Agent
+from compact_memory.json_npy_store import JsonNpyVectorStore
+from compact_memory.embedding_pipeline import MockEncoder
+from compact_memory.chunker import SentenceWindowChunker
 
 
 @pytest.fixture(autouse=True)
 def use_mock_encoder(monkeypatch):
     enc = MockEncoder()
     monkeypatch.setattr(
-        "gist_memory.embedding_pipeline._load_model", lambda *a, **k: enc
+        "compact_memory.embedding_pipeline._load_model", lambda *a, **k: enc
     )
     yield
 

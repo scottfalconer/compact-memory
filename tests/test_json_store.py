@@ -1,9 +1,9 @@
 import numpy as np
 from datetime import datetime, timezone
 import pytest
-from gist_memory.json_npy_store import JsonNpyVectorStore
-from gist_memory.models import BeliefPrototype, RawMemory
-from gist_memory.embedding_pipeline import EmbeddingDimensionMismatchError
+from compact_memory.json_npy_store import JsonNpyVectorStore
+from compact_memory.models import BeliefPrototype, RawMemory
+from compact_memory.embedding_pipeline import EmbeddingDimensionMismatchError
 
 
 def test_json_npy_roundtrip(tmp_path):

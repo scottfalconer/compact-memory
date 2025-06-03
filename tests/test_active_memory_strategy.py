@@ -4,10 +4,10 @@ from typing import List, Any, Dict, Optional # Added Optional
 
 import numpy as np # For embeddings
 
-from gist_memory.active_memory_strategy import ActiveMemoryStrategy
-from gist_memory.active_memory_manager import ActiveMemoryManager, ConversationTurn
-from gist_memory.compression.strategies_abc import CompressedMemory
-from gist_memory.compression.trace import CompressionTrace # CompressionTrace was missing in prompt's example structure
+from compact_memory.active_memory_strategy import ActiveMemoryStrategy
+from compact_memory.active_memory_manager import ActiveMemoryManager, ConversationTurn
+from compact_memory.compression.strategies_abc import CompressedMemory
+from compact_memory.compression.trace import CompressionTrace # CompressionTrace was missing in prompt's example structure
 
 # --- Mocking Utilities ---
 
@@ -76,7 +76,7 @@ class TestActiveMemoryStrategy(unittest.TestCase):
         # New turns added via strategy.add_turn will use AMM's config_initial_activation
         self.assertEqual(added_turn.current_activation_level, strategy.manager.config_initial_activation)
 
-    @patch('gist_memory.active_memory_strategy._agent_utils.embed_text', new=mock_embed_texts_func)
+    @patch('compact_memory.active_memory_strategy._agent_utils.embed_text', new=mock_embed_texts_func)
     def test_compress_empty_history(self):
         """Test compress with no turns in history."""
         strategy = ActiveMemoryStrategy()
@@ -89,7 +89,7 @@ class TestActiveMemoryStrategy(unittest.TestCase):
         self.assertIn("History length before selection: 0", trace.steps)
         self.assertIn("Final turns fitting token budget (50 tokens): 0", trace.steps)
 
-    @patch('gist_memory.active_memory_strategy._agent_utils.embed_text', new=mock_embed_texts_func)
+    @patch('compact_memory.active_memory_strategy._agent_utils.embed_text', new=mock_embed_texts_func)
     def test_compress_simple_history_fits_budget(self):
         """Test compress with a few turns that fit within the token budget."""
         strategy = ActiveMemoryStrategy(config_prompt_num_forced_recent_turns=2) # Ensure recent are kept
@@ -107,7 +107,7 @@ class TestActiveMemoryStrategy(unittest.TestCase):
         self.assertEqual(compressed.text, expected_text)
         self.assertLessEqual(mock_token_count_func(mock_tokenizer_func, compressed.text), 20)
 
-    @patch('gist_memory.active_memory_strategy._agent_utils.embed_text', new=mock_embed_texts_func)
+    @patch('compact_memory.active_memory_strategy._agent_utils.embed_text', new=mock_embed_texts_func)
     def test_compress_respects_token_budget(self):
         """Test that compressed output respects the llm_token_budget."""
         # No forced recent turns to allow AMM to select based on other factors if budget is tight
@@ -137,7 +137,7 @@ class TestActiveMemoryStrategy(unittest.TestCase):
         self.assertLessEqual(mock_token_count_func(mock_tokenizer_func, compressed.text), budget)
 
 
-    @patch('gist_memory.active_memory_strategy._agent_utils.embed_text', new=mock_embed_texts_func)
+    @patch('compact_memory.active_memory_strategy._agent_utils.embed_text', new=mock_embed_texts_func)
     def test_compress_pruning_max_history(self):
         """Test that history is pruned when config_max_history_buffer_turns is exceeded."""
         strategy = ActiveMemoryStrategy(config_max_history_buffer_turns=2, config_prompt_num_forced_recent_turns=0)
@@ -164,7 +164,7 @@ class TestActiveMemoryStrategy(unittest.TestCase):
         self.assertIn(turn2_text, compressed.text)
         self.assertIn(turn3_text, compressed.text)
 
-    @patch('gist_memory.active_memory_strategy._agent_utils.embed_text', new=mock_embed_texts_func)
+    @patch('compact_memory.active_memory_strategy._agent_utils.embed_text', new=mock_embed_texts_func)
     def test_compress_relevance_boosting_surfaces_older_turn(self):
         """Test that relevance boosting brings an older, relevant turn into the prompt."""
         strategy = ActiveMemoryStrategy(

@@ -1,15 +1,15 @@
 from pathlib import Path
 import pytest
 
-from gist_memory.response_experiment import ResponseExperimentConfig, run_response_experiment
-from gist_memory.embedding_pipeline import MockEncoder
+from compact_memory.response_experiment import ResponseExperimentConfig, run_response_experiment
+from compact_memory.embedding_pipeline import MockEncoder
 
 
 @pytest.fixture(autouse=True)
 def use_mock_encoder(monkeypatch):
     enc = MockEncoder()
-    monkeypatch.setattr("gist_memory.response_experiment.MockEncoder", lambda: enc)
-    monkeypatch.setattr("gist_memory.embedding_pipeline._load_model", lambda *a, **k: enc)
+    monkeypatch.setattr("compact_memory.response_experiment.MockEncoder", lambda: enc)
+    monkeypatch.setattr("compact_memory.embedding_pipeline._load_model", lambda *a, **k: enc)
     yield
 
 
@@ -35,7 +35,7 @@ def test_response_experiment_runs(monkeypatch, tmp_path):
                 return "123"
             return ""
 
-    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", DummyLLM)
+    monkeypatch.setattr("compact_memory.local_llm.LocalChatModel", DummyLLM)
 
     params = [{"config_prompt_num_forced_recent_turns": 1}]
     cfg = ResponseExperimentConfig(
