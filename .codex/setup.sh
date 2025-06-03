@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Setup script executed during Codex container setup.
-# Codex loses network access after this step, so we download all assets
-# needed for tests here to ensure offline execution.
+# Install dependencies used during testing and examples.
 
 set -euo pipefail
 
@@ -27,27 +26,4 @@ pip3 install flake8 pytest
 # CLI dependencies that may not be declared in requirements.txt
 pip3 install rich typer portalocker
 
-# Pre-download the default local embedding model so tests work offline
-python3 - <<'PY'
-from sentence_transformers import SentenceTransformer
-
-# Use the fully qualified model name to ensure the cached path
-# matches calls within the repo which expect
-# "sentence-transformers/all-MiniLM-L6-v2".
-SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-PY
-
-# Pre-download the default chat model used in talk mode
-python3 - <<'PY'
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
-AutoTokenizer.from_pretrained("sshleifer/tiny-gpt2")
-AutoModelForCausalLM.from_pretrained("sshleifer/tiny-gpt2")
-PY
-
-# Ensure the GPT-2 tokenizer files are available for tiktoken
-python3 - <<'PY'
-import tiktoken
-tiktoken.get_encoding("gpt2")
-PY
 
