@@ -303,4 +303,3 @@ def test_config_type_conversion_from_env(temp_config_env):
     #     _, source = config.get_with_source("default_retries")
     #     assert source == f"environment variable ({ENV_VAR_PREFIX}DEFAULT_RETRIES)"
     # del DEFAULT_CONFIG["default_retries"] # Clean up if added
-```
