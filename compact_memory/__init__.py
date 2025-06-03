@@ -45,7 +45,30 @@ __all__ = [
     "PrototypeSystemStrategy",
     "ValidationMetric",
     "run_params_trial",
-    "StrategyConfig",
+    # "StrategyConfig", # Old one from compact_memory.compression, new one is api_config.StrategyConfig
+    # New API elements
+    "CompactMemoryAgent",
+    "compress_text",
+    "CompactMemoryConfig", # New, from api_config
+    "EmbeddingConfig",
+    "ChunkerConfig", # New, from api_config
+    "LLMProviderAPIConfig",
+    "StrategyConfig", # New, from api_config
+    "MemoryStoreConfig",
+    "SourceReference",
+    "CompressedMemoryContext",
+    "IngestionReport",
+    "AgentInteractionResponse",
+    "CompactMemoryError",
+    "ConfigurationError", # New, from api_exceptions
+    "InitializationError",
+    "StrategyNotFoundError", # New, from api_exceptions
+    "CompressionError", # New, from api_exceptions
+    "IngestionError",
+    "RetrievalError",
+    "LLMProviderError", # New, from api_exceptions
+    "TokenizerError", # New, from api_exceptions
+    "BudgetExceededError",
 ]
 
 _lazy_map = {
@@ -88,7 +111,35 @@ _lazy_map = {
     "PrototypeSystemStrategy": "compact_memory.prototype_system_strategy",
     "ValidationMetric": "compact_memory.validation.metrics_abc",
     "run_params_trial": "compact_memory.hpo",
-    "StrategyConfig": "compact_memory.compression",
+    "StrategyConfig": "compact_memory.api_config", # Updated path
+    # "StrategyConfig": "compact_memory.compression", # This was the old one, replaced by api_config.StrategyConfig in __all__
+
+    # New API elements mapped for lazy loading
+    "CompactMemoryAgent": "compact_memory.new_agent",
+    "compress_text": "compact_memory.api_functions",
+
+    "CompactMemoryConfig": "compact_memory.api_config",
+    "EmbeddingConfig": "compact_memory.api_config",
+    "ChunkerConfig": "compact_memory.api_config",
+    "LLMProviderAPIConfig": "compact_memory.api_config",
+    # StrategyConfig already updated above to point to api_config
+    "MemoryStoreConfig": "compact_memory.api_config",
+
+    "SourceReference": "compact_memory.api_models",
+    "CompressedMemoryContext": "compact_memory.api_models",
+    "IngestionReport": "compact_memory.api_models",
+    "AgentInteractionResponse": "compact_memory.api_models",
+
+    "CompactMemoryError": "compact_memory.api_exceptions",
+    "ConfigurationError": "compact_memory.api_exceptions",
+    "InitializationError": "compact_memory.api_exceptions",
+    "StrategyNotFoundError": "compact_memory.api_exceptions",
+    "CompressionError": "compact_memory.api_exceptions",
+    "IngestionError": "compact_memory.api_exceptions",
+    "RetrievalError": "compact_memory.api_exceptions",
+    "LLMProviderError": "compact_memory.api_exceptions",
+    "TokenizerError": "compact_memory.api_exceptions",
+    "BudgetExceededError": "compact_memory.api_exceptions",
 }
 
 
