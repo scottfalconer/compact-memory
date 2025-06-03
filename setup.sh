@@ -2,6 +2,9 @@
 # Convenience script to install dependencies and optional example models.
 set -euo pipefail
 
-pip install -r requirements.txt
-pip install -e . --no-build-isolation
-python -m spacy download en_core_web_sm
+pip install --prefer-binary \
+    openai tiktoken numpy faiss-cpu click>=8.2 tqdm pydantic \
+    pyyaml transformers spacy "typer[all]>=0.16.0" portalocker \
+    "rich>=13.6"
+# Install project without automatically pulling optional heavy deps
+pip install -e . --no-build-isolation --no-deps
