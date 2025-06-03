@@ -67,3 +67,15 @@ strategies:
   - strategy_name: importance
   - strategy_name: learned_summarizer
 ```
+
+## Optional strategy plugins
+
+Some strategies are distributed separately as installable packages. For example,
+the `rationale_episode` strategy provides rationale-enhanced episodic memory and
+related CLI tools. Install it via:
+
+```bash
+pip install gist_memory_rationale_episode_strategy
+```
+
+Once installed, its commands are available through the main `gist-memory` CLI.

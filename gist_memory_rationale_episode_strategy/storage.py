@@ -6,7 +6,7 @@ from typing import List
 
 import numpy as np
 
-from ...embedding_pipeline import embed_text, get_embedding_dim
+from gist_memory.embedding_pipeline import embed_text, get_embedding_dim
 
 from .episode import Episode
 

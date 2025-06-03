@@ -71,3 +71,31 @@ def test_plugin_override_chain(tmp_path, monkeypatch):
     result = runner.invoke(app, ["strategy", "list"])
     assert result.exit_code == 0
     assert "Local" in result.stdout
+
+
+def test_cli_plugin_entrypoint(tmp_path, monkeypatch):
+    mod = tmp_path / "plug.py"
+    mod.write_text(
+        "import typer\ncli = typer.Typer()\n@cli.command()\ndef greet():\n    print('hi')\n"
+    )
+    monkeypatch.syspath_prepend(tmp_path)
+
+    from gist_memory import cli_plugins
+
+    ep = EntryPoint(
+        name="extras",
+        value="plug:cli",
+        group=cli_plugins.CLI_ENTRYPOINT_GROUP,
+    )
+    monkeypatch.setattr(
+        cli_plugins.metadata,
+        "entry_points",
+        lambda group=None: [ep] if group == cli_plugins.CLI_ENTRYPOINT_GROUP else [],
+    )
+
+    cli_plugins._loaded = False
+    cli_plugins.load_cli_plugins(app)
+    runner = CliRunner()
+    result = runner.invoke(app, ["extras", "greet"])
+    assert result.exit_code == 0
+    assert "hi" in result.stdout

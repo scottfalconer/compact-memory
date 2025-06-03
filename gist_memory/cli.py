@@ -46,6 +46,7 @@ from .compression import (
     all_strategy_metadata,
 )
 from .plugin_loader import load_plugins
+from .cli_plugins import load_cli_plugins
 from .package_utils import (
     load_manifest,
     validate_manifest,
@@ -209,11 +210,7 @@ app.add_typer(experiment_app, name="experiment")
 
 trace_app = typer.Typer(help="Inspect and analyze compression traces.")
 app.add_typer(trace_app, name="trace")
-
-# ---------------------------------------------------------------------------
-# Episodic memory management
-episodes_app = typer.Typer(help="Inspect rationale-enhanced episode memory.")
-app.add_typer(episodes_app, name="episodes")
+load_cli_plugins(app)
 
 
 @metric_app.command("list")
@@ -311,56 +308,6 @@ def strategy_list() -> None:
     console.print(table)
 
 
-@episodes_app.command("list")
-def episodes_list(
-    store_path: Path = typer.Argument(..., help="Episode storage directory")
-) -> None:
-    """List available episodes"""
-    from .strategies.rationale_episode import EpisodeStorage
-
-    store = EpisodeStorage(store_path)
-    table = Table("id", "summary", "tags")
-    for ep in store.episodes:
-        table.add_row(ep.id, ep.summary_gist[:40], ",".join(ep.tags))
-    console.print(table)
-
-
-@episodes_app.command("show")
-def episodes_show(
-    episode_id: str,
-    store_path: Path = typer.Argument(..., help="Episode storage directory"),
-) -> None:
-    """Show details for an episode"""
-    from .strategies.rationale_episode import EpisodeStorage
-
-    store = EpisodeStorage(store_path)
-    for ep in store.episodes:
-        if ep.id == episode_id:
-            console.print(ep.summary_gist)
-            console.print(f"tags: {', '.join(ep.tags)}")
-            console.print(f"decisions: {len(ep.decisions)}")
-            return
-    typer.secho("Episode not found", err=True, fg=typer.colors.RED)
-
-
-@episodes_app.command("tag")
-def episodes_tag(
-    episode_id: str,
-    add: Optional[str] = typer.Option(None, "--add", help="Tag to add"),
-    store_path: Path = typer.Argument(..., help="Episode storage directory"),
-) -> None:
-    """Add a tag to an episode"""
-    from .strategies.rationale_episode import EpisodeStorage
-
-    store = EpisodeStorage(store_path)
-    for ep in store.episodes:
-        if ep.id == episode_id:
-            if add and add not in ep.tags:
-                ep.tags.append(add)
-                store.update_episode(ep)
-            console.print(f"tags: {', '.join(ep.tags)}")
-            return
-    typer.secho("Episode not found", err=True, fg=typer.colors.RED)
 
 
 @app.command()
