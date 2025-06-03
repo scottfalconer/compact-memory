@@ -4,6 +4,10 @@ from gist_memory.compression import (
     CompressionTrace,
     NoCompression,
     ImportanceCompression,
+    PipelineCompressionStrategy,
+    PipelineStrategyConfig,
+    StrategyConfig,
+    register_compression_strategy,
 )
 
 
@@ -63,4 +67,25 @@ def test_importance_compression_filters_and_truncates():
     assert "uh-huh" not in compressed.text
     assert compressed.text.split()[:4] == compressed.text.split()
     assert trace.strategy_name == "importance"
+
+
+def test_pipeline_strategy_executes_in_order():
+    strat = PipelineCompressionStrategy([DummyStrategy(), DummyStrategy()])
+    compressed, trace = strat.compress(["alpha", "bravo", "charlie"], llm_token_budget=5)
+    assert compressed.text == "alpha bravo"[:5]
+    assert len(trace.steps) == 2
+
+
+def test_pipeline_strategy_config_instantiates_from_registry():
+    register_compression_strategy(DummyStrategy.id, DummyStrategy)
+    cfg = PipelineStrategyConfig(
+        strategies=[
+            StrategyConfig(strategy_name=DummyStrategy.id),
+            StrategyConfig(strategy_name=DummyStrategy.id),
+        ]
+    )
+    strat = cfg.create()
+    compressed, trace = strat.compress("alpha bravo charlie", llm_token_budget=5)
+    assert compressed.text == "alpha"
+    assert len(trace.steps) == 2
 

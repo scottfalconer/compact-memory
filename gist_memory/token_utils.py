@@ -11,9 +11,15 @@ def tokenize_text(tokenizer: Any, text: str) -> List[int]:
         try:
             tokens = tokenizer.tokenize(text)
         except Exception:
-            tokens = tokenizer(text, return_tensors=None).get("input_ids", [])
+            try:
+                tokens = tokenizer(text, return_tensors=None).get("input_ids", [])
+            except Exception:
+                tokens = tokenizer(text)
     else:
-        tokens = tokenizer(text, return_tensors=None).get("input_ids", [])
+        try:
+            tokens = tokenizer(text, return_tensors=None).get("input_ids", [])
+        except Exception:
+            tokens = tokenizer(text)
 
     if isinstance(tokens, (list, tuple)):
         if tokens and isinstance(tokens[0], (list, tuple)):

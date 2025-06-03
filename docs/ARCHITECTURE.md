@@ -38,6 +38,8 @@ experimented with.
 - **`embedding_pipeline.py`** – loads a SentenceTransformer model and
   exposes `embed_text`. A deterministic `MockEncoder` is available for
   tests. Embeddings are cached and normalised.
+- **`compression/pipeline_strategy.py`** – implements `PipelineCompressionStrategy`
+  allowing multiple compression steps to be chained.
 - **`chunker.py`** – implements sentence-window based chunking with token
   overlap and a fixed-size fallback. The registry allows different
   chunkers to be plugged in via config.

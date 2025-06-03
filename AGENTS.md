@@ -162,6 +162,7 @@ Best practices for allocating token budgets within a prompt when using different
 VI. Developer Notes
 
 The talk command, and generally the LLM interaction workflow, will need to be adapted to accept and utilize a chosen CompressionStrategy. If Agent.process_conversational_turn is the entry point, it will orchestrate the use of the active CompressionStrategy.
+Chainable strategies are now supported via `PipelineCompressionStrategy`, enabling a flexible memory pipeline for experimentation.
 
 VII. Contribution Workflow Tips
 
