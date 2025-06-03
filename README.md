@@ -113,12 +113,14 @@ Key benefits include:
 
 This project requires **Python 3.11+**.
 
-1.  **Install Core Dependencies:**
+1.  **Install Core Dependencies:** Use the provided `setup.sh` for a fast install.
     ```bash
-    pip install -r requirements.txt
+    bash setup.sh           # installs the minimal set of packages
     # Download the spaCy model for sentence segmentation (used by some strategies/chunkers)
     python -m spacy download en_core_web_sm
     ```
+    Set `FULL_INSTALL=1` when running `setup.sh` if you plan to run the entire
+    test suite which requires heavier optional dependencies.
 
 2.  **Install `gist-memory`:**
     This makes the `gist-memory` CLI tool available. You have two main options:

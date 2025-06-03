@@ -17,17 +17,29 @@ from .importance_filter import dynamic_importance_filter
 from .token_utils import token_count
 
 try:  # heavy dependency only when needed
-    from transformers import AutoModelForCausalLM, AutoTokenizer
+    import transformers
+
+    if getattr(transformers, "is_torch_available", lambda: False)():
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+    else:
+        raise ImportError("PyTorch not available")
 except Exception:  # pragma: no cover - optional dependency may be missing
-    class _Missing:
+    class _MissingModel:
         @classmethod
         def from_pretrained(cls, *a, **k):  # pragma: no cover - minimal stub
             raise ImportError(
                 "transformers with PyTorch is required for LocalChatModel"
             )
 
-    AutoModelForCausalLM = _Missing  # type: ignore
-    AutoTokenizer = _Missing  # type: ignore
+    class _MissingTokenizer:
+        @classmethod
+        def from_pretrained(cls, *a, **k):  # pragma: no cover - minimal stub
+            raise ImportError(
+                "transformers with PyTorch is required for LocalChatModel"
+            )
+
+    AutoModelForCausalLM = _MissingModel  # type: ignore
+    AutoTokenizer = _MissingTokenizer  # type: ignore
 
 
 @dataclass
@@ -68,6 +80,11 @@ class LocalChatModel(LLMProvider):
         global AutoModelForCausalLM, AutoTokenizer
         if AutoModelForCausalLM is None or AutoTokenizer is None:
             try:
+                import transformers
+
+                if not getattr(transformers, "is_torch_available", lambda: False)():
+                    raise ImportError("PyTorch not available")
+
                 from transformers import (
                     AutoModelForCausalLM as _Model,
                     AutoTokenizer as _Tok,
