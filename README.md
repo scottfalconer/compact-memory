@@ -113,13 +113,6 @@ Key benefits include:
 
 This project requires **Python 3.11+**.
 
-0.  **Run `setup.sh` (Optional for Offline-Friendly Environment):**
-    To prepare an offline-friendly development environment quickly, you can execute the provided script while you have internet access. This script pre-downloads many dependencies.
-    ```bash
-    ./setup.sh
-    ```
-    This step is optional; you can install dependencies directly if you prefer.
-
 1.  **Install Core Dependencies:**
     ```bash
     pip install -r requirements.txt
@@ -137,10 +130,6 @@ This project requires **Python 3.11+**.
         ```bash
         pip install .
         ```
-    *   **Offline Note:** If working in an offline environment after fetching the repository and dependencies (e.g., via `setup.sh`), you might need the `--no-build-isolation` flag with `pip install -e .` or `pip install .`. Alternatively, you can add the repository root to your `PYTHONPATH`:
-        ```bash
-        export PYTHONPATH="$(pwd):$PYTHONPATH"
-        ```
 
 3.  **Download Models for Examples and Testing (Optional but Recommended):**
     These models are used by some of the example strategies and for testing LLM interactions with compressed memory.
@@ -151,11 +140,6 @@ This project requires **Python 3.11+**.
     gist-memory dev download-chat-model --model-name tiny-gpt2
     ```
     Note: Specific `CompressionStrategy` implementations might have other model dependencies not covered here. Always check the documentation for the strategy you intend to use.
-    To run completely offline after all downloads, set:
-    ```
-    export HF_HUB_OFFLINE=1
-    export TRANSFORMERS_OFFLINE=1
-    ```
 
 4.  **Set API Keys for Cloud Providers (Optional):**
     If you plan to use OpenAI or Gemini models with `gist-memory`, export your API keys as environment variables:
