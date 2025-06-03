@@ -9,4 +9,4 @@ python -m spacy download en_core_web_sm
 
 # Pre-fetch models used in the examples and tests
 gist-memory download-model --model-name all-MiniLM-L6-v2
-gist-memory download-chat-model --model-name distilgpt2
+gist-memory download-chat-model --model-name tiny-gpt2

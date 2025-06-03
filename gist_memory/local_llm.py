@@ -27,7 +27,7 @@ except Exception:  # pragma: no cover - optional
 class LocalChatModel(LLMProvider):
     """Wrap a local `transformers` causal LM for offline chat."""
 
-    model_name: str = "distilgpt2"
+    model_name: str = "tiny-gpt2"
     max_new_tokens: int = 100
 
     tokenizer: Optional["AutoTokenizer"] = None  # set in ``__post_init__``

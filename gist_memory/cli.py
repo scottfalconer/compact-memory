@@ -326,7 +326,7 @@ def talk(
     *,
     agent_name: str = typer.Option(DEFAULT_BRAIN_PATH, help="Agent directory"),
     message: str = typer.Option(..., help="Message to send"),
-    model_name: str = typer.Option("distilgpt2", help="Local chat model"),
+    model_name: str = typer.Option("tiny-gpt2", help="Local chat model"),
     compression_strategy: Optional[str] = typer.Option(
         None,
         "--compression",
@@ -719,7 +719,7 @@ def llm_prompt(
     *,
     context_input: str = typer.Option(..., "--context", "-c", help="Compressed context string, path, or '-' for stdin"),
     query: str = typer.Option(..., "--query", "-q", help="User query"),
-    model_id: str = typer.Option("distilgpt2", "--model", help="Model ID"),
+    model_id: str = typer.Option("tiny-gpt2", "--model", help="Model ID"),
     system_prompt: Optional[str] = typer.Option(None, "--system-prompt", "-s", help="Optional system prompt"),
     max_new_tokens: int = typer.Option(150, help="Max new tokens"),
     output_llm_response_file: Optional[Path] = typer.Option(None, "--output-response", help="File to save response"),
@@ -966,7 +966,7 @@ def download_model(
 
 @app.command("download-chat-model")
 def download_chat_model(
-    model_name: str = typer.Option("distilgpt2", help="Local causal LM name"),
+    model_name: str = typer.Option("tiny-gpt2", help="Local causal LM name"),
 ) -> None:
     """
     Pre-downloads a specified local language model for use with the `talk` command.
@@ -975,7 +975,7 @@ def download_chat_model(
     the `talk` command's first run and is helpful for offline usage.
 
     Usage Example:
-        gist-memory download-chat-model --model-name distilgpt2
+        gist-memory download-chat-model --model-name tiny-gpt2
     """
     # from tqdm import tqdm # Moved to top
     # from .model_utils import download_chat_model as _download_chat_model # Moved to top

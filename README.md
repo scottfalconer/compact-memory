@@ -118,7 +118,7 @@ This project requires **Python 3.11+**.
     # Fetch the "all-MiniLM-L6-v2" model for embedding (used by default LTM components)
     gist-memory download-model --model-name all-MiniLM-L6-v2
     # Fetch a default chat model for the 'talk' command and LLM-based validation
-    gist-memory download-chat-model --model-name distilgpt2
+    gist-memory download-chat-model --model-name tiny-gpt2
     ```
     Note: Specific `CompressionStrategy` implementations might have other model dependencies not covered here. Always check the documentation for the strategy you intend to use.
     To run completely offline after all downloads, set:
@@ -165,12 +165,12 @@ This compares the original text with its compressed version using a specific met
 A more complex workflow that simulates a full cycle: compress information, use it to prompt an LLM, and then evaluate the LLM's response.
 ```bash
 gist-memory compress file.txt --strategy none --budget 50 --output-trace trace.json \
-  | gist-memory llm-prompt --context - --query "Summarize the provided text." --model distilgpt2 \
+  | gist-memory llm-prompt --context - --query "Summarize the provided text." --model tiny-gpt2 \
   | gist-memory evaluate-llm-response - "An accurate summary would be..." --metric exact_match --json
 ```
 This example:
 - Compresses `file.txt` using a (hypothetical) `none` strategy with a budget of 50 tokens, saving a trace.
-- Pipes the compressed output (`-`) to `llm-prompt` to ask a distilgpt2 model to summarize it.
+ - Pipes the compressed output (`-`) to `llm-prompt` to ask a tiny-gpt2 model to summarize it.
 - Pipes the LLM's response (`-`) to `evaluate-llm-response` to check if it matches an expected summary using the `exact_match` metric.
 
 ### Running Tests

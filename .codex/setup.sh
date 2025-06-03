@@ -41,8 +41,8 @@ PY
 python3 - <<'PY'
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-AutoTokenizer.from_pretrained("distilgpt2")
-AutoModelForCausalLM.from_pretrained("distilgpt2")
+AutoTokenizer.from_pretrained("sshleifer/tiny-gpt2")
+AutoModelForCausalLM.from_pretrained("sshleifer/tiny-gpt2")
 PY
 
 # Ensure the GPT-2 tokenizer files are available for tiktoken
