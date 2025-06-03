@@ -21,3 +21,8 @@ distilgpt2:
   provider: local
   model_name: distilgpt2
   token_budget: 1024
+
+tiny-gpt2:
+  provider: local
+  model_name: sshleifer/tiny-gpt2
+  token_budget: 512

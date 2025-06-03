@@ -140,9 +140,9 @@ def test_provider_interface(monkeypatch):
     )
 
     model = LocalChatModel()
-    budget = model.get_token_budget("distilgpt2")
+    budget = model.get_token_budget("tiny-gpt2")
     assert isinstance(budget, int) and budget > 0
-    tokens = model.count_tokens("hello", "distilgpt2")
+    tokens = model.count_tokens("hello", "tiny-gpt2")
     assert tokens == 1
-    reply = model.generate_response("prompt", "distilgpt2", 10)
+    reply = model.generate_response("prompt", "tiny-gpt2", 10)
     assert reply == "response"
