@@ -105,4 +105,4 @@ def __dir__() -> list[str]:  # pragma: no cover - for completeness
     return sorted(list(globals().keys()) + list(_lazy_map.keys()))
 
 
-__version__ = "0.1.0"
+__version__ = "0.4.0"

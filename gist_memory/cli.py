@@ -3,13 +3,13 @@ import shutil
 import os
 import yaml
 from pathlib import Path
-from typing import Optional, Any # List removed
+from typing import Optional, Any  # List removed
 import logging
-import time # Moved from _process_string_compression
-from dataclasses import asdict # Moved from _process_string_compression
-import sys # Moved from local imports
-from tqdm import tqdm # Moved from download_model and download_chat_model
-import runpy # Moved from optimize_experiment
+import time  # Moved from _process_string_compression
+from dataclasses import asdict  # Moved from _process_string_compression
+import sys  # Moved from local imports
+from tqdm import tqdm  # Moved from download_model and download_chat_model
+import runpy  # Moved from optimize_experiment
 
 import typer
 import portalocker
@@ -24,10 +24,16 @@ from .logging_utils import configure_logging
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from . import local_llm  # import module so tests can patch LocalChatModel
-from .active_memory_manager import ActiveMemoryManager # Moved from talk
-from .registry import _VALIDATION_METRIC_REGISTRY, get_validation_metric_class # Moved from metric_list, evaluate_compression, evaluate_llm_response
+from .active_memory_manager import ActiveMemoryManager  # Moved from talk
+from .registry import (
+    _VALIDATION_METRIC_REGISTRY,
+    get_validation_metric_class,
+)  # Moved from metric_list, evaluate_compression, evaluate_llm_response
 from . import llm_providers  # import module so tests can patch providers
-from .model_utils import download_embedding_model, download_chat_model as _download_chat_model # Moved from download_model, download_chat_model
+from .model_utils import (
+    download_embedding_model,
+    download_chat_model as _download_chat_model,
+)  # Moved from download_model, download_chat_model
 from .embedding_pipeline import (
     get_embedding_dim,
     EmbeddingDimensionMismatchError,
@@ -48,7 +54,10 @@ from .package_utils import (
     check_requirements_installed,
 )
 from .response_experiment import ResponseExperimentConfig, run_response_experiment
-from .experiment_runner import ExperimentConfig, run_experiment # Moved from run_experiment_cmd
+from .experiment_runner import (
+    ExperimentConfig,
+    run_experiment,
+)  # Moved from run_experiment_cmd
 
 app = typer.Typer(
     help="Gist Memory: A CLI for managing and interacting with a memory agent that uses advanced compression strategies to store and retrieve information. Primary actions like ingest, query, and talk are available as subcommands, along with advanced features for managing strategies, metrics, and experiments."
@@ -196,6 +205,11 @@ app.add_typer(experiment_app, name="experiment")
 trace_app = typer.Typer(help="Inspect and analyze compression traces.")
 app.add_typer(trace_app, name="trace")
 
+# ---------------------------------------------------------------------------
+# Episodic memory management
+episodes_app = typer.Typer(help="Inspect rationale-enhanced episode memory.")
+app.add_typer(episodes_app, name="episodes")
+
 
 @metric_app.command("list")
 def metric_list() -> None:
@@ -285,6 +299,58 @@ def strategy_list() -> None:
             status,
         )
     console.print(table)
+
+
+@episodes_app.command("list")
+def episodes_list(
+    store_path: Path = typer.Argument(..., help="Episode storage directory")
+) -> None:
+    """List available episodes"""
+    from .strategies.rationale_episode import EpisodeStorage
+
+    store = EpisodeStorage(store_path)
+    table = Table("id", "summary", "tags")
+    for ep in store.episodes:
+        table.add_row(ep.id, ep.summary_gist[:40], ",".join(ep.tags))
+    console.print(table)
+
+
+@episodes_app.command("show")
+def episodes_show(
+    episode_id: str,
+    store_path: Path = typer.Argument(..., help="Episode storage directory"),
+) -> None:
+    """Show details for an episode"""
+    from .strategies.rationale_episode import EpisodeStorage
+
+    store = EpisodeStorage(store_path)
+    for ep in store.episodes:
+        if ep.id == episode_id:
+            console.print(ep.summary_gist)
+            console.print(f"tags: {', '.join(ep.tags)}")
+            console.print(f"decisions: {len(ep.decisions)}")
+            return
+    typer.secho("Episode not found", err=True, fg=typer.colors.RED)
+
+
+@episodes_app.command("tag")
+def episodes_tag(
+    episode_id: str,
+    add: Optional[str] = typer.Option(None, "--add", help="Tag to add"),
+    store_path: Path = typer.Argument(..., help="Episode storage directory"),
+) -> None:
+    """Add a tag to an episode"""
+    from .strategies.rationale_episode import EpisodeStorage
+
+    store = EpisodeStorage(store_path)
+    for ep in store.episodes:
+        if ep.id == episode_id:
+            if add and add not in ep.tags:
+                ep.tags.append(add)
+                store.update_episode(ep)
+            console.print(f"tags: {', '.join(ep.tags)}")
+            return
+    typer.secho("Episode not found", err=True, fg=typer.colors.RED)
 
 
 @app.command()
@@ -377,7 +443,7 @@ def talk(
 
         mgr = ActiveMemoryManager()
         comp = None
-        if compression_strategy: # Simplified condition
+        if compression_strategy:  # Simplified condition
             try:
                 comp_cls = get_compression_strategy(compression_strategy)
                 comp = comp_cls()
@@ -447,7 +513,9 @@ def _process_string_compression(
             output_file.parent.mkdir(parents=True, exist_ok=True)
             output_file.write_text(compressed.text)
         except (IOError, OSError, PermissionError) as exc:
-            typer.secho(f"Error writing {output_file}: {exc}", err=True, fg=typer.colors.RED)
+            typer.secho(
+                f"Error writing {output_file}: {exc}", err=True, fg=typer.colors.RED
+            )
             raise typer.Exit(code=1)
         typer.echo(f"Saved compressed output to {output_file}")
     else:
@@ -458,9 +526,13 @@ def _process_string_compression(
 
         try:
             trace_file.parent.mkdir(parents=True, exist_ok=True)
-            trace_file.write_text(json.dumps(asdict(trace))) # json is imported globally
+            trace_file.write_text(
+                json.dumps(asdict(trace))
+            )  # json is imported globally
         except (IOError, OSError, PermissionError) as exc:
-            typer.secho(f"Error writing {trace_file}: {exc}", err=True, fg=typer.colors.RED)
+            typer.secho(
+                f"Error writing {trace_file}: {exc}", err=True, fg=typer.colors.RED
+            )
             raise typer.Exit(code=1)
 
 
@@ -482,7 +554,15 @@ def _process_file_compression(
     except (IOError, OSError, PermissionError) as exc:
         typer.secho(f"Error reading {file_path}: {exc}", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1)
-    _process_string_compression(text_content, strategy_id, budget, output_file, trace_file, verbose_stats, tokenizer)
+    _process_string_compression(
+        text_content,
+        strategy_id,
+        budget,
+        output_file,
+        trace_file,
+        verbose_stats,
+        tokenizer,
+    )
 
 
 def _process_directory_compression(
@@ -506,7 +586,9 @@ def _process_directory_compression(
         typer.echo("No matching files found.")
         return
     if trace_file is not None:
-        typer.secho("--output-trace ignored for directory input", fg=typer.colors.YELLOW)
+        typer.secho(
+            "--output-trace ignored for directory input", fg=typer.colors.YELLOW
+        )
         trace_file = None
 
     count = 0
@@ -516,13 +598,19 @@ def _process_directory_compression(
             try:
                 output_dir_param.mkdir(parents=True, exist_ok=True)
             except (IOError, OSError, PermissionError) as exc:
-                typer.secho(f"Error creating {output_dir_param}: {exc}", err=True, fg=typer.colors.RED)
+                typer.secho(
+                    f"Error creating {output_dir_param}: {exc}",
+                    err=True,
+                    fg=typer.colors.RED,
+                )
                 raise typer.Exit(code=1)
             rel = input_file.relative_to(dir_path)
             out_path = output_dir_param / rel
             out_path.parent.mkdir(parents=True, exist_ok=True)
         else:
-            out_path = input_file.with_name(f"{input_file.stem}_compressed{input_file.suffix}")
+            out_path = input_file.with_name(
+                f"{input_file.stem}_compressed{input_file.suffix}"
+            )
 
         _process_file_compression(
             input_file, strategy_id, budget, out_path, verbose_stats, tokenizer, None
@@ -604,7 +692,9 @@ def compress_text(
     if source_as_path.is_file():
         if recursive or pattern != "*.txt":
             if recursive:
-                typer.secho("--recursive ignored for file input", fg=typer.colors.YELLOW)
+                typer.secho(
+                    "--recursive ignored for file input", fg=typer.colors.YELLOW
+                )
             if pattern != "*.txt":
                 typer.secho("--pattern ignored for file input", fg=typer.colors.YELLOW)
         _process_file_compression(
@@ -636,9 +726,13 @@ def compress_text(
     else:
         if recursive or pattern != "*.txt":
             if recursive:
-                typer.secho("--recursive ignored for string input", fg=typer.colors.YELLOW)
+                typer.secho(
+                    "--recursive ignored for string input", fg=typer.colors.YELLOW
+                )
             if pattern != "*.txt":
-                typer.secho("--pattern ignored for string input", fg=typer.colors.YELLOW)
+                typer.secho(
+                    "--pattern ignored for string input", fg=typer.colors.YELLOW
+                )
         _process_string_compression(
             input_source,
             strategy,
@@ -653,9 +747,13 @@ def compress_text(
 @app.command("evaluate-compression")
 def evaluate_compression(
     original_input: str = typer.Argument(..., help="Original text or file path"),
-    compressed_input: str = typer.Argument(..., help="Compressed text or file path, or '-' for stdin"),
+    compressed_input: str = typer.Argument(
+        ..., help="Compressed text or file path, or '-' for stdin"
+    ),
     metric_id: str = typer.Option(..., "--metric", "-m", help="Metric ID"),
-    metric_params_json: Optional[str] = typer.Option(None, "--metric-params", help="Metric parameters as JSON"),
+    metric_params_json: Optional[str] = typer.Option(
+        None, "--metric-params", help="Metric parameters as JSON"
+    ),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ) -> None:
     """
@@ -717,13 +815,26 @@ def evaluate_compression(
 @app.command("llm-prompt")
 def llm_prompt(
     *,
-    context_input: str = typer.Option(..., "--context", "-c", help="Compressed context string, path, or '-' for stdin"),
+    context_input: str = typer.Option(
+        ..., "--context", "-c", help="Compressed context string, path, or '-' for stdin"
+    ),
     query: str = typer.Option(..., "--query", "-q", help="User query"),
     model_id: str = typer.Option("tiny-gpt2", "--model", help="Model ID"),
-    system_prompt: Optional[str] = typer.Option(None, "--system-prompt", "-s", help="Optional system prompt"),
+    system_prompt: Optional[str] = typer.Option(
+        None, "--system-prompt", "-s", help="Optional system prompt"
+    ),
     max_new_tokens: int = typer.Option(150, help="Max new tokens"),
-    output_llm_response_file: Optional[Path] = typer.Option(None, "--output-response", help="File to save response"),
-    llm_config_file: Optional[Path] = typer.Option(Path("llm_models_config.yaml"), "--llm-config", exists=True, dir_okay=False, resolve_path=True, help="LLM config file"),
+    output_llm_response_file: Optional[Path] = typer.Option(
+        None, "--output-response", help="File to save response"
+    ),
+    llm_config_file: Optional[Path] = typer.Option(
+        Path("llm_models_config.yaml"),
+        "--llm-config",
+        exists=True,
+        dir_okay=False,
+        resolve_path=True,
+        help="LLM config file",
+    ),
     api_key_env_var: Optional[str] = typer.Option(None, help="Env var for API key"),
 ) -> None:
     """
@@ -780,7 +891,12 @@ def llm_prompt(
     prompt = "\n".join(part for part in prompt_parts if part)
 
     try:
-        response = provider.generate_response(prompt, model_name=model_name, max_new_tokens=max_new_tokens, api_key=api_key)
+        response = provider.generate_response(
+            prompt,
+            model_name=model_name,
+            max_new_tokens=max_new_tokens,
+            api_key=api_key,
+        )
     except Exception as exc:
         typer.secho(f"LLM error: {exc}", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1)
@@ -789,7 +905,11 @@ def llm_prompt(
         try:
             output_llm_response_file.write_text(response)
         except Exception as exc:
-            typer.secho(f"Error writing {output_llm_response_file}: {exc}", err=True, fg=typer.colors.RED)
+            typer.secho(
+                f"Error writing {output_llm_response_file}: {exc}",
+                err=True,
+                fg=typer.colors.RED,
+            )
             raise typer.Exit(code=1)
     else:
         typer.echo(response)
@@ -797,10 +917,14 @@ def llm_prompt(
 
 @app.command("evaluate-llm-response")
 def evaluate_llm_response(
-    response_input: str = typer.Argument(..., help="LLM response text or file, or '-' for stdin"),
+    response_input: str = typer.Argument(
+        ..., help="LLM response text or file, or '-' for stdin"
+    ),
     reference_input: str = typer.Argument(..., help="Reference answer text or file"),
     metric_id: str = typer.Option(..., "--metric", "-m", help="Metric ID"),
-    metric_params_json: Optional[str] = typer.Option(None, "--metric-params", help="Metric parameters as JSON"),
+    metric_params_json: Optional[str] = typer.Option(
+        None, "--metric-params", help="Metric parameters as JSON"
+    ),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ) -> None:
     """
