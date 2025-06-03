@@ -11,19 +11,22 @@ set -euo pipefail
 #apt-get install -y --no-install-recommends python3 python3-pip git
 #apt-get clean
 
-# Install Python dependencies for the repository and download spaCy model
+# Install a minimal subset of dependencies for the test suite. The environment
+# already includes Python and common tooling, so we avoid heavy optional
+# packages and model downloads during the 300s setup window.
 if [ -f requirements.txt ]; then
-    pip3 install -r requirements.txt
-    # Install the package in editable mode so the CLI is available for demos
-    pip3 install -e . --no-build-isolation
-    # Download the spaCy model needed by the chunkers
-    python3 -m spacy download en_core_web_sm
+    pip3 install --prefer-binary \
+        openai tiktoken numpy faiss-cpu click>=8.2 tqdm pydantic \
+        pyyaml transformers spacy "typer[all]>=0.16.0" portalocker \
+        "rich>=13.6"
+    # Install the project itself without pulling in extra dependencies.
+    pip3 install -e . --no-build-isolation --no-deps
 fi
 
 # Tools used by CI for linting and testing
 pip3 install flake8 pytest
 
 # CLI dependencies that may not be declared in requirements.txt
-pip3 install rich typer portalocker
+# (rich and typer are already installed above)
 
 
