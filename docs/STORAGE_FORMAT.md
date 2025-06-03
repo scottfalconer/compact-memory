@@ -1,9 +1,9 @@
 # Storage Format
 
-This document describes how a Gist Memory "brain" is stored on disk.  A brain is a directory containing several JSON and NPY files along with a small YAML metadata file.  The layout is intentionally simple so that the contents can be inspected or backed up with regular tools.
+This document describes how a Gist Memory memory store is kept on disk.  A memory store is a directory containing several JSON and NPY files along with a small YAML metadata file.  The layout is intentionally simple so that the contents can be inspected or backed up with regular tools.
 
 ```
-brain/
+memory/
 ├── meta.yaml
 ├── belief_prototypes.json
 ├── prototype_vectors.npy
@@ -27,7 +27,7 @@ updated_at: "2024-01-01T00:00:00Z"
 
 The `version` field defines the storage schema.  The current code understands
 version `1`.  Should a future release change the file layout, this value will be
-incremented and migration logic will be added.  Tools loading a brain should
+incremented and migration logic will be added.  Tools loading a memory store should
 check the `version` field before attempting to read the other files.
 
 ## Prototype files

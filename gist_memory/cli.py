@@ -39,7 +39,7 @@ from .embedding_pipeline import (
     EmbeddingDimensionMismatchError,
 )
 from .utils import load_agent
-from .config import DEFAULT_BRAIN_PATH
+from .config import DEFAULT_MEMORY_PATH
 from .compression import (
     available_strategies,
     get_compression_strategy,
@@ -131,9 +131,14 @@ def _load_agent(path: Path) -> Agent:
 
 @app.command()
 def init(
-    directory: str = typer.Argument(DEFAULT_BRAIN_PATH),
+    memory_path: str = typer.Option(
+        DEFAULT_MEMORY_PATH,
+        "--memory-path",
+        "-m",
+        help="Memory store directory",
+    ),
     *,
-    agent_name: str = "default",
+    name: str = "default",
     model_name: str = "all-MiniLM-L6-v2",
     tau: float = 0.8,
     alpha: float = 0.1,
@@ -147,9 +152,9 @@ def init(
     embedding model, similarity threshold (tau), and chunking strategy.
 
     Usage Example:
-        gist-memory init path/to/my_agent --model-name sentence-transformers/all-mpnet-base-v2 --tau 0.8
+        gist-memory init --memory-path path/to/my_agent --model-name sentence-transformers/all-mpnet-base-v2 --tau 0.8
     """
-    path = Path(directory)
+    path = Path(memory_path)
     if path.exists() and any(path.iterdir()):
         typer.secho(
             "Directory already exists and is not empty",
@@ -174,14 +179,14 @@ def init(
     )
     store.meta.update(
         {
-            "agent_name": agent_name,
+            "agent_name": name,
             "tau": tau,
             "alpha": alpha,
             "chunker": chunker,
         }
     )
     store.save()
-    typer.echo(f"Initialized agent at {directory}")
+    typer.echo(f"Initialized agent at {memory_path}")
 
 
 strategy_app = typer.Typer(
@@ -230,7 +235,12 @@ def metric_list() -> None:
 def strategy_inspect(
     strategy_name: str,
     *,
-    agent_name: str = typer.Option(DEFAULT_BRAIN_PATH, help="Agent directory"),
+    memory_path: str = typer.Option(
+        DEFAULT_MEMORY_PATH,
+        "--memory-path",
+        "-m",
+        help="Memory store directory",
+    ),
     list_prototypes: bool = typer.Option(
         False, "--list-prototypes", help="List prototypes for the strategy"
     ),
@@ -243,17 +253,17 @@ def strategy_inspect(
     representative summaries of related memories within the specified agent.
 
     Usage Example:
-        gist-memory strategy inspect prototype --agent-name path/to/agent --list-prototypes
+        gist-memory strategy inspect prototype --memory-path path/to/agent --list-prototypes
     """
 
     if strategy_name != "prototype":
         typer.echo(f"Unknown strategy: {strategy_name}", err=True)
         raise typer.Exit(code=1)
 
-    path = Path(agent_name)
+    path = Path(memory_path)
     if not path.exists():
         typer.secho(
-            f"Error: Agent directory '{path}' not found or is invalid.",
+            f"Error: Memory path '{path}' not found or is invalid.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -355,7 +365,12 @@ def episodes_tag(
 
 @app.command()
 def stats(
-    agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
+    memory_path: str = typer.Option(
+        DEFAULT_MEMORY_PATH,
+        "--memory-path",
+        "-m",
+        help="Memory store directory",
+    ),
     json_output: bool = typer.Option(False, "--json", help="JSON output"),
 ) -> None:
     """
@@ -367,12 +382,12 @@ def stats(
     which can be useful for scripting or further analysis.
 
     Usage Example (dump to JSON and redirect to a file):
-        gist-memory stats path/to/agent --json > agent_stats.json
+        gist-memory stats --memory-path path/to/agent --json > agent_stats.json
     """
-    path = Path(agent_name)
+    path = Path(memory_path)
     if not path.exists():
         typer.secho(
-            f"Error: Agent directory '{path}' not found or is invalid.",
+            f"Error: Memory path '{path}' not found or is invalid.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -390,7 +405,12 @@ def stats(
 @app.command()
 def talk(
     *,
-    agent_name: str = typer.Option(DEFAULT_BRAIN_PATH, help="Agent directory"),
+    memory_path: str = typer.Option(
+        DEFAULT_MEMORY_PATH,
+        "--memory-path",
+        "-m",
+        help="Memory store directory",
+    ),
     message: str = typer.Option(..., help="Message to send"),
     model_name: str = typer.Option("tiny-gpt2", help="Local chat model"),
     compression_strategy: Optional[str] = typer.Option(
@@ -415,13 +435,13 @@ def talk(
     agent, it uses these prototypes to retrieve relevant information to formulate a response.
 
     Usage Example:
-        gist-memory talk --agent-name path/to/agent --message "What do you know about topic X?"
+        gist-memory talk --memory-path path/to/agent --message "What do you know about topic X?"
     """
 
-    path = Path(agent_name)
+    path = Path(memory_path)
     if not path.exists():
         typer.secho(
-            f"Error: Agent directory '{path}' not found or is invalid.",
+            f"Error: Memory path '{path}' not found or is invalid.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -985,7 +1005,12 @@ def evaluate_llm_response(
 
 @app.command()
 def validate(
-    agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
+    memory_path: str = typer.Option(
+        DEFAULT_MEMORY_PATH,
+        "--memory-path",
+        "-m",
+        help="Memory store directory",
+    ),
 ) -> None:
     """
     Checks the integrity and validity of an existing agent data store.
@@ -995,12 +1020,12 @@ def validate(
     potential issues with an agent store.
 
     Usage Example:
-        gist-memory validate path/to/my_agent
+        gist-memory validate --memory-path path/to/my_agent
     """
-    path = Path(agent_name)
+    path = Path(memory_path)
     if not path.exists():
         typer.secho(
-            f"Error: Agent directory '{path}' not found or is invalid.",
+            f"Error: Memory path '{path}' not found or is invalid.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -1020,7 +1045,12 @@ def validate(
 
 @app.command()
 def clear(
-    agent_name: str = typer.Argument(DEFAULT_BRAIN_PATH, help="Agent directory"),
+    memory_path: str = typer.Option(
+        DEFAULT_MEMORY_PATH,
+        "--memory-path",
+        "-m",
+        help="Memory store directory",
+    ),
     yes: bool = typer.Option(False, "--yes", help="Confirm deletion"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Do not delete files"),
 ) -> None:
@@ -1031,15 +1061,15 @@ def clear(
     unless --dry-run is used. Use with caution.
 
     Usage Example (will prompt for confirmation):
-        gist-memory clear path/to/my_agent
+        gist-memory clear --memory-path path/to/my_agent
 
     Usage Example (will not prompt, immediately deletes):
-        gist-memory clear path/to/my_agent --yes
+        gist-memory clear --memory-path path/to/my_agent --yes
     """
-    path = Path(agent_name)
+    path = Path(memory_path)
     if not path.exists():
         typer.secho(
-            f"Error: Agent directory '{path}' not found or is invalid.",
+            f"Error: Memory path '{path}' not found or is invalid.",
             fg=typer.colors.RED,
             err=True,
         )
