@@ -6,11 +6,11 @@
 set -euo pipefail
 
 # Update package lists
-apt-get update
+#apt-get update
 
 # Install Python and basic tools
-apt-get install -y --no-install-recommends python3 python3-pip git
-apt-get clean
+#apt-get install -y --no-install-recommends python3 python3-pip git
+#apt-get clean
 
 # Install Python dependencies for the repository and download spaCy model
 if [ -f requirements.txt ]; then
