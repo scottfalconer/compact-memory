@@ -8,7 +8,7 @@ from typing import Iterable
 
 import typer
 
-CLI_ENTRYPOINT_GROUP = "gist_memory.cli"
+CLI_ENTRYPOINT_GROUP = "compact_memory.cli"
 
 _loaded = False
 
@@ -16,7 +16,7 @@ _loaded = False
 def load_cli_plugins(app: typer.Typer) -> None:
     """Load CLI plugins and attach them to ``app``.
 
-    Plugins are discovered via the ``gist_memory.cli`` entry point group. Each
+    Plugins are discovered via the ``compact_memory.cli`` entry point group. Each
     entry point should load and return either a :class:`typer.Typer` instance or
     a callable that accepts the main application and registers commands.
     """

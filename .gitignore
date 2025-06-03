@@ -7,4 +7,4 @@ venv/
 .env
 *.egg-info/
 # ignore database
-/gist_memory_db/
+/compact_memory_db/

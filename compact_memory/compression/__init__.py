@@ -11,14 +11,14 @@ from .pipeline_strategy import PipelineCompressionStrategy, PipelineStrategyConf
 
 # ---------------------------------------------------------------------------
 # Support legacy simple compression strategies defined in ``compression.py``.
-# ``gist_memory.compression`` used to be a single module providing these basic
+# ``compact_memory.compression`` used to be a single module providing these basic
 # utilities.  A package now occupies the name, so we load the legacy module
 # explicitly by path to maintain backwards compatibility with imports such as::
 #
-#     from gist_memory.compression import NoCompression
+#     from compact_memory.compression import NoCompression
 #
 _legacy_path = Path(__file__).resolve().parent.parent / "compression.py"
-_spec = util.spec_from_file_location("gist_memory._compression_legacy", _legacy_path)
+_spec = util.spec_from_file_location("compact_memory._compression_legacy", _legacy_path)
 _legacy = util.module_from_spec(_spec)
 assert _spec.loader is not None  # for mypy/static checkers
 _spec.loader.exec_module(_legacy)

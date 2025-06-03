@@ -1,6 +1,6 @@
 # Experiment Results
 
-This document summarizes small-scale benchmarks run with the Gist Memory experimentation framework. We evaluated three compression strategies on the repository's test dialogue datasets using a dummy local language model (as in the test suite).
+This document summarizes small-scale benchmarks run with the Compact Memory experimentation framework. We evaluated three compression strategies on the repository's test dialogue datasets using a dummy local language model (as in the test suite).
 
 ## Response Experiment
 Dataset: `tests/data/response_dialogues.yaml`

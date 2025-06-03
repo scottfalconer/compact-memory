@@ -13,16 +13,16 @@ class DummyTok:
 
 tiktoken.get_encoding = lambda name="gpt2": DummyTok()
 
-from gist_memory.history_experiment import HistoryExperimentConfig, run_history_experiment
-from gist_memory.response_experiment import ResponseExperimentConfig, run_response_experiment
+from compact_memory.history_experiment import HistoryExperimentConfig, run_history_experiment
+from compact_memory.response_experiment import ResponseExperimentConfig, run_response_experiment
 
 # ---------------------------------------------------------------------------
 # Patch response_experiment to run offline: use dummy LLM and mock embeddings.
-from gist_memory.embedding_pipeline import MockEncoder
-import gist_memory.response_experiment as rexp
-import gist_memory.local_llm as local_llm
-import gist_memory.embedding_pipeline as emb
-import gist_memory.agent as agent
+from compact_memory.embedding_pipeline import MockEncoder
+import compact_memory.response_experiment as rexp
+import compact_memory.local_llm as local_llm
+import compact_memory.embedding_pipeline as emb
+import compact_memory.agent as agent
 
 class DummyLLM:
     def __init__(self, *a, **k):

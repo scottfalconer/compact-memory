@@ -1,4 +1,4 @@
-from gist_memory.active_memory_manager import (
+from compact_memory.active_memory_manager import (
     ActiveMemoryManager,
     ConversationTurn,
 )

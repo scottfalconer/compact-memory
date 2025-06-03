@@ -1,4 +1,4 @@
-from gist_memory.compression.strategies_abc import (
+from compact_memory.compression.strategies_abc import (
     CompressionStrategy,
     CompressedMemory,
     CompressionTrace,

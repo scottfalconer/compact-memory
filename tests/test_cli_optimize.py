@@ -2,7 +2,7 @@ def test_experiment_optimize_runs(tmp_path):
     script = tmp_path / "opt.py"
     script.write_text("print('ok')")
 
-    from gist_memory.cli import app
+    from compact_memory.cli import app
     from typer.testing import CliRunner
 
     runner = CliRunner()

@@ -1,3 +1,3 @@
-The Gist Memory Agent processes documents by splitting them into smaller pieces.
+The Compact Memory Agent processes documents by splitting them into smaller pieces.
 This example text contains several sentences to showcase how the chunker works.
 Feel free to experiment with different chunk sizes and overlaps.

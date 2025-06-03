@@ -1,7 +1,7 @@
 import json
 from typer.testing import CliRunner
-from gist_memory.cli import app
-from gist_memory.embedding_pipeline import MockEncoder
+from compact_memory.cli import app
+from compact_memory.embedding_pipeline import MockEncoder
 import pytest
 
 
@@ -9,7 +9,7 @@ import pytest
 def use_mock_encoder(monkeypatch):
     enc = MockEncoder()
     monkeypatch.setattr(
-        "gist_memory.embedding_pipeline._load_model", lambda *a, **k: enc
+        "compact_memory.embedding_pipeline._load_model", lambda *a, **k: enc
     )
     yield
 
@@ -20,7 +20,7 @@ def test_cli_dev_inspect_strategy(tmp_path):
     result = runner.invoke(app, ["agent", "init", str(tmp_path), "--name", "tester"])
     assert result.exit_code == 0
 
-    from gist_memory.utils import load_agent
+    from compact_memory.utils import load_agent
 
     agent = load_agent(tmp_path)
     agent.add_memory("hello world")
@@ -47,7 +47,7 @@ def test_cli_dev_inspect_strategy(tmp_path):
 def test_cli_agent_stats(tmp_path):
     runner = CliRunner()
     runner.invoke(app, ["agent", "init", str(tmp_path), "--name", "tester"])
-    from gist_memory.utils import load_agent
+    from compact_memory.utils import load_agent
 
     agent = load_agent(tmp_path)
     agent.add_memory("alpha")
@@ -107,7 +107,7 @@ def test_cli_query(tmp_path, monkeypatch):  # Renamed from test_cli_talk
         init_result.exit_code == 0
     ), f"Agent init failed: {init_result.stdout + init_result.stderr}"
 
-    from gist_memory.utils import load_agent
+    from compact_memory.utils import load_agent
 
     agent = load_agent(tmp_path)
     agent.add_memory("hello world")
@@ -141,7 +141,7 @@ def test_cli_query(tmp_path, monkeypatch):  # Renamed from test_cli_talk
             prompts["text"] = prompt  # Capture the prompt for assertion
             return "mocked_response"
 
-    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", DummyChatModel)
+    monkeypatch.setattr("compact_memory.local_llm.LocalChatModel", DummyChatModel)
 
     # Invoke query: global --memory-path, then command, then arguments
     result = runner.invoke(
@@ -199,7 +199,7 @@ def test_query_command_calls_receive_channel_message(tmp_path, monkeypatch):  # 
         # Based on current cli.query, it seems LocalChatModel is instantiated separately
         # and agent._chat_model is assigned. So, this might not be needed on DummyAgent itself.
 
-    monkeypatch.setattr("gist_memory.cli._load_agent", lambda p: DummyAgent())
+    monkeypatch.setattr("compact_memory.cli._load_agent", lambda p: DummyAgent())
 
     class DummyLLM:  # This is for the LocalChatModel instantiated in cli.query
         def __init__(self, *a, **kw):
@@ -211,7 +211,7 @@ def test_query_command_calls_receive_channel_message(tmp_path, monkeypatch):  # 
         # Add other methods if they are called, e.g. reply, prepare_prompt
         # but for this test, we are checking if agent.receive_channel_message is called.
 
-    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", DummyLLM)
+    monkeypatch.setattr("compact_memory.local_llm.LocalChatModel", DummyLLM)
 
     result = runner.invoke(
         app,
@@ -268,7 +268,7 @@ def test_cli_logging(tmp_path):
         init_result.exit_code == 0
     ), f"Agent init failed: {init_result.stdout + init_result.stderr}"
 
-    from gist_memory.utils import load_agent  # Keep import local to where it's needed
+    from compact_memory.utils import load_agent  # Keep import local to where it's needed
 
     agent = load_agent(tmp_path)
     agent.add_memory("alpha_logging_test")  # Changed memory content for uniqueness
@@ -542,15 +542,15 @@ def test_cli_dev_test_llm_prompt(monkeypatch, tmp_path):  # Renamed
             return len(text.split())
 
     monkeypatch.setattr(
-        "gist_memory.llm_providers.OpenAIProvider",
+        "compact_memory.llm_providers.OpenAIProvider",
         lambda: DummyProvider(),
     )
     monkeypatch.setattr(
-        "gist_memory.llm_providers.GeminiProvider",
+        "compact_memory.llm_providers.GeminiProvider",
         lambda: DummyProvider(),
     )
     monkeypatch.setattr(
-        "gist_memory.llm_providers.LocalTransformersProvider",
+        "compact_memory.llm_providers.LocalTransformersProvider",
         lambda: DummyProvider(),
     )
 
@@ -606,9 +606,9 @@ import os
 import yaml
 from pathlib import Path
 
-# from gist_memory.config import DEFAULT_CONFIG # May not be needed directly in test_cli.py
+# from compact_memory.config import DEFAULT_CONFIG # May not be needed directly in test_cli.py
 
-# Note: PyYAML should be available as it's a dependency for gist_memory.config
+# Note: PyYAML should be available as it's a dependency for compact_memory.config
 
 
 def test_cli_config_show_defaults(tmp_path, monkeypatch):
@@ -619,14 +619,14 @@ def test_cli_config_show_defaults(tmp_path, monkeypatch):
 
     # Construct the expected user config path based on the mocked home
     # This mirrors how Config class would find/create it.
-    # USER_CONFIG_DIR = tmp_path / ".config" / "gist_memory" (from config.USER_CONFIG_DIR)
+    # USER_CONFIG_DIR = tmp_path / ".config" / "compact_memory" (from config.USER_CONFIG_DIR)
     # USER_CONFIG_PATH_EXPECTED = USER_CONFIG_DIR / "config.yaml" (from config.USER_CONFIG_PATH)
 
     # We need to use the actual USER_CONFIG_PATH from the SUT (System Under Test - config.py)
     # to ensure consistency if its definition ever changes slightly.
     # For this test, we ensure the file at the location Config class would use is deleted.
 
-    from gist_memory.config import USER_CONFIG_PATH as SUT_USER_CONFIG_PATH
+    from compact_memory.config import USER_CONFIG_PATH as SUT_USER_CONFIG_PATH
 
     # Monkeypatch Path.home() to make USER_CONFIG_PATH resolve within tmp_path
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
@@ -642,25 +642,25 @@ def test_cli_config_show_defaults(tmp_path, monkeypatch):
     effective_user_config_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Clear relevant env vars
-    monkeypatch.delenv("GIST_MEMORY_PATH", raising=False)
-    monkeypatch.delenv("GIST_MEMORY_DEFAULT_MODEL_ID", raising=False)
-    monkeypatch.delenv("GIST_MEMORY_DEFAULT_STRATEGY_ID", raising=False)
-    # Assuming other potential env vars like GIST_MEMORY_VERBOSE, GIST_MEMORY_LOG_FILE are cleared by not setting them
+    monkeypatch.delenv("COMPACT_MEMORY_PATH", raising=False)
+    monkeypatch.delenv("COMPACT_MEMORY_DEFAULT_MODEL_ID", raising=False)
+    monkeypatch.delenv("COMPACT_MEMORY_DEFAULT_STRATEGY_ID", raising=False)
+    # Assuming other potential env vars like COMPACT_MEMORY_VERBOSE, COMPACT_MEMORY_LOG_FILE are cleared by not setting them
 
     result = runner.invoke(app, ["config", "show"])
     assert result.exit_code == 0, f"config show failed: {result.stdout}{result.stderr}"
 
-    from gist_memory.config import DEFAULT_CONFIG  # Import here for direct comparison
+    from compact_memory.config import DEFAULT_CONFIG  # Import here for direct comparison
 
     # The output of 'config show' is a table. Checking specific cell content is brittle.
     # Instead, check for key substrings and that "application default" is mentioned for each.
     for key, default_value in DEFAULT_CONFIG.items():
         assert key in result.stdout
         # For path, it's resolved, so check a unique part of the default path
-        if key == "gist_memory_path":
-            # Default path is like "~/.local/share/gist_memory". After expanduser, it's absolute.
-            # With monkeypatched home, it's tmp_path + ".local/share/gist_memory"
-            expected_path_segment = ".local/share/gist_memory"
+        if key == "compact_memory_path":
+            # Default path is like "~/.local/share/compact_memory". After expanduser, it's absolute.
+            # With monkeypatched home, it's tmp_path + ".local/share/compact_memory"
+            expected_path_segment = ".local/share/compact_memory"
             assert expected_path_segment in result.stdout
         else:
             assert str(default_value) in result.stdout
@@ -683,7 +683,7 @@ def test_cli_config_show_defaults(tmp_path, monkeypatch):
 def test_cli_config_set_and_show_specific_key(tmp_path, monkeypatch):
     runner = CliRunner()
 
-    from gist_memory.config import USER_CONFIG_PATH as SUT_USER_CONFIG_PATH
+    from compact_memory.config import USER_CONFIG_PATH as SUT_USER_CONFIG_PATH
 
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     effective_user_config_file = Path(
@@ -695,9 +695,9 @@ def test_cli_config_set_and_show_specific_key(tmp_path, monkeypatch):
     effective_user_config_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Clear relevant env vars to ensure 'set' writes and 'show' reads from file
-    monkeypatch.delenv("GIST_MEMORY_PATH", raising=False)
-    monkeypatch.delenv("GIST_MEMORY_DEFAULT_MODEL_ID", raising=False)
-    monkeypatch.delenv("GIST_MEMORY_VERBOSE", raising=False)  # For the verbose key test
+    monkeypatch.delenv("COMPACT_MEMORY_PATH", raising=False)
+    monkeypatch.delenv("COMPACT_MEMORY_DEFAULT_MODEL_ID", raising=False)
+    monkeypatch.delenv("COMPACT_MEMORY_VERBOSE", raising=False)  # For the verbose key test
 
     # Set a string value
     key_to_set = "default_model_id"
@@ -752,7 +752,7 @@ def test_cli_config_set_and_show_specific_key(tmp_path, monkeypatch):
 def test_cli_config_show_with_env_override(tmp_path, monkeypatch):
     runner = CliRunner()
 
-    from gist_memory.config import (
+    from compact_memory.config import (
         USER_CONFIG_PATH as SUT_USER_CONFIG_PATH,
         ENV_VAR_PREFIX,
     )
@@ -764,7 +764,7 @@ def test_cli_config_show_with_env_override(tmp_path, monkeypatch):
     effective_user_config_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Set a base value in the user config file
-    user_setting_key = "gist_memory_path"
+    user_setting_key = "compact_memory_path"
     user_setting_value = "/path/from/user_config_file_content"  # Made unique
     with open(effective_user_config_file, "w") as f:
         yaml.dump({user_setting_key: user_setting_value}, f)
@@ -792,7 +792,7 @@ def test_cli_config_show_with_env_override(tmp_path, monkeypatch):
 def test_cli_config_set_invalid_key(tmp_path, monkeypatch):
     runner = CliRunner()
 
-    from gist_memory.config import USER_CONFIG_PATH as SUT_USER_CONFIG_PATH
+    from compact_memory.config import USER_CONFIG_PATH as SUT_USER_CONFIG_PATH
 
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     effective_user_config_file = Path(
@@ -825,7 +825,7 @@ def test_cli_interactive_prompt_for_memory_path_if_tty_and_missing(
 
     # Ensure no config files or env vars set memory_path
     # Path.home() is monkeypatched to return tmp_path for config file isolation
-    from gist_memory.config import USER_CONFIG_PATH as SUT_USER_CONFIG_PATH
+    from compact_memory.config import USER_CONFIG_PATH as SUT_USER_CONFIG_PATH
 
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     effective_user_config_file = Path(
@@ -843,7 +843,7 @@ def test_cli_interactive_prompt_for_memory_path_if_tty_and_missing(
     if local_gm_config.exists():
         local_gm_config.unlink()
 
-    monkeypatch.delenv("GIST_MEMORY_PATH", raising=False)
+    monkeypatch.delenv("COMPACT_MEMORY_PATH", raising=False)
 
     # Mock sys.stdin.isatty() to return True (interactive session)
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
@@ -856,7 +856,7 @@ def test_cli_interactive_prompt_for_memory_path_if_tty_and_missing(
 
     def mock_typer_prompt(text, default=None, **kwargs):
         prompt_info["called"] = True
-        if "Please enter the path for Gist Memory storage" in text:
+        if "Please enter the path for Compact Memory storage" in text:
             prompt_info["text_ok"] = True
         return prompted_path
 
@@ -886,7 +886,7 @@ def test_cli_interactive_prompt_for_memory_path_if_tty_and_missing(
 def test_cli_no_interactive_prompt_if_not_tty_and_missing_path(tmp_path, monkeypatch):
     runner = CliRunner()
 
-    from gist_memory.config import USER_CONFIG_PATH as SUT_USER_CONFIG_PATH
+    from compact_memory.config import USER_CONFIG_PATH as SUT_USER_CONFIG_PATH
 
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     effective_user_config_file = Path(
@@ -901,7 +901,7 @@ def test_cli_no_interactive_prompt_if_not_tty_and_missing_path(tmp_path, monkeyp
     if local_gm_config.exists():
         local_gm_config.unlink()
 
-    monkeypatch.delenv("GIST_MEMORY_PATH", raising=False)
+    monkeypatch.delenv("COMPACT_MEMORY_PATH", raising=False)
 
     # Mock sys.stdin.isatty() to return False (non-interactive session)
     monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
@@ -925,7 +925,7 @@ def test_cli_no_interactive_prompt_if_not_tty_and_missing_path(tmp_path, monkeyp
     assert result.exit_code != 0  # Should fail due to missing path
     assert not prompt_called  # Verify typer.prompt was NOT called
     assert (
-        "Error: Gist Memory path is not set." in result.stderr
+        "Error: Compact Memory path is not set." in result.stderr
     )  # Specific non-interactive error
     assert "Please set it using the --memory-path option" in result.stderr
 

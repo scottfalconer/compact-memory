@@ -6,7 +6,7 @@ import pytest
 evaluate_stub = types.SimpleNamespace(load=lambda *a, **k: None)
 sys.modules.setdefault("evaluate", evaluate_stub)
 
-from gist_memory.validation.hf_metrics import (
+from compact_memory.validation.hf_metrics import (
     RougeHFMetric,
     BleuHFMetric,
     MeteorHFMetric,
@@ -14,7 +14,7 @@ from gist_memory.validation.hf_metrics import (
     ExactMatchMetric,
     HFValidationMetric,
 )
-from gist_memory.registry import get_validation_metric_class
+from compact_memory.registry import get_validation_metric_class
 
 
 def test_exact_match_metric():

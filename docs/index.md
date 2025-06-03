@@ -1,4 +1,4 @@
-# Gist Memory Documentation Index
+# Compact Memory Documentation Index
 
 This file mirrors [README.md](README.md) and serves as the default landing page when hosting the documentation.
 

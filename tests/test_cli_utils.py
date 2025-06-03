@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import typer # For typer.BadParameter
 
-from gist_memory.cli_utils import parse_key_value_pairs, parse_complex_params
+from compact_memory.cli_utils import parse_key_value_pairs, parse_complex_params
 
 # Tests for parse_key_value_pairs
 def test_pkvp_empty_and_none():

@@ -1,6 +1,6 @@
 # Developing Validation Metrics
 
-This document guides developers and researchers on creating custom `ValidationMetric` classes to evaluate the quality and utility of compressed memory produced by different `CompressionStrategy` implementations. These metrics are crucial for the Gist Memory experimentation framework.
+This document guides developers and researchers on creating custom `ValidationMetric` classes to evaluate the quality and utility of compressed memory produced by different `CompressionStrategy` implementations. These metrics are crucial for the Compact Memory experimentation framework.
 
 Validation metrics assess how well an LLM performs when using compressed memory.
 All metrics must subclass `ValidationMetric` and register themselves with the
@@ -9,7 +9,7 @@ registry so experiment configurations can reference them.
 ## ValidationMetric ABC
 
 ```python
-from gist_memory.validation.metrics_abc import ValidationMetric
+from compact_memory.validation.metrics_abc import ValidationMetric
 
 class MyMetric(ValidationMetric):
     metric_id = "my_metric"
@@ -21,7 +21,7 @@ class MyMetric(ValidationMetric):
 Use `register_validation_metric` to make the metric discoverable:
 
 ```python
-from gist_memory.registry import register_validation_metric
+from compact_memory.registry import register_validation_metric
 
 register_validation_metric(MyMetric.metric_id, MyMetric)
 ```
@@ -32,7 +32,7 @@ Metrics backed by the [`evaluate`](https://github.com/huggingface/evaluate)
 library can extend `HFValidationMetric` which handles loading the metric:
 
 ```python
-from gist_memory.validation.hf_metrics import HFValidationMetric
+from compact_memory.validation.hf_metrics import HFValidationMetric
 
 class RougeMetric(HFValidationMetric):
     metric_id = "rouge_hf"

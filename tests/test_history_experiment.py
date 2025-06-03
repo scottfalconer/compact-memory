@@ -1,14 +1,14 @@
 from pathlib import Path
 
-from gist_memory.history_experiment import HistoryExperimentConfig, run_history_experiment
-from gist_memory.embedding_pipeline import MockEncoder
+from compact_memory.history_experiment import HistoryExperimentConfig, run_history_experiment
+from compact_memory.embedding_pipeline import MockEncoder
 import pytest
 
 
 @pytest.fixture(autouse=True)
 def use_mock_encoder(monkeypatch):
     enc = MockEncoder()
-    monkeypatch.setattr("gist_memory.history_experiment.MockEncoder", lambda: enc)
+    monkeypatch.setattr("compact_memory.history_experiment.MockEncoder", lambda: enc)
     yield
 
 

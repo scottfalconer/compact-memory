@@ -1,7 +1,7 @@
 import json
 import pytest
-from gist_memory.local_llm import LocalChatModel
-from gist_memory.embedding_pipeline import MockEncoder
+from compact_memory.local_llm import LocalChatModel
+from compact_memory.embedding_pipeline import MockEncoder
 
 
 def _setup_encoder(monkeypatch):
@@ -11,7 +11,7 @@ def _setup_encoder(monkeypatch):
 
     enc = DummyEncoder()
     monkeypatch.setattr(
-        "gist_memory.embedding_pipeline._load_model", lambda *a, **k: enc
+        "compact_memory.embedding_pipeline._load_model", lambda *a, **k: enc
     )
 
 
@@ -49,11 +49,11 @@ class NoLenModel(DummyModel):
 @pytest.fixture(autouse=True)
 def dummy_llm(monkeypatch):
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoTokenizer.from_pretrained",
+        "compact_memory.local_llm.AutoTokenizer.from_pretrained",
         lambda *a, **k: DummyTokenizer(),
     )
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoModelForCausalLM.from_pretrained",
+        "compact_memory.local_llm.AutoModelForCausalLM.from_pretrained",
         lambda *a, **k: DummyModel(),
     )
     yield
@@ -68,7 +68,7 @@ def test_reply_truncates_to_limit(monkeypatch):
         called["text"] = text
         return text
 
-    monkeypatch.setattr("gist_memory.local_llm.dynamic_importance_filter", filt)
+    monkeypatch.setattr("compact_memory.local_llm.dynamic_importance_filter", filt)
 
     model = LocalChatModel(max_new_tokens=100)
     long_prompt = " ".join(f"w{i}" for i in range(50))
@@ -80,10 +80,10 @@ def test_reply_truncates_to_limit(monkeypatch):
 
 def test_cli_talk_prompt_respects_limit(tmp_path, monkeypatch):
     pytest.skip("CLI talk limit check pending refactor")
-    from gist_memory.cli import init
-    from gist_memory.utils import load_agent
-    from gist_memory.local_llm import LocalChatModel
-    from gist_memory.active_memory_manager import ActiveMemoryManager
+    from compact_memory.cli import init
+    from compact_memory.utils import load_agent
+    from compact_memory.local_llm import LocalChatModel
+    from compact_memory.active_memory_manager import ActiveMemoryManager
 
     init.callback = init.callback if hasattr(init, 'callback') else init
     init(directory=str(tmp_path))
@@ -97,7 +97,7 @@ def test_cli_talk_prompt_respects_limit(tmp_path, monkeypatch):
     captured = {}
 
     monkeypatch.setattr(
-        "gist_memory.local_llm.dynamic_importance_filter", lambda text: "flt"
+        "compact_memory.local_llm.dynamic_importance_filter", lambda text: "flt"
     )
 
     def capture_generate(**kw):
@@ -119,7 +119,7 @@ def test_cli_talk_prompt_respects_limit(tmp_path, monkeypatch):
             captured["ids"] = self.tokenizer(prompt)["input_ids"][0]
             return "ok"
 
-    monkeypatch.setattr("gist_memory.local_llm.LocalChatModel", DummyLLM)
+    monkeypatch.setattr("compact_memory.local_llm.LocalChatModel", DummyLLM)
     chat = DummyLLM()
     agent._chat_model = chat
     mgr = ActiveMemoryManager()
@@ -137,10 +137,10 @@ def test_context_length_uses_tokenizer_when_config_missing(monkeypatch):
         model_max_length = 150
 
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoTokenizer.from_pretrained", lambda *a, **k: Tok()
+        "compact_memory.local_llm.AutoTokenizer.from_pretrained", lambda *a, **k: Tok()
     )
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoModelForCausalLM.from_pretrained",
+        "compact_memory.local_llm.AutoModelForCausalLM.from_pretrained",
         lambda *a, **k: NoLenModel(),
     )
 

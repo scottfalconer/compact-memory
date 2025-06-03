@@ -1,5 +1,5 @@
 import pytest
-from gist_memory.local_llm import LocalChatModel
+from compact_memory.local_llm import LocalChatModel
 
 
 def test_local_chat_model(monkeypatch):
@@ -23,11 +23,11 @@ def test_local_chat_model(monkeypatch):
             return [[0]]
 
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoTokenizer.from_pretrained",
+        "compact_memory.local_llm.AutoTokenizer.from_pretrained",
         lambda *a, **k: DummyTokenizer(),
     )
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoModelForCausalLM.from_pretrained",
+        "compact_memory.local_llm.AutoModelForCausalLM.from_pretrained",
         lambda *a, **k: DummyModel(),
     )
     model = LocalChatModel()
@@ -56,22 +56,22 @@ def test_prepare_prompt(monkeypatch, tmp_path):
             return [[0]]
 
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoTokenizer.from_pretrained",
+        "compact_memory.local_llm.AutoTokenizer.from_pretrained",
         lambda *a, **k: DummyTokenizer(),
     )
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoModelForCausalLM.from_pretrained",
+        "compact_memory.local_llm.AutoModelForCausalLM.from_pretrained",
         lambda *a, **k: DummyModel(),
     )
 
-    from gist_memory.json_npy_store import JsonNpyVectorStore
-    from gist_memory.models import BeliefPrototype
-    from gist_memory.agent import Agent
-    from gist_memory.embedding_pipeline import MockEncoder
+    from compact_memory.json_npy_store import JsonNpyVectorStore
+    from compact_memory.models import BeliefPrototype
+    from compact_memory.agent import Agent
+    from compact_memory.embedding_pipeline import MockEncoder
 
     enc = MockEncoder()
     monkeypatch.setattr(
-        "gist_memory.embedding_pipeline._load_model", lambda *a, **k: enc
+        "compact_memory.embedding_pipeline._load_model", lambda *a, **k: enc
     )
 
     store = JsonNpyVectorStore(
@@ -97,11 +97,11 @@ def test_local_chat_model_failure(monkeypatch):
         raise OSError("missing")
 
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoTokenizer.from_pretrained",
+        "compact_memory.local_llm.AutoTokenizer.from_pretrained",
         err,
     )
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoModelForCausalLM.from_pretrained", err
+        "compact_memory.local_llm.AutoModelForCausalLM.from_pretrained", err
     )
 
     model = LocalChatModel(model_name="foo")
@@ -131,11 +131,11 @@ def test_provider_interface(monkeypatch):
             return [[0]]
 
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoTokenizer.from_pretrained",
+        "compact_memory.local_llm.AutoTokenizer.from_pretrained",
         lambda *a, **k: DummyTokenizer(),
     )
     monkeypatch.setattr(
-        "gist_memory.local_llm.AutoModelForCausalLM.from_pretrained",
+        "compact_memory.local_llm.AutoModelForCausalLM.from_pretrained",
         lambda *a, **k: DummyModel(),
     )
 

@@ -2,7 +2,7 @@ import numpy as np
 import importlib
 import pytest
 
-from gist_memory import embedding_pipeline as ep
+from compact_memory import embedding_pipeline as ep
 
 
 def test_mock_encoder_determinism():
@@ -33,7 +33,7 @@ def test_load_model_failure(monkeypatch):
     msg = str(exc.value)
     assert "download-model" in msg
     assert "bad" in msg
-    assert "gist-memory download-model" in str(exc.value)
+    assert "compact-memory download-model" in str(exc.value)
 
 
 def test_embed_text_long_truncates(monkeypatch):

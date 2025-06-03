@@ -2,7 +2,7 @@
 from pathlib import Path
 import yaml
 
-from gist_memory.history_experiment import HistoryExperimentConfig, run_history_experiment
+from compact_memory.history_experiment import HistoryExperimentConfig, run_history_experiment
 
 
 def main() -> None:

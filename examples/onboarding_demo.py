@@ -1,5 +1,5 @@
 """
-Demonstrates key features of the Gist Memory platform, including custom
+Demonstrates key features of the Compact Memory platform, including custom
 strategy definition, data ingestion, direct compression, and running
 history/response experiments.
 """
@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 import yaml
 
-from gist_memory import (
+from compact_memory import (
     ExperimentConfig,
     HistoryExperimentConfig,
     ResponseExperimentConfig,
@@ -16,12 +16,12 @@ from gist_memory import (
     run_history_experiment,
     run_response_experiment,
 )
-from gist_memory.compression import (
+from compact_memory.compression import (
     CompressionStrategy,
     CompressedMemory,
     CompressionTrace,
 )
-from gist_memory.registry import register_compression_strategy
+from compact_memory.registry import register_compression_strategy
 
 
 class TruncateStrategy(CompressionStrategy):

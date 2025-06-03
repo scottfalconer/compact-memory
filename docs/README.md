@@ -1,33 +1,33 @@
-# Gist Memory Documentation
+# Compact Memory Documentation
 
-Welcome to the detailed documentation for Gist Memory! This section provides in-depth information beyond the main project [README.md](../README.md). Whether you're looking to understand the architecture, develop new strategies, or run comprehensive experiments, these documents are here to guide you.
+Welcome to the detailed documentation for Compact Memory! This section provides in-depth information beyond the main project [README.md](../README.md). Whether you're looking to understand the architecture, develop new strategies, or run comprehensive experiments, these documents are here to guide you.
 
 ## Table of Contents & Document Overview
 
 Below is a list of documents in this directory, along with a brief description of their content and intended audience.
 
 *   **[`ARCHITECTURE.md`](./ARCHITECTURE.md)**
-    *   **Content:** A detailed explanation of the Gist Memory platform's architecture, including core modules, data models, ingestion flow, querying mechanisms, and testing strategies.
-    *   **Audience:** Developers contributing to the Gist Memory core, or those seeking a deep understanding of its internal workings.
+    *   **Content:** A detailed explanation of the Compact Memory platform's architecture, including core modules, data models, ingestion flow, querying mechanisms, and testing strategies.
+    *   **Audience:** Developers contributing to the Compact Memory core, or those seeking a deep understanding of its internal workings.
 
 *   **[`AGENTS.md`](../AGENTS.md)**
-    *   **Content:** A conceptual document outlining the vision behind Gist Memory. It discusses illustrative memory management strategies (like the Prototype System and ActiveMemoryManager), prompt assembly, and key areas for experimentation and learning.
+    *   **Content:** A conceptual document outlining the vision behind Compact Memory. It discusses illustrative memory management strategies (like the Prototype System and ActiveMemoryManager), prompt assembly, and key areas for experimentation and learning.
     *   **Audience:** Researchers, developers looking for inspiration for new strategies, and anyone interested in the theoretical underpinnings of the platform.
 
 *   **Conceptual Guides for Strategies**
     *   **[`COMPRESSION_STRATEGIES.md`](./COMPRESSION_STRATEGIES.md)**: Discusses techniques for segmenting source documents and post-processing for creating effective compression strategies. Focuses on the "what" and "why."
         *   **Audience:** Researchers and developers designing new compression strategies.
     *   **[`QUERY_TIPS.md`](./QUERY_TIPS.md)**: Explains how to shape search queries for effective retrieval, especially when using structured note layouts.
-        *   **Audience:** Users and developers working with the querying aspects of Gist Memory.
+        *   **Audience:** Users and developers working with the querying aspects of Compact Memory.
     *   **[`EXPLAINABLE_COMPRESSION.md`](./EXPLAINABLE_COMPRESSION.md)**: (Assuming content based on title) Discusses approaches to make compression strategies more transparent and understandable.
         *   **Audience:** Researchers and developers interested in the interpretability of memory systems.
 
 *   **Developer Guides**
-    *   **[`DEVELOPING_COMPRESSION_STRATEGIES.md`](./DEVELOPING_COMPRESSION_STRATEGIES.md)**: Provides practical guidance and steps for implementing new `CompressionStrategy` modules within the Gist Memory framework. Focuses on the "how-to."
+    *   **[`DEVELOPING_COMPRESSION_STRATEGIES.md`](./DEVELOPING_COMPRESSION_STRATEGIES.md)**: Provides practical guidance and steps for implementing new `CompressionStrategy` modules within the Compact Memory framework. Focuses on the "how-to."
         *   **Audience:** Developers actively building new compression strategies.
     *   **[`DEVELOPING_VALIDATION_METRICS.md`](./DEVELOPING_VALIDATION_METRICS.md)**: Offers guidance on creating custom `ValidationMetric` classes to evaluate the performance of compression strategies.
         *   **Audience:** Developers and researchers looking to implement new ways of measuring memory effectiveness.
-    *   **[`STORAGE_FORMAT.md`](./STORAGE_FORMAT.md)**: Details the storage format used by Gist Memory, particularly for the default JSON/NPY store.
+    *   **[`STORAGE_FORMAT.md`](./STORAGE_FORMAT.md)**: Details the storage format used by Compact Memory, particularly for the default JSON/NPY store.
         *   **Audience:** Developers needing to understand or interact with the persistence layer.
 
 *   **Running & Managing Experiments**
@@ -40,7 +40,7 @@ Below is a list of documents in this directory, along with a brief description o
 
 ## Suggested Reading Paths
 
-*   **For Users Wanting to Apply Gist Memory:**
+*   **For Users Wanting to Apply Compact Memory:**
     1.  Start with the main project [README.md](../README.md) for installation and basic usage.
     2.  Review [`QUERY_TIPS.md`](./QUERY_TIPS.md) for effective information retrieval.
     3.  If running extensive evaluations, consult [`RUNNING_EXPERIMENTS.md`](./RUNNING_EXPERIMENTS.md).
@@ -57,4 +57,4 @@ Below is a list of documents in this directory, along with a brief description o
     2.  Understand the vision in [`AGENTS.md`](../AGENTS.md).
     3.  Review relevant developer guides based on the area of contribution.
 
-We encourage you to explore these documents to get the most out of Gist Memory. If you find areas for improvement or clarification, please feel free to open an issue or suggest changes!
+We encourage you to explore these documents to get the most out of Compact Memory. If you find areas for improvement or clarification, please feel free to open an issue or suggest changes!

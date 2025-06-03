@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional, Tuple
 
 # Default configuration values
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "gist_memory_path": "~/.local/share/gist_memory",
+    "compact_memory_path": "~/.local/share/compact_memory",
     "default_model_id": "openai/gpt-3.5-turbo",
     "default_strategy_id": "default",
     "verbose": False,
@@ -14,7 +14,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 }
 
 # Configuration file paths
-USER_CONFIG_DIR = pathlib.Path("~/.config/gist_memory").expanduser()
+USER_CONFIG_DIR = pathlib.Path("~/.config/compact_memory").expanduser()
 USER_CONFIG_PATH = USER_CONFIG_DIR / "config.yaml"
 LOCAL_CONFIG_PATH = pathlib.Path(".gmconfig.yaml")
 
@@ -26,7 +26,7 @@ SOURCE_ENV_VAR = "environment variable"
 SOURCE_OVERRIDE = "runtime override"  # For values set via CLI options or future `config.set_runtime()`
 
 # Environment variable prefixes
-ENV_VAR_PREFIX = "GIST_MEMORY_"
+ENV_VAR_PREFIX = "COMPACT_MEMORY_"
 
 
 class Config:
@@ -277,20 +277,20 @@ if __name__ == "__main__":
     all_conf1 = config1.get_all_with_sources()
     for k, (v, s) in all_conf1.items():
         print(f"{k}: {v} (Source: {s})")
-    assert config1.get("gist_memory_path") == DEFAULT_CONFIG["gist_memory_path"]
-    assert config1.get_with_source("gist_memory_path")[1] == SOURCE_DEFAULT
+    assert config1.get("compact_memory_path") == DEFAULT_CONFIG["compact_memory_path"]
+    assert config1.get_with_source("compact_memory_path")[1] == SOURCE_DEFAULT
 
     print("\n--- Test 2: User Config Override ---")
     USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     with open(USER_CONFIG_PATH, "w") as f:
         yaml.dump(
-            {"gist_memory_path": "/user/path", "default_model_id": "user/model"}, f
+            {"compact_memory_path": "/user/path", "default_model_id": "user/model"}, f
         )
     config2 = Config()
     for k, (v, s) in config2.get_all_with_sources().items():
         print(f"{k}: {v} (Source: {s})")
-    assert config2.get("gist_memory_path") == "/user/path"
-    assert config2.get_with_source("gist_memory_path")[1] == SOURCE_USER_CONFIG
+    assert config2.get("compact_memory_path") == "/user/path"
+    assert config2.get_with_source("compact_memory_path")[1] == SOURCE_USER_CONFIG
     assert config2.get("default_model_id") == "user/model"
     assert config2.get_with_source("default_model_id")[1] == SOURCE_USER_CONFIG
 
@@ -313,12 +313,12 @@ if __name__ == "__main__":
 
     print("\n--- Test 4: Env Var Override ---")
     os.environ[ENV_VAR_PREFIX + "DEFAULT_STRATEGY_ID"] = "env_strategy"
-    os.environ[ENV_VAR_PREFIX + "GIST_MEMORY_PATH"] = "/env/path"
+    os.environ[ENV_VAR_PREFIX + "COMPACT_MEMORY_PATH"] = "/env/path"
     config4 = Config()
     for k, (v, s) in config4.get_all_with_sources().items():
         print(f"{k}: {v} (Source: {s})")
-    assert config4.get("gist_memory_path") == "/env/path"
-    assert config4.get_with_source("gist_memory_path")[1] == SOURCE_ENV_VAR
+    assert config4.get("compact_memory_path") == "/env/path"
+    assert config4.get_with_source("compact_memory_path")[1] == SOURCE_ENV_VAR
     assert config4.get("default_strategy_id") == "env_strategy"
     assert config4.get_with_source("default_strategy_id")[1] == SOURCE_ENV_VAR
 

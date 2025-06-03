@@ -20,9 +20,9 @@ from .package_utils import (
 )
 
 
-PLUGIN_ENV_VAR = "GIST_MEMORY_PLUGINS_PATH"
-ENTRYPOINT_GROUP = "gist_memory.strategies"
-DEFAULT_PLUGIN_DIR = Path(user_data_dir("gist_memory", "GistMemoryTeam")) / "plugins"
+PLUGIN_ENV_VAR = "COMPACT_MEMORY_PLUGINS_PATH"
+ENTRYPOINT_GROUP = "compact_memory.strategies"
+DEFAULT_PLUGIN_DIR = Path(user_data_dir("compact_memory", "CompactMemoryTeam")) / "plugins"
 
 
 _loaded = False
