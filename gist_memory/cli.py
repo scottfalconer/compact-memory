@@ -23,10 +23,10 @@ from .logging_utils import configure_logging
 
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
-from .local_llm import LocalChatModel # Moved from talk
+from . import local_llm  # import module so tests can patch LocalChatModel
 from .active_memory_manager import ActiveMemoryManager # Moved from talk
 from .registry import _VALIDATION_METRIC_REGISTRY, get_validation_metric_class # Moved from metric_list, evaluate_compression, evaluate_llm_response
-from .llm_providers import OpenAIProvider, GeminiProvider, LocalTransformersProvider # Moved from llm_prompt
+from . import llm_providers  # import module so tests can patch providers
 from .model_utils import download_embedding_model, download_chat_model as _download_chat_model # Moved from download_model, download_chat_model
 from .embedding_pipeline import (
     get_embedding_dim,
@@ -367,7 +367,7 @@ def talk(
         # from .local_llm import LocalChatModel # Moved to top
 
         try:
-            agent._chat_model = LocalChatModel(model_name=model_name)
+            agent._chat_model = local_llm.LocalChatModel(model_name=model_name)
             agent._chat_model.load_model()
         except RuntimeError as exc:
             typer.echo(str(exc), err=True)
@@ -764,11 +764,11 @@ def llm_prompt(
     model_name = model_cfg.get("model_name", model_id)
 
     if provider_name == "openai":
-        provider = OpenAIProvider()
+        provider = llm_providers.OpenAIProvider()
     elif provider_name == "gemini":
-        provider = GeminiProvider()
+        provider = llm_providers.GeminiProvider()
     else:
-        provider = LocalTransformersProvider()
+        provider = llm_providers.LocalTransformersProvider()
 
     api_key = os.getenv(api_key_env_var) if api_key_env_var else None
 

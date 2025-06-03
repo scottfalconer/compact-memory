@@ -145,7 +145,14 @@ class ActiveMemoryStrategy(CompressionStrategy):
         
         # trace_events = kwargs.get('trace_events', []) # Check how trace_events is passed
         # trace_events.extend(trace_steps)
-        compression_trace = CompressionTrace(steps=trace_steps) #, events=trace_events)
+        compression_trace = CompressionTrace(
+            strategy_name=self.id,
+            strategy_params={"llm_token_budget": llm_token_budget},
+            input_summary={"history_len": len(self.manager.history)},
+            steps=trace_steps,
+            output_summary={"compressed_length": len(compressed_text)},
+            final_compressed_object_preview=compressed_text[:50],
+        )
 
         return compressed_memory, compression_trace
 

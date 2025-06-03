@@ -226,7 +226,7 @@ class ActiveMemoryManager:
                 kept_ids.add(id(turn))
                 current_tokens += n_tokens
             else:
-                break
+                continue
 
         return [t for t in candidate_turns if id(t) in kept_ids]
 

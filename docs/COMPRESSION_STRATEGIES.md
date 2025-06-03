@@ -52,3 +52,18 @@ Latency benchmarks on a single CPU (10k ideas/min) come from using MiniLM embedd
 - Keep overlap small (≤20%) to avoid duplicate centroids.
 - Evaluate retrieval F1 versus chunk granularity; too coarse usually hurts long‑tail recall, too fine inflates the index.
 - Monitor centroid drift and auto-split if intra-distance exceeds δ.
+
+## Pipeline strategies
+
+For more complex workflows a `PipelineCompressionStrategy` can chain multiple
+strategies. The output of one step feeds into the next, enabling filters and
+summarizers to be composed.
+
+Example configuration:
+
+```yaml
+strategy_name: pipeline
+strategies:
+  - strategy_name: importance
+  - strategy_name: learned_summarizer
+```

@@ -37,3 +37,20 @@ trace.steps.append({
 These rich traces make strategies easier to debug and analyse. When designing a
 new strategy, think about what decisions are being made and record them as steps
 in the trace.
+
+## Composing Strategies with Pipelines
+
+`PipelineCompressionStrategy` allows multiple compression steps to be chained
+together. Each strategy in the pipeline receives the same token budget and
+processes the output of the previous one. Pipelines are configured with
+`PipelineStrategyConfig`, which lists the strategies to run in order.
+
+Example:
+
+```yaml
+compression:
+  strategy_name: pipeline
+  strategies:
+    - strategy_name: importance
+    - strategy_name: learned_summarizer
+```

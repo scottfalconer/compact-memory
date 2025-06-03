@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .strategies_abc import CompressedMemory, CompressionStrategy, CompressionTrace
 from .config import StrategyConfig
+from .pipeline_strategy import PipelineCompressionStrategy, PipelineStrategyConfig
 
 # ---------------------------------------------------------------------------
 # Support legacy simple compression strategies defined in ``compression.py``.
@@ -30,12 +31,17 @@ available_strategies = _legacy.available_strategies
 get_strategy_metadata = _legacy.get_strategy_metadata
 all_strategy_metadata = _legacy.all_strategy_metadata
 
+# Register built-in strategies defined in submodules
+register_compression_strategy(PipelineCompressionStrategy.id, PipelineCompressionStrategy)
+
 __all__ = [
     "CompressedMemory",
     "CompressionStrategy",
     "CompressionTrace",
     "NoCompression",
     "ImportanceCompression",
+    "PipelineCompressionStrategy",
+    "PipelineStrategyConfig",
     "register_compression_strategy",
     "get_compression_strategy",
     "available_strategies",
