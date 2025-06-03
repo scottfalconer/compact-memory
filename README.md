@@ -67,7 +67,7 @@ For contributors or those looking to build custom solutions on top of Gist Memor
 | --- | ----------- |
 | `prototype` | Prototype-based long-term memory with evolving summaries |
 | `active_memory_neuro` | Dynamic short-term memory for conversations |
-| `rationale_episode` | Captures rationales and groups interactions into episodes |
+| `rationale_episode` | *(Plugin)* Captures rationales and groups interactions into episodes |
 
 Enable a strategy via `gist_memory_config.yaml`:
 
@@ -77,6 +77,11 @@ memory:
   store: json
   importance_threshold: 0.7
 ```
+
+The `rationale_episode` strategy lives in the optional
+`gist_memory_rationale_episode_strategy` package. Install it with
+`pip install gist_memory_rationale_episode_strategy` to enable these
+settings and gain access to its CLI commands.
 
 ## Why Gist Memory?
 

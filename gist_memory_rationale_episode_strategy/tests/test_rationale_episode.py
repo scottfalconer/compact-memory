@@ -1,4 +1,4 @@
-from gist_memory.strategies.rationale_episode import (
+from gist_memory_rationale_episode_strategy import (
     Episode,
     Decision,
     EpisodeStorage,

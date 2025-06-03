@@ -164,6 +164,11 @@ VI. Developer Notes
 The talk command, and generally the LLM interaction workflow, will need to be adapted to accept and utilize a chosen CompressionStrategy. If Agent.process_conversational_turn is the entry point, it will orchestrate the use of the active CompressionStrategy.
 Chainable strategies are now supported via `PipelineCompressionStrategy`, enabling a flexible memory pipeline for experimentation.
 
+Specialized strategies with unique storage needs, such as the former
+`rationale_episode` episodic memory system, are provided as optional
+plugins. Install `gist_memory_rationale_episode_strategy` to add that
+strategy and its related CLI commands.
+
 VII. Contribution Workflow Tips
 
 To minimize merge conflicts when working on this repository:
