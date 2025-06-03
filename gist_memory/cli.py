@@ -39,7 +39,7 @@ from .embedding_pipeline import (
     EmbeddingDimensionMismatchError,
 )
 from .utils import load_agent
-from gist_memory.config import Config
+from gist_memory.config import Config, DEFAULT_CONFIG, USER_CONFIG_PATH
 
 from .compression import (
     available_strategies,
@@ -791,8 +791,8 @@ def inspect_trace(
     if data.get('compressed_tokens'): title += f" | Compressed Tokens: {data['compressed_tokens']}"
     if data.get('processing_ms'): title += f" | Time: {data['processing_ms']:.2f}ms"
 
+    console.print(f"Strategy: {data.get('strategy_name', '')}")
     table = Table("Index", "Type", "Details Preview", title=title)
-    table = Table("idx", "type", "details")
     for idx, step in enumerate(steps):
         stype = step.get("type")
         if step_type and stype != step_type: continue
@@ -803,14 +803,14 @@ def inspect_trace(
 @config_app.command("set", help="Sets a Gist Memory configuration key to a new value in the user's global config file.\n\nUsage Examples:\n  gist-memory config set default_model_id openai/gpt-4-turbo\n  gist-memory config set gist_memory_path /mnt/my_data/gist_memory_store")
 def config_set_command(
     ctx: typer.Context,
-    key: str = typer.Argument(..., help=f"The configuration key to set. Valid keys: {', '.join(Config.DEFAULT_CONFIG.keys())}."),
+    key: str = typer.Argument(..., help=f"The configuration key to set. Valid keys: {', '.join(DEFAULT_CONFIG.keys())}."),
     value: str = typer.Argument(..., help="The new value for the configuration key."),
 ) -> None:
     config: Config = ctx.obj['config']
     try:
         success = config.set(key, value)
         if success:
-            typer.secho(f"Successfully set '{key}' to '{value}' in the user global configuration: {Config.USER_CONFIG_PATH}", fg=typer.colors.GREEN)
+            typer.secho(f"Successfully set '{key}' to '{value}' in the user global configuration: {USER_CONFIG_PATH}", fg=typer.colors.GREEN)
             typer.echo(f"Note: Environment variables or local project '.gmconfig.yaml' may override this global setting.")
         else:
             # config.set already prints the specific error.
@@ -822,7 +822,7 @@ def config_set_command(
 @config_app.command("show", help="Displays current Gist Memory configuration values, their effective settings, and their sources.\n\nUsage Examples:\n  gist-memory config show\n  gist-memory config show --key default_strategy_id")
 def config_show_command(
     ctx: typer.Context,
-    key: Optional[str] = typer.Option(None, "--key", "-k", help=f"Specific configuration key to display. Valid keys: {', '.join(Config.DEFAULT_CONFIG.keys())}.")
+    key: Optional[str] = typer.Option(None, "--key", "-k", help=f"Specific configuration key to display. Valid keys: {', '.join(DEFAULT_CONFIG.keys())}.")
 ) -> None:
     config: Config = ctx.obj['config']
     console = Console()
