@@ -1,5 +1,6 @@
 import os
 import pathlib
+import sys
 import yaml
 from typing import Any, Dict, Optional, Tuple
 
@@ -58,7 +59,7 @@ class Config:
                                 self._sources[key] = SOURCE_USER_CONFIG
                             # else: print(f"Warning: Unknown key '{key}' in user config.")
             except Exception as e:
-                print(f"Error loading user config: {e}")
+                print(f"Error loading user config: {e}", file=sys.stderr)
 
     def _load_local_config(self):
         if LOCAL_CONFIG_PATH.exists():
@@ -72,7 +73,7 @@ class Config:
                                 self._sources[key] = SOURCE_LOCAL_CONFIG
                         # else: print(f"Warning: Unknown key '{key}' in local config.")
             except Exception as e:
-                print(f"Error loading local config: {e}")
+                print(f"Error loading local config: {e}", file=sys.stderr)
 
     def _load_env_vars(self):
         for key in DEFAULT_CONFIG.keys():
@@ -91,13 +92,13 @@ class Config:
                         actual_value = env_var_value_str  # Assume string
 
                     self._config[key] = actual_value
-                    self._sources[key] = SOURCE_ENV_VAR
+                    self._sources[key] = f"{SOURCE_ENV_VAR} ({env_var_name})"
                 except ValueError:
                     print(
                         f"Warning: Could not cast env var {env_var_name} value '{env_var_value_str}' to type {type(default_value)}. Using string value."
                     )
                     self._config[key] = env_var_value_str
-                    self._sources[key] = SOURCE_ENV_VAR
+                    self._sources[key] = f"{SOURCE_ENV_VAR} ({env_var_name})"
 
     def get(self, key: str, default: Any = None) -> Any:
         return self._config.get(key, default)
@@ -110,7 +111,8 @@ class Config:
         """
         if key not in DEFAULT_CONFIG:
             print(
-                f"Error: Configuration key '{key}' is not a recognized setting. Allowed keys are: {', '.join(DEFAULT_CONFIG.keys())}"
+                f"Error: Configuration key '{key}' is not a recognized setting. Allowed keys are: {', '.join(DEFAULT_CONFIG.keys())}",
+                file=sys.stderr,
             )
             # Or raise ValueError(f"Invalid configuration key: {key}")
             return False
@@ -130,14 +132,16 @@ class Config:
                 # If original_type is str, no conversion needed for string input
             except ValueError:
                 print(
-                    f"Error: Invalid value format for '{key}'. Cannot convert '{value}' to {original_type}."
+                    f"Error: Invalid value format for '{key}'. Cannot convert '{value}' to {original_type}.",
+                    file=sys.stderr,
                 )
                 return False  # Indicate failure
         elif not isinstance(
             value, original_type
         ):  # If not a string and not the right type
             print(
-                f"Error: Invalid type for '{key}'. Expected {original_type}, got {type(value)}."
+                f"Error: Invalid type for '{key}'. Expected {original_type}, got {type(value)}.",
+                file=sys.stderr,
             )
             return False  # Indicate failure
         # Type validation passed or value was already correct type
@@ -154,7 +158,7 @@ class Config:
                     if isinstance(loaded_config, dict):
                         user_config_data = loaded_config
             except Exception as e:
-                print(f"Error reading user config before set: {e}")
+                print(f"Error reading user config before set: {e}", file=sys.stderr)
 
         user_config_data[key] = value
 
@@ -164,7 +168,7 @@ class Config:
                 yaml.dump(user_config_data, f)
             return True  # Indicate success
         except Exception as e:
-            print(f"Error writing to user config: {e}")
+            print(f"Error writing to user config: {e}", file=sys.stderr)
             return False  # Indicate failure
 
     def get_with_source(self, key: str) -> Optional[Tuple[Any, str]]:

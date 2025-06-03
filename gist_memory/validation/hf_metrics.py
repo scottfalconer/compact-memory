@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-import evaluate  # type: ignore
+try:  # ``evaluate`` is optional for lightweight installs
+    import evaluate  # type: ignore
+except Exception:  # pragma: no cover - optional dependency missing
+    evaluate = None  # type: ignore
 
 from .metrics_abc import ValidationMetric
 from ..registry import register_validation_metric
@@ -16,6 +19,10 @@ class HFValidationMetric(ValidationMetric):
     def __init__(self, hf_metric_name: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.hf_metric_name = hf_metric_name
+        if evaluate is None:
+            raise ImportError(
+                "The 'evaluate' package is required to use HFValidationMetric."
+            )
         try:
             load_args = self.config_params.get("load_args", {})
             self.metric_loader = evaluate.load(self.hf_metric_name, **load_args)

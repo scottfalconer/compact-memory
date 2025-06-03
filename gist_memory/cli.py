@@ -1781,11 +1781,11 @@ def config_show_command(
     ),
 ) -> None:
     config: Config = ctx.obj["config"]
-    console = Console()
+    console = Console(width=200)
     table = Table(title="Gist Memory Configuration")
     table.add_column("Key", style="cyan", no_wrap=True)
-    table.add_column("Effective Value", style="magenta")
-    table.add_column("Source", style="green")
+    table.add_column("Effective Value", style="magenta", overflow="fold")
+    table.add_column("Source", style="green", no_wrap=True, overflow="fold")
 
     if key:
         value, source_info = config.get_with_source(key)
@@ -1811,9 +1811,7 @@ def config_show_command(
 
         for k_val in sorted_keys:  # Renamed key to k_val to avoid conflict
             value, source_info = all_configs_with_sources[k_val]
-            table.add_row(
-                k_val, str(value) if value is not None else "Not Set", source_info
-            )
+            table.add_row(k_val, str(value), source_info)
 
     if table.row_count > 0:
         console.print(table)

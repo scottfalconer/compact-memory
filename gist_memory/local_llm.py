@@ -18,9 +18,16 @@ from .token_utils import token_count
 
 try:  # heavy dependency only when needed
     from transformers import AutoModelForCausalLM, AutoTokenizer
-except Exception:  # pragma: no cover - optional
-    AutoModelForCausalLM = None  # type: ignore
-    AutoTokenizer = None  # type: ignore
+except Exception:  # pragma: no cover - optional dependency may be missing
+    class _Missing:
+        @classmethod
+        def from_pretrained(cls, *a, **k):  # pragma: no cover - minimal stub
+            raise ImportError(
+                "transformers with PyTorch is required for LocalChatModel"
+            )
+
+    AutoModelForCausalLM = _Missing  # type: ignore
+    AutoTokenizer = _Missing  # type: ignore
 
 
 @dataclass
