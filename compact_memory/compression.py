@@ -59,10 +59,6 @@ def all_strategy_metadata() -> Dict[str, Dict[str, Opt[str]]]:
     return dict(_COMPRESSION_INFO)
 
 
-# Maintain alias for backward compatibility
-LegacyCompressionStrategy = CompressionStrategy
-
-
 class NoCompression(CompressionStrategy):
     """Simple strategy that joins turns and truncates."""
 
