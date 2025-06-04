@@ -25,12 +25,6 @@ __all__ = [
     "ConflictFlagger",
     "ConflictLogger",
     "SimpleConflictLogger",
-    "ExperimentConfig",
-    "run_experiment",
-    "HistoryExperimentConfig",
-    "run_history_experiment",
-    "ResponseExperimentConfig",
-    "run_response_experiment",
     "LearnedSummarizerStrategy",
     "negation_conflict",
     "load_agent",
@@ -41,8 +35,6 @@ __all__ = [
     "NoCompression",
     "ImportanceCompression",
     "PrototypeSystemStrategy",
-    "ValidationMetric",
-    "run_params_trial",
     "StrategyConfig",
 ]
 
@@ -66,12 +58,6 @@ _lazy_map = {
     "ConflictFlagger": "compact_memory.prototype.conflict_flagging",
     "ConflictLogger": "compact_memory.prototype.conflict_flagging",
     "SimpleConflictLogger": "compact_memory.prototype.conflict",
-    "ExperimentConfig": "compact_memory.experiments.config",
-    "run_experiment": "compact_memory.experiment_runner",
-    "HistoryExperimentConfig": "compact_memory.history_experiment",
-    "run_history_experiment": "compact_memory.history_experiment",
-    "ResponseExperimentConfig": "compact_memory.response_experiment",
-    "run_response_experiment": "compact_memory.response_experiment",
     "negation_conflict": "compact_memory.prototype.conflict",
     "load_agent": "compact_memory.utils",
     "tokenize_text": "compact_memory.token_utils",
@@ -82,8 +68,6 @@ _lazy_map = {
     "NoCompression": "compact_memory.compression",
     "ImportanceCompression": "compact_memory.compression",
     "PrototypeSystemStrategy": "compact_memory.prototype_system_strategy",
-    "ValidationMetric": "compact_memory.validation.metrics_abc",
-    "run_params_trial": "compact_memory.hpo",
     "StrategyConfig": "compact_memory.compression",
 }
 

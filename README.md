@@ -232,7 +232,6 @@ For users wanting to understand the foundational ideas behind Compact Memory:
 For contributors or those looking to build custom solutions on top of Compact Memory:
 
 -   Learn about developing custom `CompressionStrategy` implementations in `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`.
--   Understand how to create new `ValidationMetric` functions by reading `docs/DEVELOPING_VALIDATION_METRICS.md`.
 -   Review the overall system design in `docs/ARCHITECTURE.md`.
 
 ## Features
@@ -487,8 +486,7 @@ For more detailed information on Compact Memory's architecture, development guid
 -   **Main Documentation Portal:** `docs/README.md` (or `docs/index.md`) serves as a Table of Contents and entry point for deeper documentation.
 -   **Architecture Deep Dive:** Understand the overall system design in `docs/ARCHITECTURE.md`.
 -   **Developing Compression Strategies:** Learn how to create your own strategies in `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`.
--   **Developing Validation Metrics:** Find guidance on building custom metrics in `docs/DEVELOPING_VALIDATION_METRICS.md`.
--   **Running Experiments:** Details on the experimentation framework can be found in `docs/RUNNING_EXPERIMENTS.md`.
+-   **Evaluation Guide:** See `docs/evaluation.md` for recommended external benchmarking tools.
 -   **Sample Results:** Benchmarks produced with the framework are summarized in `RESULTS.md`.
 -   **Plugins:** Learn how to install or develop strategy plugins in `docs/SHARING_STRATEGIES.md`.
 -   **Conceptual Guides:** Explore the ideas behind memory strategies in `docs/PROJECT_VISION.md`.

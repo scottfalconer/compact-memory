@@ -1,0 +1,7 @@
+# Example Promptfoo configuration for Compact Memory evaluation
+prompts:
+  - "{{query}}"
+providers:
+  - openai:gpt-3.5-turbo
+vars:
+  - file: history_dialogues.yaml
