@@ -1,6 +1,7 @@
-# Storage Format
+# Storage Format (Legacy)
 
-This document describes how a Compact Memory memory store is kept on disk.  A memory store is a directory containing several JSON and NPY files along with a small YAML metadata file.  The layout is intentionally simple so that the contents can be inspected or backed up with regular tools.
+This document describes the JSON/NumPy layout used by earlier versions of Compact Memory to persist a memory store on disk. It is kept for reference only.
+Current releases focus on in-memory operation or external vector store backends.
 
 ```
 memory/
