@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+import re
 import typer
 
 
@@ -12,45 +13,44 @@ def parse_key_value_pairs(params: Optional[List[str]]) -> Dict[str, Any]:
     parsed_params: Dict[str, Any] = {}
     if not params:
         return parsed_params
+
     for p_str in params:
         if "=" not in p_str:
-            # Allow flag-like parameters without values, defaulting them to True
-            # This might be useful for boolean flags if not handled by Typer's own bool conversion.
-            # However, for generic key-value, an explicit value is better.
-            # For now, let's be strict. Revisit if use-case for valueless keys arises.
             raise typer.BadParameter(
                 f"Invalid parameter format '{p_str}'. Expected 'key=value'."
             )
-        key, value_str = p_str.split("=", 1)
 
-        # Attempt to parse value as JSON (handles numbers, bools, null, actual JSON objects/arrays)
-        try:
-            parsed_value = json.loads(value_str)
-            # If parsing produced a string and the original was quoted, keep quotes
-            if isinstance(parsed_value, str) and (
-                (value_str.startswith('"') and value_str.endswith('"'))
-                or (value_str.startswith("'") and value_str.endswith("'"))
-            ):
-                parsed_value = value_str
-        except json.JSONDecodeError:
-            # If json.loads fails, it's not a valid JSON structure.
-            # Handle specific string literals for common types like bool and None.
-            if value_str.lower() == "true":
-                parsed_value = True
-            elif value_str.lower() == "false":
-                parsed_value = False
-            elif value_str.lower() == "null":
-                parsed_value = None
-            else:
-                # It's a plain string that isn't valid JSON (e.g., unquoted string)
-                # or a string that happens to be "true", "false", "null" but intended as a string.
-                # Typer/click usually handles direct string arguments well.
-                # If strict JSON string is required, value_str should be enclosed in quotes.
-                # Example: key="\"a string\""
-                # For simple key=value like 'name=example', we treat 'example' as a string.
-                parsed_value = value_str
+        key, value_str = p_str.split("=", 1)
+        key = key.strip()
+        value_str = value_str.strip()
+
+        if not key:
+            raise typer.BadParameter(
+                f"Invalid parameter format '{p_str}'. Expected 'key=value'."
+            )
+
+        parsed_value: Any
+
+        if value_str.lower() in {"true", "false"}:
+            parsed_value = value_str.lower() == "true"
+        elif value_str.lower() == "null":
+            parsed_value = None
+        elif re.fullmatch(r"-?\d+", value_str):
+            parsed_value = int(value_str)
+        elif re.fullmatch(r"-?\d+\.\d*", value_str):
+            parsed_value = float(value_str)
+        elif value_str.startswith(("{", "[", '"', "'")):
+            try:
+                parsed_value = json.loads(value_str)
+            except json.JSONDecodeError as e:
+                raise typer.BadParameter(
+                    f"Failed to decode JSON value for key '{key}'"
+                ) from e
+        else:
+            parsed_value = value_str
 
         parsed_params[key] = parsed_value
+
     return parsed_params
 
 
@@ -72,21 +72,17 @@ def parse_complex_params(
 
     if params_file:
         if not params_file.exists():
-            # It's better to raise FileNotFoundError directly or let the caller handle it.
-            # However, for CLI context, BadParameter is appropriate.
             raise typer.BadParameter(f"Parameters file not found: {params_file}")
         try:
             content = params_file.read_text()
-            if not content.strip():  # Handle empty file
-                raise typer.BadParameter(f"Parameters file '{params_file}' is empty.")
             final_params = json.loads(content)
             if not isinstance(final_params, dict):
                 raise typer.BadParameter(
                     f"Parameters file '{params_file}' must contain a JSON object (dictionary)."
                 )
         except json.JSONDecodeError as e:
-            raise typer.BadParameter(f"Error decoding JSON from {params_file}: {e}")
-        except Exception as e:  # Catch other potential errors like permission issues
+            raise typer.BadParameter(f"Error decoding JSON from '{params_file}'") from e
+        except Exception as e:
             raise typer.BadParameter(
                 f"Error reading parameters file {params_file}: {e}"
             )
