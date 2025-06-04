@@ -227,20 +227,8 @@ Rigorous testing is crucial. Compact Memory's experimentation framework helps wi
     *   Mock external dependencies like LLM calls if necessary.
 
 2.  **Experimentation Framework:**
-    *   Compact Memory provides tools to run experiments comparing strategies. This typically involves:
-        *   A dataset (e.g., a collection of text files).
-        *   One or more compression strategies to test.
-        *   Configuration for each strategy (parameters, token budgets).
-        *   Validation metrics to evaluate the output.
-    *   **Key components:**
-        *   `ExperimentConfig`, `ResponseExperimentConfig`, `HistoryExperimentConfig`: Dataclasses for defining experiment parameters.
-        *   `run_experiment`, `run_response_experiment`, `run_history_experiment`: Functions to execute these experiments.
-        *   `ValidationMetric`: Base class for metrics that evaluate compression quality or task performance (e.g., ROUGE scores, LLM-based evaluation). See `docs/DEVELOPING_VALIDATION_METRICS.md`.
-    *   **Workflow:**
-        1.  Define an experiment configuration file (often YAML) or create config objects programmatically.
-        2.  Specify your strategy's ID and any parameters in the config.
-        3.  Run the experiment using the CLI (`compact-memory experiment run ...`) or Python API.
-        4.  Analyze the output metrics to see how your strategy performs.
+    *   Evaluation is now handled externally. Use tools like Promptfoo or UpTrain to benchmark strategies.
+    *   See [`EVALUATION.md`](./evaluation.md) for recommended workflows.
 
 3.  **`onboarding_demo.py`:**
     *   The `examples/onboarding_demo.py` script shows a basic example of defining a strategy, registering it, and using it in an experiment. Use it as a reference.

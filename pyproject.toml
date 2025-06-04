@@ -24,14 +24,11 @@ dependencies = [
     "portalocker",
     "rich>=13.6",
     "google-generativeai",
-    "evaluate",
 ]
 
 [project.optional-dependencies]
 test = ["pytest"]
 chroma = ["chromadb"]
-optuna = ["optuna"]
-ray = ["ray[tune]"]
 
 [project.scripts]
 compact-memory = "compact_memory.__main__:main"

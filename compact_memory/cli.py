@@ -25,10 +25,6 @@ from .agent import Agent
 from .memory_store import MemoryStore
 from . import local_llm
 from .active_memory_manager import ActiveMemoryManager
-from .registry import (
-    _VALIDATION_METRIC_REGISTRY,
-    get_validation_metric_class,
-)
 from . import llm_providers
 from .model_utils import (
     download_embedding_model as util_download_embedding_model,
@@ -57,11 +53,6 @@ from .package_utils import (
     load_strategy_class,
     validate_package_dir,
     check_requirements_installed,
-)
-from .response_experiment import ResponseExperimentConfig, run_response_experiment
-from .experiment_runner import (
-    ExperimentConfig,
-    run_experiment,
 )
 
 app = typer.Typer(
@@ -534,20 +525,31 @@ def ingest(
     elif tau is not None:  # CLI tau provided
         typer.echo(f"Using provided tau for ingestion: {final_tau}")
 
-    # ExperimentConfig expects 'dataset', 'similarity_threshold', and 'work_dir'.
-    # We use 'source' for dataset, 'final_tau' for similarity_threshold,
-    # and the global 'agent_path' as the 'work_dir' for ingestion.
-    cfg = ExperimentConfig(
-        dataset=source, similarity_threshold=final_tau, work_dir=agent_path
-    )
-
     typer.echo(
         f"Ingesting data from '{source}' into agent at '{agent_path}' with tau={final_tau}..."
     )
     try:
-        metrics = run_experiment(
-            cfg
-        )  # run_experiment handles agent loading/initialization
+        agent = load_agent(agent_path)
+        agent.similarity_threshold = final_tau
+        files = [source]
+        if source.is_dir():
+            files = sorted(f for f in source.iterdir() if f.is_file())
+
+        start = time.perf_counter()
+        for f in files:
+            text = f.read_text()
+            agent.add_memory(text)
+        duration = time.perf_counter() - start
+
+        metrics = dict(agent.metrics)
+        metrics.update(
+            {
+                "prototype_count": len(agent.store.prototypes),
+                "memory_count": len(agent.store.memories),
+                "ingest_seconds": duration,
+            }
+        )
+        agent.store.save()
         if json_output:
             typer.echo(json.dumps(metrics))
         else:
@@ -1012,20 +1014,6 @@ def _process_directory_compression(
 
 # --- Dev App Commands ---
 @dev_app.command(
-    "list-metrics",
-    help="Lists all available validation metric IDs that can be used in evaluations.",
-)
-def list_metrics() -> None:
-    """Lists all registered validation metric IDs."""
-    if not _VALIDATION_METRIC_REGISTRY:
-        typer.echo("No validation metrics found.")
-        return
-    typer.echo("Available validation metric IDs:")
-    for mid in sorted(_VALIDATION_METRIC_REGISTRY):
-        typer.echo(f"- {mid}")
-
-
-@dev_app.command(
     "list-strategies",
     help="Lists all available compression strategy IDs, their versions, and sources (built-in or plugin).",
 )
@@ -1151,98 +1139,6 @@ def inspect_strategy(
         typer.echo(
             f"Strategy '{strategy_name}' is available. Use --list-prototypes and provide an agent path to see its beliefs."
         )
-
-
-@dev_app.command(
-    "evaluate-compression",
-    help='Evaluates compressed text against original text using a specified metric.\n\nUsage Examples:\n  compact-memory dev evaluate-compression original.txt summary.txt --metric compression_ratio\n  echo "original text" | compact-memory dev evaluate-compression - summary.txt --metric some_other_metric --metric-params \'{"param": "value"}\'',
-)
-def evaluate_compression_cmd(
-    original_input: str = typer.Argument(
-        ...,
-        help="Original text content, path to a text file, or '-' to read from stdin.",
-    ),
-    compressed_input: str = typer.Argument(
-        ...,
-        help="Compressed text content, path to a text file, or '-' to read from stdin.",
-    ),
-    metric_id: str = typer.Option(
-        ...,
-        "--metric",
-        "-m",
-        help="ID of the validation metric to use (see 'list-metrics').",
-    ),
-    metric_params_json: Optional[str] = typer.Option(
-        None,
-        "--metric-params",
-        help='Metric parameters as a JSON string (e.g., \'{"model_name": "bert-base-uncased"}\').',
-    ),
-    json_output: bool = typer.Option(
-        False, "--json", help="Output evaluation scores in JSON format."
-    ),
-) -> None:
-    def read_input(value: str, allow_stdin: bool) -> str:
-        if value == "-":
-            if not allow_stdin:
-                typer.secho(
-                    "Error: Cannot use '-' for stdin for both original and compressed input simultaneously.",
-                    err=True,
-                    fg=typer.colors.RED,
-                )
-                raise typer.Exit(code=1)
-            return sys.stdin.read()
-        p = Path(value)
-        if p.exists() and p.is_file():
-            try:
-                return p.read_text()
-            except Exception as e:
-                typer.secho(
-                    f"Error reading file '{p}': {e}", err=True, fg=typer.colors.RED
-                )
-                raise typer.Exit(code=1)
-        return value  # Treat as direct text content if not a file or '-'
-
-    orig_text = read_input(original_input, True)
-    comp_text = read_input(
-        compressed_input, original_input != "-"
-    )  # Only allow stdin for compressed if original isn't stdin
-
-    try:
-        Metric = get_validation_metric_class(metric_id)
-    except KeyError:
-        typer.secho(
-            f"Error: Unknown metric ID '{metric_id}'. Use 'list-metrics' to see available IDs.",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-    params = {}
-    if metric_params_json:
-        try:
-            params = json.loads(metric_params_json)
-        except json.JSONDecodeError as exc:
-            typer.secho(
-                f"Error: Invalid JSON in --metric-params: {exc}",
-                err=True,
-                fg=typer.colors.RED,
-            )
-            raise typer.Exit(code=1)
-
-    metric = Metric(**params)
-    try:
-        scores = metric.evaluate(original_text=orig_text, compressed_text=comp_text)
-    except Exception as exc:
-        typer.secho(
-            f"Error during metric evaluation: {exc}", err=True, fg=typer.colors.RED
-        )
-        raise typer.Exit(code=1)
-
-    if json_output:
-        typer.echo(json.dumps(scores))
-    else:
-        typer.echo(f"Scores for metric '{metric_id}':")
-        for k, v in scores.items():
-            typer.echo(f"- {k}: {v}")
 
 
 @dev_app.command(
@@ -1387,100 +1283,6 @@ def test_llm_prompt(
     else:
         typer.echo("\n--- LLM Response ---")
         typer.echo(response)
-
-
-@dev_app.command(
-    "evaluate-llm-response",
-    help="Evaluates an LLM's response against a reference answer using a specified metric.",
-)
-def evaluate_llm_response_cmd(
-    response_input: str = typer.Argument(
-        ...,
-        help="LLM's generated response text, path to a response file, or '-' to read from stdin.",
-    ),
-    reference_input: str = typer.Argument(
-        ..., help="Reference (ground truth) answer text or path to a reference file."
-    ),
-    metric_id: str = typer.Option(
-        ...,
-        "--metric",
-        "-m",
-        help="ID of the validation metric to use (see 'list-metrics').",
-    ),
-    metric_params_json: Optional[str] = typer.Option(
-        None,
-        "--metric-params",
-        help='Metric parameters as a JSON string (e.g., \'{"model_name": "bert-base-uncased"}\').',
-    ),
-    json_output: bool = typer.Option(
-        False, "--json", help="Output evaluation scores in JSON format."
-    ),
-) -> None:
-    def read_value(
-        val: str, input_name: str, allow_stdin: bool
-    ) -> str:  # Added input_name
-        if val == "-":
-            if not allow_stdin:
-                typer.secho(
-                    f"Error: Cannot use '-' for stdin for both response and reference input simultaneously.",
-                    err=True,
-                    fg=typer.colors.RED,
-                )
-                raise typer.Exit(code=1)
-            return sys.stdin.read()
-        p = Path(val)
-        if p.exists() and p.is_file():
-            try:
-                return p.read_text()
-            except Exception as e:
-                typer.secho(
-                    f"Error reading {input_name} file '{p}': {e}",
-                    err=True,
-                    fg=typer.colors.RED,
-                )
-                raise typer.Exit(code=1)
-        return val  # Treat as direct content
-
-    resp_text = read_value(response_input, "LLM response", True)
-    ref_text = read_value(reference_input, "reference answer", response_input != "-")
-
-    try:
-        Metric = get_validation_metric_class(metric_id)
-    except KeyError:
-        typer.secho(
-            f"Error: Unknown metric ID '{metric_id}'. Use 'list-metrics' to see available IDs.",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-
-    params = {}
-    if metric_params_json:
-        try:
-            params = json.loads(metric_params_json)
-        except json.JSONDecodeError as exc:
-            typer.secho(
-                f"Error: Invalid JSON in --metric-params: {exc}",
-                err=True,
-                fg=typer.colors.RED,
-            )
-            raise typer.Exit(code=1)
-
-    metric = Metric(**params)
-    try:
-        scores = metric.evaluate(llm_response=resp_text, reference_answer=ref_text)
-    except Exception as exc:
-        typer.secho(
-            f"Error during metric evaluation: {exc}", err=True, fg=typer.colors.RED
-        )
-        raise typer.Exit(code=1)
-
-    if json_output:
-        typer.echo(json.dumps(scores))
-    else:
-        typer.echo(f"Scores for metric '{metric_id}':")
-        for k, v in scores.items():
-            typer.echo(f"- {k}: {v}")
 
 
 @dev_app.command(
@@ -1649,138 +1451,6 @@ def validate_strategy_package(
             typer.echo(e)
         raise typer.Exit(code=1)
     typer.echo(f"Strategy package at '{package_path}' appears valid.")
-
-
-@dev_app.command(
-    "run-package-experiment",
-    help="Runs an experiment defined within a compression strategy extension package.\n\nUsage Examples:\n  compact-memory dev run-package-experiment path/to/my_package --experiment main_test.yaml",
-)
-def run_package_experiment(
-    package_path: Path = typer.Argument(
-        ...,
-        help="Path to the root directory of the strategy package.",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        resolve_path=True,
-    ),
-    experiment: Optional[str] = typer.Option(
-        None,
-        "--experiment",
-        help="Name or relative path of the experiment configuration YAML file within the package's 'experiments' directory. If not specified, attempts to run a default experiment if defined in manifest.",
-    ),
-) -> None:
-    manifest = load_manifest(package_path / "strategy_package.yaml")
-    Strategy = load_strategy_class(package_path, manifest)
-    missing = check_requirements_installed(package_path / "requirements.txt")
-    if missing:
-        typer.secho(
-            f"Warning: The following package requirements are not installed: {', '.join(missing)}. This may cause errors.",
-            fg=typer.colors.YELLOW,
-        )
-
-    if experiment is None:
-        defaults = manifest.get("default_experiments", [])
-        if len(defaults) == 1:
-            experiment = defaults[0].get("path")
-    if experiment is None:
-        typer.secho(
-            "Error: No experiment specified and no single default experiment found in manifest.",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-
-    exp_path = Path(experiment)
-    if not exp_path.is_absolute():
-        exp_path = (
-            package_path / "experiments" / exp_path
-        )  # Assume relative to 'experiments' dir
-
-    if not exp_path.exists():
-        typer.secho(
-            f"Error: Experiment file '{exp_path}' not found.",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-
-    try:
-        cfg_data = yaml.safe_load(exp_path.read_text()) or {}
-    except Exception as e:
-        typer.secho(
-            f"Error loading experiment config '{exp_path}': {e}",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-
-    dataset_path_str = cfg_data.get("dataset")
-    if not dataset_path_str:
-        typer.secho(
-            f"Error: 'dataset' not specified in experiment config '{exp_path}'.",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-
-    dataset_path = Path(dataset_path_str)
-    if not dataset_path.is_absolute():
-        dataset_path = (package_path / dataset_path_str).resolve()
-
-    if not dataset_path.exists():
-        typer.secho(
-            f"Error: Dataset path '{dataset_path}' (resolved from '{dataset_path_str}') not found.",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-    cfg_data["dataset"] = str(dataset_path)
-
-    params = cfg_data.get("param_grid", [{}])
-    cfg = ResponseExperimentConfig(
-        dataset=Path(cfg_data["dataset"]),
-        param_grid=params,
-        validation_metrics=cfg_data.get("validation_metrics"),
-    )
-    strategy_params = cfg_data.get("packaged_strategy_config", {}).get(
-        "strategy_params", {}
-    )
-    strategy = Strategy(**strategy_params)
-
-    typer.echo(
-        f"Running experiment '{exp_path.name}' from package '{package_path.name}' with strategy '{manifest.get('strategy_id', 'Unknown')}'..."
-    )
-    results = run_response_experiment(cfg, strategy=strategy)
-    typer.echo("\n--- Experiment Results ---")
-    typer.echo(json.dumps(results, indent=2))
-
-
-@dev_app.command(
-    "run-hpo-script",
-    help="Executes a Python script, typically for Hyperparameter Optimization (HPO).\n\nUsage Examples:\n  compact-memory dev run-hpo-script path/to/my_hpo_optimizer.py",
-)
-def run_hpo_script(
-    script_path: Path = typer.Argument(
-        ...,
-        help="Path to the Python HPO script to execute.",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        resolve_path=True,
-    )
-) -> None:
-    typer.echo(f"Executing HPO script: {script_path}...")
-    try:
-        runpy.run_path(str(script_path), run_name="__main__")
-        typer.echo(f"Successfully executed HPO script: {script_path}")
-    except Exception as e:
-        typer.secho(
-            f"Error executing HPO script '{script_path}': {e}",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
 
 
 @dev_app.command(

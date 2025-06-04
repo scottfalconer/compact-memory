@@ -13,5 +13,4 @@ rich>=13.6
 typer[all]>=0.16.0
 portalocker
 google-generativeai
-evaluate
 flake8
