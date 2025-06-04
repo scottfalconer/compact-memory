@@ -1,16 +1,16 @@
 # Compact Memory
 
-Compact Memory: An Experimentation Platform for Advanced LLM Memory Strategies.
+Compact Memory is an open-source Python project that serves a dual role:
+*   **As a framework:** It empowers researchers and developers to design, create, and rigorously test novel context compression strategies for Large Language Models (LLMs).
+*   **As a toolkit:** It provides ready-to-use tools (including a Command-Line Interface and Python API) for applying these compression strategies to optimize LLM interactions in practical data processing and application pipelines.
 
-Large Language Models (LLMs) are transforming how we interact with information, yet their ability to maintain long-term, coherent, and efficient memory remains a significant challenge. Standard approaches like Retrieval Augmented Generation (RAG) and expanding context windows offer partial solutions, but often fall short for complex tasks requiring dynamic learning, nuanced understanding, and resource-conscious operation.
+Traditional approaches to managing long-term, coherent, and efficient memory in LLMs, such as standard Retrieval Augmented Generation (RAG) or simply expanding context windows, often face limitations with complex tasks that require dynamic learning, nuanced understanding, and resource-conscious operation. Compact Memory aims to address these challenges by facilitating the exploration and application of advanced memory compression techniques.
 
-Compact Memory is an open-source platform dedicated to pioneering the next generation of LLM memory. It provides a robust framework for researchers and developers to design, rigorously test, and validate sophisticated `CompressionStrategy` implementations. Instead of just retrieving static data, Compact Memory facilitates the exploration of advanced techniques.
-
-The benefits include:
-- Evolving gist-based understanding: Strategies where memory consolidates, adapts, and forms conceptual "gists" from information over time.
-- Resource-efficient context optimization: Methods to maximize information density within token budgets, critical for managing API costs, latency, and enabling smaller or local LLMs.
-- Learned compression and summarization: Techniques that can be trained or adapt to optimally compress information for specific tasks or data types.
-- Active memory management: Systems that simulate dynamic working memory, managing recency, relevance, and trace strength for coherent, long-running interactions.
+The benefits of using Compact Memory include:
+-   Developing strategies for evolving gist-based understanding, where memory consolidates and adapts over time.
+-   Optimizing context for resource efficiency, managing token budgets to reduce API costs, lower latency, and enable the use of smaller or local LLMs.
+-   Creating and utilizing learned compression and summarization techniques that can adapt to specific tasks or data types.
+-   Implementing active memory management systems that simulate dynamic working memory for more coherent, long-running interactions.
 
 ## Who is Compact Memory For?
 
@@ -18,6 +18,185 @@ Compact Memory is built for those pushing the boundaries of LLM capabilities:
 
 -   **Researchers:** Seeking a standardized environment to benchmark novel memory architectures, test hypotheses, and share reproducible findings on LLM memory strategies.
 -   **Developers:** Aiming to equip their LLM applications with more powerful, adaptive, and resource-efficient memory capabilities than off-the-shelf solutions provide.
+
+## Using Compact Memory: The Toolkit
+
+This section is for users who want to quickly leverage Compact Memory to compress text and optimize context for their LLM applications.
+
+Compact Memory is designed for easy integration into your existing workflows.
+
+### Installation
+
+Get started by installing the `compact-memory` package:
+
+```bash
+pip install compact-memory
+# Download recommended models for default strategies and examples
+python -m spacy download en_core_web_sm
+compact-memory dev download-embedding-model
+compact-memory dev download-chat-model
+```
+For more detailed installation options, see the [Installation](#installation) section.
+
+### Basic CLI Usage
+
+The `compact-memory` CLI provides a straightforward way to apply compression strategies. For example, to compress a text file using the `first_last` strategy with a token budget of 100:
+
+```bash
+compact-memory compress "path/to/your_document.txt" --strategy first_last --budget 100
+```
+
+Or, to compress a string directly:
+
+```bash
+compact-memory compress "This is a very long string that needs to be much shorter to fit into my LLM's context window." --strategy truncate --budget 20
+```
+
+The output will be the compressed text printed to the console. You can save it to a file using the `-o` option:
+
+```bash
+compact-memory compress "path/to/your_document.txt" -s first_last -b 100 -o "path/to/compressed_output.txt"
+```
+
+### Using Compressed Output in an LLM Prompt
+
+The compressed text generated by Compact Memory can be directly inserted into your LLM prompts.
+
+**Example:**
+
+Let's say `compressed_output.txt` contains: "Key insight: LLM context optimization is crucial. Compact Memory helps achieve this by..."
+
+You could then use this in a prompt like so:
+
+```
+System: You are a helpful assistant.
+User: Based on the following summary, what are the main benefits of Compact Memory?
+
+Summary:
+---
+Key insight: LLM context optimization is crucial. Compact Memory helps achieve this by...
+---
+
+Assistant:
+```
+
+### Python API Usage
+
+For programmatic integration, you can use Compact Memory's Python API:
+
+```python
+from compact_memory.compression import get_compression_strategy
+from compact_memory.token_utils import get_tokenizer # Helper for token counting if needed
+
+# Load a strategy
+strategy_id = "first_last" # Or any available strategy
+strategy = get_compression_strategy(strategy_id)() # Instantiate the strategy
+
+# Text to compress
+text_to_compress = "This is a very long document that we want to summarize using the loaded strategy to fit within a specific token limit for our LLM."
+token_budget = 50 # Target token count for the compressed output
+
+# Get a tokenizer (optional, but good for understanding budget vs. actual tokens)
+# The strategy itself will use a tokenizer, this is for your reference
+try:
+    tokenizer = get_tokenizer("gpt2") # Example tokenizer
+except ImportError:
+    tokenizer = str.split # Fallback if tiktoken is not available
+
+# Compress the text
+# The strategy's compress method returns a CompressedMemory object and a CompressionTrace object
+compressed_memory, trace = strategy.compress(
+    text_to_compress,
+    llm_token_budget=token_budget,
+    tokenizer=tokenizer # Pass tokenizer if your strategy or logging needs it
+)
+
+# Use the compressed text
+print(f"Original text length (approx tokens): {len(tokenizer(text_to_compress))}")
+print(f"Compressed text: {compressed_memory.text}")
+print(f"Compressed text length (approx tokens): {len(tokenizer(compressed_memory.text))}")
+print(f"Strategy used: {trace.strategy_name}")
+
+# Now you can use compressed_memory.text in your LLM pipeline
+# llm_input = f"Context: {compressed_memory.text}\n\nQuestion: What is this about?"
+# response = your_llm_function(llm_input)
+```
+
+This allows for seamless integration of context compression into your Python-based LLM applications, making them more efficient and capable of handling larger amounts of information within token limits.
+
+## Developing Strategies: The Framework
+
+For researchers and developers interested in creating novel context compression techniques, Compact Memory offers a comprehensive framework. It provides the necessary abstractions, tools, and testing utilities to design, build, and validate your own `CompressionStrategy` implementations.
+
+Key aspects of the framework include:
+
+*   **`CompressionStrategy` Base Class:** A clear abstract base class that defines the interface for all compression strategies. Implement this to integrate your custom logic into the Compact Memory ecosystem.
+*   **Validation Metrics:** A suite of metrics and the ability to define custom ones (`ValidationMetric`) to rigorously evaluate the performance and effectiveness of your strategies.
+*   **Experimentation Tools:** Utilities to run systematic experiments, comparing different strategies across various datasets and parameters. This helps in benchmarking and refining your approaches.
+*   **Plugin Architecture:** A system for packaging and sharing your strategies, making them discoverable and usable by others.
+
+To get started with building your own compression strategies, please refer to our detailed guide:
+*   **[Developing Compression Strategies](docs/DEVELOPING_COMPRESSION_STRATEGIES.md)**
+
+This guide will walk you through the process of creating a new strategy, from understanding the core components to testing and evaluation.
+
+## Sharing and Discovering Strategies
+
+Compact Memory is designed to foster a community of innovation around LLM context compression. A key part of this is the ability to easily share strategies you develop and discover strategies created by others.
+
+### Plugin System
+
+Compact Memory features a plugin system that allows new compression strategies to be discovered and loaded at runtime. If a Python package registers a strategy using the `compact_memory.strategies` entry point, or if a valid strategy package directory is placed in a designated plugins path, Compact Memory will automatically make it available for use.
+
+This makes it simple to extend the capabilities of Compact Memory without modifying the core codebase.
+
+### Creating a Shareable Strategy Package
+
+To package your custom strategy for sharing, Compact Memory provides a command-line tool to generate a template package structure. This includes the necessary metadata files and directory layout.
+
+Use the `dev create-strategy-package` command:
+
+```bash
+compact-memory dev create-strategy-package --name YourStrategyName
+```
+
+This will create a new directory (e.g., `YourStrategyName/`) containing:
+*   `strategy.py`: A template for your strategy code.
+*   `strategy_package.yaml`: A manifest file describing your strategy.
+*   `README.md`: Basic documentation for your package.
+*   `requirements.txt`: For any specific dependencies your strategy might have.
+
+After populating these files with your strategy's logic and details, it can be shared.
+
+For comprehensive details on packaging and the plugin architecture, see:
+*   **[Sharing Strategies](docs/SHARING_STRATEGIES.md)**
+
+### Finding, Installing, and Using Shared Strategies
+
+Shared strategies can be distributed as standard Python packages (e.g., via PyPI) or as simple directory packages.
+
+*   **Installation (Python Packages):** If a strategy is distributed as a Python package, you can typically install it using pip:
+    ```bash
+    pip install some-compact-memory-strategy-package
+    ```
+    Once installed in your Python environment, Compact Memory's plugin loader will automatically discover the strategy if it correctly uses the entry point system.
+
+*   **Installation (Directory Packages):** For strategies distributed as a directory, you can place them in a location scanned by Compact Memory. (Refer to `docs/SHARING_STRATEGIES.md` for details on plugin paths like `$COMPACT_MEMORY_PLUGINS_PATH`).
+
+*   **Using a Shared Strategy:** Once installed and discovered, you can use a shared strategy like any built-in strategy by specifying its `strategy_id` in the CLI or Python API:
+    ```bash
+    compact-memory compress "my text" --strategy community_strategy_id --budget 100
+    ```
+    ```python
+    from compact_memory.compression import get_compression_strategy
+    strategy = get_compression_strategy("community_strategy_id")()
+    # ... use the strategy
+    ```
+
+You can list all available strategies, including those from plugins, using:
+```bash
+compact-memory dev list-strategies
+```
 
 ## Navigate Compact Memory
 

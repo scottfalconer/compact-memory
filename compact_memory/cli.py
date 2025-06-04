@@ -72,7 +72,7 @@ agent_app = typer.Typer(
 )
 config_app = typer.Typer(help="Manage Compact Memory application configuration settings.")
 dev_app = typer.Typer(
-    help="Developer tools for testing, evaluation, and managing extension packages."
+    help="Commands for compression strategy developers and researchers."
 )
 
 # --- Add New Command Groups to Main App ---
@@ -657,7 +657,7 @@ def query(
 
 @app.command(
     "compress",
-    help='Compresses text content from a string, file, or directory using a specified strategy and budget.\n\nUsage Examples:\n  compact-memory compress "Some very long text..." --strategy first_last --budget 100\n  compact-memory compress path/to/document.txt -s prototype -b 200 -o summary.txt\n  compact-memory compress input_dir/ -s custom_package_strat -b 500 -o output_dir/ --recursive -p "*.md"',
+    help='Compress text using a specified strategy. Compresses text content from a string, file, or directory using a specified strategy and budget.\n\nUsage Examples:\n  compact-memory compress "Some very long text..." --strategy first_last --budget 100\n  compact-memory compress path/to/document.txt -s prototype -b 200 -o summary.txt\n  compact-memory compress input_dir/ -s custom_package_strat -b 500 -o output_dir/ --recursive -p "*.md"',
 )
 def compress(
     ctx: typer.Context,
@@ -1435,7 +1435,7 @@ def download_chat_model_cli(
 
 @dev_app.command(
     "create-strategy-package",
-    help="Creates a new compression strategy extension package from a template.",
+    help="Creates a new compression strategy extension package from a template. This command generates a template directory with all the necessary files to start developing a new, shareable strategy package, including a sample strategy, manifest file, and README.",
 )
 def create_strategy_package(
     name: str = typer.Option(
