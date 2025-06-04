@@ -218,7 +218,7 @@ For users wanting to understand the foundational ideas behind Compact Memory:
 -   **`ValidationMetric`**: A method to evaluate the quality or utility of the compressed memory, often by assessing an LLM's performance on a task using that compressed memory.
 -   **Experimentation Framework**: The tools and processes within Compact Memory for systematically running tests with different strategies, datasets, and metrics.
 -   For a deeper dive into concepts and architecture, see our main documentation portal in `docs/README.md` (or `docs/index.md`).
--   For conceptual background on memory strategies, refer to `AGENTS.md`.
+-   For conceptual background on memory strategies, refer to `docs/PROJECT_VISION.md`.
 
 ### Developing for Compact Memory
 
@@ -456,7 +456,7 @@ For more detailed information on Compact Memory's architecture, development guid
 -   **Running Experiments:** Details on the experimentation framework can be found in `docs/RUNNING_EXPERIMENTS.md`.
 -   **Sample Results:** Benchmarks produced with the framework are summarized in `RESULTS.md`.
 -   **Plugins:** Learn how to install or develop strategy plugins in `docs/SHARING_STRATEGIES.md`.
--   **Conceptual Guides:** Explore the ideas behind memory strategies in `AGENTS.md`.
+-   **Conceptual Guides:** Explore the ideas behind memory strategies in `docs/PROJECT_VISION.md`.
 
 ## Designing Compression Strategies
 

@@ -10,7 +10,7 @@ Below is a list of documents in this directory, along with a brief description o
     *   **Content:** A detailed explanation of the Compact Memory platform's architecture, including core modules, data models, ingestion flow, querying mechanisms, and testing strategies.
     *   **Audience:** Developers contributing to the Compact Memory core, or those seeking a deep understanding of its internal workings.
 
-*   **[`AGENTS.md`](../AGENTS.md)**
+*   **[`PROJECT_VISION.md`](./PROJECT_VISION.md)**
     *   **Content:** A conceptual document outlining the vision behind Compact Memory. It discusses illustrative memory management strategies (like the Prototype System and ActiveMemoryManager), prompt assembly, and key areas for experimentation and learning.
     *   **Audience:** Researchers, developers looking for inspiration for new strategies, and anyone interested in the theoretical underpinnings of the platform.
 
@@ -46,7 +46,7 @@ Below is a list of documents in this directory, along with a brief description o
     3.  If running extensive evaluations, consult [`RUNNING_EXPERIMENTS.md`](./RUNNING_EXPERIMENTS.md).
 
 *   **For Developers Building New Compression Strategies:**
-    1.  Understand the core concepts in [`AGENTS.md`](../AGENTS.md).
+    1.  Understand the core concepts in [`PROJECT_VISION.md`](./PROJECT_VISION.md).
     2.  Study the conceptual approaches in [`COMPRESSION_STRATEGIES.md`](./COMPRESSION_STRATEGIES.md).
     3.  Follow the practical implementation guide in [`DEVELOPING_COMPRESSION_STRATEGIES.md`](./DEVELOPING_COMPRESSION_STRATEGIES.md).
     4.  Refer to [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how strategies fit into the broader system.
@@ -54,7 +54,7 @@ Below is a list of documents in this directory, along with a brief description o
 
 *   **For Those Contributing to the Core Platform:**
     1.  Begin with [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-    2.  Understand the vision in [`AGENTS.md`](../AGENTS.md).
+    2.  Understand the vision in [`PROJECT_VISION.md`](./PROJECT_VISION.md).
     3.  Review relevant developer guides based on the area of contribution.
 
 We encourage you to explore these documents to get the most out of Compact Memory. If you find areas for improvement or clarification, please feel free to open an issue or suggest changes!

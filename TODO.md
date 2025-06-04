@@ -1,6 +1,6 @@
 # TODO
 
-This file tracks outstanding work based on `AGENTS.md` and the latest v3 implementation plan.
+This file tracks outstanding work based on `docs/PROJECT_VISION.md` and the latest v3 implementation plan.
 
 ## 1 · Data-Model & Storage Layer
 _Completed in v0.1.1._

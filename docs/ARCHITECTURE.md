@@ -10,7 +10,7 @@ embeddings and "snap-assigned" to belief prototypes which act as stable
 centroids. The codebase is organised into a library providing Python APIs and
 a CLI (`compact-memory`).
 
-The design follows the hypotheses documented in `AGENTS.md`:
+The design follows the hypotheses documented in `PROJECT_VISION.md`:
 prototypes reduce storage and search cost while providing more robust
 gist-based reasoning. The implementation emphasises pluggability so
 alternative memory creation, embedding and storage mechanisms can be
