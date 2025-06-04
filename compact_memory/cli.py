@@ -45,6 +45,7 @@ from .compression import (
     available_strategies,
     get_compression_strategy,
     all_strategy_metadata,
+    get_strategy_metadata,
 )
 from .plugin_loader import load_plugins
 from .cli_plugins import load_cli_plugins
@@ -70,7 +71,9 @@ console = Console()
 agent_app = typer.Typer(
     help="Manage memory agents: initialize, inspect statistics, validate, and clear."
 )
-config_app = typer.Typer(help="Manage Compact Memory application configuration settings.")
+config_app = typer.Typer(
+    help="Manage Compact Memory application configuration settings."
+)
 dev_app = typer.Typer(
     help="Commands for compression strategy developers and researchers."
 )
@@ -629,6 +632,12 @@ def query(
         if final_strategy_id and final_strategy_id.lower() != "none":
             try:
                 comp_cls = get_compression_strategy(final_strategy_id)
+                info = get_strategy_metadata(final_strategy_id)
+                if info and info.get("source") == "contrib":
+                    typer.secho(
+                        "\u26a0\ufe0f Using experimental strategy from contrib: not officially supported.",
+                        fg=typer.colors.YELLOW,
+                    )
                 comp_strategy_instance = comp_cls()
             except KeyError:
                 typer.secho(
@@ -794,6 +803,12 @@ def _process_string_compression(
 ) -> None:
     try:
         strat_cls = get_compression_strategy(strategy_id)
+        info = get_strategy_metadata(strategy_id)
+        if info and info.get("source") == "contrib":
+            typer.secho(
+                "\u26a0\ufe0f Using experimental strategy from contrib: not officially supported.",
+                fg=typer.colors.YELLOW,
+            )
     except KeyError:
         typer.secho(
             f"Unknown compression strategy '{strategy_id}'. Available: {', '.join(available_strategies())}",
@@ -938,9 +953,20 @@ def list_metrics() -> None:
     "list-strategies",
     help="Lists all available compression strategy IDs, their versions, and sources (built-in or plugin).",
 )
-def list_strategies() -> None:
-    """Displays a table of all registered compression strategies, including plugins."""
+def list_strategies(
+    include_contrib: bool = typer.Option(
+        False, "--include-contrib", help="Include experimental contrib strategies."
+    )
+) -> None:
+    """Displays a table of registered compression strategies."""
     load_plugins()  # Ensure plugins are loaded
+    if include_contrib:
+        try:
+            from contrib import enable_all_contrib_strategies
+
+            enable_all_contrib_strategies()
+        except Exception:  # pragma: no cover - contrib may be missing
+            pass
     table = Table(
         "Strategy ID",
         "Display Name",
@@ -956,6 +982,8 @@ def list_strategies() -> None:
         return
     for sid in sorted(ids):
         info = meta.get(sid, {})
+        if not include_contrib and info.get("source") == "contrib":
+            continue
         status = ""
         if info.get("overrides"):
             status = f"Overrides '{info['overrides']}'"
