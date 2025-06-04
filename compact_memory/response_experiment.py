@@ -13,7 +13,6 @@ from .agent import Agent
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 from .json_npy_store import JsonNpyVectorStore
 from .embedding_pipeline import embed_text, get_embedding_dim, MockEncoder
-from .chunker import SentenceWindowChunker
 from .registry import get_validation_metric_class
 from . import validation  # ensure metrics are registered
 from .compression.strategies_abc import CompressionStrategy
@@ -61,7 +60,7 @@ def _evaluate_sample(
     store = JsonNpyVectorStore(
         path=work_dir, embedding_model="experiment", embedding_dim=dim
     )
-    agent = Agent(store, chunker=SentenceWindowChunker())
+    agent = Agent(store, chunk_fn=None)
 
     for turn in sample["turns"]:
         if isinstance(turn, dict):

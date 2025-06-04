@@ -70,7 +70,7 @@ Your primary task is to implement the `compress` method. Here's what to consider
 1.  **Input (`text_or_chunks`):**
     *   Decide if your strategy works best with a single block of text or pre-chunked text.
     *   If you expect chunks, you might need to join them or process them individually.
-    *   If you receive a single string, you might need to implement chunking logic within your strategy or use a provided chunker.
+    *   If you receive a single string, you might need to split it yourself using a ``ChunkFn`` before compression.
 
 2.  **Token Budget (`llm_token_budget`):**
     *   This is a crucial constraint. Your strategy must try to produce output that, when tokenized, is close to this budget.
@@ -180,7 +180,7 @@ Compact Memory provides utilities that can be helpful:
     *   `compact_memory.token_utils.get_tokenizer(tokenizer_name_or_path)`: Helper to load `tiktoken` or `transformers` tokenizers.
     *   `compact_memory.token_utils.token_count(tokenizer, text)`: Counts tokens in a text using the provided tokenizer.
 *   **Chunking:**
-    *   While strategies can implement their own chunking, Compact Memory also has chunking utilities (e.g., `SentenceWindowChunker`) that can be used externally to prepare input for your strategy or internally if your strategy requires chunk-based processing. See `compact_memory.chunker`.
+    *   Strategies can accept a ``ChunkFn`` to pre-split text. Example splitter functions are provided in ``examples/chunking.py``.
 *   **LLM Helpers (Optional):**
     *   If your strategy needs to call an LLM, Compact Memory keeps this outside the core package. Check `examples/llm_helpers.py` for lightweight `run_llm()` wrappers that work with small local models or OpenAI.
     *   You can use these helpers directly or swap in your preferred framework (LangChain, AutoGen, etc.). The helpers simply take a prompt and return the generated text.

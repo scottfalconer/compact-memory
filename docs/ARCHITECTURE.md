@@ -40,9 +40,9 @@ experimented with.
   tests. Embeddings are cached and normalised.
 - **`compression/pipeline_strategy.py`** – implements `PipelineCompressionStrategy`
   allowing multiple compression steps to be chained.
-- **`chunker.py`** – implements sentence-window based chunking with token
-  overlap and a fixed-size fallback. The registry allows different
-  chunkers to be plugged in via config.
+Chunking of input text is optional and handled via a simple callable
+interface ``ChunkFn``. Users can provide their own splitting logic or
+reuse utilities from external libraries like LangChain.
 - **`memory_creation.py`** – small utilities to create "memory" texts
   from raw documents. Includes identity, extractive, fixed chunk and
   LLM-driven variants so experiments can measure which produces better
@@ -72,9 +72,9 @@ They are stored in JSON and referenced by ID in the NPY vector arrays.
 ## Ingestion flow
 <!-- SUGGESTION: A diagram illustrating the ingestion flow (Chunking -> Embedding -> Prototype Search -> Updating) would be beneficial here. -->
 
-1. **Chunking** – text is split into sentence windows using
-   `SentenceWindowChunker` or into belief-sized ideas with
-   `AgenticChunker` (both are registered chunkers).
+1. **Chunking (Optional)** – text may be split into smaller pieces using a
+   user-supplied ``ChunkFn``. If no function is provided the entire text is
+   treated as one chunk.
 2. **Embedding** – each chunk is converted into a normalised vector via
    `embed_text`.
 3. **Prototype search** – the store finds the nearest prototype by
@@ -107,8 +107,8 @@ provide a graphical option in the future.
 ## Testing
 
 The test suite uses the deterministic `MockEncoder` to avoid heavy model
-loads. `pytest` exercises the agent logic, CLI commands, chunkers, the
-embedding pipeline and both vector stores. Continuous integration ensures
+loads. `pytest` exercises the agent logic, CLI commands, the embedding
+pipeline and both vector stores. Continuous integration ensures
 that persistence round‑trips and query ranking work as expected.
 
 ## Rationale

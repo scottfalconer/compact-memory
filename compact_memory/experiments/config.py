@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional, Dict, List
 
-from ..chunker import Chunker
+from ..chunking import ChunkFn
 from ..memory_creation import MemoryCreator
 
 
@@ -27,7 +27,7 @@ class ExperimentConfig:
 
     # Legacy agent ingest options
     similarity_threshold: float = 0.8
-    chunker: Optional[Chunker] = None
+    chunk_fn: Optional[ChunkFn] = None
     summary_creator: Optional[MemoryCreator] = None
 
     # Details for the language model used during the experiment

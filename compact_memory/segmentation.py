@@ -1,20 +1,12 @@
 from typing import Iterable, List
 
 import re
-from .spacy_utils import get_nlp, simple_sentences
+from .spacy_utils import simple_sentences
 
 
 def _sentences(text: str) -> List[str]:
-    """Split text into sentences using spaCy with fallbacks."""
-    nlp = get_nlp()
-    try:
-        doc = nlp(text.strip())
-        sents = [sent.text.strip() for sent in doc.sents if sent.text.strip()]
-    except Exception:  # pragma: no cover - fallback
-        sents = []
-
-    if not sents or "parser" not in nlp.pipe_names:
-        sents = simple_sentences(text)
+    """Split ``text`` into sentences using simple heuristics."""
+    sents = simple_sentences(text)
 
     if len(sents) <= 2:
         parts = re.split(r"(?<=[.!?])\s+", text.strip())

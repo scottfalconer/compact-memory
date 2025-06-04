@@ -283,10 +283,6 @@ def init(
     alpha: float = typer.Option(
         0.1, help="Alpha parameter, controlling the decay rate for memory importance."
     ),
-    chunker: str = typer.Option(
-        "sentence_window",
-        help="Chunking strategy to use for processing text during ingestion.",
-    ),
 ) -> None:
     path = target_directory.expanduser()
     if path.exists() and any(path.iterdir()):
@@ -309,9 +305,7 @@ def init(
     store = JsonNpyVectorStore(
         path=str(path), embedding_model=model_name, embedding_dim=dim
     )
-    store.meta.update(
-        {"agent_name": name, "tau": tau, "alpha": alpha, "chunker": chunker}
-    )
+    store.meta.update({"agent_name": name, "tau": tau, "alpha": alpha})
     store.save()
     typer.echo(f"Successfully initialized Compact Memory agent at {path}")
 

@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, TypedDict, Callable
 import logging
 
 
-from .chunker import Chunker, SentenceWindowChunker
+from .chunking import ChunkFn
 from .embedding_pipeline import embed_text
 from .json_npy_store import JsonNpyVectorStore
 from .memory_creation import (
@@ -23,8 +23,6 @@ from .prototype_system_strategy import PrototypeSystemStrategy
 
 class VectorIndexCorrupt(RuntimeError):
     """Raised when prototype index and vectors are misaligned."""
-
-
 
 
 class PrototypeHit(TypedDict):
@@ -50,18 +48,20 @@ class QueryResult(dict):
     memories: List[MemoryHit]
     status: str
 
-    def __init__(self, prototypes: List[PrototypeHit], memories: List[MemoryHit], status: str) -> None:
+    def __init__(
+        self, prototypes: List[PrototypeHit], memories: List[MemoryHit], status: str
+    ) -> None:
         super().__init__(prototypes=prototypes, memories=memories, status=status)
 
     # --------------------------------------------------------------
     def _repr_html_(self) -> str:
         proto_rows = "".join(
             f"<tr><td>{p['id']}</td><td>{p['summary']}</td><td>{p['sim']:.2f}</td></tr>"
-            for p in self.get('prototypes', [])
+            for p in self.get("prototypes", [])
         )
         mem_rows = "".join(
             f"<tr><td>{m['id']}</td><td>{m['text']}</td><td>{m['sim']:.2f}</td></tr>"
-            for m in self.get('memories', [])
+            for m in self.get("memories", [])
         )
         html = """<h4>Prototypes</h4><table><tr><th>ID</th><th>Summary</th><th>Sim</th></tr>{p_rows}</table>""".format(
             p_rows=proto_rows
@@ -94,11 +94,12 @@ class Agent:
         prompt_budget (Optional[PromptBudget]): Configuration for managing prompt sizes
                                              when interacting with LLMs.
     """
+
     def __init__(
         self,
         store: JsonNpyVectorStore,
         *,
-        chunker: Optional[Chunker] = None,
+        chunk_fn: ChunkFn | None = None,
         similarity_threshold: float = 0.8,
         dedup_cache: int = 128,
         summary_creator: Optional[MemoryCreator] = None,
@@ -111,8 +112,9 @@ class Agent:
         Args:
             store: The `JsonNpyVectorStore` instance to be used for storing
                    and retrieving memories and prototypes.
-            chunker: A `Chunker` instance for splitting text during ingestion.
-                     Defaults to `SentenceWindowChunker` if None.
+            chunk_fn: Optional function used to split text into chunks during
+                ingestion. If ``None``, the entire text is treated as a single
+                chunk.
             similarity_threshold: The threshold (tau) for determining if a new memory
                                   should be merged with an existing prototype.
                                   Value between 0.0 and 1.0.
@@ -129,7 +131,7 @@ class Agent:
         self.store = store
         self.prototype_system = PrototypeSystemStrategy(
             store,
-            chunker=chunker,
+            chunk_fn=chunk_fn,
             similarity_threshold=similarity_threshold,
             dedup_cache=dedup_cache,
             summary_creator=summary_creator,
@@ -140,16 +142,13 @@ class Agent:
 
     # ------------------------------------------------------------------
     @property
-    def chunker(self) -> Chunker:
-        """Return the current :class:`Chunker`."""
-        return self.prototype_system.chunker
+    def chunk_fn(self) -> ChunkFn | None:
+        """Return the current chunking function."""
+        return self.prototype_system.chunk_fn
 
-    @chunker.setter
-    def chunker(self, value: Chunker) -> None:
-        if not isinstance(value, Chunker):
-            raise TypeError("chunker must implement Chunker interface")
-        self.prototype_system.chunker = value
-        self.store.meta["chunker"] = getattr(value, "id", type(value).__name__)
+    @chunk_fn.setter
+    def chunk_fn(self, value: ChunkFn | None) -> None:
+        self.prototype_system.chunk_fn = value
 
     # ------------------------------------------------------------------
     @property
@@ -174,15 +173,15 @@ class Agent:
     def configure(
         self,
         *,
-        chunker: Chunker | None = None,
+        chunk_fn: ChunkFn | None = None,
         similarity_threshold: float | None = None,
         summary_creator: MemoryCreator | None = None,
         prompt_budget: PromptBudget | None = None,
     ) -> None:
         """Dynamically update core configuration."""
 
-        if chunker is not None:
-            self.chunker = chunker
+        if chunk_fn is not None:
+            self.chunk_fn = chunk_fn
         if similarity_threshold is not None:
             self.similarity_threshold = similarity_threshold
         if summary_creator is not None:
@@ -211,9 +210,7 @@ class Agent:
     def _repr_html_(self) -> str:
         """HTML summary for notebooks."""
         stats = self.get_statistics()
-        rows = "".join(
-            f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in stats.items()
-        )
+        rows = "".join(f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in stats.items())
         return f"<h3>Agent</h3><table>{rows}</table>"
 
     # ------------------------------------------------------------------
@@ -255,7 +252,8 @@ class Agent:
         """
         Ingests a piece of text into the agent's memory store.
 
-        The text is processed by the configured chunker, and each chunk is then
+        The text is processed by the configured ``chunk_fn``. Each resulting
+        chunk is then
         added to the memory system. This may involve creating new prototypes or
         merging with existing ones based on similarity.
 

@@ -31,8 +31,6 @@ Get started by installing the `compact-memory` package:
 
 ```bash
 pip install compact-memory
-# Download recommended models for default strategies and examples
-python -m spacy download en_core_web_sm
 compact-memory dev download-embedding-model
 compact-memory dev download-chat-model
 ```
@@ -322,8 +320,6 @@ This project requires **Python 3.11+**.
 1.  **Install Core Dependencies:** Use the provided `setup.sh` for a fast install.
    ```bash
    bash setup.sh           # installs the minimal set of packages
-   # Download the spaCy model for sentence segmentation (used by some strategies/chunkers)
-   python -m spacy download en_core_web_sm
    ```
    If you need to run the full test suite (which depends on PyTorch and other
    heavy packages), run:
@@ -495,7 +491,6 @@ Compact Memory is designed to support a wide variety of `CompressionStrategy` im
 -   `docs/COMPRESSION_STRATEGIES.md`
 -   `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`
 
-The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during agent initialization (e.g., `compact-memory agent init ./my_memory --chunker agentic`) or programmatically within your custom strategy (e.g., `agent.chunker = AgenticChunker()`).
 
 ## Query Tips
 

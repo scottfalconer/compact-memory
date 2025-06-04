@@ -11,7 +11,7 @@ from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
-from .chunker import Chunker, SentenceWindowChunker
+from .chunking import ChunkFn
 from .json_npy_store import JsonNpyVectorStore, BeliefPrototype, RawMemory
 from .memory_creation import ExtractiveSummaryCreator, MemoryCreator
 from .prototype.canonical import render_five_w_template
@@ -50,12 +50,10 @@ class EvidenceWriter:
 
     def add(self, belief_id: str, memory_id: str, weight: float) -> None:
         with open(self.path, "a") as f:
-            f.write(
-                json.dumps(
-                    {"belief_id": belief_id, "memory_id": memory_id, "weight": weight}
-                )
-                + "\n"
+            row = json.dumps(
+                {"belief_id": belief_id, "memory_id": memory_id, "weight": weight}
             )
+            f.write(row + "\n")
 
 
 class PrototypeSystemStrategy(CompressionStrategy):
@@ -67,7 +65,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
         self,
         store: JsonNpyVectorStore,
         *,
-        chunker: Optional[Chunker] = None,
+        chunk_fn: ChunkFn | None = None,
         similarity_threshold: float = 0.8,
         dedup_cache: int = 128,
         summary_creator: Optional[MemoryCreator] = None,
@@ -76,7 +74,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
         if not 0.5 <= similarity_threshold <= 0.95:
             raise ValueError("similarity_threshold must be between 0.5 and 0.95")
         self.store = store
-        self.chunker = chunker or SentenceWindowChunker()
+        self.chunk_fn = chunk_fn
         self.similarity_threshold = float(similarity_threshold)
         self.summary_creator = summary_creator or ExtractiveSummaryCreator(max_words=25)
         self.update_summaries = update_summaries
@@ -108,7 +106,9 @@ class PrototypeSystemStrategy(CompressionStrategy):
         when: Optional[str] = None,
         where: Optional[str] = None,
         why: Optional[str] = None,
-        progress_callback: Optional[Callable[[int, int, bool, str, Optional[float]], None]] = None,
+        progress_callback: Optional[
+            Callable[[int, int, bool, str, Optional[float]], None]
+        ] = None,
         save: bool = True,
         source_document_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
@@ -120,14 +120,20 @@ class PrototypeSystemStrategy(CompressionStrategy):
             return [{"duplicate": True}]
         self._dedup.add(digest)
 
-        chunks = self.chunker.chunk(text)
+        if self.chunk_fn is not None:
+            chunks = self.chunk_fn(text)
+        else:
+            chunks = [text]
         if not chunks:
             return []
         canonical = [
-            render_five_w_template(c, who=who, what=what, when=when, where=where, why=why)
+            render_five_w_template(
+                c, who=who, what=what, when=when, where=where, why=why
+            )
             for c in chunks
         ]
         from . import agent as _agent
+
         vecs = _agent.embed_text(canonical)
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
@@ -149,8 +155,8 @@ class PrototypeSystemStrategy(CompressionStrategy):
                 n = self.metrics["prototypes_updated"]
                 prev = self.metrics.get("prototype_vector_change_magnitude", 0.0)
                 self.metrics["prototype_vector_change_magnitude"] = (
-                    (prev * (n - 1) + change) / n
-                )
+                    prev * (n - 1) + change
+                ) / n
             else:
                 summary = self.summary_creator.create(chunk)
                 proto = BeliefPrototype(
@@ -227,6 +233,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
         """Return nearest prototypes and memories for ``text``."""
 
         from . import agent as _agent
+
         vec = _agent.embed_text(text)
         if vec.ndim != 1:
             vec = vec.reshape(-1)
