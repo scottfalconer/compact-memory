@@ -181,13 +181,10 @@ Compact Memory provides utilities that can be helpful:
     *   `compact_memory.token_utils.token_count(tokenizer, text)`: Counts tokens in a text using the provided tokenizer.
 *   **Chunking:**
     *   While strategies can implement their own chunking, Compact Memory also has chunking utilities (e.g., `SentenceWindowChunker`) that can be used externally to prepare input for your strategy or internally if your strategy requires chunk-based processing. See `compact_memory.chunker`.
-*   **LLM Providers (Advanced):**
-    *   If your strategy involves calling an LLM (e.g., for abstractive summarization), you can leverage Compact Memory's LLM provider abstractions (`compact_memory.llm_providers_abc.LLMProvider`, with implementations like `OpenAIProvider`, `GeminiProvider`, `LocalTransformersProvider`).
-    *   This typically involves:
-        1.  Accepting LLM configuration (model name, API keys if needed) in your strategy's `__init__`.
-        2.  Instantiating the chosen provider.
-        3.  Using its `generate_response()` method.
-    *   Ensure your strategy handles API errors gracefully and documents LLM dependencies.
+*   **LLM Helpers (Optional):**
+    *   If your strategy needs to call an LLM, Compact Memory keeps this outside the core package. Check `examples/llm_helpers.py` for lightweight `run_llm()` wrappers that work with small local models or OpenAI.
+    *   You can use these helpers directly or swap in your preferred framework (LangChain, AutoGen, etc.). The helpers simply take a prompt and return the generated text.
+    *   Remember to manage API keys and errors in your own code when using external providers.
 
 ## Structuring Strategy Logic
 

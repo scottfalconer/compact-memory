@@ -120,6 +120,9 @@ print(f"Strategy used: {trace.strategy_name}")
 # Now you can use compressed_memory.text in your LLM pipeline
 # llm_input = f"Context: {compressed_memory.text}\n\nQuestion: What is this about?"
 # response = your_llm_function(llm_input)
+
+For quick testing with a small local model or OpenAI, you can also use
+`examples.llm_helpers.run_llm()` which wraps minimal API calls.
 ```
 
 This allows for seamless integration of context compression into your Python-based LLM applications, making them more efficient and capable of handling larger amounts of information within token limits.
