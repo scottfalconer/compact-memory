@@ -65,6 +65,15 @@ def test_pipeline_strategy_executes_in_order():
     )
     assert compressed.text == "alpha bravo"[:5]
     assert len(trace.steps) == 2
+    assert trace.output_summary["output_length"] == len(compressed.text)
+    for step in trace.steps:
+        assert step["strategy"] == DummyStrategy.id
+        inner_trace = step["trace"]
+        assert isinstance(inner_trace, CompressionTrace)
+        assert inner_trace.strategy_name == DummyStrategy.id
+        assert inner_trace.output_summary["final_length"] == len(
+            inner_trace.final_compressed_object_preview
+        )
 
 
 def test_pipeline_strategy_config_instantiates_from_registry():
