@@ -10,7 +10,6 @@ pytest
 sentence-transformers
 transformers
 rich>=13.6
-spacy
 typer[all]>=0.16.0
 portalocker
 google-generativeai

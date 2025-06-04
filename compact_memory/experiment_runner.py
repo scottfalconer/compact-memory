@@ -11,7 +11,6 @@ from .compression.strategies_abc import CompressionStrategy
 from .agent import Agent
 from .json_npy_store import JsonNpyVectorStore
 from .active_memory_manager import ActiveMemoryManager
-from .chunker import Chunker, SentenceWindowChunker
 from .memory_creation import MemoryCreator, ExtractiveSummaryCreator
 from .experiments.config import ExperimentConfig
 from .embedding_pipeline import embed_text, get_embedding_dim
@@ -30,18 +29,17 @@ def run_experiment(
     )
     if config.active_memory_params:
         store.meta.update(config.active_memory_params)
-    params = {
-        k: v for k, v in store.meta.items() if k.startswith("config_")
-    }
+    params = {k: v for k, v in store.meta.items() if k.startswith("config_")}
     if config.active_memory_params:
         params.update(config.active_memory_params)
     ActiveMemoryManager(**params)
     agent = Agent(
         store,
-        chunker=config.chunker or SentenceWindowChunker(),
+        chunk_fn=config.chunk_fn,
         similarity_threshold=config.similarity_threshold,
-        summary_creator=config.summary_creator
-        or ExtractiveSummaryCreator(max_words=25),
+        summary_creator=(
+            config.summary_creator or ExtractiveSummaryCreator(max_words=25)
+        ),
     )
 
     text = Path(config.dataset).read_text()

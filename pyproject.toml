@@ -20,7 +20,6 @@ dependencies = [
     "pyyaml",
     "sentence-transformers",
     "transformers",
-    "spacy",
     "typer[all]>=0.16.0",
     "portalocker",
     "rich>=13.6",
@@ -31,7 +30,6 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest"]
 chroma = ["chromadb"]
-spacy = ["spacy"]
 optuna = ["optuna"]
 ray = ["ray[tune]"]
 

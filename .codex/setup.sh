@@ -17,7 +17,7 @@ set -euo pipefail
 if [ -f requirements.txt ]; then
     pip3 install --prefer-binary \
         openai tiktoken numpy faiss-cpu click>=8.2 tqdm pydantic \
-        pyyaml transformers spacy "typer[all]>=0.16.0" portalocker \
+        pyyaml transformers "typer[all]>=0.16.0" portalocker \
         "rich>=13.6"
     # Install the project itself without pulling in extra dependencies.
     pip3 install -e . --no-build-isolation --no-deps

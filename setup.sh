@@ -4,7 +4,7 @@ set -euo pipefail
 
 pip install --prefer-binary \
     openai tiktoken numpy faiss-cpu click>=8.2 tqdm pydantic \
-    pyyaml transformers spacy "typer[all]>=0.16.0" portalocker \
+    pyyaml transformers "typer[all]>=0.16.0" portalocker \
     "rich>=13.6"
 
 # Optional heavy dependencies required for the full test suite

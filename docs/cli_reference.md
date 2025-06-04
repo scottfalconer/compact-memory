@@ -99,7 +99,6 @@ Creates and initializes a new agent data store in a specified directory.
 *   `--model-name TEXT`: Name of the sentence-transformer model for embeddings (default: "all-MiniLM-L6-v2").
 *   `--tau FLOAT`: Similarity threshold (tau) for memory consolidation, between 0.5 and 0.95 (default: 0.8).
 *   `--alpha FLOAT`: Alpha parameter, controlling the decay rate for memory importance (default: 0.1).
-*   `--chunker TEXT`: Chunking strategy to use for processing text during ingestion (default: "sentence_window").
 
 #### `compact-memory agent stats`
 
