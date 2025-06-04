@@ -296,13 +296,16 @@ Key benefits include:
 This project requires **Python 3.11+**.
 
 1.  **Install Core Dependencies:** Use the provided `setup.sh` for a fast install.
-    ```bash
-    bash setup.sh           # installs the minimal set of packages
-    # Download the spaCy model for sentence segmentation (used by some strategies/chunkers)
-    python -m spacy download en_core_web_sm
-    ```
-    Set `FULL_INSTALL=1` when running `setup.sh` if you plan to run the entire
-    test suite which requires heavier optional dependencies.
+   ```bash
+   bash setup.sh           # installs the minimal set of packages
+   # Download the spaCy model for sentence segmentation (used by some strategies/chunkers)
+   python -m spacy download en_core_web_sm
+   ```
+   If you need to run the full test suite (which depends on PyTorch and other
+   heavy packages), run:
+   ```bash
+   FULL_INSTALL=1 bash setup.sh
+   ```
 
 2.  **Install `compact-memory`:**
     This makes the `compact-memory` CLI tool available. You have two main options:
