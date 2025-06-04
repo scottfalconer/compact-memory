@@ -217,7 +217,7 @@ For users wanting to understand the foundational ideas behind Compact Memory:
 -   **`CompressionStrategy`**: An algorithm that takes input text and a token budget, and produces a compressed representation of that text suitable for an LLM prompt.
 -   **`ValidationMetric`**: A method to evaluate the quality or utility of the compressed memory, often by assessing an LLM's performance on a task using that compressed memory.
 -   **Experimentation Framework**: The tools and processes within Compact Memory for systematically running tests with different strategies, datasets, and metrics.
--   For a deeper dive into concepts and architecture, see our main documentation portal in `docs/README.md` (or `docs/index.md`).
+-   For a deeper dive into concepts and architecture, see our main documentation portal in `docs/README.md`.
 -   For conceptual background on memory strategies, refer to `AGENTS.md`.
 
 ### Developing for Compact Memory
@@ -449,7 +449,7 @@ python examples/onboarding_demo.py
 
 For more detailed information on Compact Memory's architecture, development guides, and advanced topics, please refer to the `docs/` directory.
 
--   **Main Documentation Portal:** `docs/README.md` (or `docs/index.md`) serves as a Table of Contents and entry point for deeper documentation.
+-   **Main Documentation Portal:** `docs/README.md` serves as a Table of Contents and entry point for deeper documentation.
 -   **Architecture Deep Dive:** Understand the overall system design in `docs/ARCHITECTURE.md`.
 -   **Developing Compression Strategies:** Learn how to create your own strategies in `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`.
 -   **Developing Validation Metrics:** Find guidance on building custom metrics in `docs/DEVELOPING_VALIDATION_METRICS.md`.
