@@ -31,7 +31,7 @@ Below is a list of documents in this directory, along with a brief description o
         *   **Audience:** Developers needing to understand or interact with the persistence layer.
 
 *   **Running & Managing Experiments**
-    *   **[`RUNNING_EXPERIMENTS.md`](./RUNNING_EXPERIMENTS.md)**: A guide to using the experimentation framework, including setting up experiments, running them via the CLI, and understanding the output.
+*   **[`RUNNING_EXPERIMENTS.md`](./RUNNING_EXPERIMENTS.md)**: *(Legacy)* Guide to the old experimentation framework.
         *   **Audience:** Researchers and developers evaluating and comparing compression strategies.
     *   **[`ADVANCED_PARAMETER_TUNING.md`](./ADVANCED_PARAMETER_TUNING.md)**: (Assuming content based on title) Covers more advanced techniques for tuning parameters of compression strategies and the experimentation setup.
         *   **Audience:** Experienced users looking to optimize performance.
@@ -46,16 +46,15 @@ Below is a list of documents in this directory, along with a brief description o
 ## Suggested Reading Paths
 
 *   **For Users Wanting to Apply Compact Memory:**
-    1.  Start with the main project [README.md](../README.md) for installation and basic usage.
+    1.  Start with the main project [README.md](../README.md) and the [USAGE guide](../USAGE.md).
     2.  Review [`QUERY_TIPS.md`](./QUERY_TIPS.md) for effective information retrieval.
-    3.  If running extensive evaluations, consult [`RUNNING_EXPERIMENTS.md`](./RUNNING_EXPERIMENTS.md).
 
 *   **For Developers Building New Compression Strategies:**
     1.  Understand the core concepts in [`PROJECT_VISION.md`](./PROJECT_VISION.md).
     2.  Study the conceptual approaches in [`COMPRESSION_STRATEGIES.md`](./COMPRESSION_STRATEGIES.md).
     3.  Follow the practical implementation guide in [`DEVELOPING_COMPRESSION_STRATEGIES.md`](./DEVELOPING_COMPRESSION_STRATEGIES.md).
     4.  Refer to [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how strategies fit into the broader system.
-    5.  Learn about evaluation with [`DEVELOPING_VALIDATION_METRICS.md`](./DEVELOPING_VALIDATION_METRICS.md) and [`RUNNING_EXPERIMENTS.md`](./RUNNING_EXPERIMENTS.md).
+    5.  Learn about evaluation with [`DEVELOPING_VALIDATION_METRICS.md`](./DEVELOPING_VALIDATION_METRICS.md).
 
 *   **For Those Contributing to the Core Platform:**
     1.  Begin with [`ARCHITECTURE.md`](./ARCHITECTURE.md).

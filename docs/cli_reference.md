@@ -8,7 +8,7 @@ These options can be used with any command:
 
 *   `--memory-path TEXT`: Path to the Compact Memory agent directory. Overrides environment variables and configuration files. (e.g., `-m ./my_agent_data`)
 *   `--model-id TEXT`: Default model ID for LLM interactions (e.g., `openai/gpt-4-turbo`). Overrides environment variables and configuration files.
-*   `--strategy-id TEXT`: Default compression strategy ID (e.g., `prototype`). Overrides environment variables and configuration files.
+*   `--strategy TEXT`: Default compression strategy ID (e.g., `prototype`). Overrides environment variables and configuration files.
 *   `--log-file PATH`: Path to write debug logs. If not set, logs are not written to file.
 *   `--verbose / -V`: Enable verbose (DEBUG level) logging to console and log file (if specified).
 *   `--version / -v`: Show the application version and exit.
