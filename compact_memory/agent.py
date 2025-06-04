@@ -8,7 +8,7 @@ import logging
 
 from .chunker import Chunker, SentenceWindowChunker
 from .embedding_pipeline import embed_text
-from .json_npy_store import JsonNpyVectorStore
+from .vector_store import VectorStore
 from .memory_creation import (
     ExtractiveSummaryCreator,
     MemoryCreator,
@@ -77,7 +77,7 @@ class Agent:
     Core component for managing and interacting with a memory store.
 
     The Agent class encapsulates the logic for ingesting text into a
-    `JsonNpyVectorStore`, managing memory prototypes, querying the memory,
+    `VectorStore`, managing memory prototypes, querying the memory,
     and processing conversational turns with optional compression.
 
     It utilizes a `PrototypeSystemStrategy` internally to handle the
@@ -87,7 +87,7 @@ class Agent:
     `receive_channel_message`.
 
     Attributes:
-        store (JsonNpyVectorStore): The underlying vector store for memories and prototypes.
+        store (VectorStore): The underlying vector store for memories and prototypes.
         prototype_system (PrototypeSystemStrategy): Handles memory consolidation and querying logic.
         metrics (Dict[str, Any]): A dictionary of metrics collected during operations
                                   (primarily from `PrototypeSystemStrategy`).
@@ -97,7 +97,7 @@ class Agent:
 
     def __init__(
         self,
-        store: JsonNpyVectorStore,
+        store: VectorStore,
         *,
         chunker: Optional[Chunker] = None,
         similarity_threshold: float = 0.8,
@@ -111,7 +111,7 @@ class Agent:
         Initializes the Agent.
 
         Args:
-            store: The `JsonNpyVectorStore` instance to be used for storing
+            store: The `VectorStore` instance to be used for storing
                    and retrieving memories and prototypes.
             chunker: A `Chunker` instance for splitting text during ingestion.
                      Defaults to `SentenceWindowChunker` if None.

@@ -27,7 +27,7 @@ Below is a list of documents in this directory, along with a brief description o
         *   **Audience:** Developers actively building new compression strategies.
     *   **[`DEVELOPING_VALIDATION_METRICS.md`](./DEVELOPING_VALIDATION_METRICS.md)**: Offers guidance on creating custom `ValidationMetric` classes to evaluate the performance of compression strategies.
         *   **Audience:** Developers and researchers looking to implement new ways of measuring memory effectiveness.
-    *   **[`STORAGE_FORMAT.md`](./STORAGE_FORMAT.md)**: Details the storage format used by Compact Memory, particularly for the default JSON/NPY store.
+    *   **[`STORAGE_FORMAT.md`](./STORAGE_FORMAT.md)**: Describes an example on-disk format previously used for Compact Memory.
         *   **Audience:** Developers needing to understand or interact with the persistence layer.
 
 *   **Running & Managing Experiments**

@@ -22,7 +22,7 @@ from .logging_utils import configure_logging
 
 
 from .agent import Agent
-from .json_npy_store import JsonNpyVectorStore
+from .vector_store import InMemoryVectorStore
 from . import local_llm
 from .active_memory_manager import ActiveMemoryManager
 from .registry import (
@@ -306,9 +306,7 @@ def init(
     except RuntimeError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1)
-    store = JsonNpyVectorStore(
-        path=str(path), embedding_model=model_name, embedding_dim=dim
-    )
+    store = InMemoryVectorStore(embedding_dim=dim)
     store.meta.update(
         {"agent_name": name, "tau": tau, "alpha": alpha, "chunker": chunker}
     )
@@ -392,17 +390,7 @@ def validate_agent_storage(
             err=True,
         )
         raise typer.Exit(code=1)
-    try:
-        JsonNpyVectorStore(path=str(path))
-    except EmbeddingDimensionMismatchError as exc:
-        typer.secho(
-            f"Embedding dimension mismatch: {exc}", err=True, fg=typer.colors.RED
-        )
-        raise typer.Exit(code=1)
-    except Exception as exc:
-        typer.secho(f"Error loading agent: {exc}", err=True, fg=typer.colors.RED)
-        raise typer.Exit(code=1)
-    typer.echo("Agent storage is valid.")
+    typer.echo("No built-in storage to validate.")
 
 
 @agent_app.command(
@@ -450,11 +438,8 @@ def clear(
         )
         raise typer.Exit(code=1)
     if dry_run:
-        store = JsonNpyVectorStore(path=str(path))
-        typer.echo(
-            f"Dry run: Would delete {len(store.prototypes)} prototypes and {len(store.memories)} memories from agent at '{path}'."
-        )
-        return  # Added path to message
+        typer.echo("Dry run: nothing to delete (no persistence layer).")
+        return
     if not force:
         if not typer.confirm(
             f"Are you sure you want to delete all data in agent at '{path}'? This cannot be undone.",
