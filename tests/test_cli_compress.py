@@ -283,6 +283,31 @@ def test_compress_output_trace(tmp_path: Path):
     assert data["strategy_name"] == "none"
 
 
+def test_compress_output_trace_details(tmp_path: Path):
+    """Trace file should contain step metadata for strategy."""
+    trace_path = tmp_path / "trace.json"
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "--text",
+            "hello world",
+            "--strategy",
+            DummyTruncStrategy.id,
+            "--budget",
+            "3",
+            "--output-trace",
+            str(trace_path),
+        ],
+        env=_env(tmp_path),
+    )
+    assert result.exit_code == 0
+    data = json.loads(trace_path.read_text())
+    assert data["strategy_name"] == DummyTruncStrategy.id
+    assert data["steps"] == [{"type": "truncate"}]
+    assert data["output_summary"]["final_length"] == len("hello world"[:3])
+
+
 def test_compress_verbose_stats(tmp_path: Path):
     result = runner.invoke(
         app,

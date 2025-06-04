@@ -38,6 +38,20 @@ def test_dummy_strategy():
     assert compressed.text == "alpha bravo"[:10]
 
 
+def test_dummy_strategy_trace_details():
+    """Ensure DummyStrategy records detailed trace metadata."""
+    strat = DummyStrategy()
+    text = "alpha bravo"
+    compressed, trace = strat.compress(text, llm_token_budget=5)
+
+    assert trace.strategy_name == "dummy"
+    assert trace.strategy_params["llm_token_budget"] == 5
+    assert trace.input_summary["input_length"] == len(text)
+    assert trace.steps == [{"type": "truncate"}]
+    assert trace.output_summary["final_length"] == len(compressed.text)
+    assert trace.final_compressed_object_preview == compressed.text
+
+
 class SimpleTokenizer:
     def tokenize(self, text):
         return text.split()
@@ -58,6 +72,23 @@ def test_no_compression_truncates_and_traces():
     assert trace.strategy_name == "none"
 
 
+def test_no_compression_trace_details():
+    """Validate trace information for NoCompression."""
+    tokenizer = SimpleTokenizer()
+    text = "alpha bravo charlie"
+    compressed, trace = NoCompression().compress(
+        text,
+        llm_token_budget=2,
+        tokenizer=tokenizer,
+    )
+
+    assert trace.strategy_name == "none"
+    assert trace.input_summary["input_length"] == len(compressed.text)
+    assert trace.output_summary["output_length"] == len(compressed.text)
+    assert trace.steps == []
+    assert trace.final_compressed_object_preview is None
+
+
 def test_pipeline_strategy_executes_in_order():
     strat = PipelineCompressionStrategy([DummyStrategy(), DummyStrategy()])
     compressed, trace = strat.compress(
@@ -65,6 +96,29 @@ def test_pipeline_strategy_executes_in_order():
     )
     assert compressed.text == "alpha bravo"[:5]
     assert len(trace.steps) == 2
+
+
+def test_pipeline_trace_contains_step_details():
+    """Verify nested step traces are recorded correctly."""
+    strat = PipelineCompressionStrategy([DummyStrategy(), DummyStrategy()])
+    compressed, trace = strat.compress(
+        ["alpha", "bravo", "charlie"], llm_token_budget=5
+    )
+
+    assert compressed.text == "alpha"
+    assert len(trace.steps) == 2
+
+    first = trace.steps[0]
+    second = trace.steps[1]
+
+    assert first["strategy"] == "dummy"
+    assert isinstance(first["trace"], CompressionTrace)
+    assert first["trace"].output_summary["final_length"] == 5
+
+    assert second["strategy"] == "dummy"
+    assert isinstance(second["trace"], CompressionTrace)
+    assert second["trace"].input_summary["input_length"] == 5
+    assert second["trace"].steps == [{"type": "truncate"}]
 
 
 def test_pipeline_strategy_config_instantiates_from_registry():
