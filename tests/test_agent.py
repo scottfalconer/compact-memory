@@ -8,8 +8,6 @@ from compact_memory.agent import Agent
 from compact_memory.embedding_pipeline import MockEncoder, _load_model, embed_text
 from compact_memory.memory_store import MemoryStore
 from compact_memory.chunking import ChunkFn
-from compact_memory.active_memory_manager import ActiveMemoryManager
-from compact_memory.prompt_budget import PromptBudget
 
 
 @pytest.fixture(autouse=True)
@@ -82,95 +80,16 @@ def test_persistence_roundtrip(tmp_path):
     assert abs(before[1] - after[1]) < 1e-6
 
 
-def test_receive_channel_ingest(tmp_path):
+def test_receive_channel_removed(tmp_path):
     store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
-    res = agent.receive_channel_message("user", "hello there")
-    assert res["action"] == "ingest"
-    texts = [m.raw_text for m in agent.store.memories]
-    assert "hello there" in texts
+    assert not hasattr(agent, "receive_channel_message")
 
 
-def test_receive_channel_query(monkeypatch, tmp_path):
+def test_process_conversational_turn_removed(tmp_path):
     store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
-    agent.add_memory("alpha bravo")
-
-    prompts = {}
-
-    class Dummy:
-        def __init__(self, *a, **k):
-            pass
-
-        def prepare_prompt(self, agent, prompt, **kw):
-            prompts["prompt"] = prompt
-            return prompt
-
-        def reply(self, prompt):
-            return "pong"
-
-    monkeypatch.setattr("compact_memory.local_llm.LocalChatModel", Dummy)
-    res = agent.receive_channel_message("user", "alpha?")
-    assert res["action"] == "query"
-    assert res["reply"] == "pong"
-    assert "User asked" in prompts["prompt"]
-
-
-def test_process_conversational_turn_updates_manager(monkeypatch, tmp_path):
-    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
-    agent = Agent(store, chunk_fn=None)
-
-    class Dummy:
-        def __init__(self, *a, **k):
-            pass
-
-        tokenizer = staticmethod(
-            lambda text, return_tensors=None: {"input_ids": [text.split()]}
-        )
-        model = type("M", (), {"config": type("C", (), {"n_positions": 50})()})()
-        max_new_tokens = 10
-
-        def prepare_prompt(self, agent, prompt, **kw):
-            return prompt
-
-        def reply(self, prompt):
-            return "resp"
-
-    monkeypatch.setattr("compact_memory.local_llm.LocalChatModel", Dummy)
-    mgr = ActiveMemoryManager()
-    reply, info = agent.process_conversational_turn("hello?", mgr)
-    assert reply == "resp"
-    assert len(mgr.history) == 1
-
-
-def test_prompt_budget_truncates_prompt(monkeypatch, tmp_path):
-    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
-    budget = PromptBudget(query=2, recent_history=0, older_history=0, ltm_snippets=0)
-    agent = Agent(store, chunk_fn=None, prompt_budget=budget)
-
-    class Dummy:
-        def __init__(self, *a, **k):
-            pass
-
-        tokenizer = staticmethod(
-            lambda text, return_tensors=None: {"input_ids": text.split()}
-        )
-        model = type("M", (), {"config": type("C", (), {"n_positions": 50})()})()
-        max_new_tokens = 10
-
-        def prepare_prompt(self, agent, prompt, **kw):
-            Dummy.prompt = prompt
-            return prompt
-
-        def reply(self, prompt):
-            return "resp"
-
-    monkeypatch.setattr("compact_memory.local_llm.LocalChatModel", Dummy)
-    mgr = ActiveMemoryManager()
-    reply, _ = agent.process_conversational_turn("one two three four five?", mgr)
-    assert reply == "resp"
-    assert "one two" in Dummy.prompt
-    assert "three" not in Dummy.prompt
+    assert not hasattr(agent, "process_conversational_turn")
 
 
 def test_get_statistics_ephemeral_store(tmp_path):
