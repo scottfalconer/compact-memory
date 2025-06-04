@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Setup script executed during Codex container setup.
+# Setup script executed automatically during Codex container setup.
+# Not intended for general use; local installations should run setup.sh.
 # Install dependencies used during testing and examples.
 
 set -euo pipefail

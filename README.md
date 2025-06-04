@@ -329,6 +329,7 @@ This project requires **Python 3.11+**.
    ```bash
    FULL_INSTALL=1 bash setup.sh
    ```
+Note: The repository also includes `.codex/setup.sh`, which is intended solely for the Codex environment and is not needed for general users.
 
 2.  **Install `compact-memory`:**
     This makes the `compact-memory` CLI tool available. You have two main options:
