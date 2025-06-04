@@ -62,18 +62,21 @@ Queries an agent (specified by `--memory-path` or configuration) with the provid
 
 Compresses text content from a string, file, or directory using a specified strategy and token budget. This is a standalone utility.
 
-**Usage:** `compact-memory compress [OPTIONS] INPUT_SOURCE`
+**Usage:** `compact-memory compress [OPTIONS] (--text TEXT | --file PATH | --dir PATH)`
 
-**Arguments:**
-*   `INPUT_SOURCE`: Input text directly, or a path to a text file or directory of text files to compress. (Required)
+**Input Options (choose exactly one):**
+*   `--text TEXT`: Raw text to compress. Use `-` to read from stdin.
+*   `--file PATH`: Path to a single text file.
+*   `--dir PATH`: Path to a directory of files.
 
 **Options:**
 *   `--strategy / -s TEXT`: Compression strategy ID to use. Overrides the global default strategy. (Required if no global default is set)
 *   `--budget INTEGER`: Token budget for the compressed output. The strategy will aim to keep the output within this limit. (Required)
-*   `--output / -o PATH`: File path to write compressed output. For directory input, this is the root output directory. If unspecified, prints to console.
-*   `--output-trace PATH`: File path to write the CompressionTrace JSON object. (Not applicable for directory input).
-*   `--recursive / -r`: Process text files in subdirectories recursively when `INPUT_SOURCE` is a directory.
-*   `--pattern / -p TEXT`: File glob pattern to match files when `INPUT_SOURCE` is a directory (default: "*.txt"; e.g., `'*.md'`, `'**/*.txt'`).
+*   `--output / -o PATH`: File path to write compressed output when using `--text` or `--file`. Prints to console if unspecified.
+*   `--output-dir PATH`: Directory to write compressed files when using `--dir`.
+*   `--output-trace PATH`: File path to write the `CompressionTrace` JSON object. (Not valid with `--dir`).
+*   `--recursive / -r`: Process text files in subdirectories recursively (valid with `--dir` only).
+*   `--pattern / -p TEXT`: File glob pattern for directory input (valid with `--dir` only; default: "*.txt").
 *   `--verbose-stats`: Show detailed token counts and processing time per item.
 
 

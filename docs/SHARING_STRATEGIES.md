@@ -146,7 +146,7 @@ This will check for required files, fields in the manifest, and basic loadabilit
     Once a strategy is installed and discoverable, you can use it just like a built-in one by referencing its `strategy_id`:
     *   **CLI:**
         ```bash
-        compact-memory compress input.txt --strategy <shared_strategy_id> --budget <value>
+        compact-memory compress --file input.txt --strategy <shared_strategy_id> --budget <value>
         ```
     *   **Python API:**
         ```python

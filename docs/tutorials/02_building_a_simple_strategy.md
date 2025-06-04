@@ -141,7 +141,7 @@ Once your strategy is defined and you can import it (and optionally register it 
 *   CLI:
 To use via CLI, you'd typically package this strategy (see \`SHARING_STRATEGIES.md\`). If \`my_strategies.py\` was in a discoverable plugin directory, you could run:
 ```bash
-compact-memory compress "Your long text here..." --strategy first_n_sentences --budget 50 --strategy-params '{"num_sentences": 2}'
+compact-memory compress --text "Your long text here..." --strategy first_n_sentences --budget 50 --strategy-params '{"num_sentences": 2}'
 ```
 *   Python API:
 ```python
