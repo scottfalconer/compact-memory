@@ -6,14 +6,13 @@ from dataclasses import dataclass
 import inspect
 import logging
 import contextlib
-from typing import Optional, TYPE_CHECKING, Iterable
+from typing import Optional, TYPE_CHECKING, Iterable, Callable
 
 from .llm_providers_abc import LLMProvider
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from .agent import Agent
 
-from .importance_filter import dynamic_importance_filter
 from .token_utils import token_count
 
 try:  # heavy dependency only when needed
@@ -24,6 +23,7 @@ try:  # heavy dependency only when needed
     else:
         raise ImportError("PyTorch not available")
 except Exception:  # pragma: no cover - optional dependency may be missing
+
     class _MissingModel:
         @classmethod
         def from_pretrained(cls, *a, **k):  # pragma: no cover - minimal stub
@@ -48,6 +48,8 @@ class LocalChatModel(LLMProvider):
 
     model_name: str = "tiny-gpt2"
     max_new_tokens: int = 100
+
+    preprocess_fn: Optional[Callable[[str], str]] = None
 
     tokenizer: Optional["AutoTokenizer"] = None  # set in ``__post_init__``
     model: Optional["AutoModelForCausalLM"] = None
@@ -212,8 +214,9 @@ class LocalChatModel(LLMProvider):
             old_ids, keep_ids = ids[:excess], ids[excess:]
             old_text = self.tokenizer.decode(old_ids, skip_special_tokens=True)
             keep_text = self.tokenizer.decode(keep_ids, skip_special_tokens=True)
-            filtered = dynamic_importance_filter(old_text)
-            prompt = (filtered + "\n" + keep_text).strip()
+            if self.preprocess_fn is not None:
+                old_text = self.preprocess_fn(old_text)
+            prompt = (old_text + "\n" + keep_text).strip()
 
         inputs = self.tokenizer(
             prompt,
@@ -256,7 +259,8 @@ class LocalChatModel(LLMProvider):
         # Return only the newly generated portion
         for prefix in (prompt, prompt_trimmed):
             if text.startswith(prefix):
-                return text[len(prefix) :].strip()
+                start = len(prefix)
+                return text[start:].strip()
         return text.strip()
 
     # ------------------------------------------------------------------

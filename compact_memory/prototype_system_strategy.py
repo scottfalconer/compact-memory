@@ -15,8 +15,6 @@ from .chunker import Chunker, SentenceWindowChunker
 from .json_npy_store import JsonNpyVectorStore, BeliefPrototype, RawMemory
 from .memory_creation import ExtractiveSummaryCreator, MemoryCreator
 from .prototype.canonical import render_five_w_template
-from .prototype.conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
-from .prototype.conflict import SimpleConflictLogger
 from .compression.strategies_abc import CompressedMemory, CompressionStrategy
 from .token_utils import truncate_text
 
@@ -50,12 +48,10 @@ class EvidenceWriter:
 
     def add(self, belief_id: str, memory_id: str, weight: float) -> None:
         with open(self.path, "a") as f:
-            f.write(
-                json.dumps(
-                    {"belief_id": belief_id, "memory_id": memory_id, "weight": weight}
-                )
-                + "\n"
+            line = json.dumps(
+                {"belief_id": belief_id, "memory_id": memory_id, "weight": weight}
             )
+            f.write(line + "\n")
 
 
 class PrototypeSystemStrategy(CompressionStrategy):
@@ -72,6 +68,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
         dedup_cache: int = 128,
         summary_creator: Optional[MemoryCreator] = None,
         update_summaries: bool = False,
+        preprocess_fn: Callable[[str], str] | None = None,
     ) -> None:
         if not 0.5 <= similarity_threshold <= 0.95:
             raise ValueError("similarity_threshold must be between 0.5 and 0.95")
@@ -80,6 +77,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
         self.similarity_threshold = float(similarity_threshold)
         self.summary_creator = summary_creator or ExtractiveSummaryCreator(max_words=25)
         self.update_summaries = update_summaries
+        self.preprocess_fn = preprocess_fn
         self.metrics: Dict[str, float] = {
             "memories_ingested": 0,
             "prototypes_spawned": 0,
@@ -90,13 +88,9 @@ class PrototypeSystemStrategy(CompressionStrategy):
         self._dedup = _LRUSet(size=dedup_cache)
         if isinstance(store.path, (str, Path)):
             p = Path(store.path) / "evidence.jsonl"
-            c = Path(store.path) / "conflicts.jsonl"
         else:
             p = Path("evidence.jsonl")
-            c = Path("conflicts.jsonl")
         self._evidence = EvidenceWriter(p)
-        self._conflict_logger = SimpleConflictLogger(c)
-        self._conflicts = ConflictFlagger(FlagLogger(c))
 
     # ------------------------------------------------------------------
     def add_memory(
@@ -108,7 +102,9 @@ class PrototypeSystemStrategy(CompressionStrategy):
         when: Optional[str] = None,
         where: Optional[str] = None,
         why: Optional[str] = None,
-        progress_callback: Optional[Callable[[int, int, bool, str, Optional[float]], None]] = None,
+        progress_callback: Optional[
+            Callable[[int, int, bool, str, Optional[float]], None]
+        ] = None,
         save: bool = True,
         source_document_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
@@ -120,14 +116,20 @@ class PrototypeSystemStrategy(CompressionStrategy):
             return [{"duplicate": True}]
         self._dedup.add(digest)
 
+        if self.preprocess_fn is not None:
+            text = self.preprocess_fn(text)
+
         chunks = self.chunker.chunk(text)
         if not chunks:
             return []
         canonical = [
-            render_five_w_template(c, who=who, what=what, when=when, where=where, why=why)
+            render_five_w_template(
+                c, who=who, what=what, when=when, where=where, why=why
+            )
             for c in chunks
         ]
         from . import agent as _agent
+
         vecs = _agent.embed_text(canonical)
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
@@ -149,8 +151,8 @@ class PrototypeSystemStrategy(CompressionStrategy):
                 n = self.metrics["prototypes_updated"]
                 prev = self.metrics.get("prototype_vector_change_magnitude", 0.0)
                 self.metrics["prototype_vector_change_magnitude"] = (
-                    (prev * (n - 1) + change) / n
-                )
+                    prev * (n - 1) + change
+                ) / n
             else:
                 summary = self.summary_creator.create(chunk)
                 proto = BeliefPrototype(
@@ -176,7 +178,6 @@ class PrototypeSystemStrategy(CompressionStrategy):
             )
             self.store.add_memory(raw_mem)
             self._evidence.add(pid, mem_id, 1.0)
-            self._flag_conflicts(pid, raw_mem, vec)
             self.metrics["memories_ingested"] += 1
             if self.update_summaries:
                 texts = [
@@ -199,23 +200,6 @@ class PrototypeSystemStrategy(CompressionStrategy):
         return results
 
     # ------------------------------------------------------------------
-    def _flag_conflicts(
-        self,
-        prototype_id: str,
-        new_mem: RawMemory,
-        new_vec: np.ndarray,
-    ) -> None:
-        for mem in self.store.memories:
-            if mem.assigned_prototype_id != prototype_id:
-                continue
-            if mem.memory_id == new_mem.memory_id:
-                continue
-            if mem.embedding is None:
-                continue
-            vec_b = np.array(mem.embedding, dtype=np.float32)
-            self._conflicts.check_pair(prototype_id, new_mem, new_vec, mem, vec_b)
-
-    # ------------------------------------------------------------------
     def query(
         self,
         text: str,
@@ -227,6 +211,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
         """Return nearest prototypes and memories for ``text``."""
 
         from . import agent as _agent
+
         vec = _agent.embed_text(text)
         if vec.ndim != 1:
             vec = vec.reshape(-1)

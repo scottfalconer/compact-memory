@@ -64,7 +64,6 @@ Example configuration:
 ```yaml
 strategy_name: pipeline
 strategies:
-  - strategy_name: importance
   - strategy_name: learned_summarizer
 ```
 

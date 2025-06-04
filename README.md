@@ -242,7 +242,6 @@ For contributors or those looking to build custom solutions on top of Compact Me
 - Runs smoothly in Colab; a notebook-based GUI is planned.
 - Python API for decoding and summarizing prototypes.
 - Interactive query interface via the `query` command.
-- Debug logging with `--log-file` and conflict heuristics written to `conflicts.jsonl` for HITL review.
 
 ## Memory Strategies
 
@@ -504,6 +503,19 @@ Effective querying is crucial when working with compressed memory. For tips on h
 -   `docs/QUERY_TIPS.md`
 
 This document explains techniques such as templating your questions to align with the structure of your memory store, thereby biasing retrieval towards more relevant results.
+
+## Preprocessing & Cleanup
+
+Compact Memory no longer performs built-in line filtering or heuristic cleanup when ingesting text. You can supply any callable that transforms raw strings before they are chunked or embedded:
+
+```python
+def remove_blank_lines(text: str) -> str:
+    return "\n".join(line for line in text.splitlines() if line.strip())
+
+agent = Agent(store, preprocess_fn=remove_blank_lines)
+```
+
+This hook enables custom regex cleanup, spaCy pipelines or LLM-powered summarization prior to compression.
 
 ## Architecture and Storage
 

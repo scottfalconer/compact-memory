@@ -68,9 +68,7 @@ def test_reply_truncates_to_limit(monkeypatch):
         called["text"] = text
         return text
 
-    monkeypatch.setattr("compact_memory.local_llm.dynamic_importance_filter", filt)
-
-    model = LocalChatModel(max_new_tokens=100)
+    model = LocalChatModel(max_new_tokens=100, preprocess_fn=filt)
     long_prompt = " ".join(f"w{i}" for i in range(50))
     model.reply(long_prompt)
     max_len = model.model.config.n_positions - model.max_new_tokens
@@ -85,7 +83,7 @@ def test_cli_talk_prompt_respects_limit(tmp_path, monkeypatch):
     from compact_memory.local_llm import LocalChatModel
     from compact_memory.active_memory_manager import ActiveMemoryManager
 
-    init.callback = init.callback if hasattr(init, 'callback') else init
+    init.callback = init.callback if hasattr(init, "callback") else init
     init(directory=str(tmp_path))
 
     agent = load_agent(tmp_path)
@@ -95,10 +93,6 @@ def test_cli_talk_prompt_respects_limit(tmp_path, monkeypatch):
     agent.store.save()
 
     captured = {}
-
-    monkeypatch.setattr(
-        "compact_memory.local_llm.dynamic_importance_filter", lambda text: "flt"
-    )
 
     def capture_generate(**kw):
         captured["ids"] = kw["input_ids"][0]
@@ -127,7 +121,6 @@ def test_cli_talk_prompt_respects_limit(tmp_path, monkeypatch):
     tokens = len(captured["ids"])
     max_len = DummyModel().config.n_positions - LocalChatModel().max_new_tokens
     assert tokens <= max_len
-
 
 
 def test_context_length_uses_tokenizer_when_config_missing(monkeypatch):

@@ -25,8 +25,6 @@ class VectorIndexCorrupt(RuntimeError):
     """Raised when prototype index and vectors are misaligned."""
 
 
-
-
 class PrototypeHit(TypedDict):
     """Prototype search result."""
 
@@ -50,18 +48,20 @@ class QueryResult(dict):
     memories: List[MemoryHit]
     status: str
 
-    def __init__(self, prototypes: List[PrototypeHit], memories: List[MemoryHit], status: str) -> None:
+    def __init__(
+        self, prototypes: List[PrototypeHit], memories: List[MemoryHit], status: str
+    ) -> None:
         super().__init__(prototypes=prototypes, memories=memories, status=status)
 
     # --------------------------------------------------------------
     def _repr_html_(self) -> str:
         proto_rows = "".join(
             f"<tr><td>{p['id']}</td><td>{p['summary']}</td><td>{p['sim']:.2f}</td></tr>"
-            for p in self.get('prototypes', [])
+            for p in self.get("prototypes", [])
         )
         mem_rows = "".join(
             f"<tr><td>{m['id']}</td><td>{m['text']}</td><td>{m['sim']:.2f}</td></tr>"
-            for m in self.get('memories', [])
+            for m in self.get("memories", [])
         )
         html = """<h4>Prototypes</h4><table><tr><th>ID</th><th>Summary</th><th>Sim</th></tr>{p_rows}</table>""".format(
             p_rows=proto_rows
@@ -94,6 +94,7 @@ class Agent:
         prompt_budget (Optional[PromptBudget]): Configuration for managing prompt sizes
                                              when interacting with LLMs.
     """
+
     def __init__(
         self,
         store: JsonNpyVectorStore,
@@ -104,6 +105,7 @@ class Agent:
         summary_creator: Optional[MemoryCreator] = None,
         update_summaries: bool = False,
         prompt_budget: PromptBudget | None = None,
+        preprocess_fn: Callable[[str], str] | None = None,
     ) -> None:
         """
         Initializes the Agent.
@@ -134,6 +136,7 @@ class Agent:
             dedup_cache=dedup_cache,
             summary_creator=summary_creator,
             update_summaries=update_summaries,
+            preprocess_fn=preprocess_fn,
         )
         self.metrics = self.prototype_system.metrics
         self.prompt_budget = prompt_budget
@@ -211,9 +214,7 @@ class Agent:
     def _repr_html_(self) -> str:
         """HTML summary for notebooks."""
         stats = self.get_statistics()
-        rows = "".join(
-            f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in stats.items()
-        )
+        rows = "".join(f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in stats.items())
         return f"<h3>Agent</h3><table>{rows}</table>"
 
     # ------------------------------------------------------------------

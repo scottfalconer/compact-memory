@@ -3,10 +3,9 @@ from __future__ import annotations
 import functools
 import hashlib
 import contextlib
-from typing import List, Sequence
+from typing import List, Sequence, Callable
 
 import tiktoken
-from .importance_filter import dynamic_importance_filter
 
 # ---------------------------------------------------------------------------
 # Disable tqdm's multiprocessing lock.
@@ -62,6 +61,7 @@ def _load_model(model_name: str, device: str) -> SentenceTransformer:
     if SentenceTransformer is None:
         try:
             from sentence_transformers import SentenceTransformer as _ST
+
             SentenceTransformer = _ST
         except Exception as exc:  # pragma: no cover - optional dependency
             raise ImportError(
@@ -70,6 +70,7 @@ def _load_model(model_name: str, device: str) -> SentenceTransformer:
     if torch is None:
         try:
             import torch as _torch
+
             torch = _torch  # type: ignore
         except Exception:  # pragma: no cover - torch not installed
             torch = None  # type: ignore
@@ -133,40 +134,30 @@ def embed_text(
     model_name: str = _MODEL_NAME,
     device: str = _DEVICE,
     batch_size: int = _BATCH_SIZE,
+    preprocess_fn: Callable[[str], str] | None = None,
 ) -> np.ndarray:
     """Embed ``text`` or list of texts."""
 
     try:
-        tokenizer = tiktoken.get_encoding("gpt2")
+        tiktoken.get_encoding("gpt2")
     except Exception:  # pragma: no cover - fallback if tokenizer missing
-        tokenizer = None
-
-    def _too_long(t: str) -> bool:
-        if tokenizer is not None:
-            try:
-                return len(tokenizer.encode(t)) > 1000
-            except Exception:  # pragma: no cover - encoding failure
-                return len(t.split()) > 1000
-        return len(t.split()) > 1000
+        pass
 
     if isinstance(text, str):
         if text == "":
             model = _load_model(model_name, device)
             return np.zeros(model.get_sentence_embedding_dimension(), dtype=np.float32)
-        if _too_long(text):
-            text = dynamic_importance_filter(text)
+        if preprocess_fn is not None:
+            text = preprocess_fn(text)
         return _embed_cached(text, model_name, device, batch_size)
 
     texts = list(text)
     if not texts:
         model = _load_model(model_name, device)
         return np.zeros((0, model.get_sentence_embedding_dimension()), dtype=np.float32)
-    filtered = []
-    for t in texts:
-        if _too_long(t):
-            t = dynamic_importance_filter(t)
-        filtered.append(t)
-    vecs = [_embed_cached(t, model_name, device, batch_size) for t in filtered]
+    if preprocess_fn is not None:
+        texts = [preprocess_fn(t) for t in texts]
+    vecs = [_embed_cached(t, model_name, device, batch_size) for t in texts]
     return np.stack(vecs)
 
 

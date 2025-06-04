@@ -38,6 +38,11 @@ Below is a list of documents in this directory, along with a brief description o
     *   **[`SHARING_STRATEGIES.md`](./SHARING_STRATEGIES.md)**: (Assuming content based on title) Guidelines or methods for packaging and sharing custom-developed compression strategies.
         *   **Audience:** Developers and researchers who want to contribute or distribute their work.
 
+*   **Preprocessing & Cleanup**
+    *   **Content:** Compact Memory does not perform built-in line filtering. Use the `preprocess_fn` hook when constructing an `Agent` or strategy to clean or normalize text.
+        Example utilities include spaCy pipelines, regex removal, or custom LLM summarizers.
+    *   **Audience:** Developers needing fine-grained control over input text before compression.
+
 ## Suggested Reading Paths
 
 *   **For Users Wanting to Apply Compact Memory:**
