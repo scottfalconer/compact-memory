@@ -1,4 +1,4 @@
-from compact_memory.active_memory_manager import (
+from compact_memory.strategies.experimental import (
     ActiveMemoryManager,
     ConversationTurn,
 )

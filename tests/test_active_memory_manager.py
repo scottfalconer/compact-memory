@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from compact_memory.active_memory_manager import ActiveMemoryManager, ConversationTurn
+from compact_memory.strategies.experimental import ActiveMemoryManager, ConversationTurn
 
 
 def test_history_buffer_does_not_exceed_max_size():
@@ -104,7 +104,9 @@ def test_activation_level_decays_over_subsequent_turns():
 
 
 def test_relevance_boost_increases_activation_for_semantically_similar_turns():
-    mgr = ActiveMemoryManager(config_initial_activation=0.0, config_relevance_boost_factor=0.5)
+    mgr = ActiveMemoryManager(
+        config_initial_activation=0.0, config_relevance_boost_factor=0.5
+    )
     t1 = ConversationTurn("a", turn_embedding=[1.0, 0.0])
     t2 = ConversationTurn("b", turn_embedding=[0.0, 1.0])
     mgr.add_turn(t1)
@@ -116,7 +118,9 @@ def test_relevance_boost_increases_activation_for_semantically_similar_turns():
 
 
 def test_relevance_boost_scales_with_similarity_and_boost_factor():
-    mgr = ActiveMemoryManager(config_initial_activation=0.0, config_relevance_boost_factor=2.0)
+    mgr = ActiveMemoryManager(
+        config_initial_activation=0.0, config_relevance_boost_factor=2.0
+    )
     emb1 = np.array([1.0, 0.0])
     emb2 = np.array([1.0, 1.0]) / np.sqrt(2)
     t1 = ConversationTurn("a", turn_embedding=emb1.tolist())

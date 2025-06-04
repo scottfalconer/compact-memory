@@ -22,7 +22,7 @@ class Chunker(ABC):
     id: str
 
     @abstractmethod
-    def chunk(self, text: str) -> List[str]: ...
+    def chunk(self, text: str) -> List[str]: ...  # noqa: E704
 
     def config(self) -> Dict[str, int | str]:
         return {}
@@ -66,7 +66,7 @@ class SentenceWindowChunker(Chunker):
             if len(tokens) > self.max_tokens:
                 logging.warning("long sentence split")
                 for i in range(0, len(tokens), self.max_tokens):
-                    sub = tokens[i : i + self.max_tokens]
+                    sub = tokens[i : i + self.max_tokens]  # noqa: E203
                     if current:
                         chunks.append(current)
                         current = []
@@ -98,14 +98,9 @@ class FixedSizeChunker(Chunker):
         return {"id": self.id, "size": self.size}
 
     def chunk(self, text: str) -> List[str]:
-        return [text[i : i + self.size] for i in range(0, len(text), self.size)]
-
-
-class LLMSummarisingChunker(Chunker):
-    id = "llm_summary"
-
-    def chunk(self, text: str) -> List[str]:  # pragma: no cover - future work
-        raise NotImplementedError
+        return [
+            text[i : i + self.size] for i in range(0, len(text), self.size)
+        ]  # noqa: E203
 
 
 class AgenticChunker(Chunker):
@@ -134,7 +129,6 @@ class AgenticChunker(Chunker):
 
 register_chunker(SentenceWindowChunker.id, SentenceWindowChunker)
 register_chunker(FixedSizeChunker.id, FixedSizeChunker)
-register_chunker(LLMSummarisingChunker.id, LLMSummarisingChunker)
 register_chunker(AgenticChunker.id, AgenticChunker)
 
 __all__ = [
@@ -142,7 +136,6 @@ __all__ = [
     "SentenceWindowChunker",
     "FixedSizeChunker",
     "AgenticChunker",
-    "LLMSummarisingChunker",
     "register_chunker",
     "_CHUNKER_REGISTRY",
 ]

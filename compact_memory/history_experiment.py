@@ -6,7 +6,7 @@ from typing import List, Dict, Any
 
 import yaml
 
-from .active_memory_manager import ActiveMemoryManager, ConversationTurn
+from .strategies.experimental import ActiveMemoryManager, ConversationTurn
 from .embedding_pipeline import MockEncoder
 from .compression.strategies_abc import CompressionStrategy
 
@@ -26,7 +26,9 @@ def _load_dataset(path: Path) -> List[Dict[str, Any]]:
 
 
 # --------------------------------------------------------------
-def _evaluate_dialogue(sample: Dict[str, Any], params: Dict[str, Any], encoder: MockEncoder) -> bool:
+def _evaluate_dialogue(
+    sample: Dict[str, Any], params: Dict[str, Any], encoder: MockEncoder
+) -> bool:
     mgr = ActiveMemoryManager(**params)
     for turn in sample["turns"]:
         if isinstance(turn, dict):

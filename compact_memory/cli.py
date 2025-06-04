@@ -24,7 +24,7 @@ from .logging_utils import configure_logging
 from .agent import Agent
 from .vector_store import InMemoryVectorStore
 from . import local_llm
-from .active_memory_manager import ActiveMemoryManager
+from .strategies.experimental import ActiveMemoryManager
 from .registry import (
     _VALIDATION_METRIC_REGISTRY,
     get_validation_metric_class,

@@ -1,8 +1,13 @@
 from __future__ import annotations
 from typing import List, Union, Any
 
-from .compression import register_compression_strategy
-from .compression.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace
+from ...compression import register_compression_strategy
+from ...compression.strategies_abc import (
+    CompressionStrategy,
+    CompressedMemory,
+    CompressionTrace,
+)
+
 
 class FirstLastStrategy(CompressionStrategy):
     """Keep first and last parts of the text within the budget."""
@@ -15,7 +20,11 @@ class FirstLastStrategy(CompressionStrategy):
         llm_token_budget: int | None,
         **kwargs: Any,
     ) -> tuple[CompressedMemory, CompressionTrace]:
-        text = text_or_chunks if isinstance(text_or_chunks, str) else " ".join(text_or_chunks)
+        text = (
+            text_or_chunks
+            if isinstance(text_or_chunks, str)
+            else " ".join(text_or_chunks)
+        )
         if llm_token_budget is None or llm_token_budget <= 0:
             kept = text
             half = len(text)
@@ -27,7 +36,13 @@ class FirstLastStrategy(CompressionStrategy):
             strategy_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
             input_summary={"input_length": len(text)},
-            steps=[{"type": "first_last", "kept_first": len(kept[:half]), "kept_last": len(kept[half:])}],
+            steps=[
+                {
+                    "type": "first_last",
+                    "kept_first": len(kept[:half]),
+                    "kept_last": len(kept[half:]),
+                }
+            ],
             output_summary={"final_length": len(kept)},
             final_compressed_object_preview=kept[:50],
         )
