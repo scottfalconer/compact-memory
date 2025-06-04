@@ -11,13 +11,16 @@ from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
-from .chunker import Chunker, SentenceWindowChunker
-from .vector_store import VectorStore
-from .models import BeliefPrototype, RawMemory
-from .memory_creation import ExtractiveSummaryCreator, MemoryCreator
-from .prototype.canonical import render_five_w_template
-from .compression.strategies_abc import CompressedMemory, CompressionStrategy
-from .token_utils import truncate_text
+from compact_memory.chunker import Chunker, SentenceWindowChunker
+from compact_memory.vector_store import VectorStore
+from compact_memory.models import BeliefPrototype, RawMemory
+from compact_memory.memory_creation import ExtractiveSummaryCreator, MemoryCreator
+from contrib.prototype_utils.canonical import render_five_w_template
+from compact_memory.compression.strategies_abc import (
+    CompressedMemory,
+    CompressionStrategy,
+)
+from compact_memory.token_utils import truncate_text
 
 
 class _LRUSet:
@@ -129,7 +132,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
             )
             for c in chunks
         ]
-        from . import agent as _agent
+        from compact_memory import agent as _agent
 
         vecs = _agent.embed_text(canonical)
         if vecs.ndim == 1:
@@ -211,7 +214,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
     ) -> Dict[str, object]:
         """Return nearest prototypes and memories for ``text``."""
 
-        from . import agent as _agent
+        from compact_memory import agent as _agent
 
         vec = _agent.embed_text(text)
         if vec.ndim != 1:

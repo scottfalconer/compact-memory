@@ -1,4 +1,4 @@
-from compact_memory.prototype.canonical import render_five_w_template
+from contrib.prototype_utils.canonical import render_five_w_template
 
 
 def test_render_five_w_template():
