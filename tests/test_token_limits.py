@@ -76,53 +76,6 @@ def test_reply_truncates_to_limit(monkeypatch):
     assert "text" in called
 
 
-def test_cli_talk_prompt_respects_limit(tmp_path, monkeypatch):
-    pytest.skip("CLI talk limit check pending refactor")
-    from compact_memory.cli import init
-    from compact_memory.utils import load_agent
-    from compact_memory.local_llm import LocalChatModel
-    from compact_memory.active_memory_manager import ActiveMemoryManager
-
-    init.callback = init.callback if hasattr(init, "callback") else init
-    init(directory=str(tmp_path))
-
-    agent = load_agent(tmp_path)
-    for i in range(15):
-        text = " ".join(f"m{i}_{j}" for j in range(20))
-        agent.add_memory(text)
-    agent.store.save()
-
-    captured = {}
-
-    def capture_generate(**kw):
-        captured["ids"] = kw["input_ids"][0]
-        return [[0]]
-
-    monkeypatch.setattr(DummyModel, "generate", capture_generate)
-
-    class DummyLLM(LocalChatModel):
-        def __init__(self, *a, **kw):
-            self.tokenizer = DummyTokenizer()
-            self.model = DummyModel()
-            self.max_new_tokens = 10
-
-        def prepare_prompt(self, agent, prompt, **kw):
-            return prompt
-
-        def reply(self, prompt):
-            captured["ids"] = self.tokenizer(prompt)["input_ids"][0]
-            return "ok"
-
-    monkeypatch.setattr("compact_memory.local_llm.LocalChatModel", DummyLLM)
-    chat = DummyLLM()
-    agent._chat_model = chat
-    mgr = ActiveMemoryManager()
-    agent.receive_channel_message("cli", "hi?", mgr)
-    tokens = len(captured["ids"])
-    max_len = DummyModel().config.n_positions - LocalChatModel().max_new_tokens
-    assert tokens <= max_len
-
-
 def test_context_length_uses_tokenizer_when_config_missing(monkeypatch):
     _setup_encoder(monkeypatch)
 

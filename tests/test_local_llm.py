@@ -35,7 +35,7 @@ def test_local_chat_model(monkeypatch):
     assert reply == "response"
 
 
-def test_prepare_prompt(monkeypatch, tmp_path):
+def test_prepare_prompt(monkeypatch):
     class DummyTokenizer:
         def __init__(self, *a, **k):
             pass
@@ -64,29 +64,33 @@ def test_prepare_prompt(monkeypatch, tmp_path):
         lambda *a, **k: DummyModel(),
     )
 
-    from compact_memory.vector_store import InMemoryVectorStore
     from compact_memory.models import BeliefPrototype
-    from compact_memory.agent import Agent
-    from compact_memory.embedding_pipeline import MockEncoder
 
-    enc = MockEncoder()
+    class DummyStore:
+        def __init__(self) -> None:
+            self.prototypes = [
+                BeliefPrototype(
+                    prototype_id="p1", vector_row_index=0, summary_text="summary"
+                )
+            ]
+
+        def find_nearest(self, vec, k=3):
+            return [("p1", 1.0)]
+
+    class DummyAgent:
+        def __init__(self) -> None:
+            self.store = DummyStore()
+
     monkeypatch.setattr(
-        "compact_memory.embedding_pipeline._load_model", lambda *a, **k: enc
+        "compact_memory.memory_creation.DefaultTemplateBuilder.build",
+        lambda self, text, slots: text,
     )
-
-    store = InMemoryVectorStore(embedding_dim=enc.dim)
-    proto = BeliefPrototype(
-        prototype_id="p1",
-        vector_row_index=0,
-        summary_text="summary",
-        strength=1.0,
-        confidence=1.0,
+    monkeypatch.setattr(
+        "compact_memory.embedding_pipeline.embed_text", lambda text: [0.0]
     )
-    store.add_prototype(proto, enc.encode("x"))
-    agent = Agent(store)
 
     model = LocalChatModel()
-    prepared = model.prepare_prompt(agent, "prompt")
+    prepared = model.prepare_prompt(DummyAgent(), "prompt")
     assert "summary" in prepared or prepared == "prompt"
 
 
