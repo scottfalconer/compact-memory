@@ -18,7 +18,7 @@ from .token_utils import truncate_text, token_count
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 from .compression.strategies_abc import CompressedMemory, CompressionTrace
 from .compression import CompressionStrategy, NoCompression
-from .prototype_system_strategy import PrototypeSystemStrategy
+from contrib.strategies.prototype_system import PrototypeSystemStrategy
 
 
 class VectorIndexCorrupt(RuntimeError):
