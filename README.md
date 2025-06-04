@@ -103,14 +103,20 @@ except ImportError:
 
 # Compress the text
 # The strategy's compress method returns a CompressedMemory object and a CompressionTrace object
+
+# Optionally, define or import a chunking function:
+# from examples.chunking import newline_splitter # Assuming examples.chunking is in python path or accessible
+# my_chunk_fn = newline_splitter
+
 compressed_memory, trace = strategy.compress(
-    text_to_compress,
+    text=text_to_compress,                 # Input is now explicitly 'text'
     llm_token_budget=token_budget,
-    tokenizer=tokenizer # Pass tokenizer if your strategy or logging needs it
+    # chunk_fn=my_chunk_fn,                # Optionally pass your chunk_fn to split 'text' before compression
+    tokenizer=tokenizer                    # Other kwargs like tokenizer remain
 )
 
 # Use the compressed text
-print(f"Original text length (approx tokens): {len(tokenizer(text_to_compress))}")
+print(f"Original text length (approx tokens): {len(tokenizer(text_to_compress))}") # Note: for accurate token count, use the tokenizer the strategy will use.
 print(f"Compressed text: {compressed_memory.text}")
 print(f"Compressed text length (approx tokens): {len(tokenizer(compressed_memory.text))}")
 print(f"Strategy used: {trace.strategy_name}")
@@ -235,6 +241,7 @@ For contributors or those looking to build custom solutions on top of Compact Me
 - Global configuration options settable via CLI, environment variables, or config files.
 - Lightweight JSON/NPY backend for prototypes and memories with optional Chroma vector store for scale (`pip install "compact-memory[chroma]"`).
 - Pluggable memory compression strategies.
+- Flexible text chunking: Compression strategies accept a `chunk_fn` enabling user-defined text splitting, with examples provided for common patterns and external library integration (e.g., LangChain).
 - Pluggable embedding backends: random (default), OpenAI, or local sentence transformers.
 - Chunks rendered using a canonical **WHO/WHAT/WHEN/WHERE/WHY** template before embedding.
 - Runs smoothly in Colab; a notebook-based GUI is planned.
@@ -435,6 +442,8 @@ Compress text using a specific strategy without necessarily interacting with an 
 ```bash
 compact-memory compress "This is a very long piece of text that needs to be shorter." --strategy first_last --budget 50
 compact-memory compress path/to/another_document.txt -s prototype -b 200 -o compressed_summary.txt
+# Example using a custom chunking script (assumes examples/chunking.py and newline_splitter exist)
+compact-memory compress "path/to/your_document.txt" --strategy first_last --budget 100 --chunk-script "examples/chunking.py:newline_splitter"
 ```
 
 **Developer Tools & Evaluation:**

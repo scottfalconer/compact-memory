@@ -22,19 +22,23 @@ class CompressionStrategy(ABC):
     @abstractmethod
     def compress(
         self,
-        text_or_chunks: Union[str, List[str]],
+        text: str, # Changed
         llm_token_budget: int,
+        chunk_fn: Optional[ChunkFn] = None, # Added
         **kwargs: Any,
     ) -> Tuple[CompressedMemory, CompressionTrace]:
         """
-        Compresses the input text or chunks to meet the token budget.
+        Compresses the input text to meet the token budget.
 
         Args:
-            text_or_chunks: Either a single string of text or a list of pre-chunked strings.
-                            Your strategy needs to handle both cases or define its expected input.
+            text: str: The raw input text to be compressed.
             llm_token_budget: The target maximum number of tokens (or a proxy like characters,
                             depending on your strategy's design) that the compressed output
                             should ideally have.
+            chunk_fn: Optional[ChunkFn]: An optional callable (`Callable[[str], List[str]]`).
+                      If provided, the strategy should use this function to split the `text`
+                      into a list of chunks. If `None`, the strategy should typically
+                      treat the entire `text` as a single chunk (e.g., by wrapping it as `[text]`).
             **kwargs: A dictionary for additional keyword arguments. This commonly includes:
                 - `tokenizer`: An optional tokenizer function (e.g., from `tiktoken` or
                   `transformers`) that can be used for accurate token counting or
@@ -67,10 +71,24 @@ class CompressionStrategy(ABC):
 
 Your primary task is to implement the `compress` method. Here's what to consider:
 
-1.  **Input (`text_or_chunks`):**
-    *   Decide if your strategy works best with a single block of text or pre-chunked text.
-    *   If you expect chunks, you might need to join them or process them individually.
-    *   If you receive a single string, you might need to split it yourself using a ``ChunkFn`` before compression.
+1.  **Input (`text` and `chunk_fn`):**
+    *   The primary input is `text: str`.
+    *   An optional `chunk_fn: Callable[[str], List[str]]` is also provided.
+    *   If `chunk_fn` is given, your strategy should call it to split the input `text` into a list of strings (chunks):
+        `chunks = chunk_fn(text)`.
+    *   If `chunk_fn` is `None`, the `text` should typically be treated as a single chunk:
+        `chunks = [text]`.
+    *   The rest of your strategy's logic should then operate on this `chunks` list (which will contain one or more strings).
+        ```python
+        # Inside your strategy's compress method:
+        if chunk_fn:
+            chunks = chunk_fn(text)
+        else:
+            chunks = [text] # Treat the whole text as a single chunk
+
+        # Now process the 'chunks' list
+        processed_text = self._process_chunks(chunks) # Example helper
+        ```
 
 2.  **Token Budget (`llm_token_budget`):**
     *   This is a crucial constraint. Your strategy must try to produce output that, when tokenized, is close to this budget.
@@ -180,7 +198,13 @@ Compact Memory provides utilities that can be helpful:
     *   `compact_memory.token_utils.get_tokenizer(tokenizer_name_or_path)`: Helper to load `tiktoken` or `transformers` tokenizers.
     *   `compact_memory.token_utils.token_count(tokenizer, text)`: Counts tokens in a text using the provided tokenizer.
 *   **Chunking:**
-    *   Strategies can accept a ``ChunkFn`` to pre-split text. Example splitter functions are provided in ``examples/chunking.py``.
+    *   Strategies now receive an optional ``chunk_fn`` in their `compress` method. This function should conform to the `ChunkFn = Callable[[str], List[str]]` interface.
+    *   `examples/chunking.py` contains various example `ChunkFn` implementations that can be used directly or adapted:
+        *   `newline_splitter`: Splits text by newline characters.
+        *   `tiktoken_fixed_size_splitter`: Splits text into fixed-size chunks based on `tiktoken` token counts.
+        *   `langchain_recursive_splitter`: Wraps LangChain's `RecursiveCharacterTextSplitter`.
+        *   `agentic_split` and `simple_sentences`: More specialized heuristic-based sentence splitters.
+    *   Developers can also provide their own custom chunking functions adhering to the `ChunkFn` type.
 *   **LLM Helpers (Optional):**
     *   If your strategy needs to call an LLM, Compact Memory keeps this outside the core package. Check `examples/llm_helpers.py` for lightweight `run_llm()` wrappers that work with small local models or OpenAI.
     *   You can use these helpers directly or swap in your preferred framework (LangChain, AutoGen, etc.). The helpers simply take a prompt and return the generated text.

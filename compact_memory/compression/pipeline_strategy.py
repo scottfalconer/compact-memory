@@ -3,7 +3,8 @@ from __future__ import annotations
 """Pipeline compression strategy for chaining multiple strategies."""
 
 from dataclasses import dataclass, field
-from typing import List, Union, Any
+from typing import List, Union, Any, Optional # Added Optional
+from compact_memory.chunking import ChunkFn # Added ChunkFn
 
 from .strategies_abc import (
     CompressionStrategy,
@@ -38,26 +39,37 @@ class PipelineCompressionStrategy(CompressionStrategy):
 
     def compress(
         self,
-        text_or_chunks: Union[str, List[str]],
+        text: str, # Changed
         llm_token_budget: int,
+        chunk_fn: Optional[ChunkFn] = None, # Added
         **kwargs: Any,
     ) -> tuple[CompressedMemory, CompressionTrace]:
-        current = text_or_chunks
+        current_text = text # Initial input text
         step_traces = []
+
+        # The original text_or_chunks could be List[str].
+        # The new 'text' is str. If the first strategy in a pre-existing pipeline
+        # absolutely needs List[str] and not str + chunk_fn, this could be an issue.
+        # However, all strategies are being updated to text: str, chunk_fn: Optional[ChunkFn].
+        # So, this should be fine.
+
         for strat in self.strategies:
-            compressed, trace = strat.compress(current, llm_token_budget, **kwargs)
+            # Each strategy receives the current_text (output of previous, or original text for first)
+            # and the original chunk_fn. Each strategy is responsible for deciding how to use chunk_fn.
+            compressed, trace = strat.compress(current_text, llm_token_budget, chunk_fn=chunk_fn, **kwargs)
             step_traces.append({"strategy": strat.id, "trace": trace})
-            current = compressed.text
-        final = CompressedMemory(text=current)
+            current_text = compressed.text # Output text of one strategy is input to next
+
+        final_compressed_memory = CompressedMemory(text=current_text)
         pipeline_trace = CompressionTrace(
             strategy_name=self.id,
-            strategy_params={},
-            input_summary={"num_steps": len(self.strategies)},
+            strategy_params={"num_strategies": len(self.strategies)}, # Added info
+            input_summary={"initial_text_char_len": len(text)}, # Trace initial text length
             steps=step_traces,
-            output_summary={"output_length": len(final.text)},
-            final_compressed_object_preview=final.text[:50],
+            output_summary={"final_text_char_len": len(final_compressed_memory.text)}, # Use actual final text length
+            final_compressed_object_preview=final_compressed_memory.text[:50],
         )
-        return final, pipeline_trace
+        return final_compressed_memory, pipeline_trace
 
 
 __all__ = ["PipelineStrategyConfig", "PipelineCompressionStrategy"]

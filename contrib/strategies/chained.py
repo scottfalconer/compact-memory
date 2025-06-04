@@ -2,7 +2,8 @@ from __future__ import annotations
 
 """Experimental strategy chaining built-in steps."""
 
-from typing import List, Union, Any
+from typing import List, Union, Any, Optional # Added Optional
+from compact_memory.chunking import ChunkFn # Added ChunkFn
 
 from compact_memory.compression import NoCompression, ImportanceCompression
 from compact_memory.compression.pipeline_strategy import PipelineCompressionStrategy
@@ -25,11 +26,12 @@ class ChainedStrategy(CompressionStrategy):
 
     def compress(
         self,
-        text_or_chunks: Union[str, List[str]],
+        text: str, # Changed
         llm_token_budget: int,
+        chunk_fn: Optional[ChunkFn] = None, # Added
         **kwargs: Any,
     ) -> tuple[CompressedMemory, CompressionTrace]:
-        return self.pipeline.compress(text_or_chunks, llm_token_budget, **kwargs)
+        return self.pipeline.compress(text, llm_token_budget, chunk_fn=chunk_fn, **kwargs)
 
     def save_learnable_components(
         self, path: str

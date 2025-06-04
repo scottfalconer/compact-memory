@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import List, Optional, Any, Dict, Union, Tuple
+from compact_memory.chunking import ChunkFn # Added import
 
 import numpy as np
 from compact_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory
@@ -83,8 +84,9 @@ class ActiveMemoryStrategy(CompressionStrategy):
 
     def compress(
         self,
-        text_or_chunks: Union[str, List[str]],
+        text: str, # Changed from text_or_chunks
         llm_token_budget: int,
+        chunk_fn: Optional[ChunkFn] = None, # Added chunk_fn
         *,
         tokenizer: Any,
         context: Optional[Dict[str, Any]] = None,
@@ -92,9 +94,11 @@ class ActiveMemoryStrategy(CompressionStrategy):
     ) -> Tuple[CompressedMemory, CompressionTrace]:
         trace_steps = []
 
-        current_query_text = text_or_chunks
-        if isinstance(current_query_text, list):
-            current_query_text = " ".join(current_query_text)
+        if chunk_fn:
+            chunks = chunk_fn(text)
+            current_query_text = " ".join(chunks) # Join chunks for the query
+        else:
+            current_query_text = text
         
         trace_steps.append(f"Input query for compression context: '{current_query_text}'")
         trace_steps.append(f"History length before selection: {len(self.manager.history)}")

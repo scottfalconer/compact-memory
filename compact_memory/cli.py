@@ -49,6 +49,8 @@ from .compression import (
 )
 from .plugin_loader import load_plugins
 from .cli_plugins import load_cli_plugins
+from .chunking import ChunkFn # Added import
+import importlib.util # Added import
 from .package_utils import (
     load_manifest,
     validate_manifest,
@@ -709,6 +711,11 @@ def compress(
         "--verbose-stats",
         help="Show detailed token counts and processing time per item.",
     ),
+    chunk_script: Optional[str] = typer.Option(
+        None,
+        "--chunk-script",
+        help="Path to a Python script and function name for custom chunking, formatted as 'path/to/script.py:function_name'. The function should take a string and return a list of strings.",
+    ),
 ) -> None:
     final_strategy_id = (
         strategy_arg if strategy_arg is not None else ctx.obj.get("default_strategy_id")
@@ -782,10 +789,65 @@ def compress(
             output_trace,
             verbose_stats,
             tokenizer,
+            chunk_script, # Pass chunk_script
         )
 
 
 # --- Helper functions for compress (formerly summarize/compress_text) ---
+
+def _load_chunk_fn(chunk_script_str: Optional[str]) -> Optional[ChunkFn]:
+    if not chunk_script_str:
+        return None
+
+    if ":" not in chunk_script_str:
+        raise typer.BadParameter(
+            "Invalid format for --chunk-script. Expected 'path/to/script.py:function_name'."
+        )
+
+    script_path_str, fn_name = chunk_script_str.rsplit(":", 1)
+    script_path = Path(script_path_str)
+
+    if not script_path.is_file():
+        raise typer.BadParameter(f"Script not found at {script_path}")
+
+    # Add script's directory to sys.path to allow relative imports within the script
+    module_dir = str(script_path.parent.resolve())
+    # Store whether we added the path to clean it up later
+    added_to_sys_path = False
+    if module_dir not in sys.path:
+        sys.path.insert(0, module_dir)
+        added_to_sys_path = True
+
+    spec = importlib.util.spec_from_file_location(script_path.stem, script_path)
+    if not spec or not spec.loader:
+        # Clean up sys.path if we added it, before raising
+        if added_to_sys_path and module_dir == sys.path[0]:
+            sys.path.pop(0)
+        raise typer.BadParameter(f"Could not load module from {script_path}")
+
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except Exception as e:
+        # Clean up sys.path if we added it, before raising
+        if added_to_sys_path and module_dir == sys.path[0]:
+            sys.path.pop(0)
+        raise typer.BadParameter(f"Error executing script {script_path}: {e}")
+
+    # Clean up sys.path if we added it
+    if added_to_sys_path and module_dir == sys.path[0]:
+         sys.path.pop(0)
+
+    if not hasattr(module, fn_name):
+        raise typer.BadParameter(f"Function '{fn_name}' not found in {script_path}")
+
+    chunk_fn_loaded = getattr(module, fn_name) # Renamed to avoid conflict with ChunkFn type
+    if not callable(chunk_fn_loaded):
+        raise typer.BadParameter(f"'{fn_name}' in {script_path} is not a callable function.")
+
+    return chunk_fn_loaded
+
+
 def _process_string_compression(
     text_content: str,
     strategy_id: str,
@@ -794,7 +856,16 @@ def _process_string_compression(
     trace_file: Optional[Path],
     verbose_stats: bool,
     tokenizer: Any,
+    chunk_script: Optional[str], # Added chunk_script parameter
 ) -> None:
+    loaded_chunk_fn: Optional[ChunkFn] = None
+    if chunk_script: # Only load if provided
+        try:
+            loaded_chunk_fn = _load_chunk_fn(chunk_script)
+        except typer.BadParameter as e:
+            typer.secho(str(e), fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
+
     try:
         strat_cls = get_compression_strategy(strategy_id)
         info = get_strategy_metadata(strategy_id)
@@ -812,7 +883,8 @@ def _process_string_compression(
         raise typer.Exit(code=1)
     strat = strat_cls()
     start = time.time()
-    result = strat.compress(text_content, budget, tokenizer=tokenizer)
+    # Pass loaded_chunk_fn to compress method
+    result = strat.compress(text_content, budget, tokenizer=tokenizer, chunk_fn=loaded_chunk_fn)
     if isinstance(result, tuple):
         compressed, trace = result
     else:
@@ -857,6 +929,7 @@ def _process_file_compression(
     verbose_stats: bool,
     tokenizer: Any,
     trace_file: Optional[Path],
+    chunk_script: Optional[str], # Added chunk_script
 ) -> None:
     if not file_path.exists() or not file_path.is_file():
         typer.secho(f"File not found: {file_path}", err=True, fg=typer.colors.RED)
@@ -874,6 +947,7 @@ def _process_file_compression(
         trace_file,
         verbose_stats,
         tokenizer,
+        chunk_script, # Pass chunk_script
     )
 
 
@@ -886,7 +960,8 @@ def _process_directory_compression(
     pattern: str,
     verbose_stats: bool,
     tokenizer: Any,
-    trace_file: Optional[Path],
+    trace_file: Optional[Path], # This was already here
+    chunk_script: Optional[str], # Added chunk_script
 ) -> None:
     if not dir_path.exists() or not dir_path.is_dir():
         typer.secho(f"Directory not found: {dir_path}", err=True, fg=typer.colors.RED)
@@ -921,7 +996,7 @@ def _process_directory_compression(
                 f"{input_file.stem}_compressed{input_file.suffix}"
             )
         _process_file_compression(
-            input_file, strategy_id, budget, out_path, verbose_stats, tokenizer, None
+            input_file, strategy_id, budget, out_path, verbose_stats, tokenizer, None, chunk_script # Pass chunk_script
         )
         count += 1
     if verbose_stats:

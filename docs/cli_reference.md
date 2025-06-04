@@ -74,6 +74,7 @@ Compresses text content from a string, file, or directory using a specified stra
 *   `--output-trace PATH`: File path to write the CompressionTrace JSON object. (Not applicable for directory input).
 *   `--recursive / -r`: Process text files in subdirectories recursively when `INPUT_SOURCE` is a directory.
 *   `--pattern / -p TEXT`: File glob pattern to match files when `INPUT_SOURCE` is a directory (default: "*.txt"; e.g., `'*.md'`, `'**/*.txt'`).
+*   `--chunk-script TEXT`: Path to a Python script and function name for custom chunking, formatted as 'path/to/script.py:function_name'. The function should take a string and return a list of strings.
 *   `--verbose-stats`: Show detailed token counts and processing time per item.
 
 

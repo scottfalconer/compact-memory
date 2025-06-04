@@ -72,9 +72,7 @@ They are stored in JSON and referenced by ID in the NPY vector arrays.
 ## Ingestion flow
 <!-- SUGGESTION: A diagram illustrating the ingestion flow (Chunking -> Embedding -> Prototype Search -> Updating) would be beneficial here. -->
 
-1. **Chunking (Optional)** – text may be split into smaller pieces using a
-   user-supplied ``ChunkFn``. If no function is provided the entire text is
-   treated as one chunk.
+1. **Chunking (Optional)** – Text can be split into smaller pieces. Compression strategies now accept a `chunk_fn: Callable[[str], List[str]]` argument. If provided, the strategy uses this function to chunk the input text. If not, the text is typically treated as a single unit. Users can supply their own functions or use examples from `examples/chunking.py`.
 2. **Embedding** – each chunk is converted into a normalised vector via
    `embed_text`.
 3. **Prototype search** – the store finds the nearest prototype by

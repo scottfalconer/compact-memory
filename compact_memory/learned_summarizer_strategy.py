@@ -2,7 +2,8 @@ from __future__ import annotations
 
 """Example CompressionStrategy using a pretrained summarization model."""
 
-from typing import Any, Dict, List, Union, Tuple
+from typing import Any, Dict, List, Union, Tuple, Optional # Added Optional
+from compact_memory.chunking import ChunkFn # Added ChunkFn
 from transformers import pipeline
 
 from .compression.strategies_abc import CompressedMemory, CompressionStrategy, CompressionTrace
@@ -19,23 +20,31 @@ class LearnedSummarizerStrategy(CompressionStrategy):
 
     def compress(
         self,
-        text_or_chunks: Union[str, List[str]],
+        text: str, # Changed
         llm_token_budget: int,
+        chunk_fn: Optional[ChunkFn] = None, # Added
         **kwargs: Any,
     ) -> Tuple[CompressedMemory, CompressionTrace]:
-        if isinstance(text_or_chunks, list):
-            text = " ".join(text_or_chunks)
+        if chunk_fn:
+            chunks = chunk_fn(text)
         else:
-            text = str(text_or_chunks)
-        result = self.summarizer(text, max_length=llm_token_budget, min_length=1, do_sample=False)
+            chunks = [text]
+
+        processed_text = " ".join(chunks)
+
+        # Note: llm_token_budget for summarizer's max_length might mean token count,
+        # not char count as previously implied by input_summary's "chars".
+        # This strategy should ideally use a tokenizer if budget is in tokens.
+        # For now, passing it as max_length.
+        result = self.summarizer(processed_text, max_length=llm_token_budget, min_length=1, do_sample=False)
         summary = result[0]["summary_text"]
         compressed = CompressedMemory(text=summary)
         trace = CompressionTrace(
             strategy_name=self.id,
-            strategy_params={"model_name": self.model_name, "budget": llm_token_budget},
-            input_summary={"chars": len(text)},
+            strategy_params={"model_name": self.model_name, "max_length_budget": llm_token_budget, "chunked_input": chunk_fn is not None},
+            input_summary={"chars": len(processed_text), "num_chunks": len(chunks)},
             output_summary={"chars": len(summary)},
-            processing_ms=None,
+            processing_ms=None, # TODO: Consider adding timing for the summarization call
             final_compressed_object_preview=summary[:50],
         )
         return compressed, trace

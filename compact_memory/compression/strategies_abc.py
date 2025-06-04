@@ -5,6 +5,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Union, Any, Optional, Tuple
+from compact_memory.chunking import ChunkFn # Added import
 
 from .trace import CompressionTrace
 
@@ -56,22 +57,26 @@ class CompressionStrategy(ABC):
     @abstractmethod
     def compress(
         self,
-        text_or_chunks: Union[str, List[str]],
+        text: str, # Changed from text_or_chunks
         llm_token_budget: int,
+        chunk_fn: Optional[ChunkFn] = None, # Added chunk_fn
         **kwargs: Any,
     ) -> Tuple[CompressedMemory, CompressionTrace]:
         """
-        Compresses the input text or list of chunks to meet the LLM token budget.
+        Compresses the input text to meet the LLM token budget.
 
         This method must be implemented by concrete strategy subclasses.
+        If `chunk_fn` is provided, it's used to split `text` into chunks before compression.
+        Otherwise, `text` is treated as a single chunk.
 
         Args:
-            text_or_chunks: The input text to be compressed. This can be a single
-                            string or a list of strings (e.g., pre-chunked text).
+            text: The input text to be compressed.
             llm_token_budget: The target maximum number of tokens (or a similar unit
                               like characters, depending on the strategy's internal logic)
                               that the compressed output should ideally have. The strategy
                               should strive to keep the output within this budget.
+            chunk_fn: Optional function to split the text into chunks.
+                      If None, the text is processed as a single unit.
             **kwargs: Additional keyword arguments that specific strategies might require
                       or that the calling framework might provide. Common examples include:
                       - `tokenizer`: A tokenizer instance (e.g., from Hugging Face) that

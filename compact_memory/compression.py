@@ -2,7 +2,8 @@ from __future__ import annotations
 
 """Compression strategy utilities for conversation history."""
 
-from typing import List, Optional, Dict, Type, Any, Optional as Opt
+from typing import List, Dict, Type, Any, Optional
+from compact_memory.chunking import ChunkFn # Added import
 
 from .token_utils import truncate_text
 from .compression.strategies_abc import (
@@ -69,25 +70,30 @@ class NoCompression(CompressionStrategy):
 
     def compress(
         self,
-        text_or_chunks: List[str] | str,
-        llm_token_budget: int | None,
+        text: str, # Changed from text_or_chunks
+        llm_token_budget: int, # Made non-optional
+        chunk_fn: Optional[ChunkFn] = None, # Added chunk_fn
         *,
         tokenizer: Any = None,
         **kwargs: Any,
     ) -> tuple[CompressedMemory, CompressionTrace]:
         tokenizer = tokenizer or _DEFAULT_TOKENIZER or (lambda t, **k: t.split())
-        if isinstance(text_or_chunks, list):
-            text = "\n".join(text_or_chunks)
+
+        if chunk_fn:
+            chunks = chunk_fn(text)
         else:
-            text = text_or_chunks
-        if llm_token_budget is not None:
-            text = truncate_text(tokenizer, text, llm_token_budget)
-        compressed = CompressedMemory(text=text)
+            chunks = [text]
+
+        processed_text = "\n".join(chunks)
+
+        if llm_token_budget is not None: # Keeping this check as truncate_text might still want Optional
+            processed_text = truncate_text(tokenizer, processed_text, llm_token_budget)
+        compressed = CompressedMemory(text=processed_text)
         trace = CompressionTrace(
             strategy_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
-            input_summary={"input_length": len(text)},
-            output_summary={"output_length": len(text)},
+            input_summary={"input_length": len(processed_text)}, # Use processed_text
+            output_summary={"output_length": len(processed_text)}, # Use processed_text
         )
         return compressed, trace
 
@@ -99,8 +105,9 @@ class ImportanceCompression(CompressionStrategy):
 
     def compress(
         self,
-        text_or_chunks: List[str] | str,
-        llm_token_budget: int | None,
+        text: str, # Changed from text_or_chunks
+        llm_token_budget: int, # Made non-optional
+        chunk_fn: Optional[ChunkFn] = None, # Added chunk_fn
         *,
         tokenizer: Any = None,
         **kwargs: Any,
@@ -108,18 +115,22 @@ class ImportanceCompression(CompressionStrategy):
         from .importance_filter import dynamic_importance_filter
 
         tokenizer = tokenizer or _DEFAULT_TOKENIZER or (lambda t, **k: t.split())
-        if isinstance(text_or_chunks, list):
-            text = dynamic_importance_filter("\n".join(text_or_chunks))
+
+        if chunk_fn:
+            chunks = chunk_fn(text)
         else:
-            text = dynamic_importance_filter(text_or_chunks)
-        if llm_token_budget is not None:
-            text = truncate_text(tokenizer, text, llm_token_budget)
-        compressed = CompressedMemory(text=text)
+            chunks = [text]
+
+        processed_text = dynamic_importance_filter("\n".join(chunks))
+
+        if llm_token_budget is not None: # Keeping this check
+            processed_text = truncate_text(tokenizer, processed_text, llm_token_budget)
+        compressed = CompressedMemory(text=processed_text)
         trace = CompressionTrace(
             strategy_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
-            input_summary={"input_length": len(text)},
-            output_summary={"output_length": len(text)},
+            input_summary={"input_length": len(processed_text)}, # Use processed_text
+            output_summary={"output_length": len(processed_text)}, # Use processed_text
         )
         return compressed, trace
 
