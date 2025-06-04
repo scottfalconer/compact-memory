@@ -281,6 +281,9 @@ def test_compress_output_trace(tmp_path: Path):
     assert result.exit_code == 0
     data = json.loads(trace_path.read_text())
     assert data["strategy_name"] == "none"
+    for key in ["strategy_params", "input_summary", "output_summary", "steps"]:
+        assert key in data
+    assert data["output_summary"]["output_length"] == len("hi there")
 
 
 def test_compress_output_trace_details(tmp_path: Path):
