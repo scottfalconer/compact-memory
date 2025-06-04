@@ -43,19 +43,25 @@ For more detailed installation options, see the [Installation](#installation) se
 The `compact-memory` CLI provides a straightforward way to apply compression strategies. For example, to compress a text file using the `first_last` strategy with a token budget of 100:
 
 ```bash
-compact-memory compress "path/to/your_document.txt" --strategy first_last --budget 100
+compact-memory compress --file "path/to/your_document.txt" --strategy first_last --budget 100
 ```
 
 Or, to compress a string directly:
 
 ```bash
-compact-memory compress "This is a very long string that needs to be much shorter to fit into my LLM's context window." --strategy truncate --budget 20
+compact-memory compress --text "This is a very long string that needs to be much shorter to fit into my LLM's context window." --strategy truncate --budget 20
+```
+
+You can also pipe input via standard input:
+
+```bash
+cat notes.txt | compact-memory compress --text - --strategy truncate --budget 20
 ```
 
 The output will be the compressed text printed to the console. You can save it to a file using the `-o` option:
 
 ```bash
-compact-memory compress "path/to/your_document.txt" -s first_last -b 100 -o "path/to/compressed_output.txt"
+compact-memory compress --file "path/to/your_document.txt" -s first_last -b 100 -o "path/to/compressed_output.txt"
 ```
 
 ### Using Compressed Output in an LLM Prompt
@@ -188,7 +194,7 @@ Shared strategies can be distributed as standard Python packages (e.g., via PyPI
 
 *   **Using a Shared Strategy:** Once installed and discovered, you can use a shared strategy like any built-in strategy by specifying its `strategy_id` in the CLI or Python API:
     ```bash
-    compact-memory compress "my text" --strategy community_strategy_id --budget 100
+    compact-memory compress --text "my text" --strategy community_strategy_id --budget 100
     ```
     ```python
     from compact_memory.compression import get_compression_strategy
@@ -262,7 +268,7 @@ To use a specific strategy, you can set it as a global default or specify it per
 compact-memory config set default_strategy_id prototype
 
 # Use a specific strategy for a compress command
-compact-memory compress "My text..." --strategy first_last --budget 100
+compact-memory compress --text "My text..." --strategy first_last --budget 100
 ```
 
 Plugins can add more strategies. For example, the `rationale_episode` strategy lives in the optional
@@ -290,7 +296,7 @@ register_compression_strategy("chained", ChainedStrategy)
 Once registered, these strategies behave like any other:
 
 ```bash
-compact-memory compress text.txt --strategy chained --budget 200
+compact-memory compress --file text.txt --strategy chained --budget 200
 ```
 
 Contrib strategies are experimental and may change without notice.
@@ -436,8 +442,8 @@ compact-memory query "Summarize recent findings on AI ethics" --model-id openai/
 **5. Compress Text (Standalone Utility):**
 Compress text using a specific strategy without necessarily interacting with an agent's stored memory. This is useful for quick text compression tasks.
 ```bash
-compact-memory compress "This is a very long piece of text that needs to be shorter." --strategy first_last --budget 50
-compact-memory compress path/to/another_document.txt -s prototype -b 200 -o compressed_summary.txt
+compact-memory compress --text "This is a very long piece of text that needs to be shorter." --strategy first_last --budget 50
+compact-memory compress --file path/to/another_document.txt -s prototype -b 200 -o compressed_summary.txt
 ```
 
 **Developer Tools & Evaluation:**

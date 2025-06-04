@@ -651,13 +651,28 @@ def query(
 
 @app.command(
     "compress",
-    help='Compress text using a specified strategy. Compresses text content from a string, file, or directory using a specified strategy and budget.\n\nUsage Examples:\n  compact-memory compress "Some very long text..." --strategy first_last --budget 100\n  compact-memory compress path/to/document.txt -s prototype -b 200 -o summary.txt\n  compact-memory compress input_dir/ -s custom_package_strat -b 500 -o output_dir/ --recursive -p "*.md"',
+    help='Compress text using a specified strategy. Compresses text from a string, file, or directory.\n\nUsage Examples:\n  compact-memory compress --text "Some very long text..." --strategy first_last --budget 100\n  compact-memory compress --file path/to/document.txt -s prototype -b 200 -o summary.txt\n  compact-memory compress --dir input_dir/ -s custom_package_strat -b 500 --output-dir output_dir/ --recursive -p "*.md"',
 )
 def compress(
     ctx: typer.Context,
-    input_source: str = typer.Argument(
-        ...,
-        help="Input text directly, or a path to a text file or directory of text files to compress.",
+    text: Optional[str] = typer.Option(
+        None,
+        "--text",
+        help="Raw text to compress or '-' to read from stdin",
+    ),
+    file: Optional[Path] = typer.Option(
+        None,
+        "--file",
+        exists=True,
+        dir_okay=False,
+        help="Path to a single text file",
+    ),
+    dir: Optional[Path] = typer.Option(
+        None,
+        "--dir",
+        exists=True,
+        file_okay=False,
+        help="Path to a directory of input files",
     ),
     *,
     strategy_arg: Optional[str] = typer.Option(
@@ -666,12 +681,18 @@ def compress(
         "-s",
         help="Compression strategy ID to use. Overrides the global default strategy.",
     ),
-    output_path: Optional[Path] = typer.Option(
+    output_file: Optional[Path] = typer.Option(
         None,
         "-o",
         "--output",
         resolve_path=True,
-        help="File path to write compressed output. For directory input, this is the root output directory. If unspecified, prints to console.",
+        help="File path to write compressed output. If unspecified, prints to console.",
+    ),
+    output_dir: Optional[Path] = typer.Option(
+        None,
+        "--output-dir",
+        resolve_path=True,
+        help="Directory to write compressed files when --dir is used.",
     ),
     output_trace: Optional[Path] = typer.Option(
         None,
@@ -683,13 +704,13 @@ def compress(
         False,
         "-r",
         "--recursive",
-        help="Process text files in subdirectories recursively when 'input_source' is a directory.",
+        help="Process text files in subdirectories recursively when --dir is used.",
     ),
     pattern: str = typer.Option(
         "*.txt",
         "-p",
         "--pattern",
-        help="File glob pattern to match files when 'input_source' is a directory (e.g., '*.md', '**/*.txt').",
+        help="File glob pattern to match files when --dir is used (e.g., '*.md', '**/*.txt').",
     ),
     budget: int = typer.Option(
         ...,
@@ -715,64 +736,67 @@ def compress(
         import tiktoken
 
         enc = tiktoken.get_encoding("gpt2")
-        tokenizer = lambda text, **k: {
-            "input_ids": enc.encode(text)
-        }  # TODO: make tokenizer configurable
+        tokenizer = lambda text, **k: {"input_ids": enc.encode(text)}
     except Exception:
         tokenizer = lambda t, **k: t.split()
-    source_as_path = Path(input_source)
-    if source_as_path.is_file():
-        if recursive or pattern != "*.txt":
-            if recursive:
-                typer.secho(
-                    "--recursive ignored for file input", fg=typer.colors.YELLOW
-                )
-            if pattern != "*.txt":
-                typer.secho("--pattern ignored for file input", fg=typer.colors.YELLOW)
-        _process_file_compression(
-            source_as_path,
+
+    if sum(x is not None for x in (text, file, dir)) != 1:
+        typer.echo("Error: specify exactly ONE of --text / --file / --dir", err=True)
+        raise typer.Exit(1)
+
+    if dir is None:
+        if output_dir is not None:
+            typer.echo("--output-dir is only valid with --dir", err=True)
+            raise typer.Exit(1)
+        if recursive:
+            typer.echo("--recursive is only valid with --dir", err=True)
+            raise typer.Exit(1)
+        if pattern != "*.txt":
+            typer.echo("--pattern is only valid with --dir", err=True)
+            raise typer.Exit(1)
+    else:
+        if output_trace is not None:
+            typer.echo("--output-trace is not valid with --dir", err=True)
+            raise typer.Exit(1)
+
+    if text is not None:
+        if text == "-":
+            text = sys.stdin.read()
+        _process_string_compression(
+            text,
             final_strategy_id,
             budget,
-            output_path,
+            output_file,
+            output_trace,
+            verbose_stats,
+            tokenizer,
+        )
+    elif file is not None:
+        _process_file_compression(
+            file,
+            final_strategy_id,
+            budget,
+            output_file,
             verbose_stats,
             tokenizer,
             output_trace,
         )
-    elif source_as_path.is_dir():
+    else:
         if "**" in pattern and not recursive:
             typer.secho(
                 "Pattern includes '**' but --recursive not set; matching may miss subdirectories",
                 fg=typer.colors.YELLOW,
             )
         _process_directory_compression(
-            source_as_path,
+            dir,
             final_strategy_id,
             budget,
-            output_path,
+            output_dir,
             recursive,
             pattern,
             verbose_stats,
             tokenizer,
-            output_trace,
-        )
-    else:
-        if recursive or pattern != "*.txt":
-            if recursive:
-                typer.secho(
-                    "--recursive ignored for string input", fg=typer.colors.YELLOW
-                )
-            if pattern != "*.txt":
-                typer.secho(
-                    "--pattern ignored for string input", fg=typer.colors.YELLOW
-                )
-        _process_string_compression(
-            input_source,
-            final_strategy_id,
-            budget,
-            output_path,
-            output_trace,
-            verbose_stats,
-            tokenizer,
+            None,
         )
 
 

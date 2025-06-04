@@ -106,7 +106,7 @@ Your strategy package directory (\`MyAwesomeStrategyPackage\`) is now ready! Her
 Once a user has your package (either by placing the directory in their plugins folder or by \`pip install\`-ing your Python package if you created one), they can use it like any other strategy:
 ```bash
 compact-memory dev list-strategies # Your strategy should appear here
-compact-memory compress input.txt --strategy awesome_strat --budget 100 --strategy-params '{"custom_param": 10}'
+compact-memory compress --file input.txt --strategy awesome_strat --budget 100 --strategy-params '{"custom_param": 10}'
 ```
 ```python
 from compact_memory.compression import get_compression_strategy
