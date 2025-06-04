@@ -9,7 +9,7 @@ pip install --prefer-binary \
 
 # Optional heavy dependencies required for the full test suite
 if [[ "${FULL_INSTALL:-0}" == "1" ]]; then
-    pip install sentence-transformers google-generativeai evaluate
+    pip install torch sentence-transformers google-generativeai evaluate
 fi
 # Install project without automatically pulling optional heavy deps
 pip install -e . --no-build-isolation --no-deps
