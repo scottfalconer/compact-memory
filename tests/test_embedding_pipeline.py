@@ -36,7 +36,7 @@ def test_load_model_failure(monkeypatch):
     assert "compact-memory download-model" in str(exc.value)
 
 
-def test_embed_text_long_truncates(monkeypatch):
+def test_embed_text_optional_preprocess(monkeypatch):
     enc = ep.MockEncoder()
     monkeypatch.setattr(ep, "_load_model", lambda *a, **k: enc)
 
@@ -47,7 +47,11 @@ def test_embed_text_long_truncates(monkeypatch):
         return enc.encode(text)
 
     monkeypatch.setattr(ep, "_embed_cached", fake_embed)
-    long_text = "word " * 2000
-    vec = ep.embed_text(long_text)
+    long_text = "word " * 100
+
+    def pre(t: str) -> str:
+        return t.replace("word", "x")
+
+    vec = ep.embed_text(long_text, preprocess_fn=pre)
     assert vec.shape == (enc.dim,)
-    assert len(captured["text"]) < len(long_text)
+    assert "x" in captured["text"]

@@ -3,7 +3,6 @@ from compact_memory.compression import (
     CompressedMemory,
     CompressionTrace,
     NoCompression,
-    ImportanceCompression,
     PipelineCompressionStrategy,
     PipelineStrategyConfig,
     StrategyConfig,
@@ -59,19 +58,11 @@ def test_no_compression_truncates_and_traces():
     assert trace.strategy_name == "none"
 
 
-def test_importance_compression_filters_and_truncates():
-    tokenizer = SimpleTokenizer()
-    strat = ImportanceCompression()
-    text = "Bob: hello\nuh-huh\nAlice: hi"
-    compressed, trace = strat.compress(text, llm_token_budget=4, tokenizer=tokenizer)
-    assert "uh-huh" not in compressed.text
-    assert compressed.text.split()[:4] == compressed.text.split()
-    assert trace.strategy_name == "importance"
-
-
 def test_pipeline_strategy_executes_in_order():
     strat = PipelineCompressionStrategy([DummyStrategy(), DummyStrategy()])
-    compressed, trace = strat.compress(["alpha", "bravo", "charlie"], llm_token_budget=5)
+    compressed, trace = strat.compress(
+        ["alpha", "bravo", "charlie"], llm_token_budget=5
+    )
     assert compressed.text == "alpha bravo"[:5]
     assert len(trace.steps) == 2
 
@@ -88,4 +79,3 @@ def test_pipeline_strategy_config_instantiates_from_registry():
     compressed, trace = strat.compress("alpha bravo charlie", llm_token_budget=5)
     assert compressed.text == "alpha"
     assert len(trace.steps) == 2
-

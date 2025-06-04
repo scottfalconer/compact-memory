@@ -82,9 +82,7 @@ They are stored in JSON and referenced by ID in the NPY vector arrays.
    spawns a new prototype.
 4. **Updating** – existing prototypes are updated using an exponential
    moving average. New memories are appended to the JSON lines file and
-   evidence is logged in `evidence.jsonl`. Potential contradictions
-   detected via a simple negation check are appended to
-   `conflicts.jsonl` for human review.
+   evidence is logged in `evidence.jsonl`.
 
 The agent keeps an LRU cache of recent SHA‑256 hashes to skip duplicates
 quickly.

@@ -8,8 +8,7 @@ memory/
 ├── belief_prototypes.json
 ├── prototype_vectors.npy
 ├── raw_memories.jsonl
-├── evidence.jsonl        # log of prototype ↔ memory links
-└── conflicts.jsonl       # optional contradictions log
+└── evidence.jsonl        # log of prototype ↔ memory links
 ```
 
 ## `meta.yaml`
@@ -45,13 +44,10 @@ prototype it belongs to.
 
 ## Logs
 
-During ingestion the agent writes two auxiliary logs:
+During ingestion the agent writes an auxiliary log:
 
 - `evidence.jsonl` records which memories contributed to each prototype.  It can
   be analysed offline to track provenance or compute statistics.
-- `conflicts.jsonl` stores potential contradictions flagged by the heuristic
-  checker.  These rows are meant for human review and can be deleted without
-  affecting the core store.
 
 The storage format is purposely lightweight and versioned so that different
 backends or migration tools can be implemented without breaking existing data.

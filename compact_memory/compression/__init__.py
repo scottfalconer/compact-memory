@@ -24,7 +24,6 @@ assert _spec.loader is not None  # for mypy/static checkers
 _spec.loader.exec_module(_legacy)
 
 NoCompression = _legacy.NoCompression
-ImportanceCompression = _legacy.ImportanceCompression
 register_compression_strategy = _legacy.register_compression_strategy
 get_compression_strategy = _legacy.get_compression_strategy
 available_strategies = _legacy.available_strategies
@@ -32,14 +31,15 @@ get_strategy_metadata = _legacy.get_strategy_metadata
 all_strategy_metadata = _legacy.all_strategy_metadata
 
 # Register built-in strategies defined in submodules
-register_compression_strategy(PipelineCompressionStrategy.id, PipelineCompressionStrategy)
+register_compression_strategy(
+    PipelineCompressionStrategy.id, PipelineCompressionStrategy
+)
 
 __all__ = [
     "CompressedMemory",
     "CompressionStrategy",
     "CompressionTrace",
     "NoCompression",
-    "ImportanceCompression",
     "PipelineCompressionStrategy",
     "PipelineStrategyConfig",
     "register_compression_strategy",

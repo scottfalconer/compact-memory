@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import List, Union, Any
 
-from compact_memory.compression import NoCompression, ImportanceCompression
+from compact_memory.compression import NoCompression
 from compact_memory.compression.pipeline_strategy import PipelineCompressionStrategy
 from compact_memory.compression.strategies_abc import (
     CompressionStrategy,
@@ -14,14 +14,12 @@ from compact_memory.compression.strategies_abc import (
 
 
 class ChainedStrategy(CompressionStrategy):
-    """Simple pipeline of importance filtering followed by truncation."""
+    """Simple pipeline of multiple compression steps."""
 
     id = "chained"
 
     def __init__(self) -> None:
-        self.pipeline = PipelineCompressionStrategy(
-            [ImportanceCompression(), NoCompression()]
-        )
+        self.pipeline = PipelineCompressionStrategy([NoCompression()])
 
     def compress(
         self,
