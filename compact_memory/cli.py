@@ -23,8 +23,6 @@ from .logging_utils import configure_logging
 
 from .agent import Agent
 from .memory_store import MemoryStore
-from . import local_llm
-from .active_memory_manager import ActiveMemoryManager
 from . import llm_providers
 from .model_utils import (
     download_embedding_model as util_download_embedding_model,
@@ -596,63 +594,11 @@ def query(
         raise typer.Exit(code=1)
     with PersistenceLock(path):
         agent = _load_agent(path)
-        final_model_id = ctx.obj.get("default_model_id")  # Renamed for clarity
-        final_strategy_id = ctx.obj.get("default_strategy_id")  # Renamed for clarity
-
-        if final_model_id is None:
-            typer.secho(
-                "Error: Default Model ID not specified. Use --model-id option or set in config.",
-                fg=typer.colors.RED,
-                err=True,
-            )
-            raise typer.Exit(code=1)
-
-        try:
-            agent._chat_model = local_llm.LocalChatModel(model_name=final_model_id)
-            agent._chat_model.load_model()
-        except RuntimeError as exc:
-            typer.secho(
-                f"Error loading chat model '{final_model_id}': {exc}",
-                err=True,
-                fg=typer.colors.RED,
-            )
-            raise typer.Exit(code=1)  # Added model_id to error
-
-        mgr = ActiveMemoryManager()
-        comp_strategy_instance = None  # Renamed for clarity
-        if final_strategy_id and final_strategy_id.lower() != "none":
-            try:
-                comp_cls = get_compression_strategy(final_strategy_id)
-                info = get_strategy_metadata(final_strategy_id)
-                if info and info.get("source") == "contrib":
-                    typer.secho(
-                        "\u26a0\ufe0f Using experimental strategy from contrib: not officially supported.",
-                        fg=typer.colors.YELLOW,
-                    )
-                comp_strategy_instance = comp_cls()
-            except KeyError:
-                typer.secho(
-                    f"Error: Unknown compression strategy '{final_strategy_id}' (from global config/option). Available: {', '.join(available_strategies())}",
-                    err=True,
-                    fg=typer.colors.RED,
-                )
-                raise typer.Exit(code=1)  # Added available strategies
-
-        try:
-            result = agent.receive_channel_message(
-                "cli", query_text, mgr, compression=comp_strategy_instance
-            )
-        except TypeError:  # Older agents might not have compression param
-            result = agent.receive_channel_message("cli", query_text, mgr)
-
-        reply = result.get("reply")
-        if reply:
-            typer.echo(reply)
-        else:
-            typer.secho("The agent did not return a reply.", fg=typer.colors.YELLOW)
-
-        if show_prompt_tokens and result.get("prompt_tokens") is not None:
-            typer.echo(f"Prompt tokens: {result['prompt_tokens']}")
+        result = agent.query(query_text, top_k_prototypes=2, top_k_memories=5)
+        for p in result.get("prototypes", []):
+            typer.echo(f"Prototype {p['id']}: {p['summary']} (sim={p['sim']:.2f})")
+        for m in result.get("memories", []):
+            typer.echo(f"Memory {m['id']}: {m['text']} (sim={m['sim']:.2f})")
 
 
 @app.command(
