@@ -273,6 +273,30 @@ Plugins can add more strategies. For example, the `rationale_episode` strategy l
 You can then set it via `compact-memory config set default_strategy_id rationale_episode`.
 Note: The old method of enabling strategies via `compact_memory_config.yaml` directly is being phased out in favor of the `config set` command and plugin system.
 
+### Using Contrib Strategies
+
+Experimental strategies bundled in the repository live under the `contrib` package. They are not registered by default.
+
+```python
+from contrib import enable_all_contrib_strategies
+from compact_memory.compression import get_compression_strategy, register_compression_strategy
+
+# Enable all contrib strategies
+enable_all_contrib_strategies()
+
+# Or register individually
+from contrib.strategies.chained import ChainedStrategy
+register_compression_strategy("chained", ChainedStrategy)
+```
+
+Once registered, these strategies behave like any other:
+
+```bash
+compact-memory compress text.txt --strategy chained --budget 200
+```
+
+Contrib strategies are experimental and may change without notice.
+
 ## Why Compact Memory?
 
 Compact Memory offers unique advantages for advancing LLM memory capabilities:
