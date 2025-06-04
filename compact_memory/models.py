@@ -11,7 +11,7 @@ class BeliefPrototype(BaseModel):
     """Metadata for a prototype without the vector."""
 
     prototype_id: str
-    vector_row_index: int
+    # vector_row_index: int # This field is no longer used by InMemoryVectorStore or FaissVectorStoreAdapter
     summary_text: str = Field(default="")
     strength: float = 1.0
     confidence: float = 1.0

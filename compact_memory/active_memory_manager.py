@@ -1,64 +1,95 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass, field # Keep dataclass if ConversationTurn remains here
+from typing import List, Optional, Dict # Added Dict
 
 from .prompt_budget import PromptBudget
-
+# Assuming ConversationTurn will come from models.py
+from .models import ConversationTurn
+from .vector_store import BaseVectorStore, InMemoryVectorStore # Added
 from .token_utils import token_count
 
 import numpy as np
 import logging
+import uuid # For turn IDs if not already present
 
 
-@dataclass
-class ConversationTurn:
-    """Simple container for a conversation turn."""
-
-    text: str
-    trace_strength: float = 0.0
-    current_activation_level: float = 0.0
-    turn_embedding: Optional[List[float]] = None
-
+# ConversationTurn is now imported from models.py, remove local definition.
 
 @dataclass
 class ActiveMemoryManager:
-    """Manage a history buffer of conversation turns."""
+    """Manage a history buffer of conversation turns.
+    Optionally, can store and query turn embeddings in a vector store.
+    """
+    vector_store: BaseVectorStore
+    embedding_dim: int # Must be provided if vector_store is used for turns
 
-    # Maximum number of turns kept in short-term memory
+    # Configuration for history management
     config_max_history_buffer_turns: int = 100
-    # Number of most recent turns always included in the prompt
     config_prompt_num_forced_recent_turns: int = 0
-    # Maximum count of older activated turns allowed in the prompt
     config_prompt_max_activated_older_turns: int = 5
-    # Minimum activation level required for an older turn to be considered
     config_prompt_activation_threshold_for_inclusion: float = 0.0
-    # Weight of trace strength when pruning history
     config_pruning_weight_trace_strength: float = 1.0
-    # Weight of current activation level when pruning history
     config_pruning_weight_current_activation: float = 1.0
-    # Weight of simple recency when pruning history
     config_pruning_weight_recency: float = 0.1
-    # Initial activation assigned to a new turn
     config_initial_activation: float = 0.0
-    # Proportion of activation lost each cycle
     config_activation_decay_rate: float = 0.1
-    # Floor below which activation will not decay
     config_min_activation_floor: float = 0.0
-    # Factor controlling similarity-based activation boosts
     config_relevance_boost_factor: float = 1.0
+
     history: List[ConversationTurn] = field(default_factory=list)
     prompt_budget: Optional[PromptBudget] = None
+    store_turn_embeddings: bool = False # Flag to control if AMM uses its vector_store for turns
+
+    def __post_init__(self):
+        # This allows vector_store to be None if store_turn_embeddings is False,
+        # but BaseVectorStore type hint implies it's always there.
+        # For clarity, Agent will always pass a vector_store.
+        # If store_turn_embeddings is True, embedding_dim must be valid.
+        if self.store_turn_embeddings and self.embedding_dim <= 0:
+            raise ValueError("embedding_dim must be positive if store_turn_embeddings is True.")
 
     # --------------------------------------------------------------
     def add_turn(self, turn: ConversationTurn) -> None:
-        """Add ``turn`` to the history, pruning if necessary."""
+        """Add ``turn`` to the history, pruning if necessary.
+        If store_turn_embeddings is True, adds the turn's embedding to the vector store.
+        """
         self._decay_activations()
-        if turn.current_activation_level == 0.0:
+
+        # Ensure turn has an ID. The model in models.py provides a default factory.
+        if not turn.turn_id: # Should always have one from Pydantic model
+            turn.turn_id = uuid.uuid4().hex
+
+        if turn.current_activation_level == 0.0: # Pydantic model default is 0.0
             turn.current_activation_level = self.config_initial_activation
+
         self.history.append(turn)
+
+        if self.store_turn_embeddings and turn.turn_embedding:
+            try:
+                embedding_np = np.array(turn.turn_embedding, dtype=np.float32)
+                if embedding_np.ndim == 1:
+                     if embedding_np.shape[0] != self.embedding_dim:
+                        logging.warning(f"Turn {turn.turn_id} embedding_dim {embedding_np.shape[0]} != AMM embedding_dim {self.embedding_dim}. Skipping add_vector.")
+                     else:
+                        self.vector_store.add_vector(
+                            id=turn.turn_id,
+                            vector=embedding_np,
+                            metadata={"text": turn.user_message + "\n" + turn.agent_response} # Example metadata
+                        )
+                else:
+                    logging.warning(f"Turn {turn.turn_id} embedding is not 1D. Skipping add_vector.")
+            except Exception as e:
+                logging.error(f"Error adding turn embedding to vector store: {e}")
+
+
         if len(self.history) > self.config_max_history_buffer_turns:
-            self._prune_history_buffer()
+            removed_turn = self._prune_history_buffer()
+            if self.store_turn_embeddings and removed_turn and removed_turn.turn_id:
+                try:
+                    self.vector_store.delete_vector(removed_turn.turn_id)
+                except Exception as e:
+                    logging.error(f"Error deleting turn embedding from vector store: {e}")
 
     # --------------------------------------------------------------
     def _prune_history_buffer(self) -> None:
@@ -96,10 +127,13 @@ class ActiveMemoryManager:
                 )
                 scores.append(score)
             min_index = scores.index(min(scores))
-            removed = candidates.pop(min_index)
+            removed_candidate = candidates.pop(min_index)
             logging.debug("[prune] removing turn with score %.3f", scores[min_index])
+            # Return the removed turn so its vector can be deleted if needed
+            return removed_candidate
 
         self.history = candidates + keep_slice
+        return None # No turn was removed if condition not met
 
     # --------------------------------------------------------------
     def _decay_activations(self) -> None:

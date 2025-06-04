@@ -1,200 +1,125 @@
 from __future__ import annotations
 
-import functools
-import hashlib
-import contextlib
-from typing import List, Sequence
-
-import tiktoken
-from .importance_filter import dynamic_importance_filter
-
-# ---------------------------------------------------------------------------
-# Disable tqdm's multiprocessing lock.
-# On some platforms (notably macOS with the "spawn" start method) creating
-# the default multiprocessing lock can fail with "ValueError: bad value(s) in
-# fds_to_keep".  Avoid this by monkeypatching tqdm to skip the mp lock.
-try:  # pragma: no cover - only needed on certain platforms
-    import tqdm.std
-
-    def _no_mp_lock(cls):
-        cls.mp_lock = None
-
-    tqdm.std.TqdmDefaultWriteLock.create_mp_lock = classmethod(_no_mp_lock)
-except Exception:  # pragma: no cover - tqdm not installed or different API
-    pass
-
+from typing import Sequence, Union, Callable, Optional # Added Callable, Optional
 import numpy as np
 
-# Lazy heavy imports will occur in ``_load_model``
-torch = None  # type: ignore
-SentenceTransformer = None  # type: ignore
-
+# Imports for moved HF functionality are now in embedding_providers.huggingface
+# We will import the new default functions from there.
+from .embedding_providers.huggingface import (
+    embed_text_hf,
+    get_embedding_dim_hf,
+    DEFAULT_MODEL_NAME as HF_DEFAULT_MODEL_NAME, # Avoid name clashes if any
+    DEFAULT_DEVICE as HF_DEFAULT_DEVICE,
+    DEFAULT_BATCH_SIZE as HF_DEFAULT_BATCH_SIZE
+)
+# Keep MockEncoder and EmbeddingDimensionMismatchError if they are general
+# MockEncoder was used for testing, so it can stay.
+import hashlib # For MockEncoder
 
 class EmbeddingDimensionMismatchError(ValueError):
     """Raised when stored embedding dimension does not match model output."""
 
-
 class MockEncoder:
     """Deterministic mock encoder used in tests."""
-
     dim = 32
 
-    def encode(self, texts: List[str] | str, *args, **kwargs) -> np.ndarray:
+    def encode(self, texts: Union[str, Sequence[str]], *args, **kwargs) -> np.ndarray:
         if isinstance(texts, str):
             texts = [texts]
         arr = np.zeros((len(texts), self.dim), dtype=np.float32)
         for i, t in enumerate(texts):
             h = hashlib.sha256(t.encode("utf-8")).digest()
-            arr[i] = np.frombuffer(h, dtype=np.uint8)[: self.dim] / 255.0
-        if len(arr) == 1:
+            # Ensure consistent slicing for the mock encoder
+            arr[i] = np.frombuffer(h[:self.dim], dtype=np.uint8) / 255.0
+
+        # Original MockEncoder returned arr[0] if len(arr) == 1, which is a 1D array.
+        # The EmbeddingFunction type expects np.ndarray (which can be 1D or 2D).
+        # For consistency with embed_text_hf (which returns 2D for single string if batched, or 1D if single),
+        # it's better if mock also returns 1D for single string, and 2D for list.
+        # However, SentenceTransformer.encode typically returns 2D for list of 1, and 1D for single string.
+        # Let's make MockEncoder return 1D for single string, 2D for list of strings.
+        if len(texts) == 1 and isinstance(texts, list) and len(texts[0]) > 0 : # A list containing one string
+             # This case is tricky. If a list of one string is passed, ST returns 2D array.
+             # If a single string is passed, ST returns 1D array.
+             # The type hint is Union[str, Sequence[str]].
+             # Let's align with what embed_text_hf will do for single string vs list.
+             # The internal _embed_single_text_cached returns 1D.
+             # The embed_text_hf for a single string input eventually calls _embed_single_text_cached.
+             # For a list of strings, it calls model.encode which for HF returns 2D.
+             pass # arr is already (len(texts), self.dim)
+
+        if isinstance(texts, str): # Single string input
             return arr[0]
-        return arr
+        return arr # Sequence input
 
 
-_MODEL: SentenceTransformer | None = None
-_MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-_DEVICE = "cpu"
-_BATCH_SIZE = 32
+# Define the EmbeddingFunction type alias
+EmbeddingFunction = Callable[[Union[str, Sequence[str]]], np.ndarray]
 
-
-def _load_model(model_name: str, device: str) -> SentenceTransformer:
-    global _MODEL, _MODEL_NAME, _DEVICE, SentenceTransformer, torch
-    if SentenceTransformer is None:
-        try:
-            from sentence_transformers import SentenceTransformer as _ST
-            SentenceTransformer = _ST
-        except Exception as exc:  # pragma: no cover - optional dependency
-            raise ImportError(
-                "sentence-transformers is required for embedding"
-            ) from exc
-    if torch is None:
-        try:
-            import torch as _torch
-            torch = _torch  # type: ignore
-        except Exception:  # pragma: no cover - torch not installed
-            torch = None  # type: ignore
-
-    if _MODEL is None or model_name != _MODEL_NAME or device != _DEVICE:
-        if torch is not None:
-            torch.manual_seed(0)
-        try:
-            _MODEL = SentenceTransformer(
-                model_name,
-                device=device,
-                local_files_only=True,
-            )
-        except Exception as exc:  # pragma: no cover - depends on local files
-            raise RuntimeError(
-                f"Error: Embedding Model '{model_name}' not found. "
-                f"Please run: compact-memory download-model --model-name {model_name} to install it."
-            ) from exc
-        _MODEL_NAME = model_name
-        _DEVICE = device
-    return _MODEL
-
-
-def load_model(model_name: str = _MODEL_NAME, device: str = _DEVICE) -> None:
-    """Explicitly load the embedding model."""
-    _load_model(model_name, device)
-
-
-def unload_model() -> None:
-    """Unload the cached embedding model to free memory."""
-    global _MODEL
-    _MODEL = None
-
-
-@contextlib.contextmanager
-def loaded_embedding_model(
-    model_name: str = _MODEL_NAME, device: str = _DEVICE
-) -> SentenceTransformer:
-    """Context manager that loads and unloads the embedding model."""
-    model = _load_model(model_name, device)
-    try:
-        yield model
-    finally:
-        unload_model()
-
-
-@functools.lru_cache(maxsize=5000)
-def _embed_cached(
-    text: str, model_name: str, device: str, batch_size: int
-) -> np.ndarray:
-    model = _load_model(model_name, device)
-    vec = model.encode(text, batch_size=batch_size, convert_to_numpy=True)
-    vec = vec.astype(np.float32)
-    vec /= np.linalg.norm(vec) or 1.0
-    return vec
-
+# Global/default model parameters are now managed within huggingface.py for HF provider.
+# This pipeline can still define defaults if it were to choose between providers,
+# but for now, it defaults to HF.
 
 def embed_text(
-    text: str | Sequence[str],
+    text: Union[str, Sequence[str]],
+    embedding_fn: Optional[EmbeddingFunction] = None,
     *,
-    model_name: str = _MODEL_NAME,
-    device: str = _DEVICE,
-    batch_size: int = _BATCH_SIZE,
+    # Parameters for the default Hugging Face embedder, if embedding_fn is None
+    model_name: str = HF_DEFAULT_MODEL_NAME,
+    device: str = HF_DEFAULT_DEVICE,
+    batch_size: int = HF_DEFAULT_BATCH_SIZE,
 ) -> np.ndarray:
-    """Embed ``text`` or list of texts."""
+    """
+    Embeds text using a provided embedding function or defaults to Hugging Face.
 
-    try:
-        tokenizer = tiktoken.get_encoding("gpt2")
-    except Exception:  # pragma: no cover - fallback if tokenizer missing
-        tokenizer = None
+    Args:
+        text: The text or sequence of texts to embed.
+        embedding_fn: An optional custom function to use for embedding.
+                      If None, the default Hugging Face SentenceTransformer is used.
+        model_name: Model name for the default Hugging Face embedder.
+        device: Device for the default Hugging Face embedder.
+        batch_size: Batch size for the default Hugging Face embedder.
 
-    def _too_long(t: str) -> bool:
-        if tokenizer is not None:
-            try:
-                return len(tokenizer.encode(t)) > 1000
-            except Exception:  # pragma: no cover - encoding failure
-                return len(t.split()) > 1000
-        return len(t.split()) > 1000
+    Returns:
+        A NumPy array containing the embedding(s).
+        If input is a single string, output is a 1D array.
+        If input is a sequence of strings, output is a 2D array (num_texts, embedding_dim).
+    """
+    if embedding_fn:
+        return embedding_fn(text)
+    else:
+        # Default to Hugging Face provider
+        return embed_text_hf(
+            text,
+            model_name=model_name,
+            device=device,
+            batch_size=batch_size
+        )
 
-    if isinstance(text, str):
-        if text == "":
-            model = _load_model(model_name, device)
-            return np.zeros(model.get_sentence_embedding_dimension(), dtype=np.float32)
-        if _too_long(text):
-            text = dynamic_importance_filter(text)
-        return _embed_cached(text, model_name, device, batch_size)
+def get_embedding_dim(
+    # No longer takes embedding_fn, as dimension cannot be reliably determined from it.
+    # Users of custom embedding_fn must provide embedding_dim separately.
+    model_name: str = HF_DEFAULT_MODEL_NAME,
+    device: str = HF_DEFAULT_DEVICE
+) -> int:
+    """
+    Returns the embedding dimension for the default Hugging Face model.
 
-    texts = list(text)
-    if not texts:
-        model = _load_model(model_name, device)
-        return np.zeros((0, model.get_sentence_embedding_dimension()), dtype=np.float32)
-    filtered = []
-    for t in texts:
-        if _too_long(t):
-            t = dynamic_importance_filter(t)
-        filtered.append(t)
-    vecs = [_embed_cached(t, model_name, device, batch_size) for t in filtered]
-    return np.stack(vecs)
-
-
-def get_embedding_dim(model_name: str = _MODEL_NAME, device: str = _DEVICE) -> int:
-    """Return the embedding dimension for ``model_name`` on ``device``."""
-
-    model = _load_model(model_name, device)
-    get_dim = getattr(model, "get_sentence_embedding_dimension", None)
-    if callable(get_dim):
-        return int(get_dim())
-    dim = getattr(model, "dim", None)
-    if isinstance(dim, int):
-        return dim
-    raise AttributeError("embedding dimension not found")
+    For custom embedding functions, the embedding dimension must be known
+    and provided separately when configuring components like Agent or Vector Stores.
+    """
+    # Delegates to the Hugging Face specific dimension getter
+    return get_embedding_dim_hf(model_name=model_name, device=device)
 
 
-def register_embedding(name: str, encoder_callable) -> None:
-    """Allow plugins to register alternative embedding functions."""
-    globals()[name] = encoder_callable
-
+# register_embedding is removed as it's less relevant with EmbeddingFunction being passable directly.
+# Model loading/unloading functions are now specific to HF provider in huggingface.py.
+# Users can manage lifecycle of custom embedding_fn externally.
 
 __all__ = [
     "EmbeddingDimensionMismatchError",
     "MockEncoder",
-    "load_model",
-    "unload_model",
-    "loaded_embedding_model",
+    "EmbeddingFunction", # Export the type alias
     "embed_text",
     "get_embedding_dim",
-    "register_embedding",
 ]

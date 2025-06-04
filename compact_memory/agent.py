@@ -1,21 +1,24 @@
 from __future__ import annotations
 
+import os # For persistence paths
 from pathlib import Path
-from typing import Dict, List, Optional, TypedDict, Callable
+import json # For agent config persistence
+from typing import Dict, List, Optional, TypedDict, Callable, Type # Added Type for class method loading
 
 import logging
 
 
 from .chunker import Chunker, SentenceWindowChunker
-from .embedding_pipeline import embed_text
-from .vector_store import InMemoryVectorStore
+from .embedding_pipeline import embed_text, EmbeddingFunction # Import EmbeddingFunction
+from .vector_store import BaseVectorStore, InMemoryVectorStore
+from .models import BeliefPrototype, ConversationTurn # Added ConversationTurn from models
 from .memory_creation import (
     ExtractiveSummaryCreator,
     MemoryCreator,
 )
 from .prompt_budget import PromptBudget
 from .token_utils import truncate_text, token_count
-from .active_memory_manager import ActiveMemoryManager, ConversationTurn
+from .active_memory_manager import ActiveMemoryManager # ConversationTurn removed as it's from models
 from .compression.strategies_abc import CompressedMemory, CompressionTrace
 from .compression import CompressionStrategy, NoCompression
 from .prototype_system_strategy import PrototypeSystemStrategy
@@ -87,17 +90,20 @@ class Agent:
     `receive_channel_message`.
 
     Attributes:
-        store (InMemoryVectorStore): The underlying vector store for memories and prototypes.
+        vector_store (BaseVectorStore): The underlying vector store.
         prototype_system (PrototypeSystemStrategy): Handles memory consolidation and querying logic.
-        metrics (Dict[str, Any]): A dictionary of metrics collected during operations
-                                  (primarily from `PrototypeSystemStrategy`).
-        prompt_budget (Optional[PromptBudget]): Configuration for managing prompt sizes
-                                             when interacting with LLMs.
+        active_memory_manager (ActiveMemoryManager): Manages conversational history.
+        embedding_dim (int): Dimension of embeddings used.
+        metrics (Dict[str, Any]): A dictionary of metrics collected during operations.
+        prompt_budget (Optional[PromptBudget]): Configuration for managing prompt sizes.
     """
+    DEFAULT_EMBEDDING_DIM = 384 # Example default
 
     def __init__(
         self,
-        store: InMemoryVectorStore,
+        vector_store: Optional[BaseVectorStore] = None,
+        embedding_dim: int = DEFAULT_EMBEDDING_DIM,
+        embedding_fn: Optional[EmbeddingFunction] = None, # Added embedding_fn
         *,
         chunker: Optional[Chunker] = None,
         similarity_threshold: float = 0.8,
@@ -105,31 +111,37 @@ class Agent:
         summary_creator: Optional[MemoryCreator] = None,
         update_summaries: bool = False,
         prompt_budget: PromptBudget | None = None,
+        amm_config: Optional[Dict] = None,
+        store_turn_embeddings_in_amm: bool = False,
     ) -> None:
         """
         Initializes the Agent.
 
         Args:
-            store: The `InMemoryVectorStore` instance to be used for storing
-                   and retrieving memories and prototypes.
-            chunker: A `Chunker` instance for splitting text during ingestion.
-                     Defaults to `SentenceWindowChunker` if None.
-            similarity_threshold: The threshold (tau) for determining if a new memory
-                                  should be merged with an existing prototype.
-                                  Value between 0.0 and 1.0.
-            dedup_cache: The size of the cache used for deduplicating recent memories
-                         to avoid redundant processing.
-            summary_creator: A `MemoryCreator` instance responsible for generating
-                             summaries for new prototypes. Defaults to
-                             `ExtractiveSummaryCreator` if None.
-            update_summaries: If True, summaries of existing prototypes may be updated
-                              when new, highly similar memories are ingested.
-            prompt_budget: A `PromptBudget` object to manage and allocate token budgets
-                           for different parts of an LLM prompt (e.g., query, history, LTM).
+            vector_store: An instance of BaseVectorStore. If None, InMemoryVectorStore is used.
+            embedding_dim: Dimension of the embeddings. Crucial if using custom embedding_fn.
+            embedding_fn: Optional custom function for generating embeddings.
+            chunker: Chunker for splitting text. Defaults to SentenceWindowChunker.
+            similarity_threshold: Threshold for merging memories with prototypes.
+            dedup_cache: Size of deduplication cache.
+            summary_creator: For generating prototype summaries. Defaults to ExtractiveSummaryCreator.
+            update_summaries: Whether to update summaries of existing prototypes.
+            prompt_budget: PromptBudget object for LLM interactions.
+            amm_config: Configuration dictionary for ActiveMemoryManager.
+            store_turn_embeddings_in_amm: Whether AMM should store turn embeddings in its vector_store.
         """
-        self.store = store
+        self.embedding_dim = embedding_dim
+        self.embedding_fn = embedding_fn # Store embedding function
+
+        if vector_store is None:
+            self.vector_store: BaseVectorStore = InMemoryVectorStore(embedding_dim=self.embedding_dim)
+        else:
+            self.vector_store = vector_store
+
         self.prototype_system = PrototypeSystemStrategy(
-            store,
+            self.vector_store,
+            embedding_dim=self.embedding_dim,
+            embedding_fn=self.embedding_fn, # Pass embedding_fn to PSS
             chunker=chunker,
             similarity_threshold=similarity_threshold,
             dedup_cache=dedup_cache,
@@ -139,28 +151,39 @@ class Agent:
         self.metrics = self.prototype_system.metrics
         self.prompt_budget = prompt_budget
 
+        amm_config_values = amm_config or {}
+        self.active_memory_manager = ActiveMemoryManager(
+            vector_store=self.vector_store, # AMM can use the same vs, or a different one if needed
+            embedding_dim=self.embedding_dim,
+            store_turn_embeddings=store_turn_embeddings_in_amm,
+            **amm_config_values
+        )
+
     # ------------------------------------------------------------------
     @property
-    def chunker(self) -> Chunker:
+    def chunker(self) -> Chunker: # type: ignore
         """Return the current :class:`Chunker`."""
         return self.prototype_system.chunker
 
     @chunker.setter
-    def chunker(self, value: Chunker) -> None:
+    def chunker(self, value: Chunker) -> None: # type: ignore
         if not isinstance(value, Chunker):
             raise TypeError("chunker must implement Chunker interface")
         self.prototype_system.chunker = value
-        self.store.meta["chunker"] = getattr(value, "id", type(value).__name__)
+        # self.vector_store.meta is not a thing in BaseVectorStore. Metadata needs careful handling.
+        # If chunker type needs to be persisted, Agent's save_agent should handle it.
+        # For now, removing direct write to store.meta here.
+        # self.store.meta["chunker"] = getattr(value, "id", type(value).__name__)
 
     # ------------------------------------------------------------------
     @property
-    def similarity_threshold(self) -> float:
+    def similarity_threshold(self) -> float: # type: ignore
         return self.prototype_system.similarity_threshold
 
     @similarity_threshold.setter
-    def similarity_threshold(self, value: float) -> None:
+    def similarity_threshold(self, value: float) -> None: # type: ignore
         self.prototype_system.similarity_threshold = value
-        self.store.meta["tau"] = float(value)
+        # self.store.meta["tau"] = float(value) # Same as above, Agent should persist this.
 
     # ------------------------------------------------------------------
     @property
@@ -194,18 +217,14 @@ class Agent:
     # ------------------------------------------------------------------
     def get_statistics(self) -> Dict[str, object]:
         """Return summary statistics about the current store."""
-
-        from .utils import get_disk_usage
-
-        path_value = self.store.path
-        path = Path(path_value) if path_value else None
-        disk_usage = get_disk_usage(path) if path is not None else 0
+        # Removed disk_usage as it's not general for BaseVectorStore
+        # "updated_at" was from store.meta, also not general.
+        # These could be added if a specific store instance provides them.
         return {
-            "prototypes": len(self.store.prototypes),
-            "memories": len(self.store.memories),
+            "prototypes": len(self.prototype_system.prototypes), # Get from PSS
+            "memories": len(self.prototype_system.memories),   # Get from PSS
             "tau": self.similarity_threshold,
-            "updated": self.store.meta.get("updated_at"),
-            "disk_usage": disk_usage,
+            # Add other relevant stats if available
         }
 
     # ------------------------------------------------------------------
@@ -216,18 +235,19 @@ class Agent:
         return f"<h3>Agent</h3><table>{rows}</table>"
 
     # ------------------------------------------------------------------
-    def get_prototypes_view(
+    def get_prototypes_view( # type: ignore
         self, sort_by: str | None = None
     ) -> List[Dict[str, object]]:
         """Return list of prototypes for display purposes."""
 
-        protos = list(self.store.prototypes)
+        # Prototypes are now stored in PrototypeSystemStrategy
+        protos = list(self.prototype_system.prototypes.values())
         if sort_by == "strength":
             protos.sort(key=lambda p: p.strength, reverse=True)
-
+        # TODO: Ensure BeliefPrototype model is imported or structure is compatible
         return [
             {
-                "id": p.prototype_id,
+                "id": p.prototype_id, # Make sure these attributes exist on BeliefPrototype
                 "strength": p.strength,
                 "confidence": p.confidence,
                 "summary": p.summary_text,
@@ -276,6 +296,7 @@ class Agent:
             A list of dictionaries, where each dictionary represents the status or
             outcome of processing a single chunk from the input text.
         """
+        # `save` parameter removed from PSS.add_memory as Agent handles persistence.
         return self.prototype_system.add_memory(
             text,
             who=who,
@@ -284,7 +305,7 @@ class Agent:
             where=where,
             why=why,
             progress_callback=progress_callback,
-            save=save,
+            # save=save, # PSS no longer handles saving the main vector store
             source_document_id=source_document_id,
         )
 
@@ -356,13 +377,31 @@ class Agent:
             except Exception:
                 pass
 
-        vec = embed_text([input_message])
-        if vec.ndim != 1:
-            vec = vec.reshape(-1)
+        # vec generation should use self.embedding_dim and self.embedding_fn
+        input_embedding = embed_text([input_message], embedding_fn=self.embedding_fn)
+        if input_embedding.ndim != 1: # Should be (1, dim) or (dim,)
+            # If embed_text for single item returns (1, dim), take first row.
+            # If it's already (dim,), this is fine.
+            if input_embedding.shape[0] == 1:
+                 input_embedding = input_embedding.reshape(-1)
+            else: # Should not happen with current embed_text logic for single string
+                logging.warning(f"Unexpected embedding shape for single message: {input_embedding.shape}")
+                # Attempt to take the first vector if it's multi-vector for some reason
+                if input_embedding.shape[0] > 0:
+                    input_embedding = input_embedding[0].reshape(-1)
+                else: # Fallback to zeros if shape is totally unexpected (e.g. (0,dim))
+                    input_embedding = np.zeros(self.embedding_dim, dtype=np.float32)
 
-        history_candidates = manager.select_history_candidates_for_prompt(vec)
+
+        history_candidates = manager.select_history_candidates_for_prompt(input_embedding) # AMM uses this embedding
+        # ConversationTurn text attribute might need adjustment if it's a Pydantic model from .models
+        # The current ConversationTurn in AMM was a simple dataclass.
+        # Now AMM uses ConversationTurn from models.py which has user_message, agent_response
+
+        # Construct full text for token counting if using models.ConversationTurn
+        history_texts = [f"{t.user_message}\n{t.agent_response}".strip() for t in history_candidates]
         candidate_tokens = token_count(
-            llm.tokenizer, "\n".join(t.text for t in history_candidates)
+            llm.tokenizer, "\n".join(history_texts)
         )
         logging.debug(
             "[prompt] history candidates=%d tokens=%d",
@@ -411,9 +450,11 @@ class Agent:
 
         older_final = _fit(older_slice, b_older)
         recent_final = _fit(recent_slice, b_recent)
-        history_final = older_final + recent_final
+        history_final = older_final + recent_final # This is List[ConversationTurn]
 
-        history_text = "\n".join(t.text for t in history_final)
+        # Construct history_text from user_message and agent_response
+        final_history_texts = [f"{t.user_message}\n{t.agent_response}".strip() for t in history_final]
+        history_text = "\n".join(final_history_texts)
         history_tokens_final = token_count(llm.tokenizer, history_text)
         logging.debug(
             "[prompt] history after fit turns=%d tokens=%d",
@@ -425,11 +466,11 @@ class Agent:
             if b_recent or b_older:
                 limit = (b_recent or 0) + (b_older or 0)
             compressed, trace = compression.compress(
-                [t.text for t in history_final],
+                final_history_texts, # Pass list of strings
                 limit,
                 tokenizer=llm.tokenizer,
             )
-            history_text = compressed.text
+            history_text = compressed.text # compressed.text is the compressed string
             history_tokens_final = token_count(llm.tokenizer, history_text)
 
         query_res = self.query(input_message, top_k_prototypes=2, top_k_memories=2)
@@ -495,12 +536,16 @@ class Agent:
         prompt_tokens = after_llm_tokens
         reply = llm.reply(prompt)
 
-        manager.add_turn(
-            ConversationTurn(
-                text=f"User: {input_message}\nAgent: {reply}",
-                turn_embedding=vec.tolist() if hasattr(vec, "tolist") else None,
-            )
+        # AMM.add_turn expects a ConversationTurn object from models.py
+        # The ConversationTurn model has user_message and agent_response fields.
+        current_turn = ConversationTurn(
+            user_message=input_message, # Store raw input message
+            agent_response=reply,
+            turn_embedding=input_embedding.tolist() if hasattr(input_embedding, "tolist") else None,
+            # turn_id will be auto-generated by Pydantic model
         )
+        manager.add_turn(current_turn)
+
         return reply, {
             "query_result": query_res,
             "prompt_tokens": prompt_tokens,
@@ -601,10 +646,16 @@ class Agent:
             return summary
 
         # -------------------------------------------- Option B: ingest message
+        # The PSS.add_memory no longer takes `save` argument.
         results = self.add_memory(
             text,
             source_document_id=f"session_post_from:{source_id}",
         )
+        # Agent-level persistence call after ingestion if needed
+        # self.vector_store.persist() # Or self.save_agent(path_to_agent_data)
+        # This depends on how frequently persistence should occur.
+        # For now, persistence is explicit via save_agent.
+
         summary.update(
             {
                 "action": "ingest",
@@ -613,3 +664,161 @@ class Agent:
             }
         )
         return summary
+
+    # ------------------------------------------------------------------
+    # Persistence methods
+    # ------------------------------------------------------------------
+    def save_agent(self, agent_dir_path: str) -> None:
+        """Saves the agent's state to the specified directory."""
+        p_path = Path(agent_dir_path)
+        p_path.mkdir(parents=True, exist_ok=True)
+
+        # Save Agent's configuration
+        # Prepare vector store config
+        vs_config = {}
+        vs_type_name = type(self.vector_store).__name__
+        if vs_type_name == "ChromaVectorStoreAdapter":
+            # Assuming ChromaVectorStoreAdapter has 'path' and 'collection_name' attributes
+            vs_config["path"] = getattr(self.vector_store, 'path', None)
+            vs_config["collection_name"] = getattr(self.vector_store, 'collection_name', "compact_memory_default")
+        elif vs_type_name == "FaissVectorStoreAdapter":
+            # Faiss path is handled by where its files are saved (e.g., relative to agent_dir_path/vector_store)
+            # No specific path config needed here if it always saves to a standard sub-path.
+            # If its source index file path was important for re-loading an *external* index, store it.
+            pass # Path is implicit for save/load relative to agent_dir_path
+
+        # Prepare embedding function config
+        # We primarily store info about the default Hugging Face provider if used.
+        # Custom functions are identified by "embedding_fn_configured": True
+        embedding_provider_type = "custom" if self.embedding_fn else "huggingface"
+        embedding_model_name = None
+        embedding_device = None
+        if not self.embedding_fn: # Using default HF pipeline
+            # These would need to be accessible, e.g. if Agent stores them
+            # For now, assume these are not explicitly stored on Agent if using default pipeline.
+            # The CLI or user would know these if they overrode defaults for the default pipeline.
+            # Let's assume for saving, we don't have these explicitly if self.embedding_fn is None.
+            # The CLI helper will use its own defaults (HF_DEFAULT_MODEL_NAME) if not in config.
+            pass
+
+
+        agent_config = {
+            "embedding_dim": self.embedding_dim,
+            "similarity_threshold": self.prototype_system.similarity_threshold,
+            "dedup_cache_size": self.prototype_system._dedup.size,
+            "update_summaries": self.prototype_system.update_summaries,
+            "chunker_config": self.chunker.to_dict() if hasattr(self.chunker, 'to_dict') else type(self.chunker).__name__,
+            "vector_store_type": vs_type_name,
+            "vector_store_config": vs_config,
+            "embedding_provider_type": embedding_provider_type,
+            "embedding_model_name": embedding_model_name, # Will be None if custom_fn or default not storing these
+            "embedding_device": embedding_device,       # Will be None if custom_fn or default not storing these
+            "embedding_fn_configured": self.embedding_fn is not None,
+            # TODO: Persist amm_config, store_turn_embeddings_in_amm for AMM
+            # TODO: Persist prompt_budget
+        }
+        with open(p_path / "agent_config.json", "w") as f:
+            json.dump(agent_config, f, indent=4)
+
+        # Persist the vector store
+        # Some stores might be no-op (InMemory), others (Faiss, Chroma) will save.
+        # We need a dedicated sub-directory for the vector store data.
+        vs_path = p_path / "vector_store"
+        vs_path.mkdir(parents=True, exist_ok=True)
+        if hasattr(self.vector_store, 'persist') and callable(getattr(self.vector_store, 'persist')):
+            # FaissAdapter expects a dir path, InMemory is no-op, Chroma might be no-op or take path
+            # This requires persist methods of different adapters to be consistent or handled here.
+            # For FaissAdapter, it saves multiple files IN the given path.
+            # For Chroma, if persistent, it's handled by Chroma client.
+            # Let's assume persist() is smart enough or takes a path where it can save its specific files.
+            # The Faiss adapter saves to a directory given to its persist method.
+            try:
+                self.vector_store.persist(str(vs_path)) # Pass string path
+            except NotImplementedError:
+                logging.warning(f"Vector store {type(self.vector_store).__name__} does not implement persist.")
+            except Exception as e:
+                logging.error(f"Error persisting vector store: {e}")
+
+
+        # Persist PrototypeSystemStrategy state (prototypes and memories dicts)
+        pss_path = p_path / "prototype_system_state"
+        self.prototype_system.save_state(pss_path)
+
+        # TODO: Persist ActiveMemoryManager state (e.g., history if needed, though usually ephemeral)
+
+        logging.info(f"Agent state saved to {agent_dir_path}")
+
+    @classmethod
+    def load_agent(
+        cls,
+        agent_dir_path: str,
+        vector_store_instance: BaseVectorStore,
+        embedding_fn: Optional[EmbeddingFunction] = None, # Allow passing embedding_fn at load time
+        # Optional: pass specific class types for chunker, summary_creator if not reconstructible from config
+        chunker_class: Optional[Type[Chunker]] = None,
+        summary_creator_class: Optional[Type[MemoryCreator]] = None
+    ) -> "Agent":
+        """Loads the agent's state from the specified directory."""
+        p_path = Path(agent_dir_path)
+        if not p_path.exists() or not p_path.is_dir():
+            raise FileNotFoundError(f"Agent directory {agent_dir_path} not found.")
+
+        with open(p_path / "agent_config.json", "r") as f:
+            agent_config = json.load(f)
+
+        embedding_dim = agent_config.get("embedding_dim", cls.DEFAULT_EMBEDDING_DIM)
+
+        if agent_config.get("embedding_fn_configured") and embedding_fn is None:
+            logging.warning("Agent was saved with a custom embedding_fn, but none provided at load time. Defaulting.")
+
+        # Load the vector store state
+        vs_path = p_path / "vector_store"
+        if vs_path.exists() and hasattr(vector_store_instance, 'load') and callable(getattr(vector_store_instance, 'load')):
+            try:
+                vector_store_instance.load(str(vs_path)) # Pass string path
+            except NotImplementedError:
+                logging.warning(f"Vector store {type(vector_store_instance).__name__} does not implement load or data not found.")
+            except Exception as e:
+                logging.error(f"Error loading vector store: {e}")
+        elif vs_path.exists():
+             logging.warning(f"Vector store at {vs_path} exists but instance {type(vector_store_instance).__name__} has no load method or it failed.")
+
+
+        # TODO: Reconstruct chunker and summary_creator from config
+        # This is simplified; robust reconstruction might need class registry or explicit passing
+        chunker_name = agent_config.get("chunker_config", "SentenceWindowChunker")
+        loaded_chunker = None
+        if chunker_class and (chunker_class.__name__ == chunker_name or isinstance(chunker_name, dict)):
+             loaded_chunker = chunker_class() # Add from_dict if config is dict
+        elif chunker_name == "SentenceWindowChunker":
+             loaded_chunker = SentenceWindowChunker()
+        # Add more chunker types as needed or use a factory
+
+        # For summary_creator, similar logic (simplified)
+        loaded_summary_creator = ExtractiveSummaryCreator(max_words=25) # Default
+
+        # Create Agent instance (or a new constructor for loading)
+        # For now, use __init__ and then load PSS state
+        agent = cls(
+            vector_store=vector_store_instance,
+            embedding_dim=embedding_dim,
+            embedding_fn=embedding_fn, # Pass loaded/provided embedding_fn
+            chunker=loaded_chunker,
+            similarity_threshold=agent_config.get("similarity_threshold", 0.8),
+            dedup_cache=agent_config.get("dedup_cache_size", 128), # Load dedup_cache for PSS
+            summary_creator=loaded_summary_creator,
+            update_summaries=agent_config.get("update_summaries", False),
+            # TODO: Load prompt_budget, amm_config for Agent and AMM
+        )
+
+        # Load PrototypeSystemStrategy state
+        pss_path = p_path / "prototype_system_state"
+        if pss_path.exists():
+            agent.prototype_system.load_state(pss_path)
+        else:
+            logging.warning(f"PrototypeSystemStrategy state not found at {pss_path}")
+
+        # TODO: Load ActiveMemoryManager state if persisted
+
+        logging.info(f"Agent state loaded from {agent_dir_path}")
+        return agent
