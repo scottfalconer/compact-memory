@@ -22,7 +22,7 @@ from .logging_utils import configure_logging
 
 
 from .agent import Agent
-from .json_npy_store import JsonNpyVectorStore
+from .memory_store import MemoryStore
 from . import local_llm
 from .active_memory_manager import ActiveMemoryManager
 from .registry import (
@@ -49,8 +49,8 @@ from .compression import (
 )
 from .plugin_loader import load_plugins
 from .cli_plugins import load_cli_plugins
-from .chunking import ChunkFn # Added import
-import importlib.util # Added import
+from .chunking import ChunkFn  # Added import
+import importlib.util  # Added import
 from .package_utils import (
     load_manifest,
     validate_manifest,
@@ -304,9 +304,7 @@ def init(
     except RuntimeError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1)
-    store = JsonNpyVectorStore(
-        path=str(path), embedding_model=model_name, embedding_dim=dim
-    )
+    store = MemoryStore(path=str(path), embedding_dim=dim)
     store.meta.update({"agent_name": name, "tau": tau, "alpha": alpha})
     store.save()
     typer.echo(f"Successfully initialized Compact Memory agent at {path}")
@@ -389,12 +387,7 @@ def validate_agent_storage(
         )
         raise typer.Exit(code=1)
     try:
-        JsonNpyVectorStore(path=str(path))
-    except EmbeddingDimensionMismatchError as exc:
-        typer.secho(
-            f"Embedding dimension mismatch: {exc}", err=True, fg=typer.colors.RED
-        )
-        raise typer.Exit(code=1)
+        MemoryStore(path=str(path), embedding_dim=get_embedding_dim())
     except Exception as exc:
         typer.secho(f"Error loading agent: {exc}", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1)
@@ -446,7 +439,7 @@ def clear(
         )
         raise typer.Exit(code=1)
     if dry_run:
-        store = JsonNpyVectorStore(path=str(path))
+        store = MemoryStore(path=str(path), embedding_dim=get_embedding_dim())
         typer.echo(
             f"Dry run: Would delete {len(store.prototypes)} prototypes and {len(store.memories)} memories from agent at '{path}'."
         )
@@ -789,11 +782,12 @@ def compress(
             output_trace,
             verbose_stats,
             tokenizer,
-            chunk_script, # Pass chunk_script
+            chunk_script,  # Pass chunk_script
         )
 
 
 # --- Helper functions for compress (formerly summarize/compress_text) ---
+
 
 def _load_chunk_fn(chunk_script_str: Optional[str]) -> Optional[ChunkFn]:
     if not chunk_script_str:
@@ -836,14 +830,18 @@ def _load_chunk_fn(chunk_script_str: Optional[str]) -> Optional[ChunkFn]:
 
     # Clean up sys.path if we added it
     if added_to_sys_path and module_dir == sys.path[0]:
-         sys.path.pop(0)
+        sys.path.pop(0)
 
     if not hasattr(module, fn_name):
         raise typer.BadParameter(f"Function '{fn_name}' not found in {script_path}")
 
-    chunk_fn_loaded = getattr(module, fn_name) # Renamed to avoid conflict with ChunkFn type
+    chunk_fn_loaded = getattr(
+        module, fn_name
+    )  # Renamed to avoid conflict with ChunkFn type
     if not callable(chunk_fn_loaded):
-        raise typer.BadParameter(f"'{fn_name}' in {script_path} is not a callable function.")
+        raise typer.BadParameter(
+            f"'{fn_name}' in {script_path} is not a callable function."
+        )
 
     return chunk_fn_loaded
 
@@ -856,10 +854,10 @@ def _process_string_compression(
     trace_file: Optional[Path],
     verbose_stats: bool,
     tokenizer: Any,
-    chunk_script: Optional[str], # Added chunk_script parameter
+    chunk_script: Optional[str],  # Added chunk_script parameter
 ) -> None:
     loaded_chunk_fn: Optional[ChunkFn] = None
-    if chunk_script: # Only load if provided
+    if chunk_script:  # Only load if provided
         try:
             loaded_chunk_fn = _load_chunk_fn(chunk_script)
         except typer.BadParameter as e:
@@ -884,7 +882,9 @@ def _process_string_compression(
     strat = strat_cls()
     start = time.time()
     # Pass loaded_chunk_fn to compress method
-    result = strat.compress(text_content, budget, tokenizer=tokenizer, chunk_fn=loaded_chunk_fn)
+    result = strat.compress(
+        text_content, budget, tokenizer=tokenizer, chunk_fn=loaded_chunk_fn
+    )
     if isinstance(result, tuple):
         compressed, trace = result
     else:
@@ -929,7 +929,7 @@ def _process_file_compression(
     verbose_stats: bool,
     tokenizer: Any,
     trace_file: Optional[Path],
-    chunk_script: Optional[str], # Added chunk_script
+    chunk_script: Optional[str],  # Added chunk_script
 ) -> None:
     if not file_path.exists() or not file_path.is_file():
         typer.secho(f"File not found: {file_path}", err=True, fg=typer.colors.RED)
@@ -947,7 +947,7 @@ def _process_file_compression(
         trace_file,
         verbose_stats,
         tokenizer,
-        chunk_script, # Pass chunk_script
+        chunk_script,  # Pass chunk_script
     )
 
 
@@ -960,8 +960,8 @@ def _process_directory_compression(
     pattern: str,
     verbose_stats: bool,
     tokenizer: Any,
-    trace_file: Optional[Path], # This was already here
-    chunk_script: Optional[str], # Added chunk_script
+    trace_file: Optional[Path],  # This was already here
+    chunk_script: Optional[str],  # Added chunk_script
 ) -> None:
     if not dir_path.exists() or not dir_path.is_dir():
         typer.secho(f"Directory not found: {dir_path}", err=True, fg=typer.colors.RED)
@@ -996,7 +996,14 @@ def _process_directory_compression(
                 f"{input_file.stem}_compressed{input_file.suffix}"
             )
         _process_file_compression(
-            input_file, strategy_id, budget, out_path, verbose_stats, tokenizer, None, chunk_script # Pass chunk_script
+            input_file,
+            strategy_id,
+            budget,
+            out_path,
+            verbose_stats,
+            tokenizer,
+            None,
+            chunk_script,  # Pass chunk_script
         )
         count += 1
     if verbose_stats:

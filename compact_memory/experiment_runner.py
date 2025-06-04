@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any
 from .compression.strategies_abc import CompressionStrategy
 
 from .agent import Agent
-from .json_npy_store import JsonNpyVectorStore
+from .memory_store import MemoryStore
 from .active_memory_manager import ActiveMemoryManager
 from .memory_creation import MemoryCreator, ExtractiveSummaryCreator
 from .experiments.config import ExperimentConfig
@@ -24,9 +24,7 @@ def run_experiment(
 
     work = config.work_dir or Path(tempfile.mkdtemp())
     dim = get_embedding_dim()
-    store = JsonNpyVectorStore(
-        path=str(work), embedding_model="experiment", embedding_dim=dim
-    )
+    store = MemoryStore(path=str(work), embedding_dim=dim)
     if config.active_memory_params:
         store.meta.update(config.active_memory_params)
     params = {k: v for k, v in store.meta.items() if k.startswith("config_")}

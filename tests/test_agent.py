@@ -6,7 +6,7 @@ import pytest
 from compact_memory import agent as ag
 from compact_memory.agent import Agent
 from compact_memory.embedding_pipeline import MockEncoder, _load_model, embed_text
-from compact_memory.json_npy_store import JsonNpyVectorStore
+from compact_memory.memory_store import MemoryStore
 from compact_memory.chunking import ChunkFn
 from compact_memory.active_memory_manager import ActiveMemoryManager
 from compact_memory.prompt_budget import PromptBudget
@@ -22,9 +22,7 @@ def use_mock_encoder(monkeypatch):
 
 
 def test_duplicate_handling(tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
     agent.add_memory("alpha")
     dup = agent.add_memory("alpha")
@@ -34,9 +32,7 @@ def test_duplicate_handling(tmp_path):
 
 
 def test_snap_and_spawn(tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
     agent.add_memory("alpha")
     res = agent.add_memory("golf")[0]
@@ -48,9 +44,7 @@ def test_snap_and_spawn(tmp_path):
 
 
 def test_initial_summary(tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
     agent.add_memory("alpha bravo charlie")
     assert store.prototypes[0].summary_text != ""
@@ -58,9 +52,7 @@ def test_initial_summary(tmp_path):
 
 
 def test_summary_update(tmp_path, monkeypatch):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None, update_summaries=True)
     agent.add_memory("alpha bravo")
     first = store.prototypes[0].summary_text
@@ -78,24 +70,20 @@ def test_summary_update(tmp_path, monkeypatch):
 
 
 def test_persistence_roundtrip(tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
     agent.add_memory("alpha")
     vec = embed_text(["alpha"])[0]
     before = store.find_nearest(vec, k=1)[0]
     store.save()
-    store2 = JsonNpyVectorStore(path=str(tmp_path))
+    store2 = MemoryStore(path=str(tmp_path))
     after = store2.find_nearest(vec, k=1)[0]
     assert before[0] == after[0]
     assert abs(before[1] - after[1]) < 1e-6
 
 
 def test_receive_channel_ingest(tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
     res = agent.receive_channel_message("user", "hello there")
     assert res["action"] == "ingest"
@@ -104,9 +92,7 @@ def test_receive_channel_ingest(tmp_path):
 
 
 def test_receive_channel_query(monkeypatch, tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
     agent.add_memory("alpha bravo")
 
@@ -131,9 +117,7 @@ def test_receive_channel_query(monkeypatch, tmp_path):
 
 
 def test_process_conversational_turn_updates_manager(monkeypatch, tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
 
     class Dummy:
@@ -160,9 +144,7 @@ def test_process_conversational_turn_updates_manager(monkeypatch, tmp_path):
 
 
 def test_prompt_budget_truncates_prompt(monkeypatch, tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     budget = PromptBudget(query=2, recent_history=0, older_history=0, ltm_snippets=0)
     agent = Agent(store, chunk_fn=None, prompt_budget=budget)
 
@@ -192,9 +174,7 @@ def test_prompt_budget_truncates_prompt(monkeypatch, tmp_path):
 
 
 def test_get_statistics_ephemeral_store(tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     store.path = None
     agent = Agent(store, chunk_fn=None)
     stats = agent.get_statistics()
@@ -206,9 +186,7 @@ def dummy_chunker(text: str) -> list[str]:
 
 
 def test_reconfigure_chunker(tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
     agent.add_memory("alpha")
     agent.chunk_fn = dummy_chunker
@@ -217,9 +195,7 @@ def test_reconfigure_chunker(tmp_path):
 
 
 def test_reconfigure_similarity_threshold(tmp_path, monkeypatch):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
     agent.add_memory("alpha")
 

@@ -64,7 +64,7 @@ def test_prepare_prompt(monkeypatch, tmp_path):
         lambda *a, **k: DummyModel(),
     )
 
-    from compact_memory.json_npy_store import JsonNpyVectorStore
+    from compact_memory.memory_store import MemoryStore
     from compact_memory.models import BeliefPrototype
     from compact_memory.agent import Agent
     from compact_memory.embedding_pipeline import MockEncoder
@@ -74,9 +74,7 @@ def test_prepare_prompt(monkeypatch, tmp_path):
         "compact_memory.embedding_pipeline._load_model", lambda *a, **k: enc
     )
 
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=enc.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=enc.dim)
     proto = BeliefPrototype(
         prototype_id="p1",
         vector_row_index=0,

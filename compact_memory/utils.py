@@ -4,9 +4,9 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, List
 
-from .json_npy_store import JsonNpyVectorStore
+from .memory_store import MemoryStore
 
-from .embedding_pipeline import get_embedding_dim, EmbeddingDimensionMismatchError
+from .embedding_pipeline import get_embedding_dim
 
 
 def get_disk_usage(path: Path) -> int:
@@ -34,16 +34,8 @@ def load_agent(path: Path) -> Agent:
     """
     from .agent import Agent
 
-    try:
-        store = JsonNpyVectorStore(path=str(path))
-    except FileNotFoundError as exc:
-        raise FileNotFoundError(
-            f"Agent directory '{path}' not found or is invalid"
-        ) from exc
-    except EmbeddingDimensionMismatchError:
-        dim = get_embedding_dim()
-        store = JsonNpyVectorStore(path=str(path), embedding_dim=dim)
-
+    dim = get_embedding_dim()
+    store = MemoryStore(path=str(path), embedding_dim=dim)
     tau = float(store.meta.get("tau", 0.8))
     return Agent(store, chunk_fn=None, similarity_threshold=tau)
 

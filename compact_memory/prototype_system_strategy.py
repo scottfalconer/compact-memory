@@ -7,17 +7,22 @@ import json
 import uuid
 from collections import OrderedDict
 from pathlib import Path
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Any, Tuple
 
 import numpy as np
 
 from .chunking import ChunkFn
-from .json_npy_store import JsonNpyVectorStore, BeliefPrototype, RawMemory
+from .memory_store import MemoryStore
+from .models import BeliefPrototype, RawMemory
 from .memory_creation import ExtractiveSummaryCreator, MemoryCreator
 from .prototype.canonical import render_five_w_template
 from .prototype.conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
 from .prototype.conflict import SimpleConflictLogger
-from .compression.strategies_abc import CompressedMemory, CompressionStrategy, CompressionTrace # Added CompressionTrace
+from .compression.strategies_abc import (
+    CompressedMemory,
+    CompressionStrategy,
+    CompressionTrace,
+)  # Added CompressionTrace
 from .token_utils import truncate_text
 
 
@@ -63,7 +68,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
 
     def __init__(
         self,
-        store: JsonNpyVectorStore,
+        store: MemoryStore,
         *,
         chunk_fn: ChunkFn | None = None,
         similarity_threshold: float = 0.8,
@@ -272,21 +277,21 @@ class PrototypeSystemStrategy(CompressionStrategy):
     # ------------------------------------------------------------------
     def compress(
         self,
-        text: str, # Changed
+        text: str,  # Changed
         llm_token_budget: int,
-        chunk_fn: Optional[ChunkFn] = None, # Added
+        chunk_fn: Optional[ChunkFn] = None,  # Added
         *,
         tokenizer=None,
-        **kwargs: Any, # Added for consistency
-    ) -> Tuple[CompressedMemory, CompressionTrace]: # Changed return type
+        **kwargs: Any,  # Added for consistency
+    ) -> Tuple[CompressedMemory, CompressionTrace]:  # Changed return type
         """Compress by retrieving relevant memories and truncating."""
 
-        if chunk_fn: # This is the chunk_fn passed to compress
+        if chunk_fn:  # This is the chunk_fn passed to compress
             chunks = chunk_fn(text)
             query_text = " ".join(chunks)
             num_input_chunks = len(chunks)
         else:
-            chunks = [text] # Conceptually, for trace
+            chunks = [text]  # Conceptually, for trace
             query_text = text
             num_input_chunks = 1
 
@@ -307,24 +312,39 @@ class PrototypeSystemStrategy(CompressionStrategy):
             # Simple character truncation if no tokenizer
             compressed = combined[:llm_token_budget]
 
-        compressed_memory = CompressedMemory(text=compressed_text, metadata={"status": result.get("status", "unknown"), "retrieved_prototypes_count": len(retrieved_prototypes), "retrieved_memories_count": len(retrieved_memories)})
+        compressed_memory = CompressedMemory(
+            text=compressed,
+            metadata={
+                "status": result.get("status", "unknown"),
+                "retrieved_prototypes_count": len(retrieved_prototypes),
+                "retrieved_memories_count": len(retrieved_memories),
+            },
+        )
 
         trace = CompressionTrace(
             strategy_name=self.id,
             strategy_params={
                 "llm_token_budget": llm_token_budget,
                 "chunked_input_to_compress": chunk_fn is not None,
-                "top_k_prototypes_query": 1, # Hardcoded in query call
-                "top_k_memories_query": 3    # Hardcoded in query call
+                "top_k_prototypes_query": 1,  # Hardcoded in query call
+                "top_k_memories_query": 3,  # Hardcoded in query call
             },
-            input_summary={"input_query_char_len": original_input_len, "input_query_num_chunks": num_input_chunks},
+            input_summary={
+                "input_query_char_len": original_input_len,
+                "input_query_num_chunks": num_input_chunks,
+            },
             steps=[
-                {"type": "query_prototype_store", "query_text_preview": query_text[:100], "retrieved_prototypes": len(retrieved_prototypes), "retrieved_memories": len(retrieved_memories)},
+                {
+                    "type": "query_prototype_store",
+                    "query_text_preview": query_text[:100],
+                    "retrieved_prototypes": len(retrieved_prototypes),
+                    "retrieved_memories": len(retrieved_memories),
+                },
                 {"type": "concatenation", "combined_char_len": len(combined)},
-                {"type": "truncation", "final_char_len": len(compressed_text)}
+                {"type": "truncation", "final_char_len": len(compressed)},
             ],
-            output_summary={"compressed_char_len": len(compressed_text)},
-            final_compressed_object_preview=compressed_text[:50]
+            output_summary={"compressed_char_len": len(compressed)},
+            final_compressed_object_preview=compressed[:50],
         )
 
         return compressed_memory, trace

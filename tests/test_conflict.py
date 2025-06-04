@@ -3,7 +3,7 @@ import json
 import pytest
 
 from compact_memory import Agent
-from compact_memory.json_npy_store import JsonNpyVectorStore
+from compact_memory.memory_store import MemoryStore
 from compact_memory.embedding_pipeline import MockEncoder, _load_model
 
 
@@ -17,9 +17,7 @@ def use_mock_encoder(monkeypatch):
 
 
 def test_negation_conflict_logging(tmp_path, monkeypatch):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None)
     agent.add_memory("Alice is happy.")
     pid = store.prototypes[0].prototype_id
