@@ -10,7 +10,7 @@ import tempfile
 import yaml
 
 from .agent import Agent
-from .active_memory_manager import ActiveMemoryManager, ConversationTurn
+from .strategies.experimental import ActiveMemoryManager, ConversationTurn
 from .vector_store import InMemoryVectorStore
 from .embedding_pipeline import embed_text, get_embedding_dim, MockEncoder
 from .chunker import SentenceWindowChunker

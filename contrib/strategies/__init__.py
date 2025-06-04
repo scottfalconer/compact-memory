@@ -1,3 +1,16 @@
-"""Experimental compression strategies."""
+"""Legacy entry points for experimental strategies.
 
-__all__ = ["chained", "rationale_episode", "prototype_system"]
+These modules now live under ``compact_memory.strategies.experimental``.
+"""
+
+from compact_memory.strategies.experimental import (
+    ChainedStrategy,
+    RationaleEpisodeStrategy,
+    PrototypeSystemStrategy,
+)
+
+__all__ = [
+    "ChainedStrategy",
+    "RationaleEpisodeStrategy",
+    "PrototypeSystemStrategy",
+]

@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from .prompt_budget import PromptBudget
+from ...prompt_budget import PromptBudget
 
-from .token_utils import token_count
+from ...token_utils import token_count
 
 import numpy as np
 import logging
@@ -96,7 +96,7 @@ class ActiveMemoryManager:
                 )
                 scores.append(score)
             min_index = scores.index(min(scores))
-            removed = candidates.pop(min_index)
+            candidates.pop(min_index)
             logging.debug("[prune] removing turn with score %.3f", scores[min_index])
 
         self.history = candidates + keep_slice

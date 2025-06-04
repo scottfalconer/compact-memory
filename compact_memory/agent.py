@@ -15,10 +15,13 @@ from .memory_creation import (
 )
 from .prompt_budget import PromptBudget
 from .token_utils import truncate_text, token_count
-from .active_memory_manager import ActiveMemoryManager, ConversationTurn
+from .strategies.experimental import (
+    ActiveMemoryManager,
+    ConversationTurn,
+    PrototypeSystemStrategy,
+)
 from .compression.strategies_abc import CompressedMemory, CompressionTrace
 from .compression import CompressionStrategy, NoCompression
-from contrib.strategies.prototype_system import PrototypeSystemStrategy
 
 
 class VectorIndexCorrupt(RuntimeError):

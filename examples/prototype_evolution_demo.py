@@ -6,7 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from compact_memory.vector_store import InMemoryVectorStore
-from contrib.strategies.prototype_system import PrototypeSystemStrategy
+from compact_memory.strategies.experimental import PrototypeSystemStrategy
 from compact_memory.embedding_pipeline import MockEncoder
 import compact_memory.agent as agent_mod
 

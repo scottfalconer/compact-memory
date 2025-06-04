@@ -8,7 +8,7 @@ from .compression.strategies_abc import CompressionStrategy
 
 from .agent import Agent
 from .vector_store import InMemoryVectorStore
-from .active_memory_manager import ActiveMemoryManager
+from .strategies.experimental import ActiveMemoryManager
 from .chunker import SentenceWindowChunker
 from .memory_creation import ExtractiveSummaryCreator
 from .experiments.config import ExperimentConfig
