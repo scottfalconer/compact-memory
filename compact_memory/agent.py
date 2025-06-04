@@ -8,7 +8,7 @@ import logging
 
 from .chunker import Chunker, SentenceWindowChunker
 from .embedding_pipeline import embed_text
-from .json_npy_store import JsonNpyVectorStore
+from .vector_store import InMemoryVectorStore
 from .memory_creation import (
     ExtractiveSummaryCreator,
     MemoryCreator,
@@ -23,8 +23,6 @@ from .prototype_system_strategy import PrototypeSystemStrategy
 
 class VectorIndexCorrupt(RuntimeError):
     """Raised when prototype index and vectors are misaligned."""
-
-
 
 
 class PrototypeHit(TypedDict):
@@ -50,18 +48,20 @@ class QueryResult(dict):
     memories: List[MemoryHit]
     status: str
 
-    def __init__(self, prototypes: List[PrototypeHit], memories: List[MemoryHit], status: str) -> None:
+    def __init__(
+        self, prototypes: List[PrototypeHit], memories: List[MemoryHit], status: str
+    ) -> None:
         super().__init__(prototypes=prototypes, memories=memories, status=status)
 
     # --------------------------------------------------------------
     def _repr_html_(self) -> str:
         proto_rows = "".join(
             f"<tr><td>{p['id']}</td><td>{p['summary']}</td><td>{p['sim']:.2f}</td></tr>"
-            for p in self.get('prototypes', [])
+            for p in self.get("prototypes", [])
         )
         mem_rows = "".join(
             f"<tr><td>{m['id']}</td><td>{m['text']}</td><td>{m['sim']:.2f}</td></tr>"
-            for m in self.get('memories', [])
+            for m in self.get("memories", [])
         )
         html = """<h4>Prototypes</h4><table><tr><th>ID</th><th>Summary</th><th>Sim</th></tr>{p_rows}</table>""".format(
             p_rows=proto_rows
@@ -77,7 +77,7 @@ class Agent:
     Core component for managing and interacting with a memory store.
 
     The Agent class encapsulates the logic for ingesting text into a
-    `JsonNpyVectorStore`, managing memory prototypes, querying the memory,
+    `InMemoryVectorStore`, managing memory prototypes, querying the memory,
     and processing conversational turns with optional compression.
 
     It utilizes a `PrototypeSystemStrategy` internally to handle the
@@ -87,16 +87,17 @@ class Agent:
     `receive_channel_message`.
 
     Attributes:
-        store (JsonNpyVectorStore): The underlying vector store for memories and prototypes.
+        store (InMemoryVectorStore): The underlying vector store for memories and prototypes.
         prototype_system (PrototypeSystemStrategy): Handles memory consolidation and querying logic.
         metrics (Dict[str, Any]): A dictionary of metrics collected during operations
                                   (primarily from `PrototypeSystemStrategy`).
         prompt_budget (Optional[PromptBudget]): Configuration for managing prompt sizes
                                              when interacting with LLMs.
     """
+
     def __init__(
         self,
-        store: JsonNpyVectorStore,
+        store: InMemoryVectorStore,
         *,
         chunker: Optional[Chunker] = None,
         similarity_threshold: float = 0.8,
@@ -109,7 +110,7 @@ class Agent:
         Initializes the Agent.
 
         Args:
-            store: The `JsonNpyVectorStore` instance to be used for storing
+            store: The `InMemoryVectorStore` instance to be used for storing
                    and retrieving memories and prototypes.
             chunker: A `Chunker` instance for splitting text during ingestion.
                      Defaults to `SentenceWindowChunker` if None.
@@ -211,9 +212,7 @@ class Agent:
     def _repr_html_(self) -> str:
         """HTML summary for notebooks."""
         stats = self.get_statistics()
-        rows = "".join(
-            f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in stats.items()
-        )
+        rows = "".join(f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in stats.items())
         return f"<h3>Agent</h3><table>{rows}</table>"
 
     # ------------------------------------------------------------------

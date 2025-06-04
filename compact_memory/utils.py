@@ -4,9 +4,9 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, List
 
-from .json_npy_store import JsonNpyVectorStore
+from .vector_store import InMemoryVectorStore
 from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
-from .embedding_pipeline import get_embedding_dim, EmbeddingDimensionMismatchError
+from .embedding_pipeline import get_embedding_dim
 
 
 def get_disk_usage(path: Path) -> int:
@@ -34,16 +34,8 @@ def load_agent(path: Path) -> Agent:
     """
     from .agent import Agent
 
-    try:
-        store = JsonNpyVectorStore(path=str(path))
-    except FileNotFoundError as exc:
-        raise FileNotFoundError(
-            f"Agent directory '{path}' not found or is invalid"
-        ) from exc
-    except EmbeddingDimensionMismatchError:
-        from .embedding_pipeline import get_embedding_dim
-        dim = get_embedding_dim()
-        store = JsonNpyVectorStore(path=str(path), embedding_dim=dim)
+    dim = get_embedding_dim()
+    store = InMemoryVectorStore(embedding_dim=dim, path=str(path))
 
     chunker_id = store.meta.get("chunker", "sentence_window")
     chunker_cls = _CHUNKER_REGISTRY.get(chunker_id, SentenceWindowChunker)

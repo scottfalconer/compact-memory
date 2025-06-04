@@ -12,7 +12,7 @@ from typing import Callable, Dict, List, Optional
 import numpy as np
 
 from .chunker import Chunker, SentenceWindowChunker
-from .json_npy_store import JsonNpyVectorStore, BeliefPrototype, RawMemory
+from .vector_store import InMemoryVectorStore, BeliefPrototype, RawMemory
 from .memory_creation import ExtractiveSummaryCreator, MemoryCreator
 from .prototype.canonical import render_five_w_template
 from .prototype.conflict_flagging import ConflictFlagger, ConflictLogger as FlagLogger
@@ -65,7 +65,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
 
     def __init__(
         self,
-        store: JsonNpyVectorStore,
+        store: InMemoryVectorStore,
         *,
         chunker: Optional[Chunker] = None,
         similarity_threshold: float = 0.8,

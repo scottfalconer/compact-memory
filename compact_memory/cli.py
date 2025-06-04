@@ -22,7 +22,7 @@ from .logging_utils import configure_logging
 
 
 from .agent import Agent
-from .json_npy_store import JsonNpyVectorStore
+from .vector_store import InMemoryVectorStore
 from . import local_llm
 from .active_memory_manager import ActiveMemoryManager
 from .registry import (
@@ -306,9 +306,7 @@ def init(
     except RuntimeError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(code=1)
-    store = JsonNpyVectorStore(
-        path=str(path), embedding_model=model_name, embedding_dim=dim
-    )
+    store = InMemoryVectorStore(embedding_dim=dim, path=str(path))
     store.meta.update(
         {"agent_name": name, "tau": tau, "alpha": alpha, "chunker": chunker}
     )
@@ -393,7 +391,7 @@ def validate_agent_storage(
         )
         raise typer.Exit(code=1)
     try:
-        JsonNpyVectorStore(path=str(path))
+        InMemoryVectorStore(embedding_dim=get_embedding_dim(), path=str(path))
     except EmbeddingDimensionMismatchError as exc:
         typer.secho(
             f"Embedding dimension mismatch: {exc}", err=True, fg=typer.colors.RED
@@ -450,7 +448,7 @@ def clear(
         )
         raise typer.Exit(code=1)
     if dry_run:
-        store = JsonNpyVectorStore(path=str(path))
+        store = InMemoryVectorStore(embedding_dim=get_embedding_dim(), path=str(path))
         typer.echo(
             f"Dry run: Would delete {len(store.prototypes)} prototypes and {len(store.memories)} memories from agent at '{path}'."
         )
