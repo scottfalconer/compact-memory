@@ -1,16 +1,10 @@
 from pathlib import Path
 import pytest
 
-from compact_memory.response_experiment import ResponseExperimentConfig, run_response_experiment
-from compact_memory.embedding_pipeline import MockEncoder
-
-
-@pytest.fixture(autouse=True)
-def use_mock_encoder(monkeypatch):
-    enc = MockEncoder()
-    monkeypatch.setattr("compact_memory.response_experiment.MockEncoder", lambda: enc)
-    monkeypatch.setattr("compact_memory.embedding_pipeline._load_model", lambda *a, **k: enc)
-    yield
+from compact_memory.response_experiment import (
+    ResponseExperimentConfig,
+    run_response_experiment,
+)
 
 
 def test_response_experiment_runs(monkeypatch, tmp_path):
@@ -20,7 +14,11 @@ def test_response_experiment_runs(monkeypatch, tmp_path):
         def __init__(self, *a, **k):
             pass
 
-        tokenizer = staticmethod(lambda text, return_tensors=None, truncation=None, max_length=None: {"input_ids": text.split()})
+        tokenizer = staticmethod(
+            lambda text, return_tensors=None, truncation=None, max_length=None: {
+                "input_ids": text.split()
+            }
+        )
         model = type("M", (), {"config": type("C", (), {"n_positions": 50})()})()
         max_new_tokens = 10
 
@@ -48,4 +46,3 @@ def test_response_experiment_runs(monkeypatch, tmp_path):
     res = results[0]
     assert res["metrics"]["exact_match"]["exact_match"] == 1.0
     assert "avg_prompt_tokens" in res
-

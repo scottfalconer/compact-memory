@@ -13,9 +13,8 @@ def test_mock_encoder_determinism():
     assert v1.shape[0] == enc.dim
 
 
-def test_embed_text_uses_mock(monkeypatch):
+def test_embed_text_uses_mock():
     enc = ep.MockEncoder()
-    monkeypatch.setattr(ep, "_load_model", lambda *args, **kwargs: enc)
     vecs = ep.embed_text(["a", "b"])
     assert vecs.shape == (2, enc.dim)
     exp = enc.encode("a")
@@ -23,11 +22,12 @@ def test_embed_text_uses_mock(monkeypatch):
     assert np.allclose(vecs[0], exp)
 
 
-def test_load_model_failure(monkeypatch):
+def test_load_model_failure(monkeypatch, patch_embedding_model):
     def raise_err(*a, **k):
         raise OSError("missing")
 
     monkeypatch.setattr(ep, "SentenceTransformer", raise_err)
+    monkeypatch.setattr(ep, "_load_model", patch_embedding_model)
     with pytest.raises(RuntimeError) as exc:
         ep._load_model("bad", "cpu")
     msg = str(exc.value)
@@ -38,7 +38,6 @@ def test_load_model_failure(monkeypatch):
 
 def test_embed_text_optional_preprocess(monkeypatch):
     enc = ep.MockEncoder()
-    monkeypatch.setattr(ep, "_load_model", lambda *a, **k: enc)
 
     captured = {}
 

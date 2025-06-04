@@ -1,18 +1,6 @@
 import json
 import pytest
 from compact_memory.local_llm import LocalChatModel
-from compact_memory.embedding_pipeline import MockEncoder
-
-
-def _setup_encoder(monkeypatch):
-    class DummyEncoder(MockEncoder):
-        def get_sentence_embedding_dimension(self):
-            return self.dim
-
-    enc = DummyEncoder()
-    monkeypatch.setattr(
-        "compact_memory.embedding_pipeline._load_model", lambda *a, **k: enc
-    )
 
 
 class DummyTokenizer:
@@ -60,7 +48,6 @@ def dummy_llm(monkeypatch):
 
 
 def test_reply_truncates_to_limit(monkeypatch):
-    _setup_encoder(monkeypatch)
 
     called = {}
 
@@ -77,7 +64,6 @@ def test_reply_truncates_to_limit(monkeypatch):
 
 
 def test_context_length_uses_tokenizer_when_config_missing(monkeypatch):
-    _setup_encoder(monkeypatch)
 
     class Tok(DummyTokenizer):
         model_max_length = 150
