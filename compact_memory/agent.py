@@ -197,17 +197,11 @@ class Agent:
     def get_statistics(self) -> Dict[str, object]:
         """Return summary statistics about the current store."""
 
-        from .utils import get_disk_usage
-
-        path_value = self.store.path
-        path = Path(path_value) if path_value else None
-        disk_usage = get_disk_usage(path) if path is not None else 0
         return {
             "prototypes": len(self.store.prototypes),
             "memories": len(self.store.memories),
             "tau": self.similarity_threshold,
             "updated": self.store.meta.get("updated_at"),
-            "disk_usage": disk_usage,
         }
 
     # ------------------------------------------------------------------
@@ -250,7 +244,6 @@ class Agent:
         progress_callback: Optional[
             Callable[[int, int, bool, str, Optional[float]], None]
         ] = None,
-        save: bool = True,
         source_document_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
         """
@@ -270,7 +263,6 @@ class Agent:
                                progress during the ingestion of multiple chunks.
                                The callback might receive (current_chunk, total_chunks,
                                is_new_prototype, status_message, similarity_score).
-            save: If True (default), the memory store is saved to disk after ingestion.
             source_document_id: An optional identifier for the source of the text
                                 (e.g., a filename or URL).
 
@@ -286,7 +278,6 @@ class Agent:
             where=where,
             why=why,
             progress_callback=progress_callback,
-            save=save,
             source_document_id=source_document_id,
         )
 
@@ -336,178 +327,9 @@ class Agent:
         *,
         compression: CompressionStrategy | None = None,
     ) -> tuple[str, dict]:
-        """Generate a reply using ``manager`` and optional ``compression``.
+        """Stub for legacy conversational workflow."""
 
-        ``manager`` controls which conversation history is supplied to the LLM. Applications may
-        pass in a custom-configured instance to tailor recency and relevance behaviour.
-        """
-
-        from .local_llm import LocalChatModel
-
-        llm = getattr(self, "_chat_model", None)
-        if llm is None:
-            llm = LocalChatModel()
-            self._chat_model = llm
-
-        if compression is None:
-            compression = NoCompression()
-
-        if getattr(llm, "tokenizer", None) is None:
-            try:
-                llm.load_model()
-            except Exception:
-                pass
-
-        vec = embed_text([input_message])
-        if vec.ndim != 1:
-            vec = vec.reshape(-1)
-
-        history_candidates = manager.select_history_candidates_for_prompt(vec)
-        candidate_tokens = token_count(
-            llm.tokenizer, "\n".join(t.text for t in history_candidates)
-        )
-        logging.debug(
-            "[prompt] history candidates=%d tokens=%d",
-            len(history_candidates),
-            candidate_tokens,
-        )
-        if hasattr(llm, "_context_length"):
-            max_len = llm._context_length()
-        else:  # fallback for test doubles
-            cfg = getattr(getattr(llm, "model", None), "config", None)
-            max_len = getattr(cfg, "n_positions", 1024)
-        total_budget = max_len - llm.max_new_tokens
-
-        budget_cfg = manager.prompt_budget or getattr(self, "prompt_budget", None)
-        if budget_cfg is not None:
-            budgets = budget_cfg.resolve(total_budget)
-        else:
-            budgets = {}
-
-        b_query = budgets.get("query")
-        b_recent = budgets.get("recent_history")
-        b_older = budgets.get("older_history")
-        b_ltm = budgets.get("ltm_snippets")
-
-        def _fit(turns, limit):
-            if limit is None:
-                return list(turns)
-            kept = []
-            tokens_used = 0
-            for t in turns:
-                n = token_count(llm.tokenizer, t.text)
-                if tokens_used + n <= limit:
-                    kept.append(t)
-                    tokens_used += n
-                else:
-                    break
-            return kept
-
-        num_recent = manager.config_prompt_num_forced_recent_turns
-        if num_recent > 0:
-            recent_slice = history_candidates[-num_recent:]
-            older_slice = history_candidates[:-num_recent]
-        else:
-            recent_slice = []
-            older_slice = list(history_candidates)
-
-        older_final = _fit(older_slice, b_older)
-        recent_final = _fit(recent_slice, b_recent)
-        history_final = older_final + recent_final
-
-        history_text = "\n".join(t.text for t in history_final)
-        history_tokens_final = token_count(llm.tokenizer, history_text)
-        logging.debug(
-            "[prompt] history after fit turns=%d tokens=%d",
-            len(history_final),
-            history_tokens_final,
-        )
-        if compression is not None:
-            limit = None
-            if b_recent or b_older:
-                limit = (b_recent or 0) + (b_older or 0)
-            compressed, trace = compression.compress(
-                [t.text for t in history_final],
-                limit,
-                tokenizer=llm.tokenizer,
-            )
-            history_text = compressed.text
-            history_tokens_final = token_count(llm.tokenizer, history_text)
-
-        query_res = self.query(input_message, top_k_prototypes=2, top_k_memories=2)
-        proto_summaries = "; ".join(
-            p["summary"] for p in query_res.get("prototypes", [])
-        )
-        mem_texts = "; ".join(m["text"] for m in query_res.get("memories", []))
-        ltm_initial = "\n".join(
-            [
-                f"Relevant concepts: {proto_summaries}" if proto_summaries else "",
-                f"Context: {mem_texts}" if mem_texts else "",
-            ]
-        ).strip()
-        logging.debug(
-            "[prompt] LTM snippets tokens before=%d",
-            token_count(llm.tokenizer, ltm_initial) if ltm_initial else 0,
-        )
-
-        user_text = input_message
-        if b_query:
-            logging.debug(
-                "[prompt] query tokens before=%d limit=%s",
-                token_count(llm.tokenizer, user_text),
-                b_query,
-            )
-            user_text = truncate_text(llm.tokenizer, user_text, b_query)
-            logging.debug(
-                "[prompt] query tokens after=%d",
-                token_count(llm.tokenizer, user_text),
-            )
-
-        ltm_parts = []
-        if proto_summaries:
-            ltm_parts.append(f"Relevant concepts: {proto_summaries}")
-        if mem_texts:
-            ltm_parts.append(f"Context: {mem_texts}")
-        ltm_text = "\n".join(ltm_parts)
-        if b_ltm:
-            logging.debug(
-                "[prompt] LTM tokens before=%d limit=%s",
-                token_count(llm.tokenizer, ltm_text),
-                b_ltm,
-            )
-            ltm_text = truncate_text(llm.tokenizer, ltm_text, b_ltm)
-            logging.debug(
-                "[prompt] LTM tokens after=%d",
-                token_count(llm.tokenizer, ltm_text),
-            )
-
-        parts = []
-        if history_text:
-            parts.append(history_text)
-        parts.append(f"User asked: {user_text}")
-        if ltm_text:
-            parts.append(ltm_text)
-        parts.append("Answer:")
-        prompt = "\n".join(parts)
-        before_llm_tokens = token_count(llm.tokenizer, prompt)
-        logging.debug("[prompt] before prepare tokens=%d", before_llm_tokens)
-        prompt = llm.prepare_prompt(self, prompt)
-        after_llm_tokens = token_count(llm.tokenizer, prompt)
-        logging.debug("[prompt] after prepare tokens=%d", after_llm_tokens)
-        prompt_tokens = after_llm_tokens
-        reply = llm.reply(prompt)
-
-        manager.add_turn(
-            ConversationTurn(
-                text=f"User: {input_message}\nAgent: {reply}",
-                turn_embedding=vec.tolist() if hasattr(vec, "tolist") else None,
-            )
-        )
-        return reply, {
-            "query_result": query_res,
-            "prompt_tokens": prompt_tokens,
-            "compression_trace": trace if compression is not None else None,
-        }
+        raise NotImplementedError("LLM integration removed")
 
     # ------------------------------------------------------------------
     def receive_channel_message(
@@ -557,49 +379,14 @@ class Agent:
 
         text = message_text.strip()
         if text.endswith("?"):
-            # -------------------------------------------------- Option A: query
-            if manager is not None:
-                reply, info = self.process_conversational_turn(
-                    text, manager, compression=compression
-                )
-                summary["action"] = "query"
-                summary["query_result"] = info.get("query_result", {})
-                summary["reply"] = reply
-                summary["prompt_tokens"] = info.get("prompt_tokens")
-                if info.get("compression_trace") is not None:
-                    summary["compression_trace"] = info["compression_trace"]
-                return summary
-
             result = self.query(text, top_k_prototypes=2, top_k_memories=2)
-            summary["action"] = "query"
-            summary["query_result"] = result
-            reply: Optional[str] = None
-            try:
-                from .local_llm import LocalChatModel
-
-                llm = getattr(self, "_chat_model", None)
-                if llm is None:
-                    llm = LocalChatModel()
-                    self._chat_model = llm
-
-                proto_summaries = "; ".join(
-                    p["summary"] for p in result.get("prototypes", [])
-                )
-                mem_texts = "; ".join(m["text"] for m in result.get("memories", []))
-                prompt_parts = [f"User asked: {text}"]
-                if proto_summaries:
-                    prompt_parts.append(f"Relevant concepts: {proto_summaries}")
-                if mem_texts:
-                    prompt_parts.append(f"Context: {mem_texts}")
-                prompt_parts.append("Answer:")
-                prompt = "\n".join(prompt_parts)
-                prompt = llm.prepare_prompt(self, prompt)
-                reply = llm.reply(prompt)
-            except Exception as exc:  # pragma: no cover - optional dep
-                logging.warning("chat reply failed: %s", exc)
-                reply = None
-
-            summary["reply"] = reply
+            summary.update(
+                {
+                    "action": "query",
+                    "query_result": result,
+                    "reply": None,
+                }
+            )
             return summary
 
         # -------------------------------------------- Option B: ingest message

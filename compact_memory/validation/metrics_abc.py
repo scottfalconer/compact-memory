@@ -49,7 +49,7 @@ class ValidationMetric(ABC):
     ```
     """
 
-    metric_id: str # Unique string identifier for the validation metric.
+    metric_id: str  # Unique string identifier for the validation metric.
 
     def __init__(self, **kwargs: Any) -> None:  # pragma: no cover - simple init
         """
@@ -109,4 +109,3 @@ class ValidationMetric(ABC):
             "compression_ratio", "bleu") and values are the corresponding
             float scores.
         """
-        

@@ -43,21 +43,6 @@ class _LRUSet:
         return item in self._cache
 
 
-class EvidenceWriter:
-    """Append evidence rows to ``evidence.jsonl``."""
-
-    def __init__(self, path: Path) -> None:
-        self.path = path
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-
-    def add(self, belief_id: str, memory_id: str, weight: float) -> None:
-        with open(self.path, "a") as f:
-            line = json.dumps(
-                {"belief_id": belief_id, "memory_id": memory_id, "weight": weight}
-            )
-            f.write(line + "\n")
-
-
 class PrototypeSystemStrategy(CompressionStrategy):
     """Prototype-based long-term memory management. Prototypes are updated over time using an EMA so their representations evolve with new evidence."""
 
@@ -90,11 +75,7 @@ class PrototypeSystemStrategy(CompressionStrategy):
             "prototype_vector_change_magnitude": 0.0,
         }
         self._dedup = _LRUSet(size=dedup_cache)
-        if isinstance(store.path, (str, Path)):
-            p = Path(store.path) / "evidence.jsonl"
-        else:
-            p = Path("evidence.jsonl")
-        self._evidence = EvidenceWriter(p)
+        # Evidence logging removed
 
     # ------------------------------------------------------------------
     def add_memory(
@@ -109,7 +90,6 @@ class PrototypeSystemStrategy(CompressionStrategy):
         progress_callback: Optional[
             Callable[[int, int, bool, str, Optional[float]], None]
         ] = None,
-        save: bool = True,
         source_document_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
         """Ingest ``text``. Related memories update existing prototypes to evolve their gist over time."""
@@ -181,7 +161,6 @@ class PrototypeSystemStrategy(CompressionStrategy):
                 embedding=list(map(float, vec)),
             )
             self.store.add_memory(raw_mem)
-            self._evidence.add(pid, mem_id, 1.0)
             self.metrics["memories_ingested"] += 1
             if self.update_summaries:
                 texts = [
@@ -199,8 +178,6 @@ class PrototypeSystemStrategy(CompressionStrategy):
             if progress_callback:
                 progress_callback(idx, total, spawned, pid, sim)
 
-        if save:
-            self.store.save()
         return results
 
     # ------------------------------------------------------------------
