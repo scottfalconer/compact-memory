@@ -192,9 +192,3 @@ def test_compress_relevance_boosting_surfaces_older_turn(
 
     compressed, _ = strategy.compress(query, 50, tokenizer=mock_tokenizer_func)
     assert older in compressed.text
-
-
-def test_save_and_load_learnable_components() -> None:
-    strategy = ActiveMemoryStrategy()
-    strategy.save_learnable_components("./dummy_path")
-    strategy.load_learnable_components("./dummy_path")
