@@ -26,15 +26,11 @@ experimented with.
 ```
 
 ### Core modules
-<!-- SUGGESTION: A diagram illustrating the interaction between core modules (agent.py, json_npy_store.py, embedding_pipeline.py, chunker.py, etc.) could be helpful here. -->
+<!-- SUGGESTION: A diagram illustrating the interaction between core modules (agent.py, embedding_pipeline.py, chunker.py, etc.) could be helpful here. -->
 
 - **`agent.py`** – orchestrates ingestion and querying using a
-  `JsonNpyVectorStore`. It handles deduplication, chunking, embedding and
+  a vector store interface. It handles deduplication, chunking, embedding and
   prototype updates. The default similarity threshold is 0.8.
-- **`json_npy_store.py`** – minimal persistence layer storing prototype
-  vectors in NPY files and metadata in JSON. Provides nearest-neighbour
-  search and exposes methods used by the agent to add/update prototypes
-  and memories.
 - **`embedding_pipeline.py`** – loads a SentenceTransformer model and
   exposes `embed_text`. A deterministic `MockEncoder` is available for
   tests. Embeddings are cached and normalised.
@@ -52,7 +48,7 @@ experimented with.
   `experiment` and `strategy inspect`. Persistence is
   locked during writes to avoid corruption.
 - Additional vector store implementations can be developed by
-  extending the interfaces used by `JsonNpyVectorStore`. This keeps
+  extending the interfaces used by a vector store interface. This keeps
   the agent decoupled from any particular storage backend or embedding
   provider.
 
@@ -112,8 +108,7 @@ that persistence round‑trips and query ranking work as expected.
 ## Rationale
 
 The current implementation aims to validate the coarse prototype memory
-hypothesis with a lightweight, easily inspectable codebase. JSON/NPY
-storage avoids external dependencies while still supporting millions of
+hypothesis with a lightweight, easily inspectable codebase.
 vectors. Abstractions for embedding models and vector stores allow the
 system to evolve without rewriting the agent logic. Unit tests with a
 mock encoder keep the feedback loop fast and deterministic.

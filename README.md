@@ -235,7 +235,6 @@ For contributors or those looking to build custom solutions on top of Compact Me
 
 - Command-line interface for agent management (`agent init`, `agent stats`, `agent validate`, `agent clear`), data processing (`ingest`, `query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-strategies`, `dev evaluate-compression`, etc.).
 - Global configuration options settable via CLI, environment variables, or config files.
-- Lightweight JSON/NPY backend for prototypes and memories with optional Chroma vector store for scale (`pip install "compact-memory[chroma]"`).
 - Pluggable memory compression strategies.
 - Pluggable embedding backends: random (default), OpenAI, or local sentence transformers.
 - Chunks rendered using a canonical **WHO/WHAT/WHEN/WHERE/WHY** template before embedding.
@@ -522,7 +521,7 @@ This hook enables custom regex cleanup, spaCy pipelines or LLM-powered summariza
 
 Compact Memory features a modular architecture that allows for flexible extension and adaptation. The core interfaces for `CompressionStrategy` and `ValidationMetric` are designed to be pluggable, enabling diverse implementations.
 
-Persistent storage, such as the default JSON/NPY store, is primarily relevant for `CompressionStrategy` implementations that maintain a stateful long-term memory (e.g., strategies based on prototypes or evolving summaries). Many strategies, however, can be stateless, processing input text without relying on persistent memory.
+Persistent storage is primarily relevant for `CompressionStrategy` implementations that maintain a stateful long-term memory (e.g., strategies based on prototypes or evolving summaries). Many strategies, however, can be stateless, processing input text without relying on persistent memory.
 
 For a detailed architectural overview and discussion of storage options, please see:
 -   `docs/ARCHITECTURE.md`

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from compact_memory.json_npy_store import JsonNpyVectorStore
+from compact_memory.vector_store import InMemoryVectorStore
 from compact_memory.prototype_system_strategy import PrototypeSystemStrategy
 from compact_memory.embedding_pipeline import MockEncoder
 import compact_memory.agent as agent_mod
@@ -19,8 +19,8 @@ def main() -> None:
 
     agent_mod.embed_text = embed  # type: ignore
 
-    with TemporaryDirectory() as tmp:
-        store = JsonNpyVectorStore(path=tmp, embedding_model="mock", embedding_dim=enc.dim)
+    with TemporaryDirectory() as _:
+        store = InMemoryVectorStore(embedding_dim=enc.dim)
         strat = PrototypeSystemStrategy(store)
         texts = [
             "Neil Armstrong was the first person to walk on the moon.",
