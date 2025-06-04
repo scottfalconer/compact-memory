@@ -26,7 +26,7 @@ _Completed in v0.1.1._
 - Setup GitHub Actions for linting and running unit tests.
 - Add unit tests for `Agent.query` covering success and "no_match" cases.
 - Extend CLI tests to cover `list-beliefs` and `download-model` commands.
-- Test `JsonNpyVectorStore.update_prototype` and `find_nearest` directly.
+- Test `MemoryStore.update_prototype` and `find_nearest` directly.
 - Add embedding pipeline tests for single-string and empty inputs, and for `register_embedding`.
 
 ## 6 · Memory Decay / Archival

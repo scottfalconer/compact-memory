@@ -11,7 +11,7 @@ import yaml
 
 from .agent import Agent
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
-from .json_npy_store import JsonNpyVectorStore
+from .memory_store import MemoryStore
 from .embedding_pipeline import embed_text, get_embedding_dim, MockEncoder
 from .registry import get_validation_metric_class
 from . import validation  # ensure metrics are registered
@@ -57,9 +57,7 @@ def _evaluate_sample(
 
     work_dir = tempfile.mkdtemp()
     dim = get_embedding_dim()
-    store = JsonNpyVectorStore(
-        path=work_dir, embedding_model="experiment", embedding_dim=dim
-    )
+    store = MemoryStore(path=work_dir, embedding_dim=dim)
     agent = Agent(store, chunk_fn=None)
 
     for turn in sample["turns"]:

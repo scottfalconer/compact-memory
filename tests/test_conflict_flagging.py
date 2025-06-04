@@ -1,7 +1,7 @@
 import json
 import pytest
 from compact_memory.agent import Agent
-from compact_memory.json_npy_store import JsonNpyVectorStore
+from compact_memory.memory_store import MemoryStore
 from compact_memory.embedding_pipeline import MockEncoder
 
 
@@ -15,9 +15,7 @@ def use_mock_encoder(monkeypatch):
 
 
 def test_numeric_conflict_logged(tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None, similarity_threshold=0.7)
     agent.add_memory("The event is on January 1")
     agent.add_memory("The event is on January 2")
@@ -31,9 +29,7 @@ def test_numeric_conflict_logged(tmp_path):
 
 
 def test_negation_conflict_logged(tmp_path):
-    store = JsonNpyVectorStore(
-        path=str(tmp_path), embedding_model="mock", embedding_dim=MockEncoder.dim
-    )
+    store = MemoryStore(path=str(tmp_path), embedding_dim=MockEncoder.dim)
     agent = Agent(store, chunk_fn=None, similarity_threshold=0.7)
     agent.add_memory("John is available")
     agent.add_memory("John is not available")

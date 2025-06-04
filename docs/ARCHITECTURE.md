@@ -26,15 +26,13 @@ experimented with.
 ```
 
 ### Core modules
-<!-- SUGGESTION: A diagram illustrating the interaction between core modules (agent.py, json_npy_store.py, embedding_pipeline.py, chunker.py, etc.) could be helpful here. -->
+<!-- SUGGESTION: A diagram illustrating the interaction between core modules (agent.py, memory_store.py, embedding_pipeline.py, chunker.py, etc.) could be helpful here. -->
 
 - **`agent.py`** – orchestrates ingestion and querying using a
-  `JsonNpyVectorStore`. It handles deduplication, chunking, embedding and
+  `MemoryStore`. It handles deduplication, chunking, embedding and
   prototype updates. The default similarity threshold is 0.8.
-- **`json_npy_store.py`** – minimal persistence layer storing prototype
-  vectors in NPY files and metadata in JSON. Provides nearest-neighbour
-  search and exposes methods used by the agent to add/update prototypes
-  and memories.
+- **`memory_store.py`** – simple in-memory store wrapping a vector backend
+  to manage prototype vectors and metadata.
 - **`embedding_pipeline.py`** – loads a SentenceTransformer model and
   exposes `embed_text`. A deterministic `MockEncoder` is available for
   tests. Embeddings are cached and normalised.
