@@ -150,7 +150,7 @@ This will check for required files, fields in the manifest, and basic loadabilit
         ```
     *   **Python API:**
         ```python
-        from compact_memory.compression import get_compression_strategy
+        from CompressionStrategy.core import get_compression_strategy
 
         strategy_instance = get_compression_strategy("<shared_strategy_id>")()
         compressed_mem, trace = strategy_instance.compress(text, budget)

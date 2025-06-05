@@ -11,8 +11,8 @@ from typing import Iterable
 
 from platformdirs import user_data_dir
 
-from .compression import register_compression_strategy, get_strategy_metadata
-from .compression.strategies_abc import CompressionStrategy
+from CompressionStrategy.core import register_compression_strategy, get_strategy_metadata
+from CompressionStrategy.core.strategies_abc import CompressionStrategy
 from .package_utils import (
     validate_package_dir,
     load_manifest,

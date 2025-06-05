@@ -3,15 +3,15 @@ from __future__ import annotations
 from typing import List, Optional, Any, Dict, Union, Tuple
 
 import numpy as np
-from compact_memory.compression.strategies_abc import (
+from CompressionStrategy.core.strategies_abc import (
     CompressionStrategy,
     CompressedMemory,
 )
-from compact_memory.compression.trace import CompressionTrace
+from CompressionStrategy.core.trace import CompressionTrace
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 from compact_memory.prompt_budget import PromptBudget
 from compact_memory import agent as _agent_utils  # For embed_text
-from compact_memory.compression import (
+from CompressionStrategy.core import (
     register_compression_strategy,
 )  # Added for registration
 
@@ -193,4 +193,8 @@ class ActiveMemoryStrategy(CompressionStrategy):
         pass
 
 
-register_compression_strategy(ActiveMemoryStrategy.id, ActiveMemoryStrategy)
+register_compression_strategy(
+    ActiveMemoryStrategy.id, ActiveMemoryStrategy, source="contrib"
+)
+
+__all__ = ["ActiveMemoryStrategy", "ActiveMemoryManager", "ConversationTurn"]

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Union, Tuple
 
-from .compression.strategies_abc import (
+from CompressionStrategy.core.strategies_abc import (
     CompressedMemory,
     CompressionStrategy,
     CompressionTrace,

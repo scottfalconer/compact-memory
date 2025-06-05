@@ -1,4 +1,4 @@
-from compact_memory.strategies.experimental import (
+from CompressionStrategy.contrib import (
     ActiveMemoryManager,
     ConversationTurn,
 )

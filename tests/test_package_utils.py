@@ -5,7 +5,7 @@ from compact_memory.package_utils import (
     validate_package_dir,
     check_requirements_installed,
 )
-from compact_memory.compression.strategies_abc import (
+from CompressionStrategy.core.strategies_abc import (
     CompressionStrategy,
     CompressedMemory,
     CompressionTrace,
@@ -15,7 +15,7 @@ from compact_memory.compression.strategies_abc import (
 def _write_strategy_module(path: Path) -> None:
     path.write_text(
         """
-from compact_memory.compression.strategies_abc import (
+from CompressionStrategy.core.strategies_abc import (
     CompressionStrategy,
     CompressedMemory,
     CompressionTrace,

@@ -1,4 +1,4 @@
-from compact_memory.strategies.experimental.prototype_system_utils import (
+from CompressionStrategy.contrib.prototype_system_utils import (
     render_five_w_template,
 )
 

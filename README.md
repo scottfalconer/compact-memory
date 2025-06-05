@@ -125,7 +125,7 @@ Shared strategies can be distributed as standard Python packages (e.g., via PyPI
     compact-memory compress --text "my text" --strategy community_strategy_id --budget 100
     ```
     ```python
-    from compact_memory.compression import get_compression_strategy
+    from CompressionStrategy.core import get_compression_strategy
     strategy = get_compression_strategy("community_strategy_id")()
     # ... use the strategy
     ```
@@ -210,12 +210,12 @@ Note: The old method of enabling strategies via `compact_memory_config.yaml` dir
 
 ### Using Experimental Strategies
 
-Experimental strategies live under ``compact_memory.strategies.experimental``.
+Experimental strategies live under ``CompressionStrategy.contrib``.
 The CLI registers them automatically, so commands like ``--strategy first_last`` work out of the box.
 When using the Python API directly, call ``enable_all_experimental_strategies()`` to register them:
 
 ```python
-from compact_memory.strategies.experimental import (
+from CompressionStrategy.contrib import (
     ChainedStrategy,
     enable_all_experimental_strategies,
 )

@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import List, Union, Any
 
-from ...compression import register_compression_strategy
-from ...compression.strategies_abc import (
+from CompressionStrategy.core import register_compression_strategy
+from CompressionStrategy.core.strategies_abc import (
     CompressionStrategy,
     CompressedMemory,
     CompressionTrace,
@@ -49,6 +49,8 @@ class FirstLastStrategy(CompressionStrategy):
         return compressed, trace
 
 
-register_compression_strategy(FirstLastStrategy.id, FirstLastStrategy)
+register_compression_strategy(
+    FirstLastStrategy.id, FirstLastStrategy, source="contrib"
+)
 
 __all__ = ["FirstLastStrategy"]

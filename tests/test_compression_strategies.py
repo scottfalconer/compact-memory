@@ -1,4 +1,4 @@
-from compact_memory.compression import (
+from CompressionStrategy.core import (
     CompressionStrategy,
     CompressedMemory,
     CompressionTrace,

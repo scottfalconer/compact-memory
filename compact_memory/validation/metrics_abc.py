@@ -6,8 +6,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover - imports for type hints only
-    from ..compression.strategies_abc import CompressedMemory
-    from ..compression.trace import CompressionTrace
+    from CompressionStrategy.core.strategies_abc import CompressedMemory
+    from CompressionStrategy.core.trace import CompressionTrace
 else:  # pragma: no cover - avoid runtime dependency
     CompressedMemory = Any
     CompressionTrace = Any
@@ -31,8 +31,8 @@ class ValidationMetric(ABC):
     Example:
     ```python
     from compact_memory.validation.metrics_abc import ValidationMetric
-    from compact_memory.compression.strategies_abc import CompressedMemory
-    from compact_memory.compression.trace import CompressionTrace
+    from CompressionStrategy.core.strategies_abc import CompressedMemory
+    from CompressionStrategy.core.trace import CompressionTrace
     from typing import Dict, Optional
 
     class MyCustomMetric(ValidationMetric):

@@ -20,6 +20,7 @@ class CompressedMemory:
                   about the compressed content, such as source IDs, timestamps,
                   or strategy-specific details.
     """
+
     text: str
     metadata: Optional[Dict[str, Any]] = None
 
@@ -34,7 +35,11 @@ class CompressionStrategy(ABC):
 
     Example:
     ```python
-    from compact_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace
+    from CompressionStrategy.core.strategies_abc import (
+        CompressionStrategy,
+        CompressedMemory,
+        CompressionTrace,
+    )
 
     class MyCustomStrategy(CompressionStrategy):
         id = "my_custom_strategy"
@@ -51,7 +56,7 @@ class CompressionStrategy(ABC):
     that needs to be persisted and reloaded.
     """
 
-    id: str # Unique string identifier for the strategy.
+    id: str  # Unique string identifier for the strategy.
 
     @abstractmethod
     def compress(
@@ -89,10 +94,14 @@ class CompressionStrategy(ABC):
                                   for debugging, analysis, and understanding strategy behavior.
         """
 
-    def save_learnable_components(self, path: str) -> None:  # pragma: no cover - optional
+    def save_learnable_components(
+        self, path: str
+    ) -> None:  # pragma: no cover - optional
         """Saves any learnable components of the strategy to the specified path."""
 
-    def load_learnable_components(self, path: str) -> None:  # pragma: no cover - optional
+    def load_learnable_components(
+        self, path: str
+    ) -> None:  # pragma: no cover - optional
         """Loads any learnable components of the strategy from the specified path."""
 
 

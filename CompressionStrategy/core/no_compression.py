@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, List
 
-from ..token_utils import truncate_text
+from compact_memory.token_utils import truncate_text
 from .strategies_abc import CompressedMemory, CompressionStrategy, CompressionTrace
 
 try:  # pragma: no cover - optional dependency

@@ -23,7 +23,11 @@ This tutorial demonstrates how to programmatically use an existing compression s
 First, let\'s import the required components from Compact Memory and any other libraries.
 
 ```python
-from compact_memory.compression import get_compression_strategy, CompressedMemory, CompressionStrategy
+from CompressionStrategy.core import (
+    get_compression_strategy,
+    CompressedMemory,
+    CompressionStrategy,
+)
 from compact_memory.token_utils import get_tokenizer, token_count # For token counting
 import os # For API keys, if needed
 
@@ -165,7 +169,11 @@ print(llm_response)
 ## Complete Example Script
 
 ```python
-from compact_memory.compression import get_compression_strategy, CompressedMemory, CompressionStrategy
+from CompressionStrategy.core import (
+    get_compression_strategy,
+    CompressedMemory,
+    CompressionStrategy,
+)
 from compact_memory.token_utils import get_tokenizer, token_count
 import os
 

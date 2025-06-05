@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import List, Union, Any
 
-from compact_memory.compression.strategies_abc import (
+from CompressionStrategy.core import register_compression_strategy
+from CompressionStrategy.core.strategies_abc import (
     CompressionStrategy,
     CompressedMemory,
     CompressionTrace,
@@ -42,3 +43,10 @@ class RationaleEpisodeStrategy(CompressionStrategy):
         self, path: str
     ) -> None:  # pragma: no cover - no learnables
         pass
+
+
+register_compression_strategy(
+    RationaleEpisodeStrategy.id, RationaleEpisodeStrategy, source="contrib"
+)
+
+__all__ = ["RationaleEpisodeStrategy"]

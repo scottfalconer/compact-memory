@@ -3,14 +3,14 @@ This section provides a reference for the core public APIs of Compact Memory, pa
 > **Note:** The content below is a manually curated list of key components. A full, auto-generated API reference (e.g., via Sphinx) is recommended for complete details and is planned for future updates.
 ## Core Strategy Development APIs
 The following classes and modules are fundamental when developing new compression strategies.
-### `compact_memory.compression.strategies_abc.CompressionStrategy`
+### `CompressionStrategy.core.strategies_abc.CompressionStrategy`
 The abstract base class for all compression strategies. Developers must subclass this to create new strategies.
 *   `Key methods: \`compress(self, text_or_chunks, llm_token_budget, **kwargs)\``
 *   `Key attributes: \`id\` (string identifier for the strategy)`
-### `compact_memory.compression.strategies_abc.CompressedMemory`
+### `CompressionStrategy.core.strategies_abc.CompressedMemory`
 A data class that holds the output of a compression operation.
 *   `Key attributes: \`text\` (string, the compressed content), \`metadata\` (optional dictionary)`
-### `compact_memory.compression.trace.CompressionTrace`
+### `CompressionStrategy.core.trace.CompressionTrace`
 A data class used to record the steps and metadata of a compression process. Essential for debugging and explainability.
 *   `Key attributes: \`strategy_name\`, \`strategy_params\`, \`input_summary\`, \`steps\` (list of dicts), \`output_summary\`, \`processing_ms\`, \`final_compressed_object_preview\``
 ## Core Validation APIs

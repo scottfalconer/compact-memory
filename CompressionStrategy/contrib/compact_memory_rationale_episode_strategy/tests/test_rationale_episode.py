@@ -1,4 +1,4 @@
-from compact_memory_rationale_episode_strategy import (
+from CompressionStrategy.contrib.compact_memory_rationale_episode_strategy import (
     Episode,
     Decision,
     EpisodeStorage,

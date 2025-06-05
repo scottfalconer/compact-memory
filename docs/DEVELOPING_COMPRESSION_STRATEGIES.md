@@ -6,14 +6,14 @@ This guide provides a comprehensive walkthrough for researchers and developers l
 
 At the heart of Compact Memory's extensibility is the `CompressionStrategy` abstract base class. Any new strategy you develop must inherit from this class and implement its required methods.
 
-### Abstract Base Class: `compact_memory.compression.strategies_abc.CompressionStrategy`
+### Abstract Base Class: `CompressionStrategy.core.strategies_abc.CompressionStrategy`
 
 ```python
 from abc import ABC, abstractmethod
 from typing import Union, List, Tuple, Any, Optional, Dict
 
-from compact_memory.compression.trace import CompressionTrace
-from compact_memory.compression.strategies_abc import CompressedMemory
+from CompressionStrategy.core.trace import CompressionTrace
+from CompressionStrategy.core.strategies_abc import CompressedMemory
 
 class CompressionStrategy(ABC):
     # Unique identifier for your strategy. This is crucial for registration and selection.
@@ -96,8 +96,8 @@ Your primary task is to implement the `compress` method. Here's what to consider
 ### Example: A Simple Truncation Strategy
 
 ```python
-from compact_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory
-from compact_memory.compression.trace import CompressionTrace
+from CompressionStrategy.core.strategies_abc import CompressionStrategy, CompressedMemory
+from CompressionStrategy.core.trace import CompressionTrace
 from compact_memory.token_utils import get_tokenizer, token_count
 
 class SimpleTruncateStrategy(CompressionStrategy):

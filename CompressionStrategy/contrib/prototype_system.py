@@ -13,10 +13,11 @@ from compact_memory.chunker import Chunker, SentenceWindowChunker
 from compact_memory.vector_store import VectorStore
 from compact_memory.models import BeliefPrototype, RawMemory
 from compact_memory.memory_creation import ExtractiveSummaryCreator, MemoryCreator
-from compact_memory.strategies.experimental.prototype_system_utils import (
+from CompressionStrategy.contrib.prototype_system_utils import (
     render_five_w_template,
 )
-from compact_memory.compression.strategies_abc import (
+from CompressionStrategy.core import register_compression_strategy
+from CompressionStrategy.core.strategies_abc import (
     CompressedMemory,
     CompressionStrategy,
 )
@@ -251,3 +252,10 @@ class PrototypeSystemStrategy(CompressionStrategy):
         else:
             compressed = combined[:llm_token_budget]
         return CompressedMemory(text=compressed, metadata={"status": result["status"]})
+
+
+register_compression_strategy(
+    PrototypeSystemStrategy.id, PrototypeSystemStrategy, source="contrib"
+)
+
+__all__ = ["PrototypeSystemStrategy"]
