@@ -6,21 +6,21 @@ package_format_version: "1.0"
 engine_id: sample
 
 # The name of the Python class that implements your engine.
-engine_class_name: SampleStrategy
+engine_class_name: SampleEngine
 
 # The name of the Python module file (without .py extension) where your engine class is defined.
 # For example, if your class is in 'my_engine_file.py', this would be 'my_engine_file'.
-engine_module: strategy
+engine_module: engine
 
 # A user-friendly name for your engine, used in listings and UI.
-display_name: Sample Strategy
+display_name: Sample Engine
 
 # Version number for your engine package (e.g., following SemVer).
 version: "0.1.0"
 
-# List of authors or maintainers of this strategy package.
+# List of authors or maintainers of this engine package.
 authors:
   - Example Author # Can be a name or "Name <email@example.com>"
 
-# A brief description of what the strategy does, its methodology, or its intended use case.
-description: A trivial example of a packaged compression strategy. It returns the input text unchanged. Serves as a template for creating new strategies.
+# A brief description of what the engine does, its methodology, or its intended use case.
+description: A trivial example of a packaged compression engine. It returns the input text unchanged. Serves as a template for creating new engines.
