@@ -39,7 +39,6 @@ from .embedding_pipeline import (
     get_embedding_dim,
     EmbeddingDimensionMismatchError,
 )
-from .utils import load_agent
 from compact_memory.config import Config, DEFAULT_CONFIG, USER_CONFIG_PATH
 
 from CompressionStrategy.core import (
@@ -105,7 +104,7 @@ def main(
         None,
         "--memory-path",
         "-m",
-        help="Path to the Compact Memory agent directory. Overrides COMPACT_MEMORY_PATH env var and configuration files.",
+        help="Path to the Compact Memory memory container directory. Overrides COMPACT_MEMORY_PATH env var and configuration files.",
     ),
     model_id: Optional[str] = typer.Option(
         None,
@@ -162,7 +161,7 @@ def main(
     command_requires_memory_path = True  # Assume true by default
     if ctx.invoked_subcommand:
         # Commands that DON'T require a memory path immediately
-        no_mem_path_commands = ["config", "dev"]
+        no_mem_path_commands = ["config", "dev", "compress"]
         # Top level commands that might also not need it (e.g. if they are just info commands)
         # For now, assume all other top-level commands (like ingest, query, compress) will need it.
         if ctx.invoked_subcommand in no_mem_path_commands:
@@ -236,7 +235,7 @@ def _corrupt_exit(path: Path, exc: Exception) -> None:
     raise typer.Exit(code=1)
 
 
-def _load_agent(path: Path) -> MemoryContainer:
+def load_memory_container(path: Path) -> MemoryContainer:
     """Placeholder loader since on-disk storage was removed."""
     raise RuntimeError(
         "Persistent storage support was removed. Provide your own loader."
@@ -251,12 +250,14 @@ def _load_agent(path: Path) -> MemoryContainer:
 def init(
     target_directory: Path = typer.Argument(
         ...,
-        help="Directory to initialize the new agent in. Will be created if it doesn't exist.",
+        help="Directory to initialize the new memory container in. Will be created if it doesn't exist.",
         resolve_path=True,
     ),
     *,
     ctx: typer.Context,
-    name: str = typer.Option("default", help="A descriptive name for the agent."),
+    name: str = typer.Option(
+        "default", help="A descriptive name for the memory container."
+    ),
     model_name: str = typer.Option(
         "all-MiniLM-L6-v2",
         help="Name of the sentence-transformer model for embeddings.",
@@ -293,10 +294,10 @@ def init(
         raise typer.Exit(code=1)
     store = InMemoryVectorStore(embedding_dim=dim)
     store.meta.update(
-        {"agent_name": name, "tau": tau, "alpha": alpha, "chunker": chunker}
+        {"memory_name": name, "tau": tau, "alpha": alpha, "chunker": chunker}
     )
     store.save()
-    typer.echo(f"Successfully initialized Compact Memory agent at {path}")
+    typer.echo(f"Successfully initialized Compact Memory memory container at {path}")
 
 
 @memory_app.command(
@@ -308,8 +309,8 @@ def stats(
         False, "--json", help="Output statistics in JSON format."
     ),
 ) -> None:
-    agent = _load_agent(Path("."))
-    data = agent.get_statistics()
+    container = load_memory_container(Path("."))
+    data = container.get_statistics()
     logging.debug("Collected statistics: %s", data)
     if json_output:
         typer.echo(json.dumps(data))
@@ -321,20 +322,16 @@ def stats(
 @memory_app.command(
     "validate", help="Validates the integrity of the memory container's storage."
 )
-def validate_agent_storage(
+def validate_memory_storage(
     ctx: typer.Context,
     memory_path_arg: Optional[str] = typer.Option(
         None,
         "--memory-path",
         "-m",
-        help="Path to the agent directory. Overrides global setting if provided.",
+        help="Path to the memory container directory. Overrides global setting if provided.",
     ),
 ) -> None:
-    final_memory_path_str = (
-        memory_path_arg
-        if memory_path_arg is not None
-        else ctx.obj.get("compact_memory_path")
-    )
+    final_memory_path_str = memory_path_arg
     if final_memory_path_str is None:
         typer.secho(
             "Critical Error: Memory path could not be resolved for validate.",
@@ -363,7 +360,7 @@ def clear(
         None,
         "--memory-path",
         "-m",
-        help="Path to the agent directory. Overrides global setting if provided.",
+        help="Path to the memory container directory. Overrides global setting if provided.",
     ),
     force: bool = typer.Option(
         False,
@@ -377,11 +374,7 @@ def clear(
         help="Simulate deletion and show what would be deleted without actually removing files.",
     ),
 ) -> None:
-    final_memory_path_str = (
-        memory_path_arg
-        if memory_path_arg is not None
-        else ctx.obj.get("compact_memory_path")
-    )
+    final_memory_path_str = memory_path_arg
     if final_memory_path_str is None:
         typer.secho(
             "Critical Error: Memory path could not be resolved for clear.",
@@ -402,13 +395,13 @@ def clear(
         return
     if not force:
         if not typer.confirm(
-            f"Are you sure you want to delete all data in agent at '{path}'? This cannot be undone.",
+            f"Are you sure you want to delete all data in memory container at '{path}'? This cannot be undone.",
             abort=True,
         ):
             return  # Added path and warning
     if path.exists():
         shutil.rmtree(path)
-        typer.echo(f"Successfully cleared agent data at {path}")
+        typer.echo(f"Successfully cleared memory container data at {path}")
     else:
         typer.secho(
             f"Error: Directory '{path}' not found.", err=True, fg=typer.colors.RED
@@ -424,11 +417,13 @@ def ingest() -> None:
 
 @app.command(
     "query",
-    help='Queries the Compact Memory agent and returns an AI-generated response.\n\nUsage Examples:\n  compact-memory query "What is the capital of France?"\n  compact-memory query "Explain the theory of relativity in simple terms" --show-prompt-tokens',
+    help='Queries the Compact Memory memory container and returns an AI-generated response.\n\nUsage Examples:\n  compact-memory query "What is the capital of France?"\n  compact-memory query "Explain the theory of relativity in simple terms" --show-prompt-tokens',
 )
 def query(
     ctx: typer.Context,
-    query_text: str = typer.Argument(..., help="The query text to send to the agent."),
+    query_text: str = typer.Argument(
+        ..., help="The query text to send to the memory container."
+    ),
     show_prompt_tokens: bool = typer.Option(
         False,
         "--show-prompt-tokens",
@@ -437,7 +432,7 @@ def query(
 ) -> None:
     dim = get_embedding_dim()
     store = InMemoryVectorStore(embedding_dim=dim)
-    agent = MemoryContainer(store)
+    container = MemoryContainer(store)
     final_model_id = ctx.obj.get("default_model_id")  # Renamed for clarity
     final_strategy_id = ctx.obj.get("default_strategy_id")  # Renamed for clarity
 
@@ -450,8 +445,8 @@ def query(
         raise typer.Exit(code=1)
 
     try:
-        agent._chat_model = local_llm.LocalChatModel(model_name=final_model_id)
-        agent._chat_model.load_model()
+        container._chat_model = local_llm.LocalChatModel(model_name=final_model_id)
+        container._chat_model.load_model()
     except RuntimeError as exc:
         typer.secho(
             f"Error loading chat model '{final_model_id}': {exc}",
@@ -481,17 +476,19 @@ def query(
             raise typer.Exit(code=1)
 
         try:
-            result = agent.receive_channel_message(
+            result = container.receive_channel_message(
                 "cli", query_text, mgr, compression=comp_strategy_instance
             )
         except TypeError:  # Older agents might not have compression param
-            result = agent.receive_channel_message("cli", query_text, mgr)
+            result = container.receive_channel_message("cli", query_text, mgr)
 
         reply = result.get("reply")
         if reply:
             typer.echo(reply)
         else:
-            typer.secho("The agent did not return a reply.", fg=typer.colors.YELLOW)
+            typer.secho(
+                "The memory container did not return a reply.", fg=typer.colors.YELLOW
+            )
 
         if show_prompt_tokens and result.get("prompt_tokens") is not None:
             typer.echo(f"Prompt tokens: {result['prompt_tokens']}")
@@ -542,6 +539,22 @@ def compress(
         resolve_path=True,
         help="Directory to write compressed files when --dir is used.",
     ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output compressed result in JSON format to stdout",
+    ),
+    memory_path_arg: Optional[str] = typer.Option(
+        None,
+        "--memory-path",
+        "-m",
+        help="Path of the memory container directory to store the compressed content",
+    ),
+    init_memory: bool = typer.Option(
+        False,
+        "--init-memory",
+        help="Initialize a new memory container at --memory-path if it does not exist",
+    ),
     output_trace: Optional[Path] = typer.Option(
         None,
         "--output-trace",
@@ -580,6 +593,8 @@ def compress(
             err=True,
         )
         raise typer.Exit(code=1)
+    final_memory_path_str = memory_path_arg
+
     try:
         import tiktoken
 
@@ -590,6 +605,14 @@ def compress(
 
     if sum(x is not None for x in (text, file, dir)) != 1:
         typer.echo("Error: specify exactly ONE of --text / --file / --dir", err=True)
+        raise typer.Exit(1)
+
+    if final_memory_path_str and (output_file or output_dir or json_output):
+        typer.secho(
+            "--memory-path cannot be combined with --output, --output-dir, or --json",
+            err=True,
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(1)
 
     if dir is None:
@@ -607,49 +630,86 @@ def compress(
             typer.echo("--output-trace is not valid with --dir", err=True)
             raise typer.Exit(1)
 
-    if text is not None:
-        if text == "-":
-            text = sys.stdin.read()
-        _process_string_compression(
-            text,
-            final_strategy_id,
-            budget,
-            output_file,
-            output_trace,
-            verbose_stats,
-            tokenizer,
-        )
-    elif file is not None:
-        _process_file_compression(
-            file,
-            final_strategy_id,
-            budget,
-            output_file,
-            verbose_stats,
-            tokenizer,
-            output_trace,
-        )
-    else:
-        if "**" in pattern and not recursive:
-            typer.secho(
-                "Pattern includes '**' but --recursive not set; matching may miss subdirectories",
-                fg=typer.colors.YELLOW,
+    if final_memory_path_str:
+        container = load_memory_container(Path(final_memory_path_str))
+        if text is not None:
+            if text == "-":
+                text = sys.stdin.read()
+            compress_text_to_memory(
+                container,
+                text,
+                final_strategy_id,
+                budget,
+                verbose_stats,
+                tokenizer,
             )
-        _process_directory_compression(
-            dir,
-            final_strategy_id,
-            budget,
-            output_dir,
-            recursive,
-            pattern,
-            verbose_stats,
-            tokenizer,
-            None,
-        )
+        elif file is not None:
+            compress_file_to_memory(
+                container,
+                file,
+                final_strategy_id,
+                budget,
+                verbose_stats,
+                tokenizer,
+            )
+        else:
+            compress_directory_to_memory(
+                container,
+                dir,
+                final_strategy_id,
+                budget,
+                recursive,
+                pattern,
+                verbose_stats,
+                tokenizer,
+            )
+    else:
+        if text is not None:
+            if text == "-":
+                text = sys.stdin.read()
+            compress_text(
+                text,
+                final_strategy_id,
+                budget,
+                output_file,
+                output_trace,
+                verbose_stats,
+                tokenizer,
+                json_output,
+            )
+        elif file is not None:
+            compress_file(
+                file,
+                final_strategy_id,
+                budget,
+                output_file,
+                verbose_stats,
+                tokenizer,
+                output_trace,
+                json_output,
+            )
+        else:
+            if "**" in pattern and not recursive:
+                typer.secho(
+                    "Pattern includes '**' but --recursive not set; matching may miss subdirectories",
+                    fg=typer.colors.YELLOW,
+                )
+            compress_directory(
+                dir,
+                final_strategy_id,
+                budget,
+                output_dir,
+                recursive,
+                pattern,
+                verbose_stats,
+                tokenizer,
+                None,
+                json_output,
+            )
 
 
 # --- Helper functions for compress (formerly summarize/compress_text) ---
-def _process_string_compression(
+def compress_text(
     text_content: str,
     strategy_id: str,
     budget: int,
@@ -657,6 +717,7 @@ def _process_string_compression(
     trace_file: Optional[Path],
     verbose_stats: bool,
     tokenizer: Any,
+    json_output: bool = False,
 ) -> None:
     try:
         strat_cls = get_compression_strategy(strategy_id)
@@ -700,7 +761,15 @@ def _process_string_compression(
             raise typer.Exit(code=1)
         typer.echo(f"Saved compressed output to {output_file}")
     else:
-        typer.echo(compressed.text)
+        if json_output:
+            data = {
+                "compressed": compressed.text,
+                "original_tokens": token_count(tokenizer, text_content),
+                "compressed_tokens": token_count(tokenizer, compressed.text),
+            }
+            typer.echo(json.dumps(data))
+        else:
+            typer.echo(compressed.text)
     if trace_file and trace:
         try:
             trace_file.parent.mkdir(parents=True, exist_ok=True)
@@ -712,7 +781,7 @@ def _process_string_compression(
             raise typer.Exit(code=1)
 
 
-def _process_file_compression(
+def compress_file(
     file_path: Path,
     strategy_id: str,
     budget: int,
@@ -720,6 +789,7 @@ def _process_file_compression(
     verbose_stats: bool,
     tokenizer: Any,
     trace_file: Optional[Path],
+    json_output: bool,
 ) -> None:
     if not file_path.exists() or not file_path.is_file():
         typer.secho(f"File not found: {file_path}", err=True, fg=typer.colors.RED)
@@ -729,7 +799,7 @@ def _process_file_compression(
     except (IOError, OSError, PermissionError) as exc:
         typer.secho(f"Error reading {file_path}: {exc}", err=True, fg=typer.colors.RED)
         raise typer.Exit(code=1)
-    _process_string_compression(
+    compress_text(
         text_content,
         strategy_id,
         budget,
@@ -737,10 +807,11 @@ def _process_file_compression(
         trace_file,
         verbose_stats,
         tokenizer,
+        json_output,
     )
 
 
-def _process_directory_compression(
+def compress_directory(
     dir_path: Path,
     strategy_id: str,
     budget: int,
@@ -750,6 +821,7 @@ def _process_directory_compression(
     verbose_stats: bool,
     tokenizer: Any,
     trace_file: Optional[Path],
+    json_output: bool,
 ) -> None:
     if not dir_path.exists() or not dir_path.is_dir():
         typer.secho(f"Directory not found: {dir_path}", err=True, fg=typer.colors.RED)
@@ -783,12 +855,106 @@ def _process_directory_compression(
             out_path = input_file.with_name(
                 f"{input_file.stem}_compressed{input_file.suffix}"
             )
-        _process_file_compression(
-            input_file, strategy_id, budget, out_path, verbose_stats, tokenizer, None
+        compress_file(
+            input_file,
+            strategy_id,
+            budget,
+            out_path,
+            verbose_stats,
+            tokenizer,
+            None,
+            json_output,
         )
         count += 1
     if verbose_stats:
         typer.echo(f"Processed {count} files.")
+
+
+def compress_text_to_memory(
+    container: MemoryContainer,
+    text: str,
+    strategy_id: str,
+    budget: int,
+    verbose_stats: bool,
+    tokenizer: Any,
+    source_document_id: str | None = None,
+) -> None:
+    start = time.time()
+    try:
+        strat_cls = get_compression_strategy(strategy_id)
+    except KeyError:
+        typer.secho(
+            f"Unknown compression strategy '{strategy_id}'. Available: {', '.join(available_strategies())}",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+    strat = strat_cls()
+    result = strat.compress(text, budget, tokenizer=tokenizer)
+    if isinstance(result, tuple):
+        compressed, _ = result
+    else:
+        compressed = result
+    container.add_memory(compressed.text, source_document_id=source_document_id)
+    elapsed = (time.time() - start) * 1000
+    if verbose_stats:
+        orig_tokens = token_count(tokenizer, text)
+        comp_tokens = token_count(tokenizer, compressed.text)
+        typer.echo(
+            f"Original tokens: {orig_tokens}\nCompressed tokens: {comp_tokens}\nTime ms: {elapsed:.1f}"
+        )
+
+
+def compress_file_to_memory(
+    container: MemoryContainer,
+    file_path: Path,
+    strategy_id: str,
+    budget: int,
+    verbose_stats: bool,
+    tokenizer: Any,
+) -> None:
+    if not file_path.exists() or not file_path.is_file():
+        typer.secho(f"File not found: {file_path}", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    text_content = file_path.read_text()
+    compress_text_to_memory(
+        container,
+        text_content,
+        strategy_id,
+        budget,
+        verbose_stats,
+        tokenizer,
+        source_document_id=str(file_path),
+    )
+
+
+def compress_directory_to_memory(
+    container: MemoryContainer,
+    dir_path: Path,
+    strategy_id: str,
+    budget: int,
+    recursive: bool,
+    pattern: str,
+    verbose_stats: bool,
+    tokenizer: Any,
+) -> None:
+    if not dir_path.exists() or not dir_path.is_dir():
+        typer.secho(f"Directory not found: {dir_path}", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    files = list(dir_path.rglob(pattern) if recursive else dir_path.glob(pattern))
+    if not files:
+        typer.echo("No matching files found.")
+        return
+    for input_file in files:
+        typer.echo(f"Processing {input_file}...")
+        compress_file_to_memory(
+            container,
+            input_file,
+            strategy_id,
+            budget,
+            verbose_stats,
+            tokenizer,
+        )
 
 
 # --- Dev App Commands ---
@@ -862,7 +1028,7 @@ def inspect_strategy(
     list_prototypes: bool = typer.Option(
         False,
         "--list-prototypes",
-        help="List consolidated prototypes (beliefs) if the strategy is 'prototype' and an agent path is provided.",
+        help="List consolidated prototypes (beliefs) if the strategy is 'prototype' and a memory container path is provided.",
     ),
 ) -> None:
     if strategy_name.lower() != "prototype":
@@ -876,8 +1042,8 @@ def inspect_strategy(
     if list_prototypes:
         dim = get_embedding_dim()
         store = InMemoryVectorStore(embedding_dim=dim)
-        agent = MemoryContainer(store)
-        protos = agent.get_prototypes_view()
+        container = MemoryContainer(store)
+        protos = container.get_prototypes_view()
         if not protos:
             typer.echo("No prototypes found.")
             return
@@ -898,7 +1064,7 @@ def inspect_strategy(
         console.print(table)
     else:
         typer.echo(
-            f"Strategy '{strategy_name}' is available. Use --list-prototypes and provide an agent path to see its beliefs."
+            f"Strategy '{strategy_name}' is available. Use --list-prototypes and provide a memory container path to see its beliefs."
         )
 
 
