@@ -29,7 +29,8 @@ register_validation_metric(MyMetric.metric_id, MyMetric)
 ## Hugging Face evaluate Metrics
 
 Metrics backed by the [`evaluate`](https://github.com/huggingface/evaluate)
-library can extend `HFValidationMetric` which handles loading the metric:
+library can extend `HFValidationMetric` which handles loading the metric.
+Install the optional dependency with `pip install compact-memory[metrics]`:
 
 ```python
 from compact_memory.validation.hf_metrics import HFValidationMetric

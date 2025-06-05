@@ -247,12 +247,18 @@ This project requires **Python 3.11+**.
 
 1.  **Install Core Dependencies:** Use the provided `setup.sh` for a fast install.
    ```bash
-   bash setup.sh           # installs the minimal set of packages
-   # Download the spaCy model for sentence segmentation (used by some strategies/chunkers)
-   python -m spacy download en_core_web_sm
+   bash setup.sh           # installs only the lightweight requirements
    ```
-   If you need to run the full test suite (which depends on PyTorch and other
-   heavy packages), run:
+   Optional features such as spaCy sentence segmentation or local models
+   require extra dependencies. Install them with pip extras, e.g.:
+   ```bash
+   pip install .[spacy]        # for robust sentence segmentation
+   pip install .[embedding]    # to enable embedding pipelines
+   pip install .[local]        # for local Transformers models
+   pip install .[gemini]       # Google Gemini provider
+   pip install .[metrics]      # Hugging Face evaluation metrics
+   ```
+   To run the full test suite with all heavy packages:
    ```bash
    FULL_INSTALL=1 bash setup.sh
    ```

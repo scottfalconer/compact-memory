@@ -3,7 +3,8 @@ This tutorial walks you through creating a basic compression strategy for Compac
 ## Prerequisites
 *   `Compact Memory installed (\`pip install compact-memory\`).`
 *   `Familiarity with Python.`
-*   `(Optional but recommended) \`spaCy\` for sentence tokenization: \`python -m spacy download en_core_web_sm\``
+*   `(Optional but recommended)` install the spaCy extra for robust sentence tokenization:
+    `pip install compact-memory[spacy] && python -m spacy download en_core_web_sm`
 ## Goal
 Our strategy, \`FirstNSentencesStrategy\`, will:
 1.  `Take a piece of text as input.`
