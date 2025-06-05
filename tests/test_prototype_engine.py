@@ -2,6 +2,7 @@ from pathlib import Path
 from compact_memory.prototype_engine import PrototypeEngine
 from compact_memory.vector_store import InMemoryVectorStore
 from compact_memory.embedding_pipeline import get_embedding_dim
+from compact_memory.engines import load_engine
 
 
 def test_engine_save_load(tmp_path: Path, patch_embedding_model) -> None:
@@ -22,3 +23,16 @@ def test_engine_save_load(tmp_path: Path, patch_embedding_model) -> None:
     assert (dest / "vectors.npy").exists()
     assert (dest / "entries.json").exists()
     assert (dest / "embeddings.npy").exists()
+
+
+def test_load_engine(tmp_path: Path, patch_embedding_model) -> None:
+    dim = get_embedding_dim()
+    store = InMemoryVectorStore(embedding_dim=dim)
+    engine = PrototypeEngine(store)
+    engine.add_memory("lorem ipsum dolor")
+    dest = tmp_path / "engine"
+    engine.save(dest)
+
+    loaded = load_engine(dest)
+    res = loaded.query("lorem", top_k_prototypes=1, top_k_memories=1)
+    assert res["memories"]

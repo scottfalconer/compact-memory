@@ -167,7 +167,19 @@ def load_engine(path: str | os.PathLike) -> BaseCompressionEngine:
         cls = get_compression_engine(engine_id)
     else:
         raise ValueError("Engine manifest missing engine_id or engine_class")
-    engine = cls()
+    try:
+        engine = cls()
+    except TypeError as e:  # handle engines requiring a store
+        if "store" in str(e):
+            import numpy as np
+            from ..vector_store import InMemoryVectorStore
+
+            vecs = np.load(p / "vectors.npy")
+            dim = vecs.shape[1] if vecs.ndim > 1 else len(vecs)
+            store = InMemoryVectorStore(embedding_dim=dim)
+            engine = cls(store)
+        else:
+            raise
     engine.load(p)
     return engine
 
