@@ -60,7 +60,7 @@ class SampleEngine(BaseCompressionEngine):
         # Create a CompressionTrace object.
         # For a real engine, you'd populate this with more details about the process.
         trace = CompressionTrace(
-            strategy_name=self.id,
+            engine_name=self.id,
             strategy_params={
                 "llm_token_budget": llm_token_budget
             },  # Log key parameters

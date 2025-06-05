@@ -27,7 +27,7 @@ class CompressedMemory:
 class CompressionTrace:
     """Trace metadata for a compression operation."""
 
-    strategy_name: str
+    engine_name: str
     strategy_params: Dict[str, Any]
     input_summary: Dict[str, Any]
     steps: List[Dict[str, Any]] = field(default_factory=list)
@@ -108,7 +108,7 @@ class BaseCompressionEngine:
 
         truncated = text[:budget]
         trace = CompressionTrace(
-            strategy_name="base_truncate",
+            engine_name="base_truncate",
             strategy_params={"budget": budget},
             input_summary={"original_length": len(text)},
             steps=[{"type": "truncate", "details": {"budget": budget}}],

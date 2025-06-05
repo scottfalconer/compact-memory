@@ -1061,9 +1061,9 @@ def list_strategies(
     help="Inspects aspects of a compression strategy, currently focused on 'prototype' strategy's beliefs.",
 )
 def inspect_strategy(
-    strategy_name: str = typer.Argument(
+    engine_name: str = typer.Argument(
         ...,
-        help="The name of the strategy to inspect. Currently, only 'prototype' is supported.",
+        help="The name of the engine to inspect. Currently, only 'prototype' is supported.",
     ),
     *,
     list_prototypes: bool = typer.Option(
@@ -1072,9 +1072,9 @@ def inspect_strategy(
         help="List consolidated prototypes (beliefs) if the strategy is 'prototype' and an engine store path is provided.",
     ),
 ) -> None:
-    if strategy_name.lower() != "prototype":
+    if engine_name.lower() != "prototype":
         typer.secho(
-            f"Error: Inspection for strategy '{strategy_name}' is not supported. Only 'prototype' is currently inspectable.",
+            f"Error: Inspection for engine '{engine_name}' is not supported. Only 'prototype' is currently inspectable.",
             err=True,
             fg=typer.colors.RED,
         )
@@ -1105,7 +1105,7 @@ def inspect_strategy(
         console.print(table)
     else:
         typer.echo(
-            f"Strategy '{strategy_name}' is available. Use --list-prototypes and provide an engine store path to see its beliefs."
+            f"Engine '{engine_name}' is available. Use --list-prototypes and provide an engine store path to see its beliefs."
         )
 
 
@@ -1556,7 +1556,7 @@ class MyEngine(BaseCompressionEngine):
         compressed_text = str(text_or_chunks)[:llm_token_budget * 4] # Simplistic truncation
 
         trace = CompressionTrace(
-            strategy_name=self.id,
+            engine_name=self.id,
             original_tokens=len(tokenizer(str(text_or_chunks))['input_ids']) if tokenizer else None,
             compressed_tokens=len(tokenizer(compressed_text)['input_ids']) if tokenizer else None,
             # Add more trace details as needed
@@ -1640,8 +1640,8 @@ def inspect_trace(
     steps = data.get("steps", [])
 
     title = f"Compression Trace: {trace_file.name}"
-    if data.get("strategy_name"):
-        title += f" (Strategy: {data['strategy_name']})"
+    if data.get("engine_name"):
+        title += f" (Engine: {data['engine_name']})"
     if data.get("original_tokens"):
         title += f" | Original Tokens: {data['original_tokens']}"
     if data.get("compressed_tokens"):
@@ -1649,7 +1649,7 @@ def inspect_trace(
     if data.get("processing_ms"):
         title += f" | Time: {data['processing_ms']:.2f}ms"
 
-    console.print(f"Strategy: {data.get('strategy_name', '')}")
+    console.print(f"Engine: {data.get('engine_name', '')}")
     table = Table("Index", "Type", "Details Preview", title=title)
     for idx, step in enumerate(steps):
         stype = step.get("type")

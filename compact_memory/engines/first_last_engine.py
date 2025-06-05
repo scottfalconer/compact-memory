@@ -34,7 +34,7 @@ class FirstLastEngine(BaseCompressionEngine):
             kept = text[:half] + text[-half:]
         compressed = CompressedMemory(text=kept)
         trace = CompressionTrace(
-            strategy_name=self.id,
+            engine_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
             input_summary={"input_length": len(text)},
             steps=[

@@ -21,7 +21,7 @@ class DummyTruncEngine(BaseCompressionEngine):
         )
         truncated = text[:llm_token_budget]
         return CompressedMemory(text=truncated), CompressionTrace(
-            strategy_name=self.id,
+            engine_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
             input_summary={"input_length": len(text)},
             steps=[{"type": "truncate"}],
@@ -280,7 +280,7 @@ def test_compress_output_trace(tmp_path: Path):
     )
     assert result.exit_code == 0
     data = json.loads(trace_path.read_text())
-    assert data["strategy_name"] == "none"
+    assert data["engine_name"] == "none"
     for key in ["strategy_params", "input_summary", "output_summary", "steps"]:
         assert key in data
     assert data["output_summary"]["output_length"] == len("hi there")
@@ -306,7 +306,7 @@ def test_compress_output_trace_details(tmp_path: Path):
     )
     assert result.exit_code == 0
     data = json.loads(trace_path.read_text())
-    assert data["strategy_name"] == DummyTruncEngine.id
+    assert data["engine_name"] == DummyTruncEngine.id
     assert data["steps"] == [{"type": "truncate"}]
     assert data["output_summary"]["final_length"] == len("hello world"[:3])
 

@@ -82,7 +82,7 @@ class TruncateEngine(BaseCompressionEngine):
         compressed = CompressedMemory(text=text[:llm_token_budget])
         # CompressionTrace records metadata about the compression process, useful for debugging and analysis.
         trace = CompressionTrace(
-            strategy_name=self.id,
+            engine_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
             input_summary={"input_length": len(text)},
             steps=[{"type": "truncate", "new_length": len(compressed.text)}],
@@ -147,7 +147,7 @@ def main() -> None:
     )  # Compress to 40 chars
     print(f"Compressed preview: {compressed_memory.text!r}")
     print(
-        f"Compression trace details: {trace.strategy_name}, input: {trace.input_summary.get('input_length')}, output: {trace.output_summary.get('final_length')}"
+        f"Compression trace details: {trace.engine_name}, input: {trace.input_summary.get('input_length')}, output: {trace.output_summary.get('final_length')}"
     )
     print("--- End Section 2 ---")
     print("-" * 70)
