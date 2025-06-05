@@ -1,15 +1,14 @@
+import pytest
 from pathlib import Path
 
-import pytest
-
-from CompressionStrategy.core.registry import (
-    _COMPRESSION_REGISTRY,
-    _COMPRESSION_INFO,
-    get_strategy_metadata,
+from compact_memory.engine_registry import (
+    _ENGINE_REGISTRY,
+    _ENGINE_INFO,
+    get_engine_metadata,
 )
 from compact_memory.plugin_loader import load_plugins, PLUGIN_ENV_VAR
-from CompressionStrategy.core.strategies_abc import (
-    CompressionStrategy,
+from compact_memory.engines import (
+    BaseCompressionEngine,
     CompressedMemory,
     CompressionTrace,
 )
@@ -17,15 +16,11 @@ from CompressionStrategy.core.strategies_abc import (
 
 def _create_plugin(pkg_dir: Path) -> None:
     pkg_dir.mkdir()
-    (pkg_dir / "strategy.py").write_text(
+    (pkg_dir / "engine.py").write_text(
         """
-from CompressionStrategy.core.strategies_abc import (
-    CompressionStrategy,
-    CompressedMemory,
-    CompressionTrace,
-)
+from compact_memory.engines import BaseCompressionEngine, CompressedMemory, CompressionTrace
 
-class DummyPluginStrategy(CompressionStrategy):
+class DummyPluginEngine(BaseCompressionEngine):
     id = 'dummy_plugin'
 
     def compress(self, text_or_chunks, llm_token_budget, **kwargs):
@@ -37,12 +32,12 @@ class DummyPluginStrategy(CompressionStrategy):
         )
 """
     )
-    (pkg_dir / "strategy_package.yaml").write_text(
+    (pkg_dir / "engine_package.yaml").write_text(
         """
 package_format_version: '1.0'
-strategy_id: dummy_plugin
-strategy_class_name: DummyPluginStrategy
-strategy_module: strategy
+engine_id: dummy_plugin
+engine_class_name: DummyPluginEngine
+engine_module: engine
 display_name: Dummy Plugin
 version: '0.1'
 authors: ['Tester']
@@ -59,19 +54,19 @@ def test_load_local_plugin(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> N
     import compact_memory.plugin_loader as pl
 
     pl._loaded = False
-    _COMPRESSION_REGISTRY.pop("dummy_plugin", None)
-    _COMPRESSION_INFO.pop("dummy_plugin", None)
+    _ENGINE_REGISTRY.pop("dummy_plugin", None)
+    _ENGINE_INFO.pop("dummy_plugin", None)
     load_plugins()
-    assert "dummy_plugin" in _COMPRESSION_REGISTRY
-    info = get_strategy_metadata("dummy_plugin")
+    assert "dummy_plugin" in _ENGINE_REGISTRY
+    info = get_engine_metadata("dummy_plugin")
     assert info and info["source"].startswith("local")
-    _COMPRESSION_REGISTRY.pop("dummy_plugin", None)
-    _COMPRESSION_INFO.pop("dummy_plugin", None)
+    _ENGINE_REGISTRY.pop("dummy_plugin", None)
+    _ENGINE_INFO.pop("dummy_plugin", None)
     pl._loaded = False
 
 
 def test_load_entrypoint_plugin(monkeypatch: pytest.MonkeyPatch) -> None:
-    class DummyEPStrategy(CompressionStrategy):
+    class DummyEPEngine(BaseCompressionEngine):
         id = "dummy_ep"
 
         def compress(self, text_or_chunks, llm_token_budget, **kwargs):
@@ -83,7 +78,7 @@ def test_load_entrypoint_plugin(monkeypatch: pytest.MonkeyPatch) -> None:
             )
 
     class DummyEP:
-        def __init__(self, value: str, obj: type[CompressionStrategy]):
+        def __init__(self, value: str, obj: type[BaseCompressionEngine]):
             self.value = value
             self._obj = obj
             self.dist = type(
@@ -95,7 +90,7 @@ def test_load_entrypoint_plugin(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(
         "importlib.metadata.entry_points",
-        lambda *a, **k: [DummyEP("dummy:DummyEPStrategy", DummyEPStrategy)],
+        lambda *a, **k: [DummyEP("dummy:DummyEPEngine", DummyEPEngine)],
     )
     monkeypatch.setattr(
         "compact_memory.plugin_loader._iter_local_plugin_paths", lambda: []
@@ -103,12 +98,12 @@ def test_load_entrypoint_plugin(monkeypatch: pytest.MonkeyPatch) -> None:
     import compact_memory.plugin_loader as pl
 
     pl._loaded = False
-    _COMPRESSION_REGISTRY.pop("dummy_ep", None)
-    _COMPRESSION_INFO.pop("dummy_ep", None)
+    _ENGINE_REGISTRY.pop("dummy_ep", None)
+    _ENGINE_INFO.pop("dummy_ep", None)
     load_plugins()
-    assert "dummy_ep" in _COMPRESSION_REGISTRY
-    info = get_strategy_metadata("dummy_ep")
+    assert "dummy_ep" in _ENGINE_REGISTRY
+    info = get_engine_metadata("dummy_ep")
     assert info and info["source"].startswith("plugin")
-    _COMPRESSION_REGISTRY.pop("dummy_ep", None)
-    _COMPRESSION_INFO.pop("dummy_ep", None)
+    _ENGINE_REGISTRY.pop("dummy_ep", None)
+    _ENGINE_INFO.pop("dummy_ep", None)
     pl._loaded = False

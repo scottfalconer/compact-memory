@@ -1,29 +1,27 @@
 from __future__ import annotations
 
-"""Discovery and registration of compression strategy plugins."""
+"""Discovery and registration of compression engine plugins."""
 
 from dataclasses import dataclass
 from pathlib import Path
 import importlib.metadata as metadata
+import importlib.util
 import logging
 import os
+import uuid
 from typing import Iterable
 
 from platformdirs import user_data_dir
 
-from CompressionStrategy.core import register_compression_strategy, get_strategy_metadata
-from CompressionStrategy.core.strategies_abc import CompressionStrategy
-from .package_utils import (
-    validate_package_dir,
-    load_manifest,
-    load_strategy_class_from_module,
+from .engine_registry import register_compression_engine, get_engine_metadata
+from .engines import BaseCompressionEngine
+from .package_utils import load_manifest
+
+PLUGIN_ENV_VAR = "COMPACT_MEMORY_ENGINES_PATH"
+ENTRYPOINT_GROUP = "compact_memory.engines"
+DEFAULT_PLUGIN_DIR = (
+    Path(user_data_dir("compact_memory", "CompactMemoryTeam")) / "engines"
 )
-
-
-PLUGIN_ENV_VAR = "COMPACT_MEMORY_PLUGINS_PATH"
-ENTRYPOINT_GROUP = "compact_memory.strategies"
-DEFAULT_PLUGIN_DIR = Path(user_data_dir("compact_memory", "CompactMemoryTeam")) / "plugins"
-
 
 _loaded = False
 
@@ -37,7 +35,7 @@ class PluginPath:
 def _iter_local_plugin_paths() -> Iterable[PluginPath]:
     env = os.getenv(PLUGIN_ENV_VAR)
     if env:
-        for idx, raw in enumerate(env.split(os.pathsep)):
+        for raw in env.split(os.pathsep):
             if not raw:
                 continue
             yield PluginPath(Path(raw), f"local ({Path(raw).name})")
@@ -45,7 +43,7 @@ def _iter_local_plugin_paths() -> Iterable[PluginPath]:
 
 
 def load_plugins() -> None:
-    """Discover and register all compression strategy plugins."""
+    """Discover and register all compression engine plugins."""
     global _loaded
     if _loaded:
         return
@@ -64,8 +62,8 @@ def _load_entrypoint_plugins() -> None:
     for ep in eps:
         try:
             cls = ep.load()
-            if not isinstance(cls, type) or not issubclass(cls, CompressionStrategy):
-                raise TypeError("Entry point is not a CompressionStrategy")
+            if not isinstance(cls, type) or not issubclass(cls, BaseCompressionEngine):
+                raise TypeError("Entry point is not a BaseCompressionEngine")
             dist_name = None
             version = None
             try:
@@ -74,18 +72,18 @@ def _load_entrypoint_plugins() -> None:
                     version = ep.dist.version
             except Exception:
                 pass
-            strategy_id = getattr(cls, "id")
-            display_name = getattr(cls, "display_name", strategy_id)
-            prev = get_strategy_metadata(strategy_id)
+            engine_id = getattr(cls, "id")
+            display_name = getattr(cls, "display_name", engine_id)
+            prev = get_engine_metadata(engine_id)
             if prev:
                 logging.info(
-                    "Entry point plugin '%s' overrides %s strategy '%s'",
+                    "Entry point plugin '%s' overrides %s engine '%s'",
                     ep.value,
                     prev.get("source"),
-                    strategy_id,
+                    engine_id,
                 )
-            register_compression_strategy(
-                strategy_id,
+            register_compression_engine(
+                engine_id,
                 cls,
                 display_name=display_name,
                 version=version,
@@ -95,36 +93,49 @@ def _load_entrypoint_plugins() -> None:
             logging.warning("Failed to load entry point %s: %s", ep.value, exc)
 
 
+def _load_engine_class_from_module(
+    module_file: str, class_name: str
+) -> type[BaseCompressionEngine]:
+    path = Path(module_file)
+    spec = importlib.util.spec_from_file_location(
+        f"compact_memory.engine_pkg.{path.stem}_{uuid.uuid4().hex}", path
+    )
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Cannot load module from {module_file}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    cls = getattr(module, class_name, None)
+    if cls is None:
+        raise ImportError(f"Class {class_name} not found in {module_file}")
+    if not isinstance(cls, type) or not issubclass(cls, BaseCompressionEngine):
+        raise TypeError(f"{class_name} is not a BaseCompressionEngine")
+    return cls
+
+
 def _load_local_plugins() -> None:
     for pp in _iter_local_plugin_paths():
         if not pp.path.exists():
             continue
         for pkg_dir in sorted(p for p in pp.path.iterdir() if p.is_dir()):
             try:
-                errors, _ = validate_package_dir(pkg_dir)
-                if errors:
-                    logging.warning(
-                        "Invalid plugin at %s: %s", pkg_dir, ", ".join(errors)
-                    )
-                    continue
-                manifest = load_manifest(pkg_dir / "strategy_package.yaml")
-                strategy_id = manifest.get("strategy_id")
-                display_name = manifest.get("display_name", strategy_id)
+                manifest = load_manifest(pkg_dir / "engine_package.yaml")
+                engine_id = manifest.get("engine_id")
+                display_name = manifest.get("display_name", engine_id)
                 version = manifest.get("version")
-                module_file = pkg_dir / f"{manifest['strategy_module']}.py"
-                cls = load_strategy_class_from_module(
-                    str(module_file), manifest["strategy_class_name"]
+                module_file = pkg_dir / f"{manifest['engine_module']}.py"
+                cls = _load_engine_class_from_module(
+                    str(module_file), manifest["engine_class_name"]
                 )
-                prev = get_strategy_metadata(strategy_id)
+                prev = get_engine_metadata(engine_id)
                 if prev:
                     logging.info(
-                        "Local plugin '%s' overrides %s strategy '%s'",
+                        "Local plugin '%s' overrides %s engine '%s'",
                         pkg_dir,
                         prev.get("source"),
-                        strategy_id,
+                        engine_id,
                     )
-                register_compression_strategy(
-                    strategy_id,
+                register_compression_engine(
+                    engine_id,
                     cls,
                     display_name=display_name,
                     version=version,
