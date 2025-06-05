@@ -5,6 +5,16 @@ These instructions guide Codex when modifying this repository.
 ## Scope
 All directories in this repository follow these rules.
 
+### Prototype utilities
+Experimental strategies in ``compact_memory/strategies/experimental`` may ship
+with their own helper modules. Do not create shared ``prototype_utils`` or
+similar packages for multiple experimental strategies. Each strategy should be
+self‑contained and, if needed, will eventually live in its own repository.
+
+Tests for these experimental modules should live alongside the code under the
+same directory instead of the top‑level ``tests`` package. This keeps each
+strategy self‑contained and portable.
+
 ## Coding Standards
 - Format Python code with **Black** and lint with **Flake8**. Run `pre-commit run --files <files>` before committing.
 - Follow **PEP 8** and include type hints for functions and methods.

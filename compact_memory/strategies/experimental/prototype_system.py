@@ -15,7 +15,9 @@ from compact_memory.chunker import Chunker, SentenceWindowChunker
 from compact_memory.vector_store import VectorStore
 from compact_memory.models import BeliefPrototype, RawMemory
 from compact_memory.memory_creation import ExtractiveSummaryCreator, MemoryCreator
-from contrib.prototype_utils.canonical import render_five_w_template
+from compact_memory.strategies.experimental.prototype_system_utils import (
+    render_five_w_template,
+)
 from compact_memory.compression.strategies_abc import (
     CompressedMemory,
     CompressionStrategy,
