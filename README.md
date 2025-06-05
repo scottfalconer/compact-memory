@@ -253,9 +253,10 @@ Key benefits include:
 
 This project requires **Python 3.11+**.
 
-1.  **Install Core Dependencies:** Use the provided `setup.sh` for a fast install.
+1.  **Install Dependencies:** Install the lightweight requirements listed in
+   `requirements.txt`:
    ```bash
-   bash setup.sh           # installs only the lightweight requirements
+   pip install -r requirements.txt
    ```
    Optional features such as spaCy sentence segmentation or local models
    require extra dependencies. Install them with pip extras, e.g.:
@@ -266,11 +267,14 @@ This project requires **Python 3.11+**.
    pip install .[gemini]       # Google Gemini provider
    pip install .[metrics]      # Hugging Face evaluation metrics
    ```
-   To run the full test suite with all heavy packages:
+   To run the full test suite with all heavy packages, install additional
+   dependencies:
    ```bash
-   FULL_INSTALL=1 bash setup.sh
+   pip install torch sentence-transformers transformers spacy \
+       google-generativeai evaluate
    ```
-Note: The repository also includes `.codex/setup.sh`, which is intended solely for the Codex environment and is not needed for general users.
+Note: The repository also includes `.codex/setup.sh`, which is intended solely for
+the Codex environment and is not needed for general users.
 
 2.  **Install `compact-memory`:**
     This makes the `compact-memory` CLI tool available. You have two main options:
