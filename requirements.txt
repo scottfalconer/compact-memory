@@ -4,7 +4,7 @@ numpy
 faiss-cpu
 click>=8.2
 tqdm
-pydantic
+pydantic>=2.0
 pyyaml
 pytest
 rich>=13.6
