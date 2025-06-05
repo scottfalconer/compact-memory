@@ -29,7 +29,7 @@ def test_engine_list(tmp_path: Path, patch_embedding_model):
     assert result.exit_code == 0, f"CLI Error: {result.stderr}"
     # Check for some known core engines
     assert "prototype" in result.stdout
-    assert "base" in result.stdout
+        # assert "base" in result.stdout # BaseCompressionEngine should not be listed
     assert "none" in result.stdout
     # Check against the registered engines for more dynamic validation
     registered_ids = available_engines()

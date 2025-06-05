@@ -36,7 +36,12 @@ register_compression_engine(DummyTruncEngine.id, DummyTruncEngine)
 
 
 def _env(tmp_path: Path) -> dict[str, str]:
-    return {"COMPACT_MEMORY_COMPACT_MEMORY_PATH": str(tmp_path)}
+    # Ensure this matches the expected env var name used by the application's config loader
+    return {
+        "COMPACT_MEMORY_PATH": str(tmp_path),
+        "COMPACT_MEMORY_DEFAULT_ENGINE_ID": "none", # Add defaults used by some tests
+        "COMPACT_MEMORY_DEFAULT_MODEL_ID": "tiny-gpt2", # Add defaults used by some tests
+    }
 
 
 runner = CliRunner()

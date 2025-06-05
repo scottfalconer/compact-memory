@@ -50,6 +50,6 @@ class FirstLastEngine(BaseCompressionEngine):
         return compressed, trace
 
 
-# register_compression_engine(FirstLastEngine.id, FirstLastEngine, source="contrib") # Removed, as it's now registered in engines/__init__.py
+register_compression_engine(FirstLastEngine.id, FirstLastEngine, source="contrib")
 
 __all__ = ["FirstLastEngine"]

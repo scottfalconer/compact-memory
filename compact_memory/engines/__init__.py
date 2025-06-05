@@ -2,210 +2,64 @@ from __future__ import annotations
 
 """Compression engine utilities and dataclasses."""
 
-from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence
-import json
 import os
-import uuid
+from typing import Any, Dict # Removed List, Optional, Sequence, Callable as they are used in base.py
+# Removed dataclasses, json, uuid, np, faiss as they are used in base.py or other submodules
 
-import numpy as np
-import faiss
+# Import from the new base.py
+from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
 
-from ..chunker import SentenceWindowChunker
-from ..embedding_pipeline import embed_text, get_embedding_dim
+# Import PrototypeEngine from one level up
+# from ..prototype_engine import PrototypeEngine # REMOVED TO BREAK CYCLE
 
+# Imports needed for registration and load_engine
+import importlib
+from pathlib import Path
+from .registry import get_compression_engine, register_compression_engine
+from .no_compression_engine import NoCompressionEngine # NoCompressionEngine is self-contained enough
+from .first_last_engine import FirstLastEngine # Import FirstLastEngine
 
-@dataclass
-class CompressedMemory:
-    """Container for compressed text and metadata."""
-
-    text: str
-    metadata: Optional[Dict[str, Any]] = None
-
-
-@dataclass
-class CompressionTrace:
-    """Trace metadata for a compression operation."""
-
-    engine_name: str
-    strategy_params: Dict[str, Any]
-    input_summary: Dict[str, Any]
-    steps: List[Dict[str, Any]] = field(default_factory=list)
-    output_summary: Dict[str, Any] = field(default_factory=dict)
-    processing_ms: float | None = None
-    final_compressed_object_preview: Optional[str] = None
+# Register NoCompressionEngine here as it doesn't create cycles.
+# PrototypeEngine will be registered in cli.py
+# Register FirstLastEngine here as well.
+register_compression_engine(NoCompressionEngine.id, NoCompressionEngine, display_name="No Compression", source="built-in")
+register_compression_engine(FirstLastEngine.id, FirstLastEngine, display_name="First/Last Chunks", source="built-in") # Changed source to built-in from contrib for consistency
 
 
-class BaseCompressionEngine:
-    """Simple retrieval engine using MiniLM embeddings and FAISS."""
-
-    id = "base"
-
-    def __init__(
-        self,
-        *,
-        chunker: SentenceWindowChunker | None = None,
-        embedding_fn: Callable[[str | Sequence[str]], np.ndarray] = embed_text,
-        preprocess_fn: Callable[[str], str] | None = None,
-        config: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        if config is not None:
-            self.config = config
-        else:
-            self.config = {}
-            if chunker:
-                self.config['chunker_id'] = type(chunker).__name__
-            # Note: embedding_fn and preprocess_fn are not easily serializable by default.
-            # Subclasses would need to handle serialization/deserialization if they are configurable.
-
-        self.chunker = chunker or SentenceWindowChunker()
-        self.embedding_fn = embedding_fn
-        self.preprocess_fn = preprocess_fn
-        self.memories: List[Dict[str, Any]] = []
-        dim = get_embedding_dim()
-        self.embeddings = np.zeros((0, dim), dtype=np.float32)
-        self.index: faiss.IndexFlatIP | None = None
-
-    # --------------------------------------------------
-    def _compress_chunk(self, chunk_text: str) -> str:
-        """
-        Compresses a single text chunk.
-
-        This method is intended to be overridden by subclasses to implement
-        specific compression logic. By default, it returns the chunk unmodified.
-
-        Args:
-            chunk_text: The text chunk to compress.
-
-        Returns:
-            The compressed text chunk.
-        """
-        return chunk_text
-
-    # --------------------------------------------------
-    def _ensure_index(self) -> None:
-        if self.index is None and self.embeddings.size:
-            self.index = faiss.IndexFlatIP(self.embeddings.shape[1])
-            self.index.add(self.embeddings.astype(np.float32))
-
-    # --------------------------------------------------
-    def ingest(self, text: str) -> List[str]:
-        """Chunk and store ``text`` in the engine."""
-
-        raw_chunks = self.chunker.chunk(text)
-        if not raw_chunks:
-            return []
-
-        processed_chunks = [self._compress_chunk(chunk) for chunk in raw_chunks]
-
-        vecs = self.embedding_fn(processed_chunks, preprocess_fn=self.preprocess_fn)
-        if vecs.ndim == 1:
-            vecs = vecs.reshape(1, -1)
-        ids: List[str] = []
-        for processed_chunk_text, vec in zip(processed_chunks, vecs):
-            mid = uuid.uuid4().hex
-            self.memories.append({"id": mid, "text": processed_chunk_text})
-            self.embeddings = np.vstack([self.embeddings, vec.astype(np.float32)])
-            ids.append(mid)
-        if self.index is None:
-            self.index = faiss.IndexFlatIP(self.embeddings.shape[1])
-        self.index.add(vecs.astype(np.float32))
-        return ids
-
-    # --------------------------------------------------
-    def recall(self, query: str, *, top_k: int = 5) -> List[Dict[str, Any]]:
-        """Retrieve memories most similar to ``query``."""
-
-        if not self.memories:
-            return []
-        self._ensure_index()
-        qvec = self.embedding_fn(query, preprocess_fn=self.preprocess_fn)
-        qvec = qvec.reshape(1, -1).astype(np.float32)
-        k = min(top_k, len(self.memories))
-        dists, idxs = self.index.search(qvec, k)
-        results: List[Dict[str, Any]] = []
-        for idx, dist in zip(idxs[0], dists[0]):
-            if idx < 0:
-                continue
-            mem = self.memories[int(idx)]
-            results.append({"id": mem["id"], "text": mem["text"], "score": float(dist)})
-        return results
-
-    # --------------------------------------------------
-    def compress(
-        self, text: str, budget: int
-    ) -> tuple[CompressedMemory, CompressionTrace]:
-        """Naive compression via truncation."""
-
-        truncated = text[:budget]
-        trace = CompressionTrace(
-            engine_name="base_truncate",
-            strategy_params={"budget": budget},
-            input_summary={"original_length": len(text)},
-            steps=[{"type": "truncate", "details": {"budget": budget}}],
-            output_summary={"compressed_length": len(truncated)},
-        )
-        return CompressedMemory(text=truncated), trace
-
-    # --------------------------------------------------
-    def save(self, path: str) -> None:
-        """Persist memories and embeddings to ``path``."""
-
-        os.makedirs(path, exist_ok=True)
-        manifest = {
-            "engine_id": getattr(self, "id", self.__class__.__name__),
-            "engine_class": f"{self.__class__.__module__}.{self.__class__.__qualname__}",
-            "config": self.config,
-        }
-        with open(
-            os.path.join(path, "engine_manifest.json"), "w", encoding="utf-8"
-        ) as fh:
-            json.dump(manifest, fh)
-        with open(os.path.join(path, "entries.json"), "w", encoding="utf-8") as fh:
-            json.dump(self.memories, fh)
-        np.save(os.path.join(path, "embeddings.npy"), self.embeddings)
-
-    # --------------------------------------------------
-    def load(self, path: str) -> None:
-        """Load engine state from ``path``."""
-
-        with open(os.path.join(path, "entries.json"), "r", encoding="utf-8") as fh:
-            self.memories = json.load(fh)
-        self.embeddings = np.load(os.path.join(path, "embeddings.npy"))
-        self.index = None
-        self._ensure_index()
-
+# Keep load_engine here as it uses get_compression_engine which might be in .registry
+# and also deals with dynamic imports based on manifest.
+# Or, if get_compression_engine is also moved to base or a utils, load_engine could move too.
+# For now, keeping it here and adjusting its imports if necessary.
 
 def load_engine(path: str | os.PathLike) -> BaseCompressionEngine:
     """Load a compression engine from ``path`` using its manifest."""
 
-    import importlib
-    from pathlib import Path
-    from ..engine_registry import get_compression_engine
-
+    # imports already moved to top level: importlib, Path, get_compression_engine
     p = Path(path)
     with open(p / "engine_manifest.json", "r", encoding="utf-8") as fh:
+        import json # Moved json import here as it's only used in load_engine
         manifest = json.load(fh)
     engine_id = manifest.get("engine_id")
-    engine_class = manifest.get("engine_class")
+    engine_class_path = manifest.get("engine_class") # Renamed for clarity
     engine_config = manifest.get("config", {})
     cls = None
-    if engine_class:
-        mod_name, cls_name = engine_class.rsplit(".", 1)
+    if engine_class_path:
+        mod_name, cls_name = engine_class_path.rsplit(".", 1)
         mod = importlib.import_module(mod_name)
         cls = getattr(mod, cls_name)
     elif engine_id:
-        cls = get_compression_engine(engine_id)
+        cls = get_compression_engine(engine_id) # This needs to be resolvable
     else:
         raise ValueError("Engine manifest missing engine_id or engine_class")
 
     # Instantiate the engine, passing the config if available
-    if engine_config:
-        engine = cls(**engine_config)
-    else:
-        engine = cls()
+    # Ensure the class (cls) is a subclass of BaseCompressionEngine before instantiation
+    if not issubclass(cls, BaseCompressionEngine):
+        raise TypeError(f"Loaded class {cls_name or engine_id} is not a BaseCompressionEngine.")
 
-    engine.load(p)
+    engine = cls(config=engine_config) # Pass engine_config as the config argument
+
+    engine.load(p) # The engine's own load method
     return engine
 
 
@@ -214,4 +68,5 @@ __all__ = [
     "CompressedMemory",
     "CompressionTrace",
     "load_engine",
+    # "PrototypeEngine", # REMOVED FROM HERE
 ]

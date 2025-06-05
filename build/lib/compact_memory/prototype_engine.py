@@ -24,7 +24,7 @@ from .prompt_budget import PromptBudget
 from .token_utils import truncate_text, token_count
 from compact_memory.contrib import ActiveMemoryManager
 from compact_memory.contrib import ConversationTurn
-from compact_memory.engines.base import (
+from compact_memory.engines import (
     BaseCompressionEngine,
     CompressedMemory,
     CompressionTrace,
@@ -104,7 +104,6 @@ class _LRUSet:
 
 
 class PrototypeEngine(BaseCompressionEngine):
-    id = "prototype"  # Add a unique ID for PrototypeEngine
     """
     Core component for managing and interacting with a memory store.
 

@@ -52,7 +52,6 @@ from compact_memory.config import Config, DEFAULT_CONFIG, USER_CONFIG_PATH
 
 from .plugin_loader import load_plugins
 from .cli_plugins import load_cli_plugins
-from .engines import BaseCompressionEngine
 from .package_utils import (
     load_manifest,
     validate_manifest,
@@ -67,9 +66,8 @@ app = typer.Typer(
 )
 console = Console()
 
-# Register PrototypeEngine here to avoid circular imports with engines package
-from .prototype_engine import PrototypeEngine
-register_compression_engine(PrototypeEngine.id, PrototypeEngine, display_name="Prototype Engine", source="built-in")
+# Register built-in engines
+register_compression_engine(NoCompressionEngine.id, NoCompressionEngine)
 
 # --- New Command Groups ---
 engine_app = typer.Typer(
@@ -620,14 +618,14 @@ def query(
 
     reply = result.get("reply")
     if reply:
-        typer.echo(reply)
-    else:
-        typer.secho(
-            "The engine store did not return a reply.", fg=typer.colors.YELLOW
-        )
+            typer.echo(reply)
+        else:
+            typer.secho(
+                "The engine store did not return a reply.", fg=typer.colors.YELLOW
+            )
 
-    if show_prompt_tokens and result.get("prompt_tokens") is not None:
-        typer.echo(f"Prompt tokens: {result['prompt_tokens']}")
+        if show_prompt_tokens and result.get("prompt_tokens") is not None:
+            typer.echo(f"Prompt tokens: {result['prompt_tokens']}")
 
 
 @app.command(
@@ -1033,10 +1031,7 @@ def compress_text_to_memory(
     # BaseCompressionEngine.ingest currently only takes `text: str`.
     # If `source_document_id` or other metadata needs to be passed,
     # `BaseCompressionEngine.ingest` would need to be updated.
-    if isinstance(main_engine, PrototypeEngine):
-        main_engine.add_memory(compressed.text, source_document_id=source_document_id)
-    else:
-        main_engine.ingest(compressed.text) # Fallback for other engine types
+    main_engine.ingest(compressed.text)
 
     elapsed = (time.time() - start) * 1000
     if verbose_stats:
