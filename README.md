@@ -72,7 +72,7 @@ Key aspects of the framework include:
 *   **Plugin Architecture:** A system for packaging and sharing your CompressionEngines, making them discoverable and usable by others.
 
 To get started with building your own compression engines, please refer to our detailed guide:
-*   **[Developing Compression Engines](docs/DEVELOPING_COMPRESSION_STRATEGIES.md)**
+*   **[Developing Compression Engines](docs/ENGINE_DEVELOPMENT.md)**
 
 This guide will walk you through the process of creating a new BaseCompressionEngine, from understanding the core components to testing and evaluation.
 
@@ -165,7 +165,7 @@ For users wanting to understand the foundational ideas behind Compact Memory:
 
 For contributors or those looking to build custom solutions on top of Compact Memory:
 
--   Learn about developing custom `BaseCompressionEngine` implementations in `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`.
+-   Learn about developing custom `BaseCompressionEngine` implementations in `docs/ENGINE_DEVELOPMENT.md`.
 -   Understand how to create new `ValidationMetric` functions by reading `docs/DEVELOPING_VALIDATION_METRICS.md`.
 -   Review the overall system design in `docs/ARCHITECTURE.md`.
 
@@ -416,7 +416,7 @@ For more detailed information on Compact Memory's architecture, development guid
 
 -   **Main Documentation Portal:** `docs/README.md` (or `docs/index.md`) serves as a Table of Contents and entry point for deeper documentation.
 -   **Architecture Deep Dive:** Understand the overall system design in `docs/ARCHITECTURE.md`.
--   **Developing Compression Engines:** Learn how to create your own engines in `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`.
+-   **Developing Compression Engines:** Learn how to create your own engines in `docs/ENGINE_DEVELOPMENT.md`.
 -   **Developing Validation Metrics:** Find guidance on building custom metrics in `docs/DEVELOPING_VALIDATION_METRICS.md`.
 -   **Plugins:** Learn how to install or develop engine plugins in `docs/SHARING_STRATEGIES.md`.
 -   **Conceptual Guides:** Explore the ideas behind memory engines in `docs/PROJECT_VISION.md`.
@@ -425,8 +425,8 @@ For more detailed information on Compact Memory's architecture, development guid
 
 Compact Memory is designed to support a wide variety of `BaseCompressionEngine` implementations. For detailed guidance on creating your own, including best practices for splitting documents into meaningful chunks (e.g., belief-sized ideas) and techniques for updating memory (like centroid updates), please see:
 
--   `docs/COMPRESSION_STRATEGIES.md`
--   `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`
+-   `docs/COMPRESSION_ENGINES.md`
+-   `docs/ENGINE_DEVELOPMENT.md`
 
 The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during memory initialization (e.g., `compact-memory memory init ./my_memory --chunker agentic`) or programmatically within your custom engine (e.g., `agent.chunker = AgenticChunker()`).
 

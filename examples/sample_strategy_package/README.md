@@ -58,7 +58,7 @@ Compact Memory can discover engines packaged in this format if they are placed i
 
 For local development and testing, you can often make your engine available by ensuring the directory containing your package is in your `PYTHONPATH`, or by using local installation options if provided by Compact Memory's CLI or main setup.
 
-Refer to the main Compact Memory documentation on "Sharing Strategies" ([`docs/SHARING_STRATEGIES.md`](../../docs/SHARING_STRATEGIES.md)) and "Developing Compression Strategies" ([`docs/DEVELOPING_COMPRESSION_STRATEGIES.md`](../../docs/DEVELOPING_COMPRESSION_STRATEGIES.md)) for more details on how engines are loaded and best practices for development.
+Refer to the main Compact Memory documentation on "Sharing Strategies" ([`docs/SHARING_STRATEGIES.md`](../../docs/SHARING_STRATEGIES.md)) and "Developing Compression Strategies" ([`docs/ENGINE_DEVELOPMENT.md`](../../docs/ENGINE_DEVELOPMENT.md)) for more details on how engines are loaded and best practices for development.
 
 ## Key Components Explained
 
