@@ -48,7 +48,7 @@ Ingests a text file or files in a directory into a container's memory. The conta
 
 ### `compact-memory query`
 
-Queries a memory container (specified by `--memory-path` or configuration) with the provided text and returns an AI-generated response.
+Queries an engine store (specified by `--memory-path` or configuration) with the provided text and returns an AI-generated response.
 
 **Usage:** `compact-memory query [OPTIONS] QUERY_TEXT`
 
@@ -84,15 +84,15 @@ Compresses text content from a string, file, or directory using a specified engi
 
 ### `compact-memory memory`
 
-Manage memory containers: initialize, inspect statistics, validate, and clear.
+Manage engine stores: initialize, inspect statistics, validate, and clear.
 
-The memory namespace is used to manage a named container for stored, compressed memories. It is not an AI agent.
+The memory namespace is used to manage a named engine store for stored, compressed memories. It is not an AI agent.
 
 **Usage:** `compact-memory memory [OPTIONS] COMMAND [ARGS]...`
 
 #### `compact-memory memory init`
 
-Creates and initializes a new memory container in a specified directory.
+Creates and initializes a new engine store in a specified directory.
 
 **Usage:** `compact-memory memory init [OPTIONS] TARGET_DIRECTORY`
 
@@ -108,7 +108,7 @@ Creates and initializes a new memory container in a specified directory.
 
 #### `compact-memory memory stats`
 
-Displays statistics about the Compact Memory memory container.
+Displays statistics about the Compact Memory engine store.
 
 **Usage:** `compact-memory memory stats [OPTIONS]`
 
@@ -127,7 +127,7 @@ Validates the integrity of the container's storage.
 
 #### `compact-memory memory clear`
 
-Deletes all data from a memory container. This action is irreversible.
+Deletes all data from an engine store. This action is irreversible.
 
 **Usage:** `compact-memory memory clear [OPTIONS]`
 

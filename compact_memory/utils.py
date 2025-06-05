@@ -12,7 +12,7 @@ if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from .prototype_engine import PrototypeEngine
 
 
-def load_memory_container(path: Path) -> "PrototypeEngine":
+def load_engine(path: Path) -> "PrototypeEngine":
     """Load a :class:`PrototypeEngine` from ``path``."""
 
     from .prototype_engine import PrototypeEngine
@@ -65,4 +65,4 @@ def format_ingest_results(
     return lines
 
 
-__all__ = ["load_memory_container", "format_ingest_results"]
+__all__ = ["load_engine", "format_ingest_results"]

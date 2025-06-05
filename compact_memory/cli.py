@@ -70,7 +70,7 @@ register_compression_engine(NoCompressionEngine.id, NoCompressionEngine)
 
 # --- New Command Groups ---
 engine_app = typer.Typer(
-    help="Manage memory containers: initialize, inspect statistics, validate, and clear."
+    help="Manage engine storage: initialize, inspect statistics, validate, and clear."
 )
 config_app = typer.Typer(
     help="Manage Compact Memory application configuration settings."
@@ -109,7 +109,7 @@ def main(
         None,
         "--memory-path",
         "-m",
-        help="Path to the Compact Memory memory container directory. Overrides COMPACT_MEMORY_PATH env var and configuration files.",
+        help="Path to the Compact Memory engine storage directory. Overrides COMPACT_MEMORY_PATH env var and configuration files.",
     ),
     model_id: Optional[str] = typer.Option(
         None,
@@ -240,9 +240,9 @@ def _corrupt_exit(path: Path, exc: Exception) -> None:
     raise typer.Exit(code=1)
 
 
-def load_memory_container(path: Path) -> PrototypeEngine:
+def load_engine(path: Path) -> PrototypeEngine:
     """Load a :class:`PrototypeEngine` from ``path``."""
-    from .utils import load_memory_container as _loader
+    from .utils import load_engine as _loader
 
     return _loader(path)
 
@@ -286,18 +286,18 @@ def engine_info(engine_id: str) -> None:
 
 @engine_app.command(
     "init",
-    help="Initializes a new Compact Memory memory container in a specified directory.\n\nUsage Examples:\n  compact-memory engine init ./my_memory_dir\n  compact-memory engine init /path/to/another_container --name 'research_mem' --model-name 'sentence-transformers/all-mpnet-base-v2' --tau 0.75",
+    help="Initializes a new Compact Memory engine store in a specified directory.\n\nUsage Examples:\n  compact-memory engine init ./my_memory_dir\n  compact-memory engine init /path/to/another_container --name 'research_mem' --model-name 'sentence-transformers/all-mpnet-base-v2' --tau 0.75",
 )
 def init(
     target_directory: Path = typer.Argument(
         ...,
-        help="Directory to initialize the new memory container in. Will be created if it doesn't exist.",
+        help="Directory to initialize the new engine store in. Will be created if it doesn't exist.",
         resolve_path=True,
     ),
     *,
     ctx: typer.Context,
     name: str = typer.Option(
-        "default", help="A descriptive name for the memory container."
+        "default", help="A descriptive name for the engine store."
     ),
     model_name: str = typer.Option(
         "all-MiniLM-L6-v2",
@@ -338,19 +338,19 @@ def init(
         {"memory_name": name, "tau": tau, "alpha": alpha, "chunker": chunker}
     )
     store.save()
-    typer.echo(f"Successfully initialized Compact Memory memory container at {path}")
+    typer.echo(f"Successfully initialized Compact Memory engine store at {path}")
 
 
 @engine_app.command(
     "stats",
-    help="Displays statistics about the Compact Memory memory container.\n\nUsage Examples:\n  compact-memory engine stats\n  compact-memory engine stats --memory-path path/to/my_container --json",
+    help="Displays statistics about the Compact Memory engine store.\n\nUsage Examples:\n  compact-memory engine stats\n  compact-memory engine stats --memory-path path/to/my_container --json",
 )
 def stats(
     json_output: bool = typer.Option(
         False, "--json", help="Output statistics in JSON format."
     ),
 ) -> None:
-    container = load_memory_container(Path("."))
+    container = load_engine(Path("."))
     data = container.get_statistics()
     logging.debug("Collected statistics: %s", data)
     if json_output:
@@ -361,7 +361,7 @@ def stats(
 
 
 @engine_app.command(
-    "validate", help="Validates the integrity of the memory container's storage."
+    "validate", help="Validates the integrity of the engine store's storage."
 )
 def validate_memory_storage(
     ctx: typer.Context,
@@ -369,7 +369,7 @@ def validate_memory_storage(
         None,
         "--memory-path",
         "-m",
-        help="Path to the memory container directory. Overrides global setting if provided.",
+        help="Path to the engine store directory. Overrides global setting if provided.",
     ),
 ) -> None:
     final_memory_path_str = memory_path_arg
@@ -393,7 +393,7 @@ def validate_memory_storage(
 
 @engine_app.command(
     "clear",
-    help="Deletes all data from a memory container. This action is irreversible.\n\nUsage Examples:\n  compact-memory engine clear --force\n  compact-memory engine clear --memory-path path/to/another_container --dry-run",
+    help="Deletes all data from an engine store. This action is irreversible.\n\nUsage Examples:\n  compact-memory engine clear --force\n  compact-memory engine clear --memory-path path/to/another_container --dry-run",
 )
 def clear(
     ctx: typer.Context,
@@ -401,7 +401,7 @@ def clear(
         None,
         "--memory-path",
         "-m",
-        help="Path to the memory container directory. Overrides global setting if provided.",
+        help="Path to the engine store directory. Overrides global setting if provided.",
     ),
     force: bool = typer.Option(
         False,
@@ -436,13 +436,13 @@ def clear(
         return
     if not force:
         if not typer.confirm(
-            f"Are you sure you want to delete all data in memory container at '{path}'? This cannot be undone.",
+            f"Are you sure you want to delete all data in engine store at '{path}'? This cannot be undone.",
             abort=True,
         ):
             return  # Added path and warning
     if path.exists():
         shutil.rmtree(path)
-        typer.echo(f"Successfully cleared memory container data at {path}")
+        typer.echo(f"Successfully cleared engine store data at {path}")
     else:
         typer.secho(
             f"Error: Directory '{path}' not found.", err=True, fg=typer.colors.RED
@@ -458,12 +458,12 @@ def ingest() -> None:
 
 @app.command(
     "query",
-    help='Queries the Compact Memory memory container and returns an AI-generated response.\n\nUsage Examples:\n  compact-memory query "What is the capital of France?"\n  compact-memory query "Explain the theory of relativity in simple terms" --show-prompt-tokens',
+    help='Queries the Compact Memory engine store and returns an AI-generated response.\n\nUsage Examples:\n  compact-memory query "What is the capital of France?"\n  compact-memory query "Explain the theory of relativity in simple terms" --show-prompt-tokens',
 )
 def query(
     ctx: typer.Context,
     query_text: str = typer.Argument(
-        ..., help="The query text to send to the memory container."
+        ..., help="The query text to send to the engine store."
     ),
     show_prompt_tokens: bool = typer.Option(
         False,
@@ -528,7 +528,7 @@ def query(
             typer.echo(reply)
         else:
             typer.secho(
-                "The memory container did not return a reply.", fg=typer.colors.YELLOW
+                "The engine store did not return a reply.", fg=typer.colors.YELLOW
             )
 
         if show_prompt_tokens and result.get("prompt_tokens") is not None:
@@ -589,12 +589,12 @@ def compress(
         None,
         "--memory-path",
         "-m",
-        help="Path of the memory container directory to store the compressed content",
+        help="Path of the engine store directory to store the compressed content",
     ),
     init_memory: bool = typer.Option(
         False,
         "--init-memory",
-        help="Initialize a new memory container at --memory-path if it does not exist",
+        help="Initialize a new engine store at --memory-path if it does not exist",
     ),
     output_trace: Optional[Path] = typer.Option(
         None,
@@ -672,7 +672,7 @@ def compress(
             raise typer.Exit(1)
 
     if final_memory_path_str:
-        container = load_memory_container(Path(final_memory_path_str))
+        container = load_engine(Path(final_memory_path_str))
         if text is not None:
             if text == "-":
                 text = sys.stdin.read()
@@ -1069,7 +1069,7 @@ def inspect_strategy(
     list_prototypes: bool = typer.Option(
         False,
         "--list-prototypes",
-        help="List consolidated prototypes (beliefs) if the strategy is 'prototype' and a memory container path is provided.",
+        help="List consolidated prototypes (beliefs) if the strategy is 'prototype' and an engine store path is provided.",
     ),
 ) -> None:
     if strategy_name.lower() != "prototype":
@@ -1105,7 +1105,7 @@ def inspect_strategy(
         console.print(table)
     else:
         typer.echo(
-            f"Strategy '{strategy_name}' is available. Use --list-prototypes and provide a memory container path to see its beliefs."
+            f"Strategy '{strategy_name}' is available. Use --list-prototypes and provide an engine store path to see its beliefs."
         )
 
 
