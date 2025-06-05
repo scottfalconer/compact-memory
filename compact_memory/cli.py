@@ -340,11 +340,27 @@ def init(
     help="Displays statistics about the Compact Memory engine store.\n\nUsage Examples:\n  compact-memory engine stats\n  compact-memory engine stats --memory-path path/to/my_container --json",
 )
 def stats(
+    ctx: typer.Context,
+    memory_path_arg: Optional[str] = typer.Option(
+        None,
+        "--memory-path",
+        "-m",
+        help="Path to the engine store directory. Overrides global setting if provided.",
+    ),
     json_output: bool = typer.Option(
         False, "--json", help="Output statistics in JSON format."
     ),
 ) -> None:
-    container = load_engine(Path("."))
+    final_memory_path_str = memory_path_arg or ctx.obj.get("compact_memory_path")
+    if final_memory_path_str is None:
+        typer.secho(
+            "Critical Error: Memory path could not be resolved for stats.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    container = load_engine(Path(final_memory_path_str))
     data = container.get_statistics()
     logging.debug("Collected statistics: %s", data)
     if json_output:
