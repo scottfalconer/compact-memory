@@ -116,6 +116,45 @@ def _load_local_plugins() -> None:
     for pp in _iter_local_plugin_paths():
         if not pp.path.exists():
             continue
+        # First, load any standalone .py files that define engines
+        for py_file in sorted(p for p in pp.path.glob("*.py") if p.is_file()):
+            if py_file.name == "__init__.py":
+                continue
+            try:
+                mod_spec = importlib.util.spec_from_file_location(
+                    f"compact_memory.engine_file.{py_file.stem}_{uuid.uuid4().hex}",
+                    py_file,
+                )
+                if mod_spec is None or mod_spec.loader is None:
+                    raise ImportError(f"Cannot load module from {py_file}")
+                module = importlib.util.module_from_spec(mod_spec)
+                mod_spec.loader.exec_module(module)
+                for obj in module.__dict__.values():
+                    if (
+                        isinstance(obj, type)
+                        and issubclass(obj, BaseCompressionEngine)
+                        and obj is not BaseCompressionEngine
+                    ):
+                        engine_id = getattr(obj, "id")
+                        display_name = getattr(obj, "display_name", engine_id)
+                        prev = get_engine_metadata(engine_id)
+                        if prev:
+                            logging.info(
+                                "Local plugin '%s' overrides %s engine '%s'",
+                                py_file,
+                                prev.get("source"),
+                                engine_id,
+                            )
+                        register_compression_engine(
+                            engine_id,
+                            obj,
+                            display_name=display_name,
+                            version=None,
+                            source=pp.source_label,
+                        )
+            except Exception as exc:
+                logging.warning("Failed loading plugin from %s: %s", py_file, exc)
+        # Next, load package-style plugins
         for pkg_dir in sorted(p for p in pp.path.iterdir() if p.is_dir()):
             try:
                 manifest = load_manifest(pkg_dir / "engine_package.yaml")
