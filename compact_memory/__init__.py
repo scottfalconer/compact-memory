@@ -12,25 +12,25 @@ __all__ = [
     "ConversationalTurn",
     "VectorStore",
     "InMemoryVectorStore",
-    "MemoryContainer",
-    "QueryResult",
-    "PrototypeHit",
-    "MemoryHit",
+    # "MemoryContainer", # Removed
+    # "QueryResult", # Removed
+    # "PrototypeHit", # Removed
+    # "MemoryHit", # Removed
     "embed_text",
     "SentenceWindowChunker",
     "FixedSizeChunker",
     "AgenticChunker",
-    "DEFAULT_MEMORY_PATH",
+    "DEFAULT_MEMORY_PATH", # This might change if config keys are updated
     "LocalChatModel",
-    "LearnedSummarizerStrategy",
-    "load_memory_container",
+    "SummarizationEngine", # Changed from LearnedSummarizerStrategy
+    "load_memory_container", # This function might be obsolete if MemoryContainer is removed
     "tokenize_text",
     "token_count",
     "PromptBudget",
-    "CompressionStrategy",
-    "NoCompression",
+    "CompressionEngine", # Changed from CompressionStrategy
+    "NoCompressionEngine", # Changed from NoCompression
     "ValidationMetric",
-    "StrategyConfig",
+    "EngineConfig", # Changed from StrategyConfig
 ]
 
 _lazy_map = {
@@ -40,25 +40,25 @@ _lazy_map = {
     "ConversationalTurn": "compact_memory.models",
     "VectorStore": "compact_memory.vector_store",
     "InMemoryVectorStore": "compact_memory.vector_store",
-    "MemoryContainer": "compact_memory.memory_container",
-    "QueryResult": "compact_memory.memory_container",
-    "PrototypeHit": "compact_memory.memory_container",
-    "MemoryHit": "compact_memory.memory_container",
+    # "MemoryContainer": "compact_memory.memory_container", # Removed
+    # "QueryResult": "compact_memory.memory_container", # Removed
+    # "PrototypeHit": "compact_memory.memory_container", # Removed
+    # "MemoryHit": "compact_memory.memory_container", # Removed
     "embed_text": "compact_memory.embedding_pipeline",
     "SentenceWindowChunker": "compact_memory.chunker",
     "FixedSizeChunker": "compact_memory.chunker",
     "AgenticChunker": "compact_memory.chunker",
-    "DEFAULT_MEMORY_PATH": "compact_memory.config",
+    "DEFAULT_MEMORY_PATH": "compact_memory.config", # This might change if config keys are updated
     "LocalChatModel": "compact_memory.local_llm",
-    "load_memory_container": "compact_memory.utils",
+    "load_memory_container": "compact_memory.utils", # This function might be obsolete
     "tokenize_text": "compact_memory.token_utils",
     "token_count": "compact_memory.token_utils",
-    "LearnedSummarizerStrategy": "CompressionStrategy.contrib.learned_summarizer_strategy",
+    "SummarizationEngine": "CompressionEngine.contrib.summarization_engine", # Updated path and name
     "PromptBudget": "compact_memory.prompt_budget",
-    "CompressionStrategy": "CompressionStrategy.core",
-    "NoCompression": "CompressionStrategy.core",
+    "CompressionEngine": "CompressionEngine.core", # Updated path and name
+    "NoCompressionEngine": "CompressionEngine.core.no_compression_engine", # Updated path and name
     "ValidationMetric": "compact_memory.validation.metrics_abc",
-    "StrategyConfig": "CompressionStrategy.core",
+    "EngineConfig": "CompressionEngine.core.config", # Updated path and name
 }
 
 

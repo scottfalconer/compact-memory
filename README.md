@@ -8,9 +8,9 @@ For the complete project documentation, see [docs/README.md](docs/README.md).
 
 The project offers:
 *   **A ready-to-use toolkit** – Command-Line Interface and Python API for
-    applying compression strategies in your own pipelines.
+    applying compression engines in your own pipelines.
 *   **A flexible framework** – utilities for developing and testing new
-    compression strategies.
+    compression engines.
 
 Traditional approaches such as standard Retrieval Augmented Generation (RAG) or
 simply expanding context windows often fall short on complex tasks that require
@@ -18,7 +18,7 @@ dynamic learning and resource-conscious operation. Compact Memory addresses thes
 challenges by facilitating advanced memory compression techniques.
 
 The benefits of using Compact Memory include:
--   Developing strategies for evolving gist-based understanding, where memory consolidates and adapts over time.
+-   Developing engines for evolving gist-based understanding, where memory consolidates and adapts over time.
 -   Optimizing context for resource efficiency, managing token budgets to reduce API costs, lower latency, and enable the use of smaller or local LLMs.
 -   Creating and utilizing learned compression and summarization techniques that can adapt to specific tasks or data types.
 -   Implementing active memory management systems that simulate dynamic working memory for more coherent, long-running interactions.
@@ -27,7 +27,7 @@ The benefits of using Compact Memory include:
 
 Compact Memory is built for those pushing the boundaries of LLM capabilities:
 
--   **Researchers:** Seeking a standardized environment to benchmark novel memory architectures, test hypotheses, and share reproducible findings on LLM memory strategies.
+-   **Researchers:** Seeking a standardized environment to benchmark novel memory architectures, test hypotheses, and share reproducible findings on LLM memory engines.
 -   **Developers:** Aiming to equip their LLM applications with more powerful, adaptive, and resource-efficient memory capabilities than off-the-shelf solutions provide.
 
 ## Using Compact Memory: The Toolkit
@@ -42,7 +42,7 @@ Get started by installing the `compact-memory` package:
 
 ```bash
 pip install compact-memory
-# Download recommended models for default strategies and examples
+# Download recommended models for default engines and examples
 python -m spacy download en_core_web_sm
 compact-memory dev download-embedding-model
 compact-memory dev download-chat-model
@@ -51,7 +51,7 @@ For more detailed installation options, see the [Installation](#installation) se
 
 ### Quick Example
 
-Compress a text file to 100 tokens using the default strategy:
+Compress a text file to 100 tokens using the default engine:
 
 ```bash
 compact-memory compress --file my_document.txt --budget 100
@@ -61,80 +61,80 @@ See [USAGE.md](docs/USAGE.md) for more CLI examples and Python API usage.
 
 <!-- Detailed usage examples have moved to USAGE.md -->
 
-## Developing Strategies: The Framework
+## Developing Engines: The Framework
 
-For researchers and developers interested in creating novel context compression techniques, Compact Memory offers a comprehensive framework. It provides the necessary abstractions, tools, and testing utilities to design, build, and validate your own `CompressionStrategy` implementations.
+For researchers and developers interested in creating novel context compression techniques, Compact Memory offers a comprehensive framework. It provides the necessary abstractions, tools, and testing utilities to design, build, and validate your own `CompressionEngine` implementations.
 
 Key aspects of the framework include:
 
-*   **`CompressionStrategy` Base Class:** A clear abstract base class that defines the interface for all compression strategies. Implement this to integrate your custom logic into the Compact Memory ecosystem.
-*   **Validation Metrics:** A suite of metrics and the ability to define custom ones (`ValidationMetric`) to rigorously evaluate the performance and effectiveness of your CompressionStrategies.
-*   **Plugin Architecture:** A system for packaging and sharing your CompressionStrategies, making them discoverable and usable by others.
+*   **`CompressionEngine` Base Class:** A clear abstract base class that defines the interface for all compression engines. Implement this to integrate your custom logic into the Compact Memory ecosystem.
+*   **Validation Metrics:** A suite of metrics and the ability to define custom ones (`ValidationMetric`) to rigorously evaluate the performance and effectiveness of your CompressionEngines.
+*   **Plugin Architecture:** A system for packaging and sharing your CompressionEngines, making them discoverable and usable by others.
 
-To get started with building your own compression strategies, please refer to our detailed guide:
-*   **[Developing Compression Strategies](docs/DEVELOPING_COMPRESSION_STRATEGIES.md)**
+To get started with building your own compression engines, please refer to our detailed guide:
+*   **[Developing Compression Engines](docs/DEVELOPING_COMPRESSION_ENGINES.md)**
 
-This guide will walk you through the process of creating a new CompressionStrategy, from understanding the core components to testing and evaluation.
+This guide will walk you through the process of creating a new CompressionEngine, from understanding the core components to testing and evaluation.
 
 
-## Sharing and Discovering Strategies
+## Sharing and Discovering Engines
 
-Compact Memory is designed to foster a community of innovation around LLM context compression. A key part of this is the ability to easily share strategies you develop and discover strategies created by others.
+Compact Memory is designed to foster a community of innovation around LLM context compression. A key part of this is the ability to easily share engines you develop and discover engines created by others.
 
 ### Plugin System
 
-Compact Memory features a plugin system that allows new compression strategies to be discovered and loaded at runtime. If a Python package registers a strategy using the `compact_memory.strategies` entry point, or if a valid strategy package directory is placed in a designated plugins path, Compact Memory will automatically make it available for use.
+Compact Memory features a plugin system that allows new compression engines to be discovered and loaded at runtime. If a Python package registers an engine using the `compact_memory.engines` entry point, or if a valid engine package directory is placed in a designated plugins path, Compact Memory will automatically make it available for use.
 
 This makes it simple to extend the capabilities of Compact Memory without modifying the core codebase.
 
-### Creating a Shareable Strategy Package
+### Creating a Shareable Engine Package
 
-To package your custom strategy for sharing, Compact Memory provides a command-line tool to generate a template package structure. This includes the necessary metadata files and directory layout.
+To package your custom engine for sharing, Compact Memory provides a command-line tool to generate a template package structure. This includes the necessary metadata files and directory layout.
 
-Use the `dev create-strategy-package` command:
+Use the `dev create-engine-package` command:
 
 ```bash
-compact-memory dev create-strategy-package --name compact_memory_my_strategy
+compact-memory dev create-engine-package --name compact_memory_my_engine
 ```
 
-This will create a new directory (e.g., `compact_memory_my_strategy/`) containing:
-*   `strategy.py`: A template for your strategy code.
-*   `strategy_package.yaml`: A manifest file describing your strategy.
+This will create a new directory (e.g., `compact_memory_my_engine/`) containing:
+*   `engine.py`: A template for your engine code.
+*   `engine_package.yaml`: A manifest file describing your engine.
 *   `README.md`: Basic documentation for your package.
-*   `requirements.txt`: For any specific dependencies your strategy might have.
+*   `requirements.txt`: For any specific dependencies your engine might have.
 
-After populating these files with your strategy's logic and details, it can be shared.
+After populating these files with your engine's logic and details, it can be shared.
 
-The recommended package name pattern for publishing on PyPI or GitHub is `compact_memory_<name>_strategy`.
+The recommended package name pattern for publishing on PyPI or GitHub is `compact_memory_<name>_engine`.
 
 For comprehensive details on packaging and the plugin architecture, see:
-*   **[Sharing Strategies](docs/SHARING_STRATEGIES.md)**
+*   **[Sharing Engines](docs/SHARING_ENGINES.md)**
 
-### Finding, Installing, and Using Shared Strategies
+### Finding, Installing, and Using Shared Engines
 
-Shared strategies can be distributed as standard Python packages (e.g., via PyPI) or as simple directory packages.
+Shared engines can be distributed as standard Python packages (e.g., via PyPI) or as simple directory packages.
 
-*   **Installation (Python Packages):** If a strategy is distributed as a Python package, you can typically install it using pip:
+*   **Installation (Python Packages):** If an engine is distributed as a Python package, you can typically install it using pip:
     ```bash
-    pip install some-compact-memory-strategy-package
+    pip install some-compact-memory-engine-package
     ```
-    Once installed in your Python environment, Compact Memory's plugin loader will automatically discover the strategy if it correctly uses the entry point system.
+    Once installed in your Python environment, Compact Memory's plugin loader will automatically discover the engine if it correctly uses the entry point system.
 
-*   **Installation (Directory Packages):** For strategies distributed as a directory, you can place them in a location scanned by Compact Memory. (Refer to `docs/SHARING_STRATEGIES.md` for details on plugin paths like `$COMPACT_MEMORY_PLUGINS_PATH`).
+*   **Installation (Directory Packages):** For engines distributed as a directory, you can place them in a location scanned by Compact Memory. (Refer to `docs/SHARING_ENGINES.md` for details on plugin paths like `$COMPACT_MEMORY_PLUGINS_PATH`).
 
-*   **Using a Shared Strategy:** Once installed and discovered, you can use a shared strategy like any built-in strategy by specifying its `strategy_id` in the CLI or Python API:
+*   **Using a Shared Engine:** Once installed and discovered, you can use a shared engine like any built-in engine by specifying its `engine_id` in the CLI or Python API:
     ```bash
-    compact-memory compress --text "my text" --strategy community_strategy_id --budget 100
+    compact-memory compress --text "my text" --engine community_engine_id --budget 100
     ```
     ```python
-    from CompressionStrategy.core import get_compression_strategy
-    strategy = get_compression_strategy("community_strategy_id")()
-    # ... use the strategy
+    from CompressionEngine.core import get_compression_engine # Updated path
+    engine = get_compression_engine("community_engine_id")() # Updated function and variable name
+    # ... use the engine
     ```
 
-You can list all available strategies, including those from plugins, using:
+You can list all available engines, including those from plugins, using:
 ```bash
-compact-memory dev list-strategies
+compact-memory dev list-engines
 ```
 
 ## Navigate Compact Memory
@@ -152,86 +152,86 @@ For users who want to install Compact Memory and see it in action:
 
 For users wanting to understand the foundational ideas behind Compact Memory:
 
--   **`CompressionStrategy`**: An algorithm that takes input text and a token budget, and produces a compressed representation of that text suitable for an LLM prompt.
+-   **`CompressionEngine`**: An algorithm that takes input text and a token budget, and produces a compressed representation of that text suitable for an LLM prompt.
 -   **`ValidationMetric`**: A method to evaluate the quality or utility of the compressed memory, often by assessing an LLM's performance on a task using that compressed memory.
 -   For a deeper dive into concepts and architecture, see our main documentation portal in `docs/README.md` (or `docs/index.md`).
--   For conceptual background on memory strategies, refer to `docs/PROJECT_VISION.md`.
+-   For conceptual background on memory engines, refer to `docs/PROJECT_VISION.md`.
 
 ### Glossary
 
-* **CompressionStrategy** – A pluggable algorithm that compresses input text into a shorter form while preserving meaning.
+* **CompressionEngine** – A pluggable algorithm that compresses input text into a shorter form while preserving meaning.
 
 ### Developing for Compact Memory
 
 For contributors or those looking to build custom solutions on top of Compact Memory:
 
--   Learn about developing custom `CompressionStrategy` implementations in `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`.
+-   Learn about developing custom `CompressionEngine` implementations in `docs/DEVELOPING_COMPRESSION_ENGINES.md`.
 -   Understand how to create new `ValidationMetric` functions by reading `docs/DEVELOPING_VALIDATION_METRICS.md`.
 -   Review the overall system design in `docs/ARCHITECTURE.md`.
 
 ## Features
 
-- Command-line interface for memory container management (`memory init`, `memory stats`, `memory validate`, `memory clear`), data processing (`ingest`, `query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-strategies`, `dev evaluate-compression`, etc.).
+- Command-line interface for memory container management (`memory init`, `memory stats`, `memory validate`, `memory clear`), data processing (`ingest`, `query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-engines`, `dev evaluate-compression`, etc.).
 - Global configuration options settable via CLI, environment variables, or config files.
-- Pluggable memory compression strategies.
- - Pluggable CompressionStrategies.
+- Pluggable memory compression engines.
+ - Pluggable CompressionEngines.
 - Pluggable embedding backends: random (default), OpenAI, or local sentence transformers.
 - Chunks rendered using a canonical **WHO/WHAT/WHEN/WHERE/WHY** template before embedding.
 - Runs smoothly in Colab; a notebook-based GUI is planned.
 - Python API for decoding and summarizing prototypes.
 - Interactive query interface via the `query` command.
 
-## Memory Strategies
+## Memory Engines
 
-Compact Memory supports various compression strategies. You can list available strategies, including those from plugins:
+Compact Memory supports various compression engines. You can list available engines, including those from plugins:
 ```bash
-compact-memory dev list-strategies
+compact-memory dev list-engines
 ```
 
-| ID (Examples)       | Description                                           |
-| ------------------- | ----------------------------------------------------- |
-| `prototype`         | Prototype-based long-term memory with evolving summaries |
-| `first_last`        | Simple extractive: first and last N tokens/sentences  |
-| `your_custom_plugin`| A strategy you develop and load as a plugin          |
-*(This table is illustrative; use `dev list-strategies` for the current list)*
+| ID (Examples)        | Description                                            |
+| -------------------- | ------------------------------------------------------ |
+| `prototype_engine`   | Prototype-based long-term memory with evolving summaries |
+| `first_last_engine`  | Simple extractive: first and last N tokens/sentences   |
+| `your_custom_plugin` | An engine you develop and load as a plugin            |
+*(This table is illustrative; use `dev list-engines` for the current list)*
 
-To use a specific strategy, you can set it as a global default or specify it per command:
+To use a specific engine, you can set it as a global default or specify it per command:
 ```bash
-# Set default strategy globally
-compact-memory config set default_strategy_id prototype
+# Set default engine globally
+compact-memory config set default_engine_id prototype_engine
 
-# Use a specific strategy for a compress command
-compact-memory compress --text "My text..." --strategy first_last --budget 100
+# Use a specific engine for a compress command
+compact-memory compress --text "My text..." --engine first_last_engine --budget 100
 ```
 
-Plugins can add more strategies. For example, the `rationale_episode` strategy lives in the optional
-`compact_memory_rationale_episode_strategy` package. Install it with
-`pip install compact_memory_rationale_episode_strategy` to enable it.
-You can then set it via `compact-memory config set default_strategy_id rationale_episode`.
-Note: The old method of enabling strategies via `compact_memory_config.yaml` directly is being phased out in favor of the `config set` command and plugin system.
+Plugins can add more engines. For example, the `rationale_episode` engine lives in the optional
+`compact_memory_rationale_episode_engine` package. Install it with
+`pip install compact_memory_rationale_episode_engine` to enable it.
+You can then set it via `compact-memory config set default_engine_id rationale_episode_engine`.
+Note: The old method of enabling engines via `compact_memory_config.yaml` directly is being phased out in favor of the `config set` command and plugin system.
 
-### Using Experimental Strategies
+### Using Experimental Engines
 
-Experimental strategies live under ``CompressionStrategy.contrib``.
-The CLI registers them automatically, so commands like ``--strategy first_last`` work out of the box.
-When using the Python API directly, call ``enable_all_experimental_strategies()`` to register them:
+Experimental engines live under `CompressionEngine.contrib`.
+The CLI registers them automatically, so commands like `--engine first_last_engine` work out of the box.
+When using the Python API directly, call `enable_all_experimental_engines()` to register them:
 
 ```python
-from CompressionStrategy.contrib import (
-    ChainedStrategy,
-    enable_all_experimental_strategies,
+from CompressionEngine.contrib import ( # Updated path
+    ChainedEngine, # Updated class name
+    enable_all_experimental_engines, # Updated function name
 )
 
-enable_all_experimental_strategies()
+enable_all_experimental_engines() # Updated function name
 ```
 
-Once registered, these strategies behave like any other:
+Once registered, these engines behave like any other:
 
 ```bash
-compact-memory compress --file text.txt --strategy chained --budget 200
+compact-memory compress --file text.txt --engine chained_engine --budget 200
 ```
 
-Contrib strategies are experimental and may change without notice.
+Contrib engines are experimental and may change without notice.
 
 ## Why Compact Memory?
 
@@ -249,7 +249,7 @@ Compact Memory offers unique advantages for advancing LLM memory capabilities:
 Key benefits include:
 *   **Evolving Understanding:** Go beyond standard Retrieval Augmented Generation (RAG) by creating systems where memory consolidates, adapts, and forms conceptual "gists" from information over time.
 *   **Resource Optimization:** Optimize LLM interactions in resource-constrained settings by efficiently managing token budgets, potentially reducing API costs, latency, and enabling the use of smaller or local models.
-*   **Learned Compression:** Facilitate research and implementation of strategies that can be trained or adapt to optimally compress information for specific tasks or data types.
+*   **Learned Compression:** Facilitate research and implementation of engines that can be trained or adapt to optimally compress information for specific tasks or data types.
 
 ## Installation
 
@@ -297,7 +297,7 @@ the Codex environment and is not needed for general users.
     # Fetch a default chat model for the 'query' command and LLM-based validation
     compact-memory dev download-chat-model --model-name tiny-gpt2
     ```
-    Note: Specific `CompressionStrategy` implementations might have other model dependencies not covered here. Always check the documentation for the strategy you intend to use.
+    Note: Specific `CompressionEngine` implementations might have other model dependencies not covered here. Always check the documentation for the engine you intend to use.
 
 4.  **Set API Keys for Cloud Providers (Optional):**
     If you plan to use OpenAI or Gemini models with `compact-memory`, export your API keys as environment variables:
@@ -314,7 +314,7 @@ You can also set a default location for the on-disk memory store and other globa
 
 Compact Memory uses a hierarchical configuration system:
 1.  **Command-line arguments:** Highest precedence (e.g., `compact-memory --memory-path ./my_memory ingest ...`).
-2.  **Environment variables:** (e.g., `COMPACT_MEMORY_PATH`, `COMPACT_MEMORY_DEFAULT_MODEL_ID`, `COMPACT_MEMORY_DEFAULT_STRATEGY_ID`).
+2.  **Environment variables:** (e.g., `COMPACT_MEMORY_PATH`, `COMPACT_MEMORY_DEFAULT_MODEL_ID`, `COMPACT_MEMORY_DEFAULT_ENGINE_ID`).
 3.  **Local project config:** `.gmconfig.yaml` in the current directory.
 4.  **User global config:** `~/.config/compact_memory/config.yaml`.
 5.  **Hardcoded defaults.**
@@ -370,7 +370,7 @@ compact-memory --memory-path ./my_memory ingest path/to/your_document.txt
 ```
 
 **4. Query the Container:**
-Ask questions based on the ingested information. The container uses its configured default model and strategy unless overridden.
+Ask questions based on the ingested information. The container uses its configured default model and engine unless overridden.
 ```bash
 # If compact_memory_path is set:
 compact-memory query "What was mentioned about project X?"
@@ -378,27 +378,28 @@ compact-memory query "What was mentioned about project X?"
 # Or, specify the memory path directly:
 compact-memory --memory-path ./my_memory query "What was mentioned about project X?"
 
-# You can also override the default model or strategy for a specific query:
-compact-memory query "Summarize recent findings on AI ethics" --model-id openai/gpt-4-turbo --strategy prototype
+# You can also override the default model or engine for a specific query:
+compact-memory query "Summarize recent findings on AI ethics" --model-id openai/gpt-4-turbo --engine prototype_engine
 ```
 
 **5. Compress Text (Standalone Utility):**
-Compress text using a specific strategy without necessarily interacting with a container's stored memory. This is useful for quick text compression tasks.
+Compress text using a specific engine without necessarily interacting with a container's stored memory. This is useful for quick text compression tasks.
 ```bash
-compact-memory compress --text "This is a very long piece of text that needs to be shorter." --strategy first_last --budget 50
-compact-memory compress --file path/to/another_document.txt -s prototype -b 200 -o compressed_summary.txt
+compact-memory compress --text "This is a very long piece of text that needs to be shorter." --engine first_last_engine --budget 50
+compact-memory compress --file path/to/another_document.txt -e prototype_engine -b 200 -o compressed_summary.txt
 ```
+Note: `-s` was assumed to be short for `--strategy`, changed to `-e` for `--engine`. If `-s` had a different meaning, this would need adjustment.
 
 **Developer Tools & Evaluation:**
-Compact Memory also includes tools for developers and researchers, such as evaluating compression strategies or testing LLM prompts. These are typically found under the `dev` subcommand group.
+Compact Memory also includes tools for developers and researchers, such as evaluating compression engines or testing LLM prompts. These are typically found under the `dev` subcommand group.
 
 For example, to evaluate compression quality:
 ```bash
 compact-memory dev evaluate-compression original.txt compressed_version.txt --metric compression_ratio
 ```
-To list available strategies (including plugins):
+To list available engines (including plugins):
 ```bash
-compact-memory dev list-strategies
+compact-memory dev list-engines
 ```
 
 ### Running Tests
@@ -416,19 +417,19 @@ For more detailed information on Compact Memory's architecture, development guid
 
 -   **Main Documentation Portal:** `docs/README.md` (or `docs/index.md`) serves as a Table of Contents and entry point for deeper documentation.
 -   **Architecture Deep Dive:** Understand the overall system design in `docs/ARCHITECTURE.md`.
--   **Developing Compression Strategies:** Learn how to create your own strategies in `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`.
+-   **Developing Compression Engines:** Learn how to create your own engines in `docs/DEVELOPING_COMPRESSION_ENGINES.md`.
 -   **Developing Validation Metrics:** Find guidance on building custom metrics in `docs/DEVELOPING_VALIDATION_METRICS.md`.
--   **Plugins:** Learn how to install or develop strategy plugins in `docs/SHARING_STRATEGIES.md`.
--   **Conceptual Guides:** Explore the ideas behind memory strategies in `docs/PROJECT_VISION.md`.
+-   **Plugins:** Learn how to install or develop engine plugins in `docs/SHARING_ENGINES.md`.
+-   **Conceptual Guides:** Explore the ideas behind memory engines in `docs/PROJECT_VISION.md`.
 
-## Designing Compression Strategies
+## Designing Compression Engines
 
-Compact Memory is designed to support a wide variety of `CompressionStrategy` implementations. For detailed guidance on creating your own, including best practices for splitting documents into meaningful chunks (e.g., belief-sized ideas) and techniques for updating memory (like centroid updates), please see:
+Compact Memory is designed to support a wide variety of `CompressionEngine` implementations. For detailed guidance on creating your own, including best practices for splitting documents into meaningful chunks (e.g., belief-sized ideas) and techniques for updating memory (like centroid updates), please see:
 
--   `docs/COMPRESSION_STRATEGIES.md`
--   `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`
+-   `docs/COMPRESSION_ENGINES.md`
+-   `docs/DEVELOPING_COMPRESSION_ENGINES.md`
 
-The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during memory initialization (e.g., `compact-memory memory init ./my_memory --chunker agentic`) or programmatically within your custom strategy (e.g., `agent.chunker = AgenticChunker()`).
+The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during memory initialization (e.g., `compact-memory memory init ./my_memory --chunker agentic`) or programmatically within your custom engine (e.g., `agent.chunker = AgenticChunker()`).
 
 ## Contributing
 
@@ -450,16 +451,19 @@ Compact Memory no longer performs built-in line filtering or heuristic cleanup w
 def remove_blank_lines(text: str) -> str:
     return "\n".join(line for line in text.splitlines() if line.strip())
 
-agent = MemoryContainer(store, preprocess_fn=remove_blank_lines)
+# Example of applying a preprocessing function before engine processing:
+# (Conceptual: Actual API for applying this would depend on the specific workflow)
+# processed_text = remove_blank_lines(raw_text)
+# compressed_output = compression_engine.compress(processed_text, ...)
 ```
 
 This hook enables custom regex cleanup, spaCy pipelines or LLM-powered summarization prior to compression.
 
 ## Architecture and Storage
 
-Compact Memory features a modular architecture that allows for flexible extension and adaptation. The core interfaces for `CompressionStrategy` and `ValidationMetric` are designed to be pluggable, enabling diverse implementations.
+Compact Memory features a modular architecture that allows for flexible extension and adaptation. The core interfaces for `CompressionEngine` and `ValidationMetric` are designed to be pluggable, enabling diverse implementations.
 
-Persistent storage is primarily relevant for `CompressionStrategy` implementations that maintain a stateful long-term memory (e.g., strategies based on prototypes or evolving summaries). Many strategies, however, can be stateless, processing input text without relying on persistent memory.
+Persistent storage is primarily relevant for `CompressionEngine` implementations that maintain a stateful long-term memory (e.g., engines based on prototypes or evolving summaries). Many engines, however, can be stateless, processing input text without relying on persistent memory.
 
 For a detailed architectural overview and discussion of storage options, please see:
 -   `docs/ARCHITECTURE.md`

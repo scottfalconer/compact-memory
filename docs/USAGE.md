@@ -4,30 +4,30 @@ This guide shows how to use the Compact Memory toolkit from the command line and
 
 ## Basic CLI Usage
 
-The CLI automatically registers the experimental compression strategies, so options like `first_last` work without extra setup.
+The CLI automatically registers the experimental compression engines, so options like `first_last_engine` work without extra setup.
 
-Compress a text file using the `first_last` compression strategy with a token budget of 100:
+Compress a text file using the `first_last_engine` compression engine with a token budget of 100:
 
 ```bash
-compact-memory compress --file "path/to/your_document.txt" --strategy first_last --budget 100
+compact-memory compress --file "path/to/your_document.txt" --engine first_last_engine --budget 100
 ```
 
 Compress a string directly:
 
 ```bash
-compact-memory compress --text "This is a very long string that needs to be much shorter to fit into my LLM's context window." --strategy truncate --budget 20
+compact-memory compress --text "This is a very long string that needs to be much shorter to fit into my LLM's context window." --engine truncate_engine --budget 20
 ```
 
 You can also pipe input via standard input:
 
 ```bash
-cat notes.txt | compact-memory compress --text - --strategy truncate --budget 20
+cat notes.txt | compact-memory compress --text - --engine truncate_engine --budget 20
 ```
 
 Write the output to a file with `-o`:
 
 ```bash
-compact-memory compress --file "path/to/your_document.txt" -s first_last -b 100 -o "path/to/compressed_output.txt"
+compact-memory compress --file "path/to/your_document.txt" -e first_last_engine -b 100 -o "path/to/compressed_output.txt"
 ```
 
 ### Using Compressed Output in an LLM Prompt
@@ -48,15 +48,15 @@ Assistant:
 
 ## Python API Example
 
-You can also call compression strategies programmatically:
+You can also call compression engines programmatically:
 
 ```python
-from CompressionStrategy.core import get_compression_strategy
+from CompressionEngine.core import get_compression_engine # Updated import
 from compact_memory.token_utils import get_tokenizer
 
-strategy = get_compression_strategy("first_last")()
+engine = get_compression_engine("first_last_engine")() # Updated function and engine ID
 text_to_compress = "This is a very long document that we want to summarize."
-compressed, _ = strategy.compress(text_to_compress, llm_token_budget=50)
+compressed, _ = engine.compress(text_to_compress, llm_token_budget=50) # Updated variable name
 print(compressed.text)
 ```
 

@@ -39,7 +39,7 @@ compact-memory = "compact_memory.__main__:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["compact_memory", "compact_memory.*", "CompressionStrategy", "CompressionStrategy.*"]
+include = ["compact_memory", "compact_memory.*", "CompressionEngine", "CompressionEngine.*"]
 
 [tool.setuptools.package-data]
 "compact_memory" = ["py.typed"]

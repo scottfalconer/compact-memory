@@ -22,9 +22,9 @@ from .logging_utils import configure_logging
 from .memory_container import MemoryContainer
 from .vector_store import InMemoryVectorStore
 from . import local_llm
-from CompressionStrategy.contrib import (
-    ActiveMemoryManager,
-    enable_all_experimental_strategies,
+from CompressionEngine.contrib import ( # Updated path
+    ActiveMemoryManager, # Assuming this class remains or its new equivalent is imported
+    enable_all_experimental_engines, # Updated function name
 )
 from .validation.registry import (
     _VALIDATION_METRIC_REGISTRY,
@@ -39,20 +39,20 @@ from .embedding_pipeline import (
     get_embedding_dim,
     EmbeddingDimensionMismatchError,
 )
-from compact_memory.config import Config, DEFAULT_CONFIG, USER_CONFIG_PATH
+from compact_memory.config import Config, DEFAULT_CONFIG, USER_CONFIG_PATH # Config class might need internal update for default_engine_id
 
-from CompressionStrategy.core import (
-    available_strategies,
-    get_compression_strategy,
-    all_strategy_metadata,
-    get_strategy_metadata,
+from CompressionEngine.core.registry import ( # Updated path
+    available_engines, # Updated function name
+    get_compression_engine, # Updated function name
+    all_engine_metadata, # Updated function name
+    get_engine_metadata, # Updated function name
 )
-from .plugin_loader import load_plugins
+from .plugin_loader import load_plugins # plugin_loader now uses 'engines' internally
 from .cli_plugins import load_cli_plugins
-from .package_utils import (
+from .package_utils import ( # package_utils functions need internal updates too
     load_manifest,
     validate_manifest,
-    load_strategy_class,
+    load_engine_class_from_module as load_engine_class, # Updated function name and alias
     validate_package_dir,
     check_requirements_installed,
 )
@@ -71,7 +71,7 @@ config_app = typer.Typer(
     help="Manage Compact Memory application configuration settings."
 )
 dev_app = typer.Typer(
-    help="Commands for compression strategy developers and researchers."
+    help="Commands for compression engine developers and researchers."
 )
 
 # --- Add New Command Groups to Main App ---
@@ -111,10 +111,10 @@ def main(
         "--model-id",
         help="Default model ID for LLM interactions. Overrides COMPACT_MEMORY_DEFAULT_MODEL_ID env var and configuration files.",
     ),
-    strategy_id: Optional[str] = typer.Option(
+    engine_id: Optional[str] = typer.Option( # Updated option name
         None,
-        "--strategy-id",
-        help="Default compression strategy ID. Overrides COMPACT_MEMORY_DEFAULT_STRATEGY_ID env var and configuration files.",
+        "--engine-id", # Updated option name
+        help="Default compression engine ID. Overrides COMPACT_MEMORY_DEFAULT_ENGINE_ID env var and configuration files.", # Updated help
     ),
     version: Optional[bool] = typer.Option(
         None,
@@ -150,8 +150,8 @@ def main(
     resolved_model_id = (
         model_id if model_id is not None else config.get("default_model_id")
     )
-    resolved_strategy_id = (
-        strategy_id if strategy_id is not None else config.get("default_strategy_id")
+    resolved_engine_id = ( # Updated variable name
+        engine_id if engine_id is not None else config.get("default_engine_id") # Updated option name and config key
     )
 
     if resolved_memory_path:
@@ -210,8 +210,8 @@ def main(
             )
             raise typer.Exit(code=1)
 
-    load_plugins()
-    enable_all_experimental_strategies()
+    load_plugins() # plugin_loader has been updated to find engines
+    enable_all_experimental_engines() # Updated function name
 
     # ctx.obj['config'] is already set above
     ctx.obj.update(
@@ -220,7 +220,7 @@ def main(
             "log_file": resolved_log_file,
             "compact_memory_path": resolved_memory_path,
             "default_model_id": resolved_model_id,
-            "default_strategy_id": resolved_strategy_id,
+            "default_engine_id": resolved_engine_id, # Updated key and variable
             # "config": config, # Already present
         }
     )
@@ -433,8 +433,8 @@ def query(
     dim = get_embedding_dim()
     store = InMemoryVectorStore(embedding_dim=dim)
     container = MemoryContainer(store)
-    final_model_id = ctx.obj.get("default_model_id")  # Renamed for clarity
-    final_strategy_id = ctx.obj.get("default_strategy_id")  # Renamed for clarity
+    final_model_id = ctx.obj.get("default_model_id")
+    final_engine_id = ctx.obj.get("default_engine_id") # Updated variable name
 
     if final_model_id is None:
         typer.secho(
@@ -456,20 +456,20 @@ def query(
         raise typer.Exit(code=1)  # Added model_id to error
 
     mgr = ActiveMemoryManager()
-    comp_strategy_instance = None
-    if final_strategy_id and final_strategy_id.lower() != "none":
+    comp_engine_instance = None # Updated variable name
+    if final_engine_id and final_engine_id.lower() != "none": # Updated variable name
         try:
-            comp_cls = get_compression_strategy(final_strategy_id)
-            info = get_strategy_metadata(final_strategy_id)
+            comp_cls = get_compression_engine(final_engine_id) # Updated function call and variable
+            info = get_engine_metadata(final_engine_id) # Updated function call and variable
             if info and info.get("source") == "contrib":
                 typer.secho(
-                    "\u26a0\ufe0f Using experimental strategy from contrib: not officially supported.",
+                    "\u26a0\ufe0f Using experimental engine from contrib: not officially supported.", # Updated text
                     fg=typer.colors.YELLOW,
                 )
-            comp_strategy_instance = comp_cls()
+            comp_engine_instance = comp_cls() # Updated variable name
         except KeyError:
             typer.secho(
-                f"Error: Unknown compression strategy '{final_strategy_id}' (from global config/option). Available: {', '.join(available_strategies())}",
+                f"Error: Unknown compression engine '{final_engine_id}' (from global config/option). Available: {', '.join(available_engines())}", # Updated text and variables
                 err=True,
                 fg=typer.colors.RED,
             )
@@ -477,7 +477,7 @@ def query(
 
         try:
             result = container.receive_channel_message(
-                "cli", query_text, mgr, compression=comp_strategy_instance
+                "cli", query_text, mgr, compression=comp_engine_instance # Updated variable name
             )
         except TypeError:  # Older agents might not have compression param
             result = container.receive_channel_message("cli", query_text, mgr)
@@ -496,7 +496,7 @@ def query(
 
 @app.command(
     "compress",
-    help='Compress text using a specified compression strategy. Compresses text from a string, file, or directory.\n\nUsage Examples:\n  compact-memory compress --text "Some very long text..." --strategy first_last --budget 100\n  compact-memory compress --file path/to/document.txt -s prototype -b 200 -o summary.txt\n  compact-memory compress --dir input_dir/ -s custom_package_strat -b 500 --output-dir output_dir/ --recursive -p "*.md"',
+    help='Compress text using a specified compression engine. Compresses text from a string, file, or directory.\n\nUsage Examples:\n  compact-memory compress --text "Some very long text..." --engine first_last_engine --budget 100\n  compact-memory compress --file path/to/document.txt -e prototype_engine -b 200 -o summary.txt\n  compact-memory compress --dir input_dir/ -e custom_package_engine -b 500 --output-dir output_dir/ --recursive -p "*.md"', # Updated examples
 )
 def compress(
     ctx: typer.Context,
@@ -520,11 +520,11 @@ def compress(
         help="Path to a directory of input files",
     ),
     *,
-    strategy_arg: Optional[str] = typer.Option(
+    engine_arg: Optional[str] = typer.Option( # Updated variable name
         None,
-        "--strategy",
-        "-s",
-        help="Specify the CompressionStrategy with --strategy. Overrides the global default.",
+        "--engine", # Updated option
+        "-e", # Updated short option
+        help="Specify the CompressionEngine with --engine. Overrides the global default.", # Updated help
     ),
     output_file: Optional[Path] = typer.Option(
         None,
@@ -575,7 +575,7 @@ def compress(
     ),
     budget: int = typer.Option(
         ...,
-        help="Token budget for the compressed output. The strategy will aim to keep the output within this limit.",
+        help="Token budget for the compressed output. The engine will aim to keep the output within this limit.", # Updated help
     ),
     verbose_stats: bool = typer.Option(
         False,
@@ -583,12 +583,12 @@ def compress(
         help="Show detailed token counts and processing time per item.",
     ),
 ) -> None:
-    final_strategy_id = (
-        strategy_arg if strategy_arg is not None else ctx.obj.get("default_strategy_id")
+    final_engine_id = ( # Updated variable name
+        engine_arg if engine_arg is not None else ctx.obj.get("default_engine_id") # Updated arg name and context key
     )
-    if not final_strategy_id:
+    if not final_engine_id: # Updated variable name
         typer.secho(
-            "Error: Compression strategy not specified. Use --strategy option or set COMPACT_MEMORY_DEFAULT_STRATEGY_ID / config.",
+            "Error: Compression engine not specified. Use --engine option or set COMPACT_MEMORY_DEFAULT_ENGINE_ID / config.", # Updated text
             fg=typer.colors.RED,
             err=True,
         )
@@ -638,7 +638,7 @@ def compress(
             compress_text_to_memory(
                 container,
                 text,
-                final_strategy_id,
+                final_engine_id, # Updated variable
                 budget,
                 verbose_stats,
                 tokenizer,
@@ -647,7 +647,7 @@ def compress(
             compress_file_to_memory(
                 container,
                 file,
-                final_strategy_id,
+                final_engine_id, # Updated variable
                 budget,
                 verbose_stats,
                 tokenizer,
@@ -656,7 +656,7 @@ def compress(
             compress_directory_to_memory(
                 container,
                 dir,
-                final_strategy_id,
+                final_engine_id, # Updated variable
                 budget,
                 recursive,
                 pattern,
@@ -669,7 +669,7 @@ def compress(
                 text = sys.stdin.read()
             compress_text(
                 text,
-                final_strategy_id,
+                final_engine_id, # Updated variable
                 budget,
                 output_file,
                 output_trace,
@@ -680,7 +680,7 @@ def compress(
         elif file is not None:
             compress_file(
                 file,
-                final_strategy_id,
+                final_engine_id, # Updated variable
                 budget,
                 output_file,
                 verbose_stats,
@@ -696,7 +696,7 @@ def compress(
                 )
             compress_directory(
                 dir,
-                final_strategy_id,
+                final_engine_id, # Updated variable
                 budget,
                 output_dir,
                 recursive,
@@ -711,7 +711,7 @@ def compress(
 # --- Helper functions for compress (formerly summarize/compress_text) ---
 def compress_text(
     text_content: str,
-    strategy_id: str,
+    engine_id: str, # Updated parameter name
     budget: int,
     output_file: Optional[Path],
     trace_file: Optional[Path],
@@ -720,23 +720,23 @@ def compress_text(
     json_output: bool = False,
 ) -> None:
     try:
-        strat_cls = get_compression_strategy(strategy_id)
-        info = get_strategy_metadata(strategy_id)
+        engine_cls = get_compression_engine(engine_id) # Updated var and func names
+        info = get_engine_metadata(engine_id) # Updated func name
         if info and info.get("source") == "contrib":
             typer.secho(
-                "\u26a0\ufe0f Using experimental strategy from contrib: not officially supported.",
+                "\u26a0\ufe0f Using experimental engine from contrib: not officially supported.", # Updated text
                 fg=typer.colors.YELLOW,
             )
     except KeyError:
         typer.secho(
-            f"Unknown compression strategy '{strategy_id}'. Available: {', '.join(available_strategies())}",
+            f"Unknown compression engine '{engine_id}'. Available: {', '.join(available_engines())}", # Updated text and func name
             err=True,
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
-    strat = strat_cls()
+    engine = engine_cls() # Updated var name
     start = time.time()
-    result = strat.compress(text_content, budget, tokenizer=tokenizer)
+    result = engine.compress(text_content, budget, tokenizer=tokenizer) # Updated var name
     if isinstance(result, tuple):
         compressed, trace = result
     else:
@@ -783,7 +783,7 @@ def compress_text(
 
 def compress_file(
     file_path: Path,
-    strategy_id: str,
+    engine_id: str, # Updated parameter name
     budget: int,
     output_file: Optional[Path],
     verbose_stats: bool,
@@ -801,7 +801,7 @@ def compress_file(
         raise typer.Exit(code=1)
     compress_text(
         text_content,
-        strategy_id,
+        engine_id, # Updated arg
         budget,
         output_file,
         trace_file,
@@ -813,7 +813,7 @@ def compress_file(
 
 def compress_directory(
     dir_path: Path,
-    strategy_id: str,
+    engine_id: str, # Updated parameter name
     budget: int,
     output_dir_param: Optional[Path],
     recursive: bool,
@@ -857,7 +857,7 @@ def compress_directory(
             )
         compress_file(
             input_file,
-            strategy_id,
+            engine_id, # Updated arg
             budget,
             out_path,
             verbose_stats,
@@ -873,7 +873,7 @@ def compress_directory(
 def compress_text_to_memory(
     container: MemoryContainer,
     text: str,
-    strategy_id: str,
+    engine_id: str, # Updated parameter name
     budget: int,
     verbose_stats: bool,
     tokenizer: Any,
@@ -881,16 +881,16 @@ def compress_text_to_memory(
 ) -> None:
     start = time.time()
     try:
-        strat_cls = get_compression_strategy(strategy_id)
+        engine_cls = get_compression_engine(engine_id) # Updated var and func names
     except KeyError:
         typer.secho(
-            f"Unknown compression strategy '{strategy_id}'. Available: {', '.join(available_strategies())}",
+            f"Unknown compression engine '{engine_id}'. Available: {', '.join(available_engines())}", # Updated text and func name
             err=True,
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
-    strat = strat_cls()
-    result = strat.compress(text, budget, tokenizer=tokenizer)
+    engine = engine_cls() # Updated var name
+    result = engine.compress(text, budget, tokenizer=tokenizer) # Updated var name
     if isinstance(result, tuple):
         compressed, _ = result
     else:
@@ -908,7 +908,7 @@ def compress_text_to_memory(
 def compress_file_to_memory(
     container: MemoryContainer,
     file_path: Path,
-    strategy_id: str,
+    engine_id: str, # Updated parameter name
     budget: int,
     verbose_stats: bool,
     tokenizer: Any,
@@ -920,7 +920,7 @@ def compress_file_to_memory(
     compress_text_to_memory(
         container,
         text_content,
-        strategy_id,
+        engine_id, # Updated arg
         budget,
         verbose_stats,
         tokenizer,
@@ -931,7 +931,7 @@ def compress_file_to_memory(
 def compress_directory_to_memory(
     container: MemoryContainer,
     dir_path: Path,
-    strategy_id: str,
+    engine_id: str, # Updated parameter name
     budget: int,
     recursive: bool,
     pattern: str,
@@ -950,7 +950,7 @@ def compress_directory_to_memory(
         compress_file_to_memory(
             container,
             input_file,
-            strategy_id,
+            engine_id, # Updated arg
             budget,
             verbose_stats,
             tokenizer,
@@ -973,41 +973,41 @@ def list_metrics() -> None:
 
 
 @dev_app.command(
-    "list-strategies",
-    help="Lists all available compression strategy IDs, their versions, and sources (built-in or plugin).",
+    "list-engines", # Updated command name
+    help="Lists all available compression engine IDs, their versions, and sources (built-in or plugin).", # Updated help
 )
-def list_strategies(
+def list_engines( # Updated function name
     include_contrib: bool = typer.Option(
-        False, "--include-contrib", help="Include experimental contrib strategies."
+        False, "--include-contrib", help="Include experimental contrib engines." # Updated help
     )
 ) -> None:
-    """Displays a table of registered compression strategies."""
+    """Displays a table of registered compression engines.""" # Updated docstring
     load_plugins()  # Ensure plugins are loaded
-    enable_all_experimental_strategies()
-    # Experimental strategies register themselves; no legacy contrib layer
+    enable_all_experimental_engines() # Updated function name
+    # Experimental engines register themselves; no legacy contrib layer
     table = Table(
-        "Strategy ID",
+        "Engine ID", # Updated header
         "Display Name",
         "Version",
         "Source",
         "Status",
-        title="Available CompressionStrategies",
+        title="Available CompressionEngines", # Updated title
     )
-    meta = all_strategy_metadata()
-    ids = available_strategies()
+    meta = all_engine_metadata() # Updated function name
+    ids = available_engines() # Updated function name
     if not ids:
-        typer.echo("No compression strategies found.")
+        typer.echo("No compression engines found.") # Updated text
         return
-    for sid in sorted(ids):
-        info = meta.get(sid, {})
+    for eid in sorted(ids): # Updated var name
+        info = meta.get(eid, {}) # Updated var name
         if not include_contrib and info.get("source") == "contrib":
             continue
         status = ""
         if info.get("overrides"):
             status = f"Overrides '{info['overrides']}'"
         table.add_row(
-            sid,
-            info.get("display_name", sid) or sid,
+            eid, # Updated var name
+            info.get("display_name", eid) or eid, # Updated var name
             info.get("version", "N/A") or "N/A",
             info.get("source", "built-in") or "built-in",
             status,
@@ -1016,24 +1016,24 @@ def list_strategies(
 
 
 @dev_app.command(
-    "inspect-strategy",
-    help="Inspects aspects of a compression strategy, currently focused on 'prototype' strategy's beliefs.",
+    "inspect-engine", # Updated command name
+    help="Inspects aspects of a compression engine, currently focused on 'prototype_engine' engine's beliefs.", # Updated help
 )
-def inspect_strategy(
-    strategy_name: str = typer.Argument(
+def inspect_engine( # Updated function name
+    engine_name: str = typer.Argument( # Updated argument name
         ...,
-        help="The name of the strategy to inspect. Currently, only 'prototype' is supported.",
+        help="The name of the engine to inspect. Currently, only 'prototype_engine' is supported.", # Updated help
     ),
     *,
     list_prototypes: bool = typer.Option(
         False,
         "--list-prototypes",
-        help="List consolidated prototypes (beliefs) if the strategy is 'prototype' and a memory container path is provided.",
+        help="List consolidated prototypes (beliefs) if the engine is 'prototype_engine' and a memory container path is provided.", # Updated help
     ),
 ) -> None:
-    if strategy_name.lower() != "prototype":
+    if engine_name.lower() != "prototype_engine": # Updated var and value
         typer.secho(
-            f"Error: Inspection for strategy '{strategy_name}' is not supported. Only 'prototype' is currently inspectable.",
+            f"Error: Inspection for engine '{engine_name}' is not supported. Only 'prototype_engine' is currently inspectable.", # Updated text and var
             err=True,
             fg=typer.colors.RED,
         )
@@ -1064,7 +1064,7 @@ def inspect_strategy(
         console.print(table)
     else:
         typer.echo(
-            f"Strategy '{strategy_name}' is available. Use --list-prototypes and provide a memory container path to see its beliefs."
+            f"Engine '{engine_name}' is available. Use --list-prototypes and provide a memory container path to see its beliefs." # Updated text and var
         )
 
 
@@ -1481,11 +1481,11 @@ def create_strategy_package(
     target_dir.mkdir(parents=True, exist_ok=True)
     (target_dir / "experiments").mkdir(exist_ok=True)
 
-    strategy_py_content = f"""from CompressionStrategy.core.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace
+    engine_py_content = f"""from CompressionEngine.core.engines_abc import CompressionEngine, CompressedMemory, CompressionTrace # Updated import
 # Add any other necessary imports here
 
-class MyStrategy(CompressionStrategy):
-    # Unique identifier for your strategy
+class MyEngine(CompressionEngine): # Updated class name
+    # Unique identifier for your engine
     id = "{name}"
 
     # Optional: Define parameters your strategy accepts with default values
@@ -1514,20 +1514,23 @@ class MyStrategy(CompressionStrategy):
         compressed_text = str(text_or_chunks)[:llm_token_budget * 4] # Simplistic truncation
 
         trace = CompressionTrace(
-            strategy_name=self.id,
-            original_tokens=len(tokenizer(str(text_or_chunks))['input_ids']) if tokenizer else None,
-            compressed_tokens=len(tokenizer(compressed_text)['input_ids']) if tokenizer else None,
+            engine_name=self.id, # Updated param
+            # original_tokens=len(tokenizer(str(text_or_chunks))['input_ids']) if tokenizer else None, # Example, ensure tokenizer call is correct
+            # compressed_tokens=len(tokenizer(compressed_text)['input_ids']) if tokenizer else None, # Example
+            engine_params={{"llm_token_budget": llm_token_budget}}, # Example
+            input_summary={{"original_length": len(str(text_or_chunks))}}, # Example
+            output_summary={{"compressed_length": len(compressed_text)}}, # Example
             # Add more trace details as needed
         )
         return CompressedMemory(text=compressed_text), trace
 """
-    (target_dir / "strategy.py").write_text(strategy_py_content)
+    (target_dir / "engine.py").write_text(engine_py_content) # Updated filename
 
     manifest = {
         "package_format_version": "1.0",
-        "strategy_id": name,
-        "strategy_class_name": "MyStrategy",
-        "strategy_module": "strategy",
+        "engine_id": name, # Updated key
+        "engine_class_name": "MyEngine", # Updated key
+        "engine_module": "engine", # Updated key and value
         "display_name": name,
         "version": "0.1.0",
         "authors": [],
@@ -1598,8 +1601,8 @@ def inspect_trace(
     steps = data.get("steps", [])
 
     title = f"Compression Trace: {trace_file.name}"
-    if data.get("strategy_name"):
-        title += f" (Strategy: {data['strategy_name']})"
+    if data.get("engine_name"): # Updated key
+        title += f" (Engine: {data['engine_name']})" # Updated text and key
     if data.get("original_tokens"):
         title += f" | Original Tokens: {data['original_tokens']}"
     if data.get("compressed_tokens"):
@@ -1607,7 +1610,7 @@ def inspect_trace(
     if data.get("processing_ms"):
         title += f" | Time: {data['processing_ms']:.2f}ms"
 
-    console.print(f"Strategy: {data.get('strategy_name', '')}")
+    console.print(f"Engine: {data.get('engine_name', '')}") # Updated text and key
     table = Table("Index", "Type", "Details Preview", title=title)
     for idx, step in enumerate(steps):
         stype = step.get("type")
@@ -1627,12 +1630,13 @@ def config_set_command(
     ctx: typer.Context,
     key: str = typer.Argument(
         ...,
-        help=f"The configuration key to set. Valid keys: {', '.join(DEFAULT_CONFIG.keys())}.",
+        help=f"The configuration key to set. Valid keys: {', '.join(DEFAULT_CONFIG.keys())}.", # This help might need update if keys change e.g. default_strategy_id
     ),
     value: str = typer.Argument(..., help="The new value for the configuration key."),
 ) -> None:
     config: Config = ctx.obj["config"]
     try:
+        # The key itself (e.g. "default_strategy_id") would need to be changed in Config class for this to fully work
         success = config.set(key, value)
         if success:
             typer.secho(
@@ -1664,7 +1668,7 @@ def config_show_command(
         None,
         "--key",
         "-k",
-        help=f"Specific configuration key to display. Valid keys: {', '.join(DEFAULT_CONFIG.keys())}.",
+        help=f"Specific configuration key to display. Valid keys: {', '.join(DEFAULT_CONFIG.keys())}.", # May need update if keys change
     ),
 ) -> None:
     config: Config = ctx.obj["config"]
@@ -1711,6 +1715,127 @@ def config_show_command(
 # def validate_cmd(...) # This should be agent_app.command("validate")
 # @app.command("download-model") -> now dev_app.command("download-embedding-model")
 # @app.command("download-chat-model") -> now dev_app.command("download-chat-model")
+
+# --- Dev App Commands for package creation ---
+# Need to update create-strategy-package and validate-strategy-package to engine equivalents.
+# The following are placeholders for where the original dev_app.command decorators were implicitly.
+
+@dev_app.command(
+    "create-engine-package", # Updated command
+    help="Creates a new compression engine extension package from a template. This command generates a template directory with all the necessary files to start developing a new, shareable engine package, including a sample engine, manifest file, and README.", # Updated help
+)
+def create_engine_package( # Updated function name
+    name: str = typer.Option(
+        "compact_memory_example_engine", # Updated default name
+        "--name",
+        help="Name for the new engine package (e.g., 'compact_memory_my_engine'). Used for directory and engine ID.", # Updated help
+    ),
+    path: Optional[Path] = typer.Option(
+        None,
+        "--path",
+        help="Directory where the engine package will be created. Defaults to a new directory named after the engine in the current location.", # Updated help
+    ),
+) -> None:
+    target_dir = Path(path or name).resolve()
+
+    if target_dir.exists() and any(target_dir.iterdir()):
+        typer.secho(
+            f"Error: Output directory '{target_dir}' already exists and is not empty.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    target_dir.mkdir(parents=True, exist_ok=True)
+    (target_dir / "experiments").mkdir(exist_ok=True)
+
+    engine_py_content = f"""from CompressionEngine.core.engines_abc import CompressionEngine, CompressedMemory, CompressionTrace # Updated import
+# Add any other necessary imports here
+
+class MyEngine(CompressionEngine): # Updated class name
+    # Unique identifier for your engine
+    id = "{name}"
+
+    # Optional: Define parameters your engine accepts with default values
+    # def __init__(self, param1: int = 10, param2: str = "default"):
+    #     self.param1 = param1
+    #     self.param2 = param2
+
+    def compress(self, text_or_chunks, llm_token_budget, **kwargs):
+        '''
+        Compresses the input text or chunks to meet the token budget.
+
+        Args:
+            text_or_chunks: Either a single string or a list of strings (chunks).
+            llm_token_budget: The maximum number of tokens the compressed output should ideally have.
+            **kwargs: Additional keyword arguments, often including 'tokenizer'.
+
+        Returns:
+            A tuple containing:
+                - CompressedMemory: An object with the 'text' attribute holding the compressed string.
+                - CompressionTrace: An object detailing the steps and outcomes of the compression.
+        '''
+        tokenizer = kwargs.get("tokenizer") # Example of getting tokenizer if needed
+
+        # --- Your compression logic here ---
+        # This is a placeholder. Implement your actual compression algorithm.
+        compressed_text = str(text_or_chunks)[:llm_token_budget * 4] # Simplistic truncation
+
+        trace = CompressionTrace(
+            engine_name=self.id, # Updated param
+            # original_tokens=len(tokenizer(str(text_or_chunks))['input_ids']) if tokenizer else None, # Example, ensure tokenizer call is correct
+            # compressed_tokens=len(tokenizer(compressed_text)['input_ids']) if tokenizer else None, # Example
+            engine_params={{"llm_token_budget": llm_token_budget}}, # Example
+            input_summary={{"original_length": len(str(text_or_chunks))}}, # Example
+            output_summary={{"compressed_length": len(compressed_text)}}, # Example
+            # Add more trace details as needed
+        )
+        return CompressedMemory(text=compressed_text), trace
+"""
+    (target_dir / "engine.py").write_text(engine_py_content) # Updated filename
+
+    manifest = {
+        "package_format_version": "1.0",
+        "engine_id": name, # Updated key
+        "engine_class_name": "MyEngine", # Updated key
+        "engine_module": "engine", # Updated key and value
+        "display_name": name,
+        "version": "0.1.0",
+        "authors": [],
+        "description": "Describe the engine", # Updated text
+    }
+    (target_dir / "engine_package.yaml").write_text(yaml.safe_dump(manifest)) # Updated filename
+    (target_dir / "requirements.txt").write_text("\n")
+    (target_dir / "README.md").write_text(f"# {name}\n")
+    (target_dir / "experiments" / "example.yaml").write_text(
+        """dataset: example.txt\nparam_grid:\n- {}\npackaged_engine_config:\n  engine_params: {}\n""" # Updated key
+    )
+    typer.echo(f"Successfully created engine package '{name}' at: {target_dir}") # Updated text
+
+
+@dev_app.command(
+    "validate-engine-package", # Updated command
+    help="Validates the structure and manifest of a compression engine extension package.\n\nUsage Examples:\n  compact-memory dev validate-engine-package path/to/my_engine_pkg", # Updated help
+)
+def validate_engine_package( # Updated function name
+    package_path: Path = typer.Argument(
+        ...,
+        help="Path to the root directory of the engine package.", # Updated help
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        resolve_path=True,
+    )
+) -> None:
+    errors, warnings = validate_package_dir(package_path) # validate_package_dir will need internal changes
+    for w in warnings:
+        typer.secho(f"Warning: {w}", fg=typer.colors.YELLOW)
+    if errors:
+        for e in errors:
+            typer.echo(e)
+        raise typer.Exit(code=1)
+    typer.echo(f"Engine package at '{package_path}' appears valid.") # Updated text
+
 
 if __name__ == "__main__":
     app()

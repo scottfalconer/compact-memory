@@ -2,16 +2,16 @@ from pathlib import Path
 import json
 from typer.testing import CliRunner
 from compact_memory.cli import app
-from CompressionStrategy.core import (
-    CompressionStrategy,
+from CompressionEngine.core import ( # Updated path
+    CompressionEngine, # Updated class name
     CompressedMemory,
     CompressionTrace,
-    register_compression_strategy,
+    register_compression_engine, # Updated function name
 )
 
 
-class DummyTruncStrategy(CompressionStrategy):
-    id = "dummy_trunc"
+class DummyTruncEngine(CompressionEngine): # Updated class name
+    id = "dummy_trunc_engine" # Updated id
 
     def compress(self, text_or_chunks, llm_token_budget, **kwargs):
         text = (
@@ -21,8 +21,8 @@ class DummyTruncStrategy(CompressionStrategy):
         )
         truncated = text[:llm_token_budget]
         return CompressedMemory(text=truncated), CompressionTrace(
-            strategy_name=self.id,
-            strategy_params={"llm_token_budget": llm_token_budget},
+            engine_name=self.id, # Updated parameter name
+            engine_params={"llm_token_budget": llm_token_budget}, # Updated parameter name
             input_summary={"input_length": len(text)},
             steps=[{"type": "truncate"}],
             output_summary={"final_length": len(truncated)},
@@ -30,7 +30,7 @@ class DummyTruncStrategy(CompressionStrategy):
         )
 
 
-register_compression_strategy(DummyTruncStrategy.id, DummyTruncStrategy)
+register_compression_engine(DummyTruncEngine.id, DummyTruncEngine) # Updated function and class names
 
 
 def _env(tmp_path: Path) -> dict[str, str]:
@@ -47,8 +47,8 @@ def test_compress_text_option(tmp_path: Path):
             "compress",
             "--text",
             "hello world",
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "10",
         ],
@@ -65,8 +65,8 @@ def test_compress_stdin(tmp_path: Path):
             "compress",
             "--text",
             "-",
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "10",
         ],
@@ -86,8 +86,8 @@ def test_compress_file(tmp_path: Path):
             "compress",
             "--file",
             str(file_path),
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "10",
         ],
@@ -111,8 +111,8 @@ def test_compress_directory_recursive(tmp_path: Path):
             "compress",
             "--dir",
             str(dir_path),
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "5",
             "--recursive",
@@ -137,8 +137,8 @@ def test_compress_invalid_combo(tmp_path: Path):
             str(file_path),
             "--text",
             "oops",
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "5",
         ],
@@ -158,8 +158,8 @@ def test_compress_file_output_file(tmp_path: Path):
             "compress",
             "--file",
             str(file_path),
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "100",
             "-o",
@@ -180,8 +180,8 @@ def test_compress_file_invalid_recursive(tmp_path: Path):
             "compress",
             "--file",
             str(file_path),
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "5",
             "--recursive",
@@ -207,8 +207,8 @@ def test_compress_dir_pattern_and_output(tmp_path: Path):
             "compress",
             "--dir",
             str(dir_path),
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "10",
             "--recursive",
@@ -232,7 +232,7 @@ def test_compress_invalid_strategy(tmp_path: Path):
             "compress",
             "--text",
             "hello",
-            "--strategy",
+            "--engine", # Updated option
             "bogus",
             "--budget",
             "5",
@@ -240,7 +240,7 @@ def test_compress_invalid_strategy(tmp_path: Path):
         env=_env(tmp_path),
     )
     assert result.exit_code != 0
-    assert "Unknown compression strategy" in result.stderr
+    assert "Unknown compression engine" in result.stderr # Updated message
 
 
 def test_compress_budget_truncation(tmp_path: Path):
@@ -250,8 +250,8 @@ def test_compress_budget_truncation(tmp_path: Path):
             "compress",
             "--text",
             "abcdef",
-            "--strategy",
-            DummyTruncStrategy.id,
+            "--engine", # Updated option
+            DummyTruncEngine.id, # Updated class name
             "--budget",
             "2",
         ],
@@ -269,8 +269,8 @@ def test_compress_output_trace(tmp_path: Path):
             "compress",
             "--text",
             "hi there",
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "10",
             "--output-trace",
@@ -280,14 +280,14 @@ def test_compress_output_trace(tmp_path: Path):
     )
     assert result.exit_code == 0
     data = json.loads(trace_path.read_text())
-    assert data["strategy_name"] == "none"
-    for key in ["strategy_params", "input_summary", "output_summary", "steps"]:
+    assert data["engine_name"] == "no_compression_engine" # Updated field name and value
+    for key in ["engine_params", "input_summary", "output_summary", "steps"]: # Updated field name
         assert key in data
     assert data["output_summary"]["output_length"] == len("hi there")
 
 
 def test_compress_output_trace_details(tmp_path: Path):
-    """Trace file should contain step metadata for strategy."""
+    """Trace file should contain step metadata for engine.""" # Updated docstring
     trace_path = tmp_path / "trace.json"
     result = runner.invoke(
         app,
@@ -295,8 +295,8 @@ def test_compress_output_trace_details(tmp_path: Path):
             "compress",
             "--text",
             "hello world",
-            "--strategy",
-            DummyTruncStrategy.id,
+            "--engine", # Updated option
+            DummyTruncEngine.id, # Updated class name
             "--budget",
             "3",
             "--output-trace",
@@ -306,7 +306,7 @@ def test_compress_output_trace_details(tmp_path: Path):
     )
     assert result.exit_code == 0
     data = json.loads(trace_path.read_text())
-    assert data["strategy_name"] == DummyTruncStrategy.id
+    assert data["engine_name"] == DummyTruncEngine.id # Updated field name and class name
     assert data["steps"] == [{"type": "truncate"}]
     assert data["output_summary"]["final_length"] == len("hello world"[:3])
 
@@ -318,8 +318,8 @@ def test_compress_verbose_stats(tmp_path: Path):
             "compress",
             "--text",
             "hello world",
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "20",
             "--verbose-stats",
@@ -339,8 +339,8 @@ def test_compress_nonexistent_file(tmp_path: Path):
             "compress",
             "--file",
             str(file_path),
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "5",
         ],
@@ -358,8 +358,8 @@ def test_compress_nonexistent_dir(tmp_path: Path):
             "compress",
             "--dir",
             str(dir_path),
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "5",
         ],
@@ -369,29 +369,29 @@ def test_compress_nonexistent_dir(tmp_path: Path):
     assert "Invalid value for '--dir'" in result.stderr
 
 
-def test_compress_uses_default_strategy(tmp_path: Path):
+def test_compress_uses_default_engine(tmp_path: Path): # Updated function name
     env = _env(tmp_path)
-    env["COMPACT_MEMORY_DEFAULT_STRATEGY_ID"] = "none"
+    env["COMPACT_MEMORY_DEFAULT_ENGINE_ID"] = "no_compression_engine" # Updated env var name and value
     result = runner.invoke(
         app,
-        ["compress", "--text", "foobar", "--budget", "10"],
+        ["compress", "--text", "foobar", "--budget", "10"], # CLI should pick up default engine
         env=env,
     )
     assert result.exit_code == 0
     assert "foobar" in result.stdout
 
 
-def test_compress_override_default_strategy(tmp_path: Path):
+def test_compress_override_default_engine(tmp_path: Path): # Updated function name
     env = _env(tmp_path)
-    env["COMPACT_MEMORY_DEFAULT_STRATEGY_ID"] = DummyTruncStrategy.id
+    env["COMPACT_MEMORY_DEFAULT_ENGINE_ID"] = DummyTruncEngine.id # Updated env var name and class name
     result = runner.invoke(
         app,
         [
             "compress",
             "--text",
             "abcdef",
-            "--strategy",
-            "none",
+            "--engine", # Updated option
+            "no_compression_engine", # Updated default engine name
             "--budget",
             "10",
         ],

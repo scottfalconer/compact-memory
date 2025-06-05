@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-from compact_memory.compression.strategies_abc import (
-    CompressionStrategy,
+from CompressionEngine.core.engines_abc import ( # Updated import
+    CompressionEngine, # Updated class name
     CompressedMemory,
     CompressionTrace,
 )
-from compact_memory.registry import register_compression_strategy
+from CompressionEngine.core.registry import register_compression_engine # Updated import
 
-# --- Define or Import a Sample Strategy ---
-# For this example, we'll define a simple strategy.
-# In a real scenario, you might import a strategy from the Compact Memory library
-# or a custom strategy package.
+# --- Define or Import a Sample Engine ---
+# For this example, we'll define a simple engine.
+# In a real scenario, you might import an engine from the Compact Memory library
+# or a custom engine package.
 
-class SamplePipelineStrategy(CompressionStrategy):
-    """A sample strategy for demonstration in a pipeline."""
+class SamplePipelineEngine(CompressionEngine): # Updated class name
+    """A sample engine for demonstration in a pipeline."""
 
-    id = "sample_pipeline_strategy"
+    id = "sample_pipeline_engine" # Updated id
 
     def compress(
         self, text_or_chunks: str | list[str], llm_token_budget: int, **kwargs
@@ -34,18 +34,18 @@ class SamplePipelineStrategy(CompressionStrategy):
         compressed_text = text_content[:llm_token_budget]
 
         trace = CompressionTrace(
-            strategy_name=self.id,
-            strategy_params={"llm_token_budget": llm_token_budget},
+            engine_name=self.id, # Updated parameter name
+            engine_params={"llm_token_budget": llm_token_budget}, # Updated parameter name
             input_summary={"original_length": len(text_content)},
             output_summary={"compressed_length": len(compressed_text)},
             steps=[{"type": "simple_truncation", "details": f"Truncated to {llm_token_budget} chars"}],
         )
         return CompressedMemory(text=compressed_text), trace
 
-# Register the strategy (optional, depending on how you load strategies)
-# If this strategy were in its own package, registration would typically happen
+# Register the engine (optional, depending on how you load engines)
+# If this engine were in its own package, registration would typically happen
 # when plugins are loaded.
-register_compression_strategy(SamplePipelineStrategy.id, SamplePipelineStrategy)
+register_compression_engine(SamplePipelineEngine.id, SamplePipelineEngine) # Updated registration
 
 # --- Mock LLM Function ---
 def mock_llm_call(prompt: str, compressed_context: str = "") -> str:
@@ -66,16 +66,16 @@ def mock_llm_call(prompt: str, compressed_context: str = "") -> str:
 def main():
     print("Starting basic pipeline example...")
 
-    # 1. Initialize the compression strategy
-    # We can get the strategy by its ID after it's registered or loaded.
+    # 1. Initialize the compression engine
+    # We can get the engine by its ID after it's registered or loaded.
     try:
-        strategy_instance = SamplePipelineStrategy()
+        engine_instance = SamplePipelineEngine() # Updated variable and class name
         # Or, if using the registry:
-        # from compact_memory.compression import get_compression_strategy
-        # strategy_instance = get_compression_strategy("sample_pipeline_strategy")()
+        # from CompressionEngine.core import get_compression_engine # Updated import
+        # engine_instance = get_compression_engine("sample_pipeline_engine")() # Updated var and func
     except Exception as e:
-        print(f"Error initializing strategy: {e}")
-        print("Please ensure the strategy is defined and registered if needed.")
+        print(f"Error initializing engine: {e}") # Updated text
+        print("Please ensure the engine is defined and registered if needed.") # Updated text
         return
 
     # 2. Prepare some text to compress
@@ -92,10 +92,10 @@ def main():
     # In a real scenario, this would be a token budget.
     compression_budget = 100  # Target 100 characters
 
-    # 4. Compress the text using the chosen strategy
-    print(f"\nCompressing text with strategy '{strategy_instance.id}' and budget {compression_budget}...")
+    # 4. Compress the text using the chosen engine
+    print(f"\nCompressing text with engine '{engine_instance.id}' and budget {compression_budget}...") # Updated var and text
     try:
-        compressed_memory, compression_trace = strategy_instance.compress(
+        compressed_memory, compression_trace = engine_instance.compress( # Updated var name
             original_text, llm_token_budget=compression_budget
         )
         compressed_text = compressed_memory.text

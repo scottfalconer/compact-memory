@@ -1,8 +1,8 @@
-from CompressionStrategy.core.registry import (
-    register_compression_strategy,
+from CompressionEngine.core.registry import ( # Updated path
+    register_compression_engine, # Updated function name
     _COMPRESSION_REGISTRY,
 )
-from CompressionStrategy.core.strategies_abc import CompressionStrategy
+from CompressionEngine.core.engines_abc import CompressionEngine # Updated path and class name
 from compact_memory.validation.registry import (
     register_validation_metric,
     get_validation_metric_class,
@@ -10,15 +10,15 @@ from compact_memory.validation.registry import (
 )
 from compact_memory.validation.metrics_abc import ValidationMetric
 
-from CompressionStrategy.core.strategies_abc import (
+from CompressionEngine.core.engines_abc import ( # Updated path
     CompressedMemory,
     CompressionTrace,
 )
 
 
-def test_register_compression_strategy():
-    class DummyStrategy(CompressionStrategy):
-        id = "dummy"
+def test_register_compression_engine(): # Updated function name
+    class DummyEngine(CompressionEngine): # Updated class name
+        id = "dummy_engine" # Updated id
 
         def compress(self, text_or_chunks, llm_token_budget, **kwargs):
             if isinstance(text_or_chunks, list):
@@ -28,8 +28,8 @@ def test_register_compression_strategy():
             text = text[:llm_token_budget] if llm_token_budget else text
             compressed = CompressedMemory(text=text)
             trace = CompressionTrace(
-                strategy_name=self.id,
-                strategy_params={"llm_token_budget": llm_token_budget},
+                engine_name=self.id, # Updated parameter name
+                engine_params={"llm_token_budget": llm_token_budget}, # Updated parameter name
                 input_summary={
                     "input_length": len(
                         text_or_chunks
@@ -40,9 +40,9 @@ def test_register_compression_strategy():
             )
             return compressed, trace
 
-    register_compression_strategy(DummyStrategy.id, DummyStrategy)
-    assert _COMPRESSION_REGISTRY["dummy"] is DummyStrategy
-    compressed, trace = DummyStrategy().compress("alpha bravo", llm_token_budget=5)
+    register_compression_engine(DummyEngine.id, DummyEngine) # Updated function and class names
+    assert _COMPRESSION_REGISTRY["dummy_engine"] is DummyEngine # Updated key and class name
+    compressed, trace = DummyEngine().compress("alpha bravo", llm_token_budget=5) # Updated class name
     assert isinstance(compressed, CompressedMemory)
     assert isinstance(trace, CompressionTrace)
 
