@@ -758,12 +758,18 @@ class PrototypeEngine(BaseCompressionEngine):
         import json
 
         path = Path(path)
-        super().save(path)
         path.mkdir(parents=True, exist_ok=True)
-        manifest = {
-            "meta": self.store.meta,
-            "prototypes": [p.model_dump(mode="json") for p in self.store.prototypes],
-        }
+        super().save(path)
+        with open(path / "engine_manifest.json", "r", encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        manifest.update(
+            {
+                "meta": self.store.meta,
+                "prototypes": [
+                    p.model_dump(mode="json") for p in self.store.prototypes
+                ],
+            }
+        )
         with open(path / "engine_manifest.json", "w", encoding="utf-8") as fh:
             json.dump(manifest, fh)
         with open(path / "memories.json", "w", encoding="utf-8") as fh:
