@@ -15,6 +15,7 @@ __all__ = [
     "PrototypeSystemStrategy",
     "EvidenceWriter",
     "LLMSummarisingChunker",
+    "enable_all_experimental_strategies",
 ]
 
 _lazy_modules = {
@@ -41,3 +42,12 @@ def __getattr__(name: str) -> Any:  # pragma: no cover - passthrough
 
 def __dir__() -> list[str]:  # pragma: no cover
     return sorted(list(globals().keys()) + list(_lazy_modules.keys()))
+
+
+def enable_all_experimental_strategies() -> None:
+    """Register all experimental compression strategies."""
+    for module in _lazy_modules.values():
+        try:
+            importlib.import_module(__name__ + module)
+        except Exception:  # pragma: no cover - optional modules may fail
+            continue

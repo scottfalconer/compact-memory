@@ -24,7 +24,10 @@ from .logging_utils import configure_logging
 from .agent import Agent
 from .vector_store import InMemoryVectorStore
 from . import local_llm
-from .strategies.experimental import ActiveMemoryManager
+from .strategies.experimental import (
+    ActiveMemoryManager,
+    enable_all_experimental_strategies,
+)
 from .registry import (
     _VALIDATION_METRIC_REGISTRY,
     get_validation_metric_class,
@@ -215,6 +218,7 @@ def main(
             raise typer.Exit(code=1)
 
     load_plugins()
+    enable_all_experimental_strategies()
 
     # ctx.obj['config'] is already set above
     ctx.obj.update(
@@ -969,6 +973,7 @@ def list_strategies(
 ) -> None:
     """Displays a table of registered compression strategies."""
     load_plugins()  # Ensure plugins are loaded
+    enable_all_experimental_strategies()
     if include_contrib:
         try:
             from contrib import enable_all_contrib_strategies

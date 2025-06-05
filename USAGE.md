@@ -4,6 +4,8 @@ This guide shows how to use the Compact Memory toolkit from the command line and
 
 ## Basic CLI Usage
 
+The CLI automatically registers the experimental strategies, so options like `first_last` work without extra setup.
+
 Compress a text file using the `first_last` strategy with a token budget of 100:
 
 ```bash

@@ -202,14 +202,17 @@ Note: The old method of enabling strategies via `compact_memory_config.yaml` dir
 
 ### Using Experimental Strategies
 
-Experimental strategies are available under ``compact_memory.strategies.experimental``.
-They are not registered by default.
+Experimental strategies live under ``compact_memory.strategies.experimental``.
+The CLI registers them automatically, so commands like ``--strategy first_last`` work out of the box.
+When using the Python API directly, call ``enable_all_experimental_strategies()`` to register them:
 
 ```python
-from compact_memory.compression import register_compression_strategy
-from compact_memory.strategies.experimental import ChainedStrategy
+from compact_memory.strategies.experimental import (
+    ChainedStrategy,
+    enable_all_experimental_strategies,
+)
 
-register_compression_strategy("chained", ChainedStrategy)
+enable_all_experimental_strategies()
 ```
 
 Once registered, these strategies behave like any other:
