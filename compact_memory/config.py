@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional, Tuple
 DEFAULT_CONFIG: Dict[str, Any] = {
     "compact_memory_path": "~/.local/share/compact_memory",
     "default_model_id": "openai/gpt-3.5-turbo",
-    "default_strategy_id": "default",
+    "default_engine_id": "default",
     "verbose": False,
     "log_file": None,
 }

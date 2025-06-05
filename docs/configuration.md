@@ -14,7 +14,7 @@ Compact Memory resolves settings from the following sources, in order of highest
     You can set specific environment variables to configure Compact Memory globally for your shell session or system.
     *   `COMPACT_MEMORY_PATH`: Sets the default path to your memory store.
     *   `COMPACT_MEMORY_DEFAULT_MODEL_ID`: Sets the default model ID for LLM interactions.
-    *   `COMPACT_MEMORY_DEFAULT_STRATEGY_ID`: Sets the default compression strategy ID.
+    *   `COMPACT_MEMORY_DEFAULT_ENGINE_ID`: Sets the default compression engine ID.
     *Example (bash):* `export COMPACT_MEMORY_PATH="/path/to/my/global_memory"`
 
 3.  **Local Project Configuration (`.gmconfig.yaml`):**
@@ -33,7 +33,7 @@ Compact Memory resolves settings from the following sources, in order of highest
     ```yaml
     compact_memory_path: ~/my_default_compact_memory
     default_model_id: openai/gpt-3.5-turbo
-    default_strategy_id: prototype
+    default_engine_id: prototype
     # You can also set log_file and verbose here
     # log_file: /path/to/compact_memory.log
     # verbose: false
@@ -78,13 +78,13 @@ You can set default values for key options to avoid typing them repeatedly. Thes
     ```
     Commands like `compact-memory query` will use this model by default.
 
-*   `default_strategy_id`: Your preferred compression strategy for summarization or queries (if applicable).
+*   `default_engine_id`: Your preferred compression engine for summarization or queries (if applicable).
     ```bash
-    compact-memory config set default_strategy_id prototype
+    compact-memory config set default_engine_id prototype
     ```
     Commands like `compact-memory compress` will use this strategy by default if you don't specify one with `--strategy`.
 
-*(Note: While `log_file` and `verbose` can be set in config files manually, they are primarily controlled via CLI options for runtime flexibility. The `config set` command currently supports `compact_memory_path`, `default_model_id`, and `default_strategy_id` as these are the most common global defaults users might want to persist.)*
+*(Note: While `log_file` and `verbose` can be set in config files manually, they are primarily controlled via CLI options for runtime flexibility. The `config set` command currently supports `compact_memory_path`, `default_model_id`, and `default_engine_id` as these are the most common global defaults users might want to persist.)*
 
 
 **Example Workflow:**

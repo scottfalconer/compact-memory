@@ -197,8 +197,8 @@ compact-memory dev list-strategies
 
 To use a specific strategy, you can set it as a global default or specify it per command:
 ```bash
-# Set default strategy globally
-compact-memory config set default_strategy_id prototype
+# Set default engine globally
+compact-memory config set default_engine_id prototype
 
 # Use a specific strategy for a compress command
 compact-memory compress --text "My text..." --strategy first_last --budget 100
@@ -207,7 +207,7 @@ compact-memory compress --text "My text..." --strategy first_last --budget 100
 Plugins can add more strategies. For example, the `rationale_episode` strategy lives in the optional
 `compact_memory_rationale_episode_strategy` package. Install it with
 `pip install compact_memory_rationale_episode_strategy` to enable it.
-You can then set it via `compact-memory config set default_strategy_id rationale_episode`.
+You can then set it via `compact-memory config set default_engine_id rationale_episode`.
 Note: The old method of enabling strategies via `compact_memory_config.yaml` directly is being phased out in favor of the `config set` command and plugin system.
 
 ### Using Experimental Strategies
@@ -314,7 +314,7 @@ You can also set a default location for the on-disk memory store and other globa
 
 Compact Memory uses a hierarchical configuration system:
 1.  **Command-line arguments:** Highest precedence (e.g., `compact-memory --memory-path ./my_memory ingest ...`).
-2.  **Environment variables:** (e.g., `COMPACT_MEMORY_PATH`, `COMPACT_MEMORY_DEFAULT_MODEL_ID`, `COMPACT_MEMORY_DEFAULT_STRATEGY_ID`).
+2.  **Environment variables:** (e.g., `COMPACT_MEMORY_PATH`, `COMPACT_MEMORY_DEFAULT_MODEL_ID`, `COMPACT_MEMORY_DEFAULT_ENGINE_ID`).
 3.  **Local project config:** `.gmconfig.yaml` in the current directory.
 4.  **User global config:** `~/.config/compact_memory/config.yaml`.
 5.  **Hardcoded defaults.**
