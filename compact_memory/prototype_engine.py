@@ -125,29 +125,70 @@ class PrototypeEngine(BaseCompressionEngine):
 
     def __init__(
         self,
-        store: VectorStore,
+        store: Optional[VectorStore] = None, # Made optional for loading from config
         *,
         chunker: Optional[Chunker] = None,
-        similarity_threshold: float = 0.8,
-        dedup_cache: int = 128,
-        summary_creator: Optional[MemoryCreator] = None,
-        update_summaries: bool = False,
+        similarity_threshold: float = 0.8, # Default if not in config
+        dedup_cache: int = 128, # Default if not in config
+        summary_creator: Optional[MemoryCreator] = None, # Default if not in config
+        update_summaries: bool = False, # Default if not in config
         prompt_budget: PromptBudget | None = None,
         preprocess_fn: Callable[[str], str] | None = None,
+        config: Optional[Dict[str, Any]] = None,
+        **kwargs
     ) -> None:
         """Initialize the engine."""
-        self.store = store
+
+        # Config for superclass. If config is passed, use it, else use kwargs.
+        # BaseCompressionEngine.__init__ will set self.config.
+        # If a chunker is passed directly, it takes precedence.
+        # self.config['chunker_id'] will be set by super() if chunker is provided and no config is.
+        actual_chunker = chunker or SentenceWindowChunker()
         super().__init__(
-            chunker=chunker or SentenceWindowChunker(), preprocess_fn=preprocess_fn
+            chunker=actual_chunker,
+            preprocess_fn=preprocess_fn,
+            config=config if config is not None else kwargs
         )
 
-        if not 0.5 <= similarity_threshold <= 0.95:
+        # Initialize store
+        if store is not None:
+            self.store = store
+        else:
+            # If store is not provided (e.g., when loading), create a default one.
+            # load() will populate it.
+            from compact_memory.embedding_pipeline import get_embedding_dim
+            from compact_memory.vector_store import InMemoryVectorStore
+            # Try to get embedding_dim from config if saved, else default.
+            embedding_dim = self.config.get('store_embedding_dim', get_embedding_dim())
+            self.store = InMemoryVectorStore(embedding_dim=embedding_dim)
+            if 'store_tau' in self.config: # Restore tau if it was saved for the store
+                 self.store.meta['tau'] = self.config['store_tau']
+
+
+        # Initialize attributes from self.config (set by super) or defaults
+        # similarity_threshold has a setter that also updates store.meta['tau']
+        self.similarity_threshold = float(self.config.get('similarity_threshold', similarity_threshold))
+        if not 0.5 <= self.similarity_threshold <= 0.95:
             raise ValueError("similarity_threshold must be between 0.5 and 0.95")
 
-        self._chunker = self.chunker
-        self.similarity_threshold = float(similarity_threshold)
+        # summary_creator: For now, use direct param or default. Configurable summary_creator by ID is future work.
+        # If summary_creator_id is in config, we might use a factory here.
         self.summary_creator = summary_creator or ExtractiveSummaryCreator(max_words=25)
-        self.update_summaries = update_summaries
+        if 'summary_creator_id' in self.config and summary_creator is None:
+            # Basic example: if we had a registry. For now, this won't re-instantiate complex objects.
+            # if self.config['summary_creator_id'] == 'ExtractiveSummaryCreator':
+            #    self.summary_creator = ExtractiveSummaryCreator(max_words=self.config.get('summary_creator_max_words', 25))
+            pass
+
+
+        self.update_summaries = bool(self.config.get('update_summaries', update_summaries))
+
+        dedup_cache_size = int(self.config.get('dedup_cache_size', dedup_cache))
+        self._dedup = _LRUSet(size=dedup_cache_size)
+
+        # _chunker is already set by super() via self.chunker property of BaseCompressionEngine
+        # self._chunker = self.chunker
+
         self.metrics = {
             "memories_ingested": 0,
             "prototypes_spawned": 0,
@@ -155,9 +196,8 @@ class PrototypeEngine(BaseCompressionEngine):
             "prototypes_updated": 0,
             "prototype_vector_change_magnitude": 0.0,
         }
-        self._dedup = _LRUSet(size=dedup_cache)
-        self.prompt_budget = prompt_budget
-        self.preprocess_fn = preprocess_fn
+        self.prompt_budget = prompt_budget # Not yet managed by config
+        # self.preprocess_fn is set by super()
 
     # ------------------------------------------------------------------
     @property
@@ -757,26 +797,48 @@ class PrototypeEngine(BaseCompressionEngine):
         from pathlib import Path
         import json
 
-        path = Path(path)
-        path.mkdir(parents=True, exist_ok=True)
-        super().save(path)
-        with open(path / "engine_manifest.json", "r", encoding="utf-8") as fh:
+        p = Path(path)
+        p.mkdir(parents=True, exist_ok=True)
+
+        # Update self.config with PrototypeEngine-specific serializable settings
+        self.config['similarity_threshold'] = self.similarity_threshold
+        self.config['dedup_cache_size'] = self._dedup.size
+        self.config['update_summaries'] = self.update_summaries
+        self.config['summary_creator_id'] = type(self.summary_creator).__name__
+        # Example for summary_creator params (if simple like max_words)
+        if isinstance(self.summary_creator, ExtractiveSummaryCreator):
+            self.config['summary_creator_max_words'] = self.summary_creator.max_words
+
+        self.config['store_id'] = type(self.store).__name__
+        # If store has its own simple config (e.g. embedding_dim was crucial for init)
+        # self.config['store_embedding_dim'] = self.store.embedding_dim # Assuming store has this
+        # self.store.meta['tau'] is effectively self.similarity_threshold, already saved.
+        # Other parts of self.store.meta are saved below.
+
+        super().save(p) # This saves engine_manifest.json with self.config
+
+        # PrototypeEngine specific save logic
+        # It re-reads and updates the manifest written by super().save()
+        # This is acceptable if it's adding top-level keys not part of 'config'
+        with open(p / "engine_manifest.json", "r", encoding="utf-8") as fh:
             manifest = json.load(fh)
+
         manifest.update(
             {
-                "meta": self.store.meta,
+                "meta": self.store.meta, # Saves tau and other store metadata
                 "prototypes": [
                     p.model_dump(mode="json") for p in self.store.prototypes
                 ],
             }
         )
-        with open(path / "engine_manifest.json", "w", encoding="utf-8") as fh:
+        with open(p / "engine_manifest.json", "w", encoding="utf-8") as fh:
             json.dump(manifest, fh)
-        with open(path / "memories.json", "w", encoding="utf-8") as fh:
-            json.dump([m.model_dump(mode="json") for m in self.store.memories], fh)
-        import numpy as np
 
-        np.save(path / "vectors.npy", self.store.proto_vectors)
+        with open(p / "memories.json", "w", encoding="utf-8") as fh:
+            json.dump([m.model_dump(mode="json") for m in self.store.memories], fh)
+
+        import numpy as np
+        np.save(p / "vectors.npy", self.store.proto_vectors)
 
     # ------------------------------------------------------------------
     def load(self, path: str | Path) -> None:
@@ -785,23 +847,60 @@ class PrototypeEngine(BaseCompressionEngine):
         import json
         import numpy as np
         from .models import BeliefPrototype, RawMemory
+        from compact_memory.vector_store import InMemoryVectorStore # For type checking or re-init
+        from compact_memory.embedding_pipeline import get_embedding_dim
 
-        path = Path(path)
-        try:
-            super().load(path)
-        except Exception:
-            pass
-        with open(path / "engine_manifest.json", "r", encoding="utf-8") as fh:
+
+        p = Path(path)
+
+        # self.config should already be populated by __init__ via load_engine.
+        # Attributes like self.similarity_threshold, self._dedup.size, self.update_summaries
+        # should have been initialized from self.config in __init__.
+
+        # Load the manifest to get prototype-specific data
+        with open(p / "engine_manifest.json", "r", encoding="utf-8") as fh:
             manifest = json.load(fh)
-        with open(path / "memories.json", "r", encoding="utf-8") as fh:
+
+        # Load memories
+        with open(p / "memories.json", "r", encoding="utf-8") as fh:
             memories_data = json.load(fh)
-        self.store.meta = manifest.get("meta", {})
+
+        # Ensure self.store is initialized (should be by __init__)
+        # If it's a type that needs specific re-initialization based on manifest['meta']
+        # (e.g. if embedding_dim changed or store type changed), handle here.
+        # For InMemoryVectorStore, __init__ already created it. We just populate it.
+
+        # Re-populate the store
+        self.store.meta = manifest.get("meta", {}) # meta includes tau (similarity_threshold)
+
+        # If similarity_threshold from config differs from store.meta['tau'], reconcile
+        # Typically, store.meta['tau'] (loaded from manifest['meta']) should be source of truth for store's behavior.
+        # And self.similarity_threshold (from config) should align with it.
+        # The property setter for self.similarity_threshold already updates self.store.meta['tau'].
+        # So, if config had similarity_threshold, it would have been set in __init__, updating store.meta.
+        # Then, manifest['meta'] loaded here might overwrite it. Let's ensure consistency:
+        # self.similarity_threshold setter will make them consistent if called.
+        # Or, prioritize manifest['meta']['tau'] if present.
+        if 'tau' in self.store.meta:
+            self.similarity_threshold = float(self.store.meta['tau'])
+        else: # Ensure tau is in meta if not loaded but set from config
+            self.store.meta['tau'] = self.similarity_threshold
+
+
         self.store.prototypes = [
             BeliefPrototype(**p) for p in manifest.get("prototypes", [])
         ]
-        self.store.proto_vectors = np.load(path / "vectors.npy")
+        self.store.proto_vectors = np.load(p / "vectors.npy")
         self.store.memories = [RawMemory(**m) for m in memories_data]
-        self.store.index = {
-            p.prototype_id: i for i, p in enumerate(self.store.prototypes)
-        }
-        self.store._index_dirty = True
+
+        # Rebuild the FAISS index if it's an InMemoryVectorStore with FAISS
+        if hasattr(self.store, 'create_index'):
+             self.store.create_index() # For InMemoryVectorStore, this rebuilds FAISS
+        else: # For basic VectorStore or if index is managed differently
+            self.store.index = {
+                p.prototype_id: i for i, p in enumerate(self.store.prototypes)
+            }
+            self.store._index_dirty = True
+
+        # Note: super().load(path) is NOT called as PrototypeEngine manages its own state files
+        # distinct from BaseCompressionEngine's (entries.json, embeddings.npy).

@@ -1,260 +1,242 @@
-# Compact Memory CLI Reference
+# CLI Reference
 
-This document provides a comprehensive reference for the Compact Memory Command Line Interface (CLI).
+The `compact-memory` command-line interface (CLI) provides tools for managing engine stores, compressing text, performing queries, and accessing development utilities.
 
 ## Global Options
 
-These options can be used with any command:
+These options can be used with most `compact-memory` commands:
 
-*   `--memory-path TEXT`: Path to the Compact Memory memory directory. Overrides environment variables and configuration files. (e.g., `-m ./my_memory_data`)
-*   `--model-id TEXT`: Default model ID for LLM interactions (e.g., `openai/gpt-4-turbo`). Overrides environment variables and configuration files.
-*   `--engine TEXT`: Default compression engine ID (e.g., `prototype`). Overrides environment variables and configuration files.
-*   `--log-file PATH`: Path to write debug logs. If not set, logs are not written to file.
-*   `--verbose / -V`: Enable verbose (DEBUG level) logging to console and log file (if specified).
-*   `--version / -v`: Show the application version and exit.
-*   `--help`: Show help messages for any command or subcommand.
+*   `--log-file PATH`: Path to write debug logs.
+*   `--verbose, -V`: Enable verbose (DEBUG level) logging.
+*   `--memory-path TEXT, -m TEXT`: Path to the Compact Memory engine store directory. Overrides environment variables and configuration files.
+*   `--model-id TEXT`: Default model ID for LLM interactions (e.g., for the `query` command).
+*   `--engine TEXT`: Default compression engine ID to be used (e.g., for history compression in `query`, or as the default one-shot compressor in `compress`).
+*   `--version, -v`: Show application version and exit.
+*   `--install-completion`: Install shell completion.
+*   `--show-completion`: Show shell completion script.
 
-## Configuration System
+## Main Commands
 
-Compact Memory uses a hierarchical configuration system. Settings are resolved in the following order of precedence (highest first):
+### `compact-memory engine`
 
-1.  **Command-Line Arguments:** Options provided directly with a command (e.g., `--memory-path ./my_memory`).
-2.  **Environment Variables:**
-    *   `COMPACT_MEMORY_PATH`
-    *   `COMPACT_MEMORY_DEFAULT_MODEL_ID`
-    *   `COMPACT_MEMORY_DEFAULT_ENGINE_ID`
-3.  **Local Project Configuration:** A `.gmconfig.yaml` file in the current working directory.
-4.  **User Global Configuration:** A `config.yaml` file located in `~/.config/compact_memory/config.yaml` (path may vary slightly by OS).
-5.  **Application Defaults:** Hardcoded default values within the application.
+Group of commands for managing engine stores. Replaces the old `compact-memory memory` group.
 
-You can manage your global configuration using the `compact-memory config` commands. See the [Configuration Guide](configuration.md) for more details.
+#### `compact-memory engine init TARGET_DIRECTORY`
 
-## Top-Level Commands
+Initializes a new Compact Memory engine store in the specified directory.
 
-These are the primary commands for interacting with Compact Memory.
+*   **`TARGET_DIRECTORY`**: (Required) Directory to initialize the new engine store. Will be created if it doesn't exist.
+*   **Options:**
+    *   `--engine, -e TEXT`: The ID of the compression engine to initialize (e.g., `prototype`, `base`). If not provided, uses the global default engine ID, or falls back to "prototype".
+    *   `--name TEXT`: A descriptive name for the engine store or its configuration (default: "default\_store"). This is stored in the engine's configuration.
+    *   `--tau FLOAT`: Similarity threshold for the 'prototype' engine (default: 0.8). Valid range: 0.5 to 0.95. This is stored as `similarity_threshold` in the prototype engine's configuration.
+    *   `--chunker TEXT`: Identifier for the chunker to be used by the engine (default: "SentenceWindowChunker"). This is stored as `chunker_id` in the engine's configuration.
+    *   `--help`: Show help message.
 
+*   **Usage Examples:**
+    ```bash
+    compact-memory engine init ./my_prototype_store --engine prototype --name "My Research Store" --tau 0.75
+    compact-memory engine init ./my_base_store --engine base --chunker "MyCustomChunkerID"
+    ```
 
-### `compact-memory query`
+#### `compact-memory engine list`
 
-Queries an engine store (specified by `--memory-path` or configuration) with the provided text and returns an AI-generated response.
+Lists all available (registered) compression engine IDs.
 
-**Usage:** `compact-memory query [OPTIONS] QUERY_TEXT`
+#### `compact-memory engine info ENGINE_ID`
 
-**Arguments:**
-*   `QUERY_TEXT`: The query text to send to the engine store. (Required)
+Shows detailed metadata for a specific compression engine ID.
 
-**Options:**
-*   `--show-prompt-tokens`: Display the token count of the final prompt sent to the LLM.
-
-### `compact-memory compress`
-
-Compresses text content from a string, file, or directory using a specified engine and token budget. This is a standalone utility.
-
-**Usage:** `compact-memory compress [OPTIONS] (--text TEXT | --file PATH | --dir PATH)`
-
-**Input Options (choose exactly one):**
-*   `--text TEXT`: Raw text to compress. Use `-` to read from stdin.
-*   `--file PATH`: Path to a single text file.
-*   `--dir PATH`: Path to a directory of files.
-
-**Options:**
-*   `--engine / -s TEXT`: compression engine ID to use. Overrides the global default engine. (Required if no global default is set)
-*   `--budget INTEGER`: Token budget for the compressed output. The engine will aim to keep the output within this limit. (Required)
-*   `--output / -o PATH`: File path to write compressed output when using `--text` or `--file`. Prints to console if unspecified.
-*   `--output-dir PATH`: Directory to write compressed files when using `--dir`.
-*   `--output-trace PATH`: File path to write the `CompressionTrace` JSON object. (Not valid with `--dir`).
-*   `--recursive / -r`: Process text files in subdirectories recursively (valid with `--dir` only).
-*   `--pattern / -p TEXT`: File glob pattern for directory input (valid with `--dir` only; default: "*.txt").
-*   `--verbose-stats`: Show detailed token counts and processing time per item.
-
-
-## Command Groups
-
-### `compact-memory memory`
-
-Manage engine stores: initialize, inspect statistics, validate, and clear.
-
-The engine namespace is used to manage a named engine store for stored, compressed memories. It is not an AI agent.
-
-**Usage:** `compact-memory engine [OPTIONS] COMMAND [ARGS]...`
-
-#### `compact-memory engine init`
-
-Creates and initializes a new engine store in a specified directory.
-
-**Usage:** `compact-memory engine init [OPTIONS] TARGET_DIRECTORY`
-
-**Arguments:**
-*   `TARGET_DIRECTORY`: Directory to initialize the new engine store in. Will be created if it doesn't exist. (Required)
-
-**Options:**
-*   `--name TEXT`: A descriptive name for the engine store (default: "default").
-*   `--model-name TEXT`: Name of the sentence-transformer model for embeddings (default: "all-MiniLM-L6-v2").
-*   `--tau FLOAT`: Similarity threshold (tau) for memory consolidation, between 0.5 and 0.95 (default: 0.8).
-*   `--alpha FLOAT`: Alpha parameter, controlling the decay rate for memory importance (default: 0.1).
-*   `--chunker TEXT`: Chunking engine to use for processing text during ingestion (default: "sentence_window").
+*   **`ENGINE_ID`**: (Required) The ID of the engine to inspect.
 
 #### `compact-memory engine stats`
 
-Displays statistics about the Compact Memory engine store.
+Displays statistics about an engine store.
 
-**Usage:** `compact-memory engine stats [OPTIONS]`
-
-**Options:**
-*   `--memory-path TEXT`: Path to the engine store directory. Overrides global setting if provided.
-*   `--json`: Output statistics in JSON format.
+*   **Options:**
+    *   `--memory-path TEXT, -m TEXT`: Path to the engine store directory. Overrides global setting.
+    *   `--json`: Output statistics in JSON format.
 
 #### `compact-memory engine validate`
 
-Validates the integrity of the engine store's storage.
+Validates the integrity of an engine store's storage. (Currently provides a basic check).
 
-**Usage:** `compact-memory engine validate [OPTIONS]`
-
-**Options:**
-*   `--memory-path TEXT`: Path to the engine store directory. Overrides global setting if provided.
+*   **Options:**
+    *   `--memory-path TEXT, -m TEXT`: Path to the engine store directory. Overrides global setting.
 
 #### `compact-memory engine clear`
 
 Deletes all data from an engine store. This action is irreversible.
 
-**Usage:** `compact-memory engine clear [OPTIONS]`
+*   **Options:**
+    *   `--memory-path TEXT, -m TEXT`: Path to the engine store directory. Overrides global setting.
+    *   `--force, -f`: Force deletion without prompting for confirmation.
+    *   `--dry-run`: Simulate deletion and show what would be deleted (currently indicates no action for non-persistent parts).
 
-**Options:**
-*   `--memory-path TEXT`: Path to the engine store directory. Overrides global setting if provided.
-*   `--force / -f`: Force deletion without prompting for confirmation.
-*   `--dry-run`: Simulate deletion and show what would be deleted without actually removing files.
+### `compact-memory query QUERY_TEXT`
+
+Queries a Compact Memory engine store and returns an AI-generated response. This typically requires an engine that supports querying (like `PrototypeEngine`) and an LLM.
+
+*   **`QUERY_TEXT`**: (Required) The query text to send to the engine.
+*   **Options:**
+    *   `--memory-path TEXT, -m TEXT`: (Required if not set globally) Path to the engine store to query.
+    *   `--show-prompt-tokens`: Display the token count of the final prompt sent to the LLM.
+    *   Global options like `--model-id` (for the LLM) and `--engine` (for history compression, if applicable) are relevant here.
+
+*   **Usage Example:**
+    ```bash
+    compact-memory query --memory-path ./my_prototype_store "What is the capital of France?"
+    ```
+
+### `compact-memory compress`
+
+Compresses text using a specified compression engine. Can read from a string, file, or directory. The output can be sent to stdout, a file, or ingested into an existing engine store.
+
+*   **Input Options (choose one):**
+    *   `--text TEXT`: Raw text to compress, or '-' to read from stdin.
+    *   `--file FILE_PATH`: Path to a single text file.
+    *   `--dir DIR_PATH`: Path to a directory of input files.
+*   **Core Options:**
+    *   `--engine, -e TEXT`: (Required if no global default) The ID of the **one-shot compression engine** to use for compressing the input text (e.g., `none`, `dummy_trunc`, or a custom summarization engine).
+    *   `--budget INTEGER`: (Required) Token budget for the compressed output. The one-shot engine will aim to keep its output within this limit.
+*   **Output Options (choose one or none for stdout):**
+    *   `--output, -o FILE_PATH`: File path to write compressed output. Not valid with `--dir`.
+    *   `--output-dir DIR_PATH`: Directory to write compressed files when `--dir` is used.
+    *   `--json`: Output compressed result (and basic stats) in JSON format to stdout. Not valid with `--memory-path`.
+    *   `--memory-path TEXT, -m TEXT`: Path to an **existing engine store**. If specified, the text compressed by the one-shot `--engine` will be **ingested** into this target engine store using its `ingest()` method. No other output options (`--output`, `--output-dir`, `--json`) can be used with `--memory-path`.
+*   **Other Options:**
+    *   `--output-trace FILE_PATH`: File path to write the `CompressionTrace` JSON object. Not applicable for directory input or when `--memory-path` is used.
+    *   `--recursive, -r`: Process text files in subdirectories recursively when `--dir` is used.
+    *   `--pattern, -p TEXT`: File glob pattern to match files when `--dir` is used (default: `*.txt`).
+    *   `--verbose-stats`: Show detailed token counts and processing time per item.
+
+*   **Usage Examples:**
+    *   **Compress text to stdout:**
+        ```bash
+        compact-memory compress --text "Some very long text..." --engine dummy_trunc --budget 100
+        ```
+    *   **Compress a file and save to another file:**
+        ```bash
+        compact-memory compress --file path/to/document.txt -e prototype_summarizer --budget 200 -o summary.txt
+        ```
+    *   **Compress all `.md` files in a directory and save to an output directory:**
+        ```bash
+        compact-memory compress --dir input_dir/ -e none --budget 500 --output-dir output_dir/ --recursive -p "*.md"
+        ```
+    *   **Compress text and ingest into an existing engine store:**
+        ```bash
+        # First, ensure the store exists (e.g., by running 'engine init')
+        compact-memory engine init ./my_main_store --engine prototype
+        # Now, compress some text using 'dummy_trunc' and ingest the result into 'my_main_store'
+        compact-memory compress --memory-path ./my_main_store --text "This is a long text to be truncated and then ingested." --engine dummy_trunc --budget 50
+        ```
 
 ### `compact-memory config`
 
-Manage Compact Memory application configuration settings.
+Group of commands for managing Compact Memory application configuration settings.
 
-**Usage:** `compact-memory config [OPTIONS] COMMAND [ARGS]...`
+#### `compact-memory config set KEY VALUE`
 
-#### `compact-memory config set`
+Sets a configuration key to a new value in the user's global config file (`~/.config/compact_memory/config.yaml`).
 
-Sets a Compact Memory configuration key to a new value in the user's global config file (`~/.config/compact_memory/config.yaml`).
-
-**Usage:** `compact-memory config set [OPTIONS] KEY VALUE`
-
-**Arguments:**
-*   `KEY`: The configuration key to set (e.g., 'compact_memory_path', 'default_model_id'). (Required)
-*   `VALUE`: The new value for the configuration key. (Required)
+*   **`KEY`**: (Required) The configuration key to set (e.g., `default_engine_id`, `compact_memory_path`).
+*   **`VALUE`**: (Required) The new value for the key.
 
 #### `compact-memory config show`
 
-Displays current Compact Memory configuration values, their effective settings, and their sources.
+Displays current configuration values, their effective settings, and their sources (e.g., environment variable, config file, default).
 
-**Usage:** `compact-memory config show [OPTIONS]`
-
-**Options:**
-*   `--key / -k TEXT`: Specific configuration key to display.
+*   **Options:**
+    *   `--key, -k TEXT`: Specific configuration key to display.
 
 ### `compact-memory dev`
 
-Developer tools for testing, evaluation, engine/package management, and model downloads.
-
-**Usage:** `compact-memory dev [OPTIONS] COMMAND [ARGS]...`
+Group of commands for compression engine developers and researchers.
 
 #### `compact-memory dev list-metrics`
+
 Lists all available validation metric IDs that can be used in evaluations.
-**Usage:** `compact-memory dev list-metrics`
 
-#### `compact-memory dev list-engines`
+#### `compact-memory dev list-engines` (also `list-strategies`)
+
 Lists all available compression engine IDs, their versions, and sources (built-in or plugin).
-**Usage:** `compact-memory dev list-engines`
 
-#### `compact-memory dev inspect-engine`
-Inspects aspects of a compression engine, currently focused on 'prototype' engine's beliefs.
-**Usage:** `compact-memory dev inspect-engine [OPTIONS] ENGINE_NAME`
-**Arguments:**
-*   `ENGINE_NAME`: The name of the engine to inspect. Currently, only 'prototype' is supported. (Required)
-**Options:**
-*   `--memory-path TEXT`: Path to the engine store directory. Overrides global setting if provided. Required if '--list-prototypes' is used.
-*   `--list-prototypes`: List consolidated prototypes (beliefs) if the engine is 'prototype' and a memory path is provided.
+*   **Options:**
+    *   `--include-contrib`: Include experimental contrib engines.
 
-#### `compact-memory dev evaluate-compression`
-Evaluates compressed text against original text using a specified metric.
-**Usage:** `compact-memory dev evaluate-compression [OPTIONS] ORIGINAL_INPUT COMPRESSED_INPUT`
-**Arguments:**
-*   `ORIGINAL_INPUT`: Original text content, path to a text file, or '-' to read from stdin. (Required)
-*   `COMPRESSED_INPUT`: Compressed text content, path to a text file, or '-' to read from stdin. (Required)
-**Options:**
-*   `--metric / -m TEXT`: ID of the validation metric to use (see 'list-metrics'). (Required)
-*   `--metric-params JSON`: Metric parameters as a JSON string (e.g., '{"model_name": "bert-base-uncased"}'). *(Note: This option might be replaced by `--params-file` and `--metric-param` in future versions or was handled by `cli_utils.parse_complex_params` which is not directly exposed here).*
-*   `--json`: Output evaluation scores in JSON format.
+#### `compact-memory dev inspect-engine ENGINE_NAME`
+
+Inspects aspects of a compression engine. Currently focused on 'prototype' engine's beliefs.
+
+*   **`ENGINE_NAME`**: (Required) Name of the engine (currently only "prototype").
+*   **Options:**
+    *   `--list-prototypes`: List consolidated prototypes if engine is 'prototype'.
+
+#### `compact-memory dev evaluate-compression ORIGINAL_INPUT COMPRESSED_INPUT`
+
+Evaluates compressed text against original text using a specified metric. Input can be direct text, file paths, or '-' for stdin.
+
+*   **`ORIGINAL_INPUT`**: (Required) Original text/file/-.
+*   **`COMPRESSED_INPUT`**: (Required) Compressed text/file/-.
+*   **Options:**
+    *   `--metric, -m TEXT`: (Required) ID of the validation metric.
+    *   `--metric-params JSON_STRING`: Metric parameters as a JSON string.
+    *   `--json`: Output scores in JSON format.
 
 #### `compact-memory dev test-llm-prompt`
-Tests a Language Model (LLM) prompt with specified context and query.
-**Usage:** `compact-memory dev test-llm-prompt [OPTIONS]`
-**Options:**
-*   `--context / -c TEXT`: Context string for the LLM, path to a context file, or '-' to read from stdin. (Required)
-*   `--query / -q TEXT`: User query to append to the context for the LLM. (Required)
-*   `--model TEXT`: Model ID to use for the test (must be defined in LLM config) (default: "tiny-gpt2").
-*   `--system-prompt / -s TEXT`: Optional system prompt to prepend to the main prompt.
-*   `--max-new-tokens INTEGER`: Maximum number of new tokens the LLM should generate (default: 150).
-*   `--output-response PATH`: File path to save the LLM's raw response. If unspecified, prints to console.
-*   `--llm-config PATH`: Path to the LLM configuration YAML file (default: "llm_models_config.yaml").
-*   `--api-key-env-var TEXT`: Environment variable name that holds the API key for the LLM provider (e.g., 'OPENAI_API_KEY').
 
-#### `compact-memory dev evaluate-llm-response`
+Tests a Language Model (LLM) prompt with specified context and query.
+
+*   **Options:**
+    *   `--context, -c TEXT`: Context string, file path, or '-'. (Required)
+    *   `--query, -q TEXT`: User query. (Required)
+    *   `--model TEXT`: Model ID for the test (default: "tiny-gpt2").
+    *   `--system-prompt, -s TEXT`: Optional system prompt.
+    *   `--max-new-tokens INTEGER`: Max new tokens for LLM (default: 150).
+    *   `--output-response FILE_PATH`: File to save LLM's raw response.
+    *   `--llm-config FILE_PATH`: Path to LLM configuration YAML (default: `llm_models_config.yaml`).
+    *   `--api-key-env-var TEXT`: Environment variable name for API key.
+
+#### `compact-memory dev evaluate-llm-response RESPONSE_INPUT REFERENCE_INPUT`
+
 Evaluates an LLM's response against a reference answer using a specified metric.
-**Usage:** `compact-memory dev evaluate-llm-response [OPTIONS] RESPONSE_INPUT REFERENCE_INPUT`
-**Arguments:**
-*   `RESPONSE_INPUT`: LLM's generated response text, path to a response file, or '-' to read from stdin. (Required)
-*   `REFERENCE_INPUT`: Reference (ground truth) answer text or path to a reference file. (Required)
-**Options:**
-*   `--metric / -m TEXT`: ID of the validation metric to use (see 'list-metrics'). (Required)
-*   `--metric-params JSON`: Metric parameters as a JSON string. *(See note for `evaluate-compression`)*.
-*   `--json`: Output evaluation scores in JSON format.
+
+*   **`RESPONSE_INPUT`**: (Required) LLM's response text/file/-.
+*   **`REFERENCE_INPUT`**: (Required) Reference answer text/file/-.
+*   **Options:** Similar to `evaluate-compression` (`--metric`, `--metric-params`, `--json`).
 
 #### `compact-memory dev download-embedding-model`
+
 Downloads a specified SentenceTransformer embedding model from Hugging Face.
-**Usage:** `compact-memory dev download-embedding-model [OPTIONS]`
-**Options:**
-*   `--model-name TEXT`: Name of the SentenceTransformer model to download (default: "all-MiniLM-L6-v2").
+
+*   **Options:**
+    *   `--model-name TEXT`: Name of the model (default: "all-MiniLM-L6-v2").
 
 #### `compact-memory dev download-chat-model`
+
 Downloads a specified causal Language Model (e.g., for chat) from Hugging Face.
-**Usage:** `compact-memory dev download-chat-model [OPTIONS]`
-**Options:**
-*   `--model-name TEXT`: Name of the Hugging Face causal LM to download (default: "tiny-gpt2").
+
+*   **Options:**
+    *   `--model-name TEXT`: Name of the Hugging Face model (default: "tiny-gpt2").
 
 #### `compact-memory dev create-engine-package`
+
 Creates a new compression engine extension package from a template.
-**Usage:** `compact-memory dev create-engine-package [OPTIONS]`
-**Options:**
-*   `--name TEXT`: Name for the new engine package (e.g., `compact_memory_my_engine`). Used for directory and engine ID (default: "compact_memory_example_engine").
-*   `--path PATH`: Directory where the engine package will be created. Defaults to a new directory named after the engine in the current location.
 
-#### `compact-memory dev validate-engine-package`
+*   **Options:**
+    *   `--name TEXT`: Name for the new engine package (default: "compact\_memory\_example\_engine").
+    *   `--path PATH`: Directory where the package will be created.
+
+#### `compact-memory dev validate-engine-package PACKAGE_PATH`
+
 Validates the structure and manifest of a compression engine extension package.
-**Usage:** `compact-memory dev validate-engine-package [OPTIONS] PACKAGE_PATH`
-**Arguments:**
-*   `PACKAGE_PATH`: Path to the root directory of the engine package. (Required)
 
-#### `compact-memory dev run-package-experiment`
-Runs an experiment defined within a compression engine extension package.
-**Usage:** `compact-memory dev run-package-experiment [OPTIONS] PACKAGE_PATH`
-**Arguments:**
-*   `PACKAGE_PATH`: Path to the root directory of the engine package. (Required)
-**Options:**
-*   `--experiment TEXT`: Name or relative path of the experiment configuration YAML file within the package's 'experiments' directory. If not specified, attempts to run a default experiment if defined in manifest.
+*   **`PACKAGE_PATH`**: (Required) Path to the root directory of the engine package.
 
-#### `compact-memory dev run-hpo-script`
-Executes a Python script, typically for Hyperparameter Optimization (HPO).
-**Usage:** `compact-memory dev run-hpo-script [OPTIONS] SCRIPT_PATH`
-**Arguments:**
-*   `SCRIPT_PATH`: Path to the Python HPO script to execute. (Required)
+#### `compact-memory dev inspect-trace TRACE_FILE`
 
-#### `compact-memory dev inspect-trace`
-Inspects a CompressionTrace JSON file, optionally filtering by step type.
-**Usage:** `compact-memory dev inspect-trace [OPTIONS] TRACE_FILE`
-**Arguments:**
-*   `TRACE_FILE`: Path to the CompressionTrace JSON file. (Required)
-**Options:**
-*   `--type TEXT`: Filter trace steps by this 'type' string (e.g., 'chunking', 'llm_call').
+Inspects a `CompressionTrace` JSON file.
 
----
-
-*This reference should be updated as the CLI evolves.*
-```
+*   **`TRACE_FILE`**: (Required) Path to the trace JSON file.
+*   **Options:**
+    *   `--type TEXT`: Filter trace steps by this type string.

@@ -1,80 +1,86 @@
-# Designing Compression Engines
+# Compression Engines (Conceptual Overview)
 
-This guide collects techniques for slicing documents into belief-sized ideas and updating prototypes. A compression engine can mix and match these steps depending on the data source.
-While LLMs with large context windows and RAG are powerful, Compact Memory explores engines for more deeply processed, long-term, and adaptive memory. The techniques described here aim to create dynamic memory structures that evolve with new information, offering capabilities beyond simple retrieval of verbatim text chunks.
+This document provides a conceptual overview of various approaches to text and memory compression that can be relevant to Large Language Models (LLMs) and conversational AI systems. It explores different strategies, their trade-offs, and potential use cases.
 
-## Segmenting source documents
+**Note on Framework Implementation:** The concepts discussed here represent a range of ideas and techniques. For details on how to implement a compression engine within the Compact Memory framework, including the `BaseCompressionEngine` class, persistence, and integration with the CLI, please refer to the [Developing Compression Engines](./DEVELOPING_COMPRESSION_ENGINES.md) guide.
 
-### 1. Fast first-pass split
-- Paragraph or sentence boundaries using regex or spaCy with a small token overlap.
-- Fixed token windows that recurse on punctuation (as used by LangChain and Llama-Index).
+## 1. What is "Compression" in this Context?
 
-These methods are fast and require no machine learning, but they can cut ideas in half and generate near duplicates.
+In the context of LLMs and memory systems, "compression" refers to techniques that reduce the size or complexity of textual information while attempting to preserve its essential meaning or utility for a specific task. This is crucial for:
 
-### 2. Semantic boundary detection
-- TextTiling-style lexical cohesion where a cosine similarity drop marks a topic break.
-- Learned models such as CrossFormer or a multi-granular splitter that keeps parent/child links for multi-resolution search.
+*   **Managing Context Window Limits:** LLMs have finite context windows. Compression helps fit more information or longer histories into this window.
+*   **Reducing Computational Cost:** Processing shorter texts can be faster and cheaper.
+*   **Improving Signal-to-Noise Ratio:** Removing redundant or irrelevant information can help the LLM focus on what's important.
+*   **Long-Term Memory Simulation:** Storing compressed representations of past interactions or knowledge.
 
-Boundaries fall on real topic shifts, so retrieval returns fewer irrelevant neighbours.
+Compression is not necessarily about achieving the highest possible data compression ratio in a traditional sense (like Gzip). Instead, it's about "semantic compression" or "information distillation."
 
-### 3. LLM assisted proposition extraction
-- Prompt the model to list distinct factual statements or extract subject/predicate/object triples.
-- Summaries with bullets retain a human-readable gist.
-This step can itself be powered by a smaller fine-tuned model, illustrating how learned components plug into a `BaseCompressionEngine`.
+## 2. Types of Compression Engines/Strategies
 
-Batching through a local model keeps the cost manageable and only long segments need a full LLM pass.
+### a. Extractive Summarization (Truncation-based)
 
-## Post-processing
-1. **Hash for deduping** – compute a SHA‑256 of the normalised proposition to avoid storing the same idea twice.
-2. **Attach metadata** such as source ID, position, importance and veracity scores.
-3. **Embed** the idea and assign it to the nearest centroid.
-4. **Update the centroid** using your EMA rule and merge metadata from prior evidence.
+*   **Concept:** Selects and concatenates the most important sentences or phrases from the original text. This can be as simple as taking the first N sentences/tokens, or more sophisticated methods involving sentence scoring (e.g., based on TF-IDF, LexRank, or transformer-based sentence embeddings).
+*   **Engine Examples:**
+    *   `NoCompressionEngine` (with a small budget): Effectively acts like truncation.
+    *   `FirstLastKEngine`: Keeps the first K and last K elements (e.g., sentences or tokens).
+*   **Pros:** Simple, fast, preserves original wording.
+*   **Cons:** May miss nuances if important information is not in the selected parts. Can be disjointed.
+*   **Use Cases:** Compressing recent conversation history where the beginning and end are often most relevant, quick previews of documents.
 
-This ongoing centroid update process is what allows a prototype to gradually "learn" from accumulated evidence—a key distinction from static retrieval systems.
-This mirrors the hippocampus→cortex flow: raw episode → event boundary → gist proposition → integrated belief.
+### b. Abstractive Summarization
 
-## Reference pipeline
-```python
-for para in paragraphs(doc):
-    ideas = agentic_splitter(para)       # TextTiling → LLM if long
-    for idea in ideas:
-        if is_duplicate(idea):
-            continue
-        meta = build_meta(doc, idea)
-        vec = embed(idea)
-        cid = assign_centroid(vec)
-        reconcile(vec, meta, cid)
-```
-Latency benchmarks on a single CPU (10k ideas/min) come from using MiniLM embeddings and TextTiling first, calling the LLM only for segments over 512 tokens.
+*   **Concept:** Generates new text that captures the essence of the original content. This typically involves using a separate LLM fine-tuned for summarization.
+*   **Engine Examples:**
+    *   An engine that internally calls a summarization model (e.g., T5, BART, or a proprietary API).
+*   **Pros:** Can be more coherent and concise than extractive methods. Can synthesize information.
+*   **Cons:** Computationally more expensive. Prone to hallucinations or misinterpretations by the summarization model. May lose specific details.
+*   **Use Cases:** Creating summaries of documents, summarizing past conversation segments for long-term memory.
 
-## Production checklist
-- Tune max tokens per idea (60–120 tokens works well for MiniLM retrieval).
-- Keep overlap small (≤20%) to avoid duplicate centroids.
-- Evaluate retrieval F1 versus chunk granularity; too coarse usually hurts long‑tail recall, too fine inflates the index.
-- Monitor centroid drift and auto-split if intra-distance exceeds δ.
+### c. Embedding-based Retrieval (Query-Relevant Compression)
 
-## Pipeline engines
+*   **Concept:** Instead of a generic summary, retrieve only the chunks of text from a larger corpus that are most relevant to a current query or context. The "compression" comes from only selecting a small, relevant subset.
+*   **Engine Examples:**
+    *   `PrototypeEngine` (when used for querying): Retrieves relevant prototypes and associated memories, which can be seen as a form of query-specific compression of its knowledge.
+    *   Any RAG (Retrieval Augmented Generation) system.
+*   **Pros:** Highly relevant to the current task. Can draw from vast knowledge.
+*   **Cons:** Depends heavily on the quality of embeddings and the retrieval mechanism. May not provide a good general "summary" if no specific query is present.
+*   **Use Cases:** Answering questions based on a knowledge base, providing context for LLM responses.
 
-For more complex workflows a `PipelineBaseCompressionEngine` can chain multiple
-engines. The output of one step feeds into the next, enabling filters and
-summarizers to be composed.
+### d. Fine-tuning / Distillation for Specific Tasks
 
-Example configuration:
+*   **Concept:** Train a smaller model (or fine-tune an existing one) to perform a specific task that a larger model would typically do with more extensive context. The "compression" is in the model itself, which has learned to implicitly store and process information relevant to its task.
+*   **Pros:** Can be very efficient at runtime for the specific task.
+*   **Cons:** Requires significant effort to train and maintain. Less flexible than general-purpose compression.
+*   **Use Cases:** Specialized chatbots, classifiers, information extraction tools.
 
-```yaml
-engine_name: pipeline
-engines:
-  - engine_name: learned_summarizer
-```
+### e. Delta / Change-Based Compression
 
-## Optional engine plugins
+*   **Concept:** For sequential data (like conversation turns or document versions), store only the differences or updates from the previous state.
+*   **Pros:** Can be very efficient if changes are small.
+*   **Cons:** Reconstruction can be slow if many deltas need to be applied. Not suitable for all types of text.
+*   **Use Cases:** Version control, tracking changes in dynamic information.
 
-Some engines are distributed separately as installable packages. For example,
-the `rationale_episode` engine provides rationale-enhanced episodic memory and
-related CLI tools. Install it via:
+### f. Concept-Based Compression (Knowledge Graphs / Ontologies)
 
-```bash
-pip install compact_memory_rationale_episode_engine
-```
+*   **Concept:** Represent text as a set of entities and relationships, possibly mapped to a formal ontology or knowledge graph. The "compression" is that the structured representation is often more compact and machine-understandable than raw text.
+*   **Engine Examples:**
+    *   Systems that extract RDF triples or build knowledge graphs from text.
+    *   `PrototypeEngine`'s prototypes can be seen as a light form of conceptual representation.
+*   **Pros:** Enables complex reasoning and querying. Can link disparate pieces of information.
+*   **Cons:** Complex to implement. Knowledge extraction can be error-prone.
+*   **Use Cases:** Building comprehensive knowledge bases, semantic search, advanced reasoning.
 
-Once installed, its commands are available through the main `compact-memory` CLI.
+## 3. Key Considerations for Choosing/Designing a Compression Engine
+
+*   **Information Fidelity:** How much of the original, important information is preserved?
+*   **Computational Cost:** How much processing power and time does compression/decompression take?
+*   **Output Coherence:** Is the compressed output readable and understandable (if human-facing)?
+*   **Task Relevance:** How well does the compressed output serve the intended downstream task (e.g., LLM prompting, information retrieval)?
+*   **Lossiness:** Is it acceptable to lose some information, or must the compression be lossless (or near-lossless for key details)?
+*   **Interpretability:** Is it important to understand how the compression decision was made?
+
+## 4. Interaction with Compact Memory Framework
+
+The Compact Memory library aims to provide tools and a framework (`BaseCompressionEngine`) for implementing and experimenting with various compression engines. Developers can create subclasses to implement specific strategies, manage their persistence, and integrate them into workflows or CLI operations.
+
+For concrete examples and guidelines on building your own engine, see [Developing Compression Engines](./DEVELOPING_COMPRESSION_ENGINES.md).
