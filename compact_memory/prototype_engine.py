@@ -265,7 +265,7 @@ class PrototypeEngine(BaseCompressionEngine):
         source_document_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
         """
-        Ingests a piece of text into the memory container's store.
+        Ingests a piece of text into the engine store.
 
         The text is processed by the configured chunker, and each chunk is then
         added to the memory system. This may involve creating new prototypes or
@@ -382,7 +382,7 @@ class PrototypeEngine(BaseCompressionEngine):
         include_hypotheses: bool = False,
     ) -> QueryResult:
         """
-        Queries the memory container's store based on the input text.
+        Queries the engine store based on the input text.
 
         This method embeds the input text and searches for the most similar
         prototypes and individual memories in the store.
@@ -655,14 +655,14 @@ class PrototypeEngine(BaseCompressionEngine):
         """
         Processes a message received from a channel or user.
 
-        This method provides a high-level interface for a memory container to react to
+        This method provides a high-level interface for the engine to react to
         incoming messages. The default behavior is:
-        - If the message ends with "?", it's treated as a query. The container
+        - If the message ends with "?", it's treated as a query. The engine
           will attempt to generate a response using its memory and an LLM
           (if available and configured).
         - Otherwise, the message is ingested as a new memory into the store.
 
-        Developers can override or extend this method for more complex container behaviors.
+        Developers can override or extend this method for more complex engine behaviors.
 
         Args:
             source_id: An identifier for the source of the message (e.g., user ID, channel name).
@@ -676,7 +676,7 @@ class PrototypeEngine(BaseCompressionEngine):
                 :class:`NoCompressionEngine` is used).
 
         Returns:
-            A dictionary summarizing the action taken by the container and any results.
+            A dictionary summarizing the action taken by the engine and any results.
             Common keys include:
                 - "source": The `source_id`.
                 - "action": "query" or "ingest".
