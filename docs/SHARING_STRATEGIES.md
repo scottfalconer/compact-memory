@@ -91,11 +91,11 @@ Refer to the example package at `examples/sample_strategy_package/` for a workin
 To help you get started quickly, Compact Memory provides a CLI command to generate a template for a new strategy package:
 
 ```bash
-compact-memory dev create-strategy-package --name YourStrategyName
+compact-memory dev create-strategy-package --name compact_memory_my_strategy
 ```
 
 This command will:
-1.  Create a directory named `YourStrategyName` (or as specified by `--path`).
+1.  Create a directory named `compact_memory_my_strategy` (or as specified by `--path`).
 2.  Populate it with template files:
     *   `strategy.py` (with a skeleton `CompressionStrategy` class named `MyStrategy`).
     *   `strategy_package.yaml` (pre-filled with `strategy_id: YourStrategyName`, `strategy_class_name: MyStrategy`, etc.).

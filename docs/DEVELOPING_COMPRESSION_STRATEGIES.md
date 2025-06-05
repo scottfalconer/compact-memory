@@ -247,5 +247,6 @@ For Compact Memory to find and use your strategy, it needs to be registered.
 *   **Documentation:**
     *   Add detailed docstrings to your strategy class and methods.
     *   If your strategy has unique dependencies or setup requirements, document them in a `README.md` if you package it.
+*   **Distribution:** When publishing on PyPI or GitHub, use the package naming pattern `compact_memory_<name>_strategy`.
 
 By following this guide, you can effectively contribute new and innovative compression strategies to the Compact Memory ecosystem.

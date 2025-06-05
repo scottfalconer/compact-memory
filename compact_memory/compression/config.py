@@ -14,7 +14,7 @@ class StrategyConfig:
     strategy_params: Dict[str, Any] = field(default_factory=dict)
 
     def create(self) -> CompressionStrategy:
-        """Instantiate the configured strategy."""
+        """Return a CompressionStrategy object created from this configuration."""
         from . import get_compression_strategy
 
         cls = get_compression_strategy(self.strategy_name)

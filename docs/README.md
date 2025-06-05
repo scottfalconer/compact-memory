@@ -23,8 +23,10 @@ Below is a list of documents in this directory, along with a brief description o
         *   **Audience:** Researchers and developers interested in the interpretability of memory systems.
 
 *   **Developer Guides**
-    *   **[`DEVELOPING_COMPRESSION_STRATEGIES.md`](./DEVELOPING_COMPRESSION_STRATEGIES.md)**: Provides practical guidance and steps for implementing new `CompressionStrategy` modules within the Compact Memory framework. Focuses on the "how-to."
+    *   **[`DEVELOPING_COMPRESSION_STRATEGIES.md`](./DEVELOPING_COMPRESSION_STRATEGIES.md)**: Provides practical guidance and steps for implementing new `CompressionStrategy` implementations within the Compact Memory framework. Focuses on the "how-to."
         *   **Audience:** Developers actively building new compression strategies.
+    *   **[`../STRATEGY_DEVELOPMENT.md`](../STRATEGY_DEVELOPMENT.md)**: Best practices for writing, testing, and sharing CompressionStrategies.
+        *   **Audience:** Contributors preparing reusable compression strategies.
     *   **[`DEVELOPING_VALIDATION_METRICS.md`](./DEVELOPING_VALIDATION_METRICS.md)**: Offers guidance on creating custom `ValidationMetric` classes to evaluate the performance of compression strategies.
         *   **Audience:** Developers and researchers looking to implement new ways of measuring memory effectiveness.
     *   **[`STORAGE_FORMAT.md`](./STORAGE_FORMAT.md)**: Describes an example on-disk format previously used for Compact Memory.

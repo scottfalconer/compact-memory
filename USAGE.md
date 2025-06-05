@@ -4,9 +4,9 @@ This guide shows how to use the Compact Memory toolkit from the command line and
 
 ## Basic CLI Usage
 
-The CLI automatically registers the experimental strategies, so options like `first_last` work without extra setup.
+The CLI automatically registers the experimental compression strategies, so options like `first_last` work without extra setup.
 
-Compress a text file using the `first_last` strategy with a token budget of 100:
+Compress a text file using the `first_last` compression strategy with a token budget of 100:
 
 ```bash
 compact-memory compress --file "path/to/your_document.txt" --strategy first_last --budget 100
@@ -48,7 +48,7 @@ Assistant:
 
 ## Python API Example
 
-You can also call strategies programmatically:
+You can also call compression strategies programmatically:
 
 ```python
 from compact_memory.compression import get_compression_strategy

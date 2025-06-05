@@ -233,7 +233,7 @@ Downloads a specified causal Language Model (e.g., for chat) from Hugging Face.
 Creates a new compression strategy extension package from a template.
 **Usage:** `compact-memory dev create-strategy-package [OPTIONS]`
 **Options:**
-*   `--name TEXT`: Name for the new strategy (e.g., 'my_custom_strategy'). Used for directory and strategy ID (default: "sample_strategy").
+*   `--name TEXT`: Name for the new strategy package (e.g., `compact_memory_my_strategy`). Used for directory and strategy ID (default: "compact_memory_example_strategy").
 *   `--path PATH`: Directory where the strategy package will be created. Defaults to a new directory named after the strategy in the current location.
 
 #### `compact-memory dev validate-strategy-package`
