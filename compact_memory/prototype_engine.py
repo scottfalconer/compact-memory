@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional, TypedDict, Callable
 
 import logging
+from pathlib import Path
 
 
 from .chunker import Chunker, SentenceWindowChunker
@@ -44,7 +45,7 @@ class MemoryHit(TypedDict):
 
 
 class QueryResult(dict):
-    """Result object returned by :meth:`MemoryContainer.query` with HTML representation."""
+    """Result object returned by :meth:`PrototypeEngine.query` with HTML representation."""
 
     prototypes: List[PrototypeHit]
     memories: List[MemoryHit]
@@ -74,17 +75,17 @@ class QueryResult(dict):
         return html
 
 
-class MemoryContainer:
+class PrototypeEngine:
     """
     Core component for managing and interacting with a memory store.
 
-    The MemoryContainer class encapsulates the logic for ingesting text into a
+    The PrototypeEngine class encapsulates the logic for ingesting text into a
     `VectorStore`, managing memory prototypes, querying the memory,
     and processing conversational turns with optional compression.
 
     It utilizes a `PrototypeSystemStrategy` internally to handle the
     mechanics of memory consolidation and retrieval. Developers typically
-    interact with the MemoryContainer by providing it with a pre-configured store
+    interact with the PrototypeEngine by providing it with a pre-configured store
     and then using its methods like `add_memory`, `query`, and
     `receive_channel_message`.
 
@@ -110,7 +111,7 @@ class MemoryContainer:
         preprocess_fn: Callable[[str], str] | None = None,
     ) -> None:
         """
-        Initializes the MemoryContainer.
+        Initializes the PrototypeEngine.
 
             Args:
                 store: The `VectorStore` instance to be used for storing
@@ -211,7 +212,7 @@ class MemoryContainer:
         """HTML summary for notebooks."""
         stats = self.get_statistics()
         rows = "".join(f"<tr><th>{k}</th><td>{v}</td></tr>" for k, v in stats.items())
-        return f"<h3>MemoryContainer</h3><table>{rows}</table>"
+        return f"<h3>PrototypeEngine</h3><table>{rows}</table>"
 
     # ------------------------------------------------------------------
     def get_prototypes_view(
@@ -608,3 +609,47 @@ class MemoryContainer:
             }
         )
         return summary
+
+    # ------------------------------------------------------------------
+    def save(self, path: str | Path) -> None:
+        """Persist engine state to ``path``."""
+        from pathlib import Path
+        import json
+
+        path = Path(path)
+        path.mkdir(parents=True, exist_ok=True)
+        manifest = {
+            "meta": self.store.meta,
+            "prototypes": [p.model_dump(mode="json") for p in self.store.prototypes],
+        }
+        with open(path / "engine_manifest.json", "w", encoding="utf-8") as fh:
+            json.dump(manifest, fh)
+        with open(path / "memories.json", "w", encoding="utf-8") as fh:
+            json.dump([m.model_dump(mode="json") for m in self.store.memories], fh)
+        import numpy as np
+
+        np.save(path / "vectors.npy", self.store.proto_vectors)
+
+    # ------------------------------------------------------------------
+    def load(self, path: str | Path) -> None:
+        """Load engine state from ``path``."""
+        from pathlib import Path
+        import json
+        import numpy as np
+        from .models import BeliefPrototype, RawMemory
+
+        path = Path(path)
+        with open(path / "engine_manifest.json", "r", encoding="utf-8") as fh:
+            manifest = json.load(fh)
+        with open(path / "memories.json", "r", encoding="utf-8") as fh:
+            memories_data = json.load(fh)
+        self.store.meta = manifest.get("meta", {})
+        self.store.prototypes = [
+            BeliefPrototype(**p) for p in manifest.get("prototypes", [])
+        ]
+        self.store.proto_vectors = np.load(path / "vectors.npy")
+        self.store.memories = [RawMemory(**m) for m in memories_data]
+        self.store.index = {
+            p.prototype_id: i for i, p in enumerate(self.store.prototypes)
+        }
+        self.store._index_dirty = True

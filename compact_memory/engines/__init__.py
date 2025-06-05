@@ -13,15 +13,6 @@ import faiss
 
 from ..chunker import SentenceWindowChunker
 from ..embedding_pipeline import embed_text, get_embedding_dim
-from .registry import (
-    register_compression_engine,
-    get_compression_engine,
-    available_engines,
-    get_engine_metadata,
-    all_engine_metadata,
-)
-from .no_compression_engine import NoCompressionEngine
-from .pipeline_engine import PipelineEngine
 
 
 @dataclass
@@ -97,7 +88,6 @@ class BaseCompressionEngine:
         if not self.memories:
             return []
         self._ensure_index()
-
         qvec = self.embedding_fn(query, preprocess_fn=self.preprocess_fn)
         qvec = qvec.reshape(1, -1).astype(np.float32)
         k = min(top_k, len(self.memories))
@@ -146,19 +136,4 @@ class BaseCompressionEngine:
         self._ensure_index()
 
 
-register_compression_engine(NoCompressionEngine.id, NoCompressionEngine)
-register_compression_engine(PipelineEngine.id, PipelineEngine)
-
-
-__all__ = [
-    "BaseCompressionEngine",
-    "CompressedMemory",
-    "CompressionTrace",
-    "register_compression_engine",
-    "get_compression_engine",
-    "available_engines",
-    "get_engine_metadata",
-    "all_engine_metadata",
-    "NoCompressionEngine",
-    "PipelineEngine",
-]
+__all__ = ["BaseCompressionEngine", "CompressedMemory", "CompressionTrace"]
