@@ -53,7 +53,7 @@ _lazy_map = {
     "load_agent": "compact_memory.utils",
     "tokenize_text": "compact_memory.token_utils",
     "token_count": "compact_memory.token_utils",
-    "LearnedSummarizerStrategy": "compact_memory.learned_summarizer_strategy",
+    "LearnedSummarizerStrategy": "CompressionStrategy.contrib.learned_summarizer_strategy",
     "PromptBudget": "compact_memory.prompt_budget",
     "CompressionStrategy": "CompressionStrategy.core",
     "NoCompression": "CompressionStrategy.core",

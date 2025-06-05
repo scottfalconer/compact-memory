@@ -9,6 +9,7 @@ from CompressionStrategy.core.strategies_abc import (
     CompressionStrategy,
     CompressionTrace,
 )
+from CompressionStrategy.core import register_compression_strategy
 
 
 class LearnedSummarizerStrategy(CompressionStrategy):
@@ -62,3 +63,10 @@ class LearnedSummarizerStrategy(CompressionStrategy):
                 "transformers with PyTorch is required for LearnedSummarizerStrategy"
             ) from exc
         self.summarizer = pipeline("summarization", model=path)
+
+
+register_compression_strategy(
+    LearnedSummarizerStrategy.id, LearnedSummarizerStrategy, source="contrib"
+)
+
+__all__ = ["LearnedSummarizerStrategy"]
