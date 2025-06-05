@@ -29,6 +29,9 @@ __all__ = [
     "PromptBudget",
     "CompressionStrategy",
     "NoCompression",
+    "BaseCompressionEngine",
+    "CompressedMemory",
+    "CompressionTrace",
     "ValidationMetric",
     "StrategyConfig",
 ]
@@ -57,6 +60,9 @@ _lazy_map = {
     "PromptBudget": "compact_memory.prompt_budget",
     "CompressionStrategy": "CompressionStrategy.core",
     "NoCompression": "CompressionStrategy.core",
+    "BaseCompressionEngine": "compact_memory.engines",
+    "CompressedMemory": "compact_memory.engines",
+    "CompressionTrace": "compact_memory.engines",
     "ValidationMetric": "compact_memory.validation.metrics_abc",
     "StrategyConfig": "CompressionStrategy.core",
 }
