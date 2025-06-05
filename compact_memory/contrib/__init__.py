@@ -7,6 +7,7 @@ from typing import Any
 
 __all__ = [
     "ActiveMemoryEngine",
+    "FirstLastEngine",
     "ActiveMemoryManager",
     "ConversationTurn",
     "enable_all_experimental_engines",
@@ -15,6 +16,7 @@ __all__ = [
 
 _lazy_modules = {
     "ActiveMemoryEngine": "compact_memory.engines.active_memory_engine",
+    "FirstLastEngine": "compact_memory.engines.first_last_engine",
     "ActiveMemoryManager": "compact_memory.active_memory_manager",
     "ConversationTurn": "compact_memory.active_memory_manager",
 }
