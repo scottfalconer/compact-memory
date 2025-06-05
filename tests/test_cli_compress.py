@@ -7,9 +7,9 @@ from compact_memory.engines import (
     BaseCompressionEngine,
     CompressedMemory,
     CompressionTrace,
-    PrototypeEngine, # Added
     load_engine      # Added
 )
+from compact_memory.prototype_engine import PrototypeEngine # Added
 
 
 class DummyTruncEngine(BaseCompressionEngine):
@@ -443,14 +443,15 @@ def test_compress_to_memory_with_prototype_engine(tmp_path: Path, patch_embeddin
     loaded_engine = load_engine(prototype_store_path)
     assert isinstance(loaded_engine, PrototypeEngine), "Loaded engine is not a PrototypeEngine"
 
-    query_results = loaded_engine.query("test sentence for prototype")
-    assert query_results.get("memories"), "Query returned no memories"
+    # Query for the EXACT text that was ingested, as MockEncoder makes different texts have very different embeddings
+    query_results = loaded_engine.query(raw_text)
+    assert query_results.get("memories"), f"Query for exact ingested text '{raw_text}' returned no memories. Status: {query_results.get('status')}"
     found = False
     for mem in query_results.get("memories", []):
-        if raw_text in mem.get("text", ""):
+        if raw_text == mem.get("text", ""): # Exact match of the memory text
             found = True
             break
-    assert found, f"Original text '{raw_text}' not found in recalled memories."
+    assert found, f"Original text '{raw_text}' not found as exact recalled memory text."
 
 
 def test_compress_to_memory_one_shot_trunc_then_prototype(tmp_path: Path, patch_embedding_model):
@@ -466,7 +467,7 @@ def test_compress_to_memory_one_shot_trunc_then_prototype(tmp_path: Path, patch_
 
     long_text = "This is a very long sentence that is intended to be truncated by the dummy_trunc engine before being ingested into the prototype store."
     trunc_budget = 20 # Small budget for truncation
-    expected_ingested_text = long_text[:trunc_budget]
+    expected_ingested_text = long_text[:trunc_budget].strip()
 
     # Compress (using DummyTruncEngine for one-shot) and ingest into the prototype_store_path_2
     compress_result_2 = runner.invoke(
@@ -492,13 +493,14 @@ def test_compress_to_memory_one_shot_trunc_then_prototype(tmp_path: Path, patch_
 
     # Query for the truncated part (should be found)
     query_results_trunc = loaded_engine_2.query(expected_ingested_text)
-    assert query_results_trunc.get("memories"), f"Query for truncated text '{expected_ingested_text}' returned no memories"
+    assert query_results_trunc.get("memories"), f"Query for truncated text '{expected_ingested_text}' returned no memories. Status: {query_results_trunc.get('status')}"
     found_truncated = False
+    # Check if the exact ingested text is found as one of the memory texts
     for mem in query_results_trunc.get("memories", []):
-        if expected_ingested_text in mem.get("text", ""):
+        if expected_ingested_text == mem.get("text", ""):
             found_truncated = True
             break
-    assert found_truncated, f"Expected ingested text '{expected_ingested_text}' not found."
+    assert found_truncated, f"Expected ingested text '{expected_ingested_text}' not found as exact memory text among {query_results_trunc.get('memories')}"
 
     # Query for the part that should have been truncated away (should not be found)
     # Making the query more specific to the part that should be gone.

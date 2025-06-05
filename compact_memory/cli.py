@@ -67,9 +67,10 @@ app = typer.Typer(
 )
 console = Console()
 
-# Register PrototypeEngine here to avoid circular imports with engines package
-from .prototype_engine import PrototypeEngine
-register_compression_engine(PrototypeEngine.id, PrototypeEngine, display_name="Prototype Engine", source="built-in")
+# Built-in engines, including PrototypeEngine, are now registered
+# when the engines package is imported (compact_memory/engines/__init__.py calls
+# a centralized registration function in compact_memory/engines/registry.py).
+# No need to register PrototypeEngine explicitly here.
 
 # --- New Command Groups ---
 engine_app = typer.Typer(
@@ -137,11 +138,18 @@ def main(
     # It's important that ctx.obj['config'] is populated.
     if ctx.obj is None:
         ctx.obj = {}
-    if "config" not in ctx.obj:  # Could be pre-populated by a test harness or similar
-        ctx.obj["config"] = Config()
 
-    config: Config = ctx.obj["config"]
-    config.validate()
+    # Always create a fresh Config object for this specific invocation context.
+    # This ensures it picks up env vars set by CliRunner for this call,
+    # as CliRunner's env settings are specific to an invocation.
+    config = Config()
+    ctx.obj["config"] = config # Store it for potential use by subcommands if they need the Config object itself
+
+    # Validate the configuration after it's loaded.
+    # config.validate() # validate() might be too strict or have side effects not desired here yet.
+                      # It also modifies self._config for type coercion, which might be unexpected
+                      # if we expect config to be a pure reflection of sources until explicitly changed.
+                      # Let's rely on components to handle type conversion of values they retrieve.
 
     resolved_log_file = log_file
     resolved_verbose = verbose
@@ -152,9 +160,21 @@ def main(
     elif resolved_verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    resolved_memory_path = (
-        memory_path if memory_path is not None else config.get("compact_memory_path")
-    )
+    # Resolve compact_memory_path:
+    # 1. memory_path from the global --memory-path CLI option.
+    # 2. Value from COMPACT_MEMORY_PATH env var (via the fresh Config() object).
+    # 3. Value from config files (via the fresh Config() object).
+    # 4. Default value (via the fresh Config() object).
+    # Path expansion (~ and to absolute) is now handled within Config.get() or Config._load_env_vars().
+    if memory_path is not None:
+        # CLI option takes precedence and needs manual expansion if not done by Typer.
+        # However, Typer's Path type usually handles this. For string option, manual is needed.
+        # Assuming memory_path is string from Typer Option.
+        resolved_memory_path = str(Path(memory_path).expanduser().resolve())
+    else:
+        # Config.get() should provide an already expanded and resolved path if it came from env/files/default.
+        resolved_memory_path = config.get("compact_memory_path")
+
     resolved_model_id = (
         model_id if model_id is not None else config.get("default_model_id")
     )
@@ -162,8 +182,9 @@ def main(
         engine_id if engine_id is not None else config.get("default_engine_id")
     )
 
-    if resolved_memory_path:
-        resolved_memory_path = str(Path(resolved_memory_path).expanduser())
+    # No longer needed here if Config.get already returns expanded/resolved path for compact_memory_path.
+    # if resolved_memory_path and isinstance(resolved_memory_path, str): # Check if it's a string before Path ops
+    #     resolved_memory_path = str(Path(resolved_memory_path).expanduser().resolve())
 
     # Determine if the command is one that requires memory_path to be set
     command_requires_memory_path = True  # Assume true by default
@@ -546,8 +567,13 @@ def query(
 
     if final_model_id is None:
         typer.secho(
-            "Error: Default Model ID not specified. Use --model-id option or set in config.",
+            "Error: Default Model ID not specified. Use the global --model-id option or set it in the configuration.",
             fg=typer.colors.RED,
+            err=True,
+        )
+        typer.secho(
+            "Example: `compact-memory config set default_model_id <your_model_id>` or `compact-memory --model-id <your_model_id> query ...`",
+            fg=typer.colors.CYAN,
             err=True,
         )
         raise typer.Exit(code=1)
@@ -588,6 +614,11 @@ def query(
                 f"Error: Unknown history compression engine '{final_history_compression_engine_id}' (from global config/option). Available: {', '.join(available_engines())}",
                 err=True,
                 fg=typer.colors.RED,
+            )
+            typer.secho(
+                f"Example: `compact-memory config set default_engine_id <valid_engine_id>` or `compact-memory --engine <valid_engine_id> query ...`",
+                fg=typer.colors.CYAN,
+                err=True,
             )
             raise typer.Exit(code=1)
 
@@ -794,6 +825,10 @@ def compress(
                 verbose_stats,
                 tokenizer,
             )
+        # After potentially modifying the engine by adding memory (e.g. via add_memory),
+        # the engine's state must be persisted back to disk.
+        if main_engine_instance: # Ensure it was loaded before trying to save
+            main_engine_instance.save(Path(final_memory_path_str))
     else:
         if text is not None:
             if text == "-":

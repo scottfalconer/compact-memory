@@ -51,22 +51,16 @@ def test_query_returns_reply(tmp_path: Path, patch_embedding_model): # Added pat
     assert ingest_result.exit_code == 0, f"Compress to memory (ingest) failed: {ingest_result.stderr}"
 
     # 3. Run the query using the CLI, targeting the initialized and populated store
+    # Pass --memory-path as a global option to the app, before the 'query' subcommand,
+    # as this is more reliable in testing than COMPACT_MEMORY_PATH env var for complex CLI apps.
     query_cmd_params = [
+        "--memory-path", str(store_path),
         "query",
-        # "--memory-path", str(store_path), # Query command uses global --memory-path or env var
         "sky?",
     ]
-    # Ensure COMPACT_MEMORY_PATH is not doubly specified if already in _env,
-    # or ensure --memory-path overrides it as expected by Typer/CLI logic.
-    # _env already sets COMPACT_MEMORY_COMPACT_MEMORY_PATH, which might be an issue
-    # if Typer prioritizes CLI args. Let's assume --memory-path in query command
-    # correctly targets the store.
-
-    # Set COMPACT_MEMORY_PATH specifically for this query invocation
-    query_env_vars = env_vars.copy()
-    query_env_vars["COMPACT_MEMORY_PATH"] = str(store_path)
-
-    query_result = runner.invoke(app, query_cmd_params, env=query_env_vars)
+    # env_vars from _env(tmp_path) might set COMPACT_MEMORY_PATH to tmp_path,
+    # but the global --memory-path CLI option should take precedence.
+    query_result = runner.invoke(app, query_cmd_params, env=env_vars)
     assert query_result.exit_code == 0, f"Query command failed: {query_result.stderr}"
 
     # Assert that the reply contains relevant information.
@@ -82,5 +76,5 @@ def test_query_returns_reply(tmp_path: Path, patch_embedding_model): # Added pat
     # For "tiny-gpt2", responses can be very basic.
     # If the LLM is not actually running or failing silently, stdout might contain other messages.
     # The key is that `receive_channel_message` (which query calls) should produce a reply.
-    # Let's check for some part of the input, as simple LLMs might just echo or use parts of it.
-    assert "sky" in query_result.stdout.lower() or "blue" in query_result.stdout.lower() or "vast" in query_result.stdout.lower()
+    # With patch_hf_auto, the DummyModel's generate returns [[0]], and DummyTokenizer.decode turns this into "t0".
+    assert "t0" in query_result.stdout.lower()
