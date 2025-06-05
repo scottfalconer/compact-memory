@@ -10,7 +10,7 @@ from CompressionStrategy.core.strategies_abc import (
 from CompressionStrategy.core.trace import CompressionTrace
 from .active_memory_manager import ActiveMemoryManager, ConversationTurn
 from compact_memory.prompt_budget import PromptBudget
-from compact_memory import agent as _agent_utils  # For embed_text
+from compact_memory.embedding_pipeline import embed_text
 from CompressionStrategy.core import (
     register_compression_strategy,
 )  # Added for registration
@@ -75,7 +75,7 @@ class ActiveMemoryStrategy(CompressionStrategy):
         """
         # If an embedding is not provided for the turn text, it could be generated here:
         # if turn_embedding is None and text:
-        #     turn_embedding_list = _agent_utils.embed_text([text])
+        #     turn_embedding_list = embed_text([text])
         #     if turn_embedding_list:
         #         turn_embedding = turn_embedding_list[0]
 
@@ -115,15 +115,17 @@ class ActiveMemoryStrategy(CompressionStrategy):
         )
 
         # 1. Embed the current query for relevance boosting
-        # Assuming _agent_utils.embed_text returns a list of embeddings
+        # Assuming embed_text returns a list of embeddings
         query_embedding_list = (
-            _agent_utils.embed_text([current_query_text])
-            if current_query_text
-            else None
+            embed_text([current_query_text]) if current_query_text else None
         )
 
         current_query_embedding: Optional[np.ndarray] = None
-        if query_embedding_list and query_embedding_list[0] is not None:
+        if (
+            query_embedding_list is not None
+            and len(query_embedding_list) > 0
+            and query_embedding_list[0] is not None
+        ):
             current_query_embedding = np.array(
                 query_embedding_list[0], dtype=np.float32
             )

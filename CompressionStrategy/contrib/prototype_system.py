@@ -112,9 +112,9 @@ class PrototypeSystemStrategy(CompressionStrategy):
             )
             for c in chunks
         ]
-        from compact_memory import agent as _agent
+        from compact_memory.embedding_pipeline import embed_text
 
-        vecs = _agent.embed_text(canonical)
+        vecs = embed_text(canonical)
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
 
@@ -191,9 +191,9 @@ class PrototypeSystemStrategy(CompressionStrategy):
     ) -> Dict[str, object]:
         """Return nearest prototypes and memories for ``text``."""
 
-        from compact_memory import agent as _agent
+        from compact_memory.embedding_pipeline import embed_text
 
-        vec = _agent.embed_text(text)
+        vec = embed_text(text)
         if vec.ndim != 1:
             vec = vec.reshape(-1)
         nearest = self.store.find_nearest(vec, k=top_k_prototypes)

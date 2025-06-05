@@ -2,6 +2,9 @@
 
 These instructions guide Codex when modifying this repository.
 
+This project is currently pre-release. Backward compatibility is not
+a concern and APIs may change freely.
+
 ## Scope
 All directories in this repository follow these rules.
 

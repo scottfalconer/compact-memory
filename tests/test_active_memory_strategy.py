@@ -79,7 +79,7 @@ def test_add_single_turn() -> None:
 
 def test_compress_empty_history(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "CompressionStrategy.contrib.active_memory_strategy._agent_utils.embed_text",
+        "CompressionStrategy.contrib.active_memory_strategy.embed_text",
         mock_embed_texts_func,
     )
     strategy = ActiveMemoryStrategy()
@@ -95,7 +95,7 @@ def test_compress_empty_history(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_compress_simple_history_fits_budget(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "CompressionStrategy.contrib.active_memory_strategy._agent_utils.embed_text",
+        "CompressionStrategy.contrib.active_memory_strategy.embed_text",
         mock_embed_texts_func,
     )
     strategy = ActiveMemoryStrategy(config_prompt_num_forced_recent_turns=2)
@@ -111,7 +111,7 @@ def test_compress_simple_history_fits_budget(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_compress_respects_token_budget(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "CompressionStrategy.contrib.active_memory_strategy._agent_utils.embed_text",
+        "CompressionStrategy.contrib.active_memory_strategy.embed_text",
         mock_embed_texts_func,
     )
     strategy = ActiveMemoryStrategy(config_prompt_num_forced_recent_turns=0)
@@ -132,7 +132,7 @@ def test_compress_respects_token_budget(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_compress_pruning_max_history(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "CompressionStrategy.contrib.active_memory_strategy._agent_utils.embed_text",
+        "CompressionStrategy.contrib.active_memory_strategy.embed_text",
         mock_embed_texts_func,
     )
     strategy = ActiveMemoryStrategy(
@@ -164,7 +164,7 @@ def test_compress_relevance_boosting_surfaces_older_turn(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "CompressionStrategy.contrib.active_memory_strategy._agent_utils.embed_text",
+        "CompressionStrategy.contrib.active_memory_strategy.embed_text",
         mock_embed_texts_func,
     )
     strategy = ActiveMemoryStrategy(
