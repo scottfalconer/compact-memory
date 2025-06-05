@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Prototype-based long-term memory as a CompressionStrategy."""
+"""Prototype-based long-term memory engine."""
 
 import hashlib
 import uuid
@@ -13,14 +13,13 @@ from compact_memory.chunker import Chunker, SentenceWindowChunker
 from compact_memory.vector_store import VectorStore
 from compact_memory.models import BeliefPrototype, RawMemory
 from compact_memory.memory_creation import ExtractiveSummaryCreator, MemoryCreator
-from CompressionStrategy.contrib.prototype_system_utils import (
-    render_five_w_template,
-)
-from CompressionStrategy.core import register_compression_strategy
-from CompressionStrategy.core.strategies_abc import (
+from .prototype_system_utils import render_five_w_template
+from compact_memory.engines import (
+    BaseCompressionEngine,
     CompressedMemory,
-    CompressionStrategy,
+    CompressionTrace,
 )
+from compact_memory.engines.registry import register_compression_engine
 from compact_memory.token_utils import truncate_text
 
 
@@ -44,7 +43,7 @@ class _LRUSet:
         return item in self._cache
 
 
-class PrototypeSystemStrategy(CompressionStrategy):
+class PrototypeSystemEngine(BaseCompressionEngine):
     """Prototype-based long-term memory management. Prototypes are updated over time using an EMA so their representations evolve with new evidence."""
 
     id = "prototype"
@@ -254,8 +253,8 @@ class PrototypeSystemStrategy(CompressionStrategy):
         return CompressedMemory(text=compressed, metadata={"status": result["status"]})
 
 
-register_compression_strategy(
-    PrototypeSystemStrategy.id, PrototypeSystemStrategy, source="contrib"
+register_compression_engine(
+    PrototypeSystemEngine.id, PrototypeSystemEngine, source="contrib"
 )
 
-__all__ = ["PrototypeSystemStrategy"]
+__all__ = ["PrototypeSystemEngine"]

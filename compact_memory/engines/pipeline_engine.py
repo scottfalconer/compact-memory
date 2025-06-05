@@ -5,13 +5,20 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Union, Any
 
-from . import (
-    BaseCompressionEngine,
-    CompressedMemory,
-    CompressionTrace,
-    get_compression_engine,
-)
-from CompressionStrategy.core.config import StrategyConfig
+from . import BaseCompressionEngine, CompressedMemory, CompressionTrace
+from .registry import get_compression_engine
+
+
+@dataclass
+class StrategyConfig:
+    """Configuration for creating a :class:`BaseCompressionEngine`."""
+
+    strategy_name: str
+    strategy_params: dict[str, Any] = field(default_factory=dict)
+
+    def create(self) -> BaseCompressionEngine:
+        cls = get_compression_engine(self.strategy_name)
+        return cls(**self.strategy_params)
 
 
 @dataclass
@@ -68,4 +75,4 @@ class PipelineEngine(BaseCompressionEngine):
         return final, pipeline_trace
 
 
-__all__ = ["PipelineEngineConfig", "PipelineEngine"]
+__all__ = ["StrategyConfig", "PipelineEngineConfig", "PipelineEngine"]

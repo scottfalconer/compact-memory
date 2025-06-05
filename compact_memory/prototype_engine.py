@@ -15,13 +15,15 @@ from .memory_creation import (
 )
 from .prompt_budget import PromptBudget
 from .token_utils import truncate_text, token_count
-from CompressionStrategy.contrib import (
-    ActiveMemoryManager,
-    ConversationTurn,
-    PrototypeSystemStrategy,
+from compact_memory.contrib import ActiveMemoryManager
+from compact_memory.contrib import ConversationTurn
+from compact_memory.prototype_system import PrototypeSystemEngine
+from compact_memory.engines import (
+    BaseCompressionEngine,
+    CompressedMemory,
+    CompressionTrace,
 )
-from CompressionStrategy.core.strategies_abc import CompressedMemory, CompressionTrace
-from CompressionStrategy.core import CompressionStrategy, NoCompression
+from compact_memory.engines.no_compression_engine import NoCompressionEngine
 
 
 class VectorIndexCorrupt(RuntimeError):
@@ -83,7 +85,7 @@ class PrototypeEngine:
     `VectorStore`, managing memory prototypes, querying the memory,
     and processing conversational turns with optional compression.
 
-    It utilizes a `PrototypeSystemStrategy` internally to handle the
+    It utilizes a `PrototypeSystemEngine` internally to handle the
     mechanics of memory consolidation and retrieval. Developers typically
     interact with the PrototypeEngine by providing it with a pre-configured store
     and then using its methods like `add_memory`, `query`, and
@@ -91,9 +93,9 @@ class PrototypeEngine:
 
     Attributes:
         store (VectorStore): The underlying vector store for memories and prototypes.
-        prototype_system (PrototypeSystemStrategy): Handles memory consolidation and querying logic.
+        prototype_system (PrototypeSystemEngine): Handles memory consolidation and querying logic.
         metrics (Dict[str, Any]): A dictionary of metrics collected during operations
-                                  (primarily from `PrototypeSystemStrategy`).
+                                  (primarily from `PrototypeSystemEngine`).
         prompt_budget (Optional[PromptBudget]): Configuration for managing prompt sizes
                                              when interacting with LLMs.
     """
@@ -132,7 +134,7 @@ class PrototypeEngine:
                                for different parts of an LLM prompt (e.g., query, history, LTM).
         """
         self.store = store
-        self.prototype_system = PrototypeSystemStrategy(
+        self.prototype_system = PrototypeSystemEngine(
             store,
             chunker=chunker,
             similarity_threshold=similarity_threshold,
@@ -306,7 +308,7 @@ class PrototypeEngine:
                             (associated with the top prototypes) to return.
             include_hypotheses: If True, may include hypothetical or inferred data
                                 as part of the query process (specific behavior depends
-                                on the underlying `PrototypeSystemStrategy`).
+                                on the underlying `PrototypeSystemEngine`).
 
         Returns:
             A `QueryResult` object (which is a dict subclass) containing:
@@ -328,7 +330,7 @@ class PrototypeEngine:
         input_message: str,
         manager: ActiveMemoryManager,
         *,
-        compression: CompressionStrategy | None = None,
+        compression: BaseCompressionEngine | None = None,
     ) -> tuple[str, dict]:
         """Generate a reply using ``manager`` and optional ``compression``.
 
@@ -344,7 +346,7 @@ class PrototypeEngine:
             self._chat_model = llm
 
         if compression is None:
-            compression = NoCompression()
+            compression = NoCompressionEngine()
 
         if getattr(llm, "tokenizer", None) is None:
             try:
@@ -510,7 +512,7 @@ class PrototypeEngine:
         message_text: str,
         manager: Optional[ActiveMemoryManager] = None,
         *,
-        compression: CompressionStrategy | None = None,
+        compression: BaseCompressionEngine | None = None,
     ) -> dict[str, object]:
         """
         Processes a message received from a channel or user.
@@ -530,9 +532,10 @@ class PrototypeEngine:
             manager: An `ActiveMemoryManager` instance to control which conversation
                      history is used when generating a response to a query. If None,
                      a simpler query without conversational history management is performed.
-            compression: An optional `CompressionStrategy` instance to compress
-                         the conversational history or context before sending it to an LLM.
-                         If None, no compression is applied (or `NoCompression` strategy is used).
+            compression: An optional :class:`BaseCompressionEngine` instance to
+                compress the conversational history or context before sending it
+                to an LLM. If ``None``, no compression is applied (or
+                :class:`NoCompressionEngine` is used).
 
         Returns:
             A dictionary summarizing the action taken by the container and any results.

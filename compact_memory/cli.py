@@ -22,9 +22,9 @@ from .logging_utils import configure_logging
 from .prototype_engine import PrototypeEngine
 from .vector_store import InMemoryVectorStore
 from . import local_llm
-from CompressionStrategy.contrib import (
+from compact_memory.contrib import (
     ActiveMemoryManager,
-    enable_all_experimental_strategies,
+    enable_all_experimental_engines,
 )
 from .engine_registry import (
     register_compression_engine,
@@ -49,12 +49,6 @@ from .embedding_pipeline import (
 )
 from compact_memory.config import Config, DEFAULT_CONFIG, USER_CONFIG_PATH
 
-from CompressionStrategy.core import (
-    available_strategies,
-    get_compression_strategy,
-    all_strategy_metadata,
-    get_strategy_metadata,
-)
 from .plugin_loader import load_plugins
 from .cli_plugins import load_cli_plugins
 from .package_utils import (
@@ -222,7 +216,7 @@ def main(
             raise typer.Exit(code=1)
 
     load_plugins()
-    enable_all_experimental_strategies()
+    enable_all_experimental_engines()
 
     # ctx.obj['config'] is already set above
     ctx.obj.update(
@@ -1030,18 +1024,18 @@ def list_strategies(
 ) -> None:
     """Displays a table of registered compression strategies."""
     load_plugins()  # Ensure plugins are loaded
-    enable_all_experimental_strategies()
+    enable_all_experimental_engines()
     # Experimental strategies register themselves; no legacy contrib layer
     table = Table(
-        "Strategy ID",
+        "Engine ID",
         "Display Name",
         "Version",
         "Source",
         "Status",
-        title="Available CompressionStrategies",
+        title="Available CompressionEngines",
     )
-    meta = all_strategy_metadata()
-    ids = available_strategies()
+    meta = all_engine_metadata()
+    ids = available_engines()
     if not ids:
         typer.echo("No compression strategies found.")
         return
@@ -1528,11 +1522,12 @@ def create_strategy_package(
     target_dir.mkdir(parents=True, exist_ok=True)
     (target_dir / "experiments").mkdir(exist_ok=True)
 
-    strategy_py_content = f"""from CompressionStrategy.core.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace
+    # Template for creating a new engine package
+    strategy_py_content = f"""from compact_memory.engines import BaseCompressionEngine, CompressedMemory, CompressionTrace
 # Add any other necessary imports here
 
-class MyStrategy(CompressionStrategy):
-    # Unique identifier for your strategy
+class MyEngine(BaseCompressionEngine):
+    # Unique identifier for your engine
     id = "{name}"
 
     # Optional: Define parameters your strategy accepts with default values
@@ -1572,9 +1567,9 @@ class MyStrategy(CompressionStrategy):
 
     manifest = {
         "package_format_version": "1.0",
-        "strategy_id": name,
-        "strategy_class_name": "MyStrategy",
-        "strategy_module": "strategy",
+        "engine_id": name,
+        "engine_class_name": "MyEngine",
+        "engine_module": "strategy",
         "display_name": name,
         "version": "0.1.0",
         "authors": [],

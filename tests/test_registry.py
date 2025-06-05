@@ -1,19 +1,18 @@
-from CompressionStrategy.core.registry import (
-    register_compression_strategy,
-    _COMPRESSION_REGISTRY,
+from compact_memory.engines.registry import (
+    register_compression_engine,
+    _ENGINE_REGISTRY,
 )
-from CompressionStrategy.core.strategies_abc import CompressionStrategy
+from compact_memory.engines import (
+    BaseCompressionEngine as CompressionStrategy,
+    CompressedMemory,
+    CompressionTrace,
+)
 from compact_memory.validation.registry import (
     register_validation_metric,
     get_validation_metric_class,
     _VALIDATION_METRIC_REGISTRY,
 )
 from compact_memory.validation.metrics_abc import ValidationMetric
-
-from CompressionStrategy.core.strategies_abc import (
-    CompressedMemory,
-    CompressionTrace,
-)
 
 
 def test_register_compression_strategy():
@@ -40,8 +39,8 @@ def test_register_compression_strategy():
             )
             return compressed, trace
 
-    register_compression_strategy(DummyStrategy.id, DummyStrategy)
-    assert _COMPRESSION_REGISTRY["dummy"] is DummyStrategy
+    register_compression_engine(DummyStrategy.id, DummyStrategy)
+    assert _ENGINE_REGISTRY["dummy"] is DummyStrategy
     compressed, trace = DummyStrategy().compress("alpha bravo", llm_token_budget=5)
     assert isinstance(compressed, CompressedMemory)
     assert isinstance(trace, CompressionTrace)
