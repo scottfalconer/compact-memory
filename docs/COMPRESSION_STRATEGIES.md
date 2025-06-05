@@ -1,7 +1,7 @@
-# Designing Compression Strategies
+# Designing Compression Engines
 
-This guide collects techniques for slicing documents into belief-sized ideas and updating prototypes. A compression strategy can mix and match these steps depending on the data source.
-While LLMs with large context windows and RAG are powerful, Compact Memory explores strategies for more deeply processed, long-term, and adaptive memory. The techniques described here aim to create dynamic memory structures that evolve with new information, offering capabilities beyond simple retrieval of verbatim text chunks.
+This guide collects techniques for slicing documents into belief-sized ideas and updating prototypes. A compression engine can mix and match these steps depending on the data source.
+While LLMs with large context windows and RAG are powerful, Compact Memory explores engines for more deeply processed, long-term, and adaptive memory. The techniques described here aim to create dynamic memory structures that evolve with new information, offering capabilities beyond simple retrieval of verbatim text chunks.
 
 ## Segmenting source documents
 
@@ -20,7 +20,7 @@ Boundaries fall on real topic shifts, so retrieval returns fewer irrelevant neig
 ### 3. LLM assisted proposition extraction
 - Prompt the model to list distinct factual statements or extract subject/predicate/object triples.
 - Summaries with bullets retain a human-readable gist.
-This step can itself be powered by a smaller fine-tuned model, illustrating how learned components plug into a `CompressionStrategy`.
+This step can itself be powered by a smaller fine-tuned model, illustrating how learned components plug into a `BaseCompressionEngine`.
 
 Batching through a local model keeps the cost manageable and only long segments need a full LLM pass.
 
@@ -53,28 +53,28 @@ Latency benchmarks on a single CPU (10k ideas/min) come from using MiniLM embedd
 - Evaluate retrieval F1 versus chunk granularity; too coarse usually hurts long‑tail recall, too fine inflates the index.
 - Monitor centroid drift and auto-split if intra-distance exceeds δ.
 
-## Pipeline strategies
+## Pipeline engines
 
-For more complex workflows a `PipelineCompressionStrategy` can chain multiple
-strategies. The output of one step feeds into the next, enabling filters and
+For more complex workflows a `PipelineBaseCompressionEngine` can chain multiple
+engines. The output of one step feeds into the next, enabling filters and
 summarizers to be composed.
 
 Example configuration:
 
 ```yaml
-strategy_name: pipeline
-strategies:
-  - strategy_name: learned_summarizer
+engine_name: pipeline
+engines:
+  - engine_name: learned_summarizer
 ```
 
-## Optional strategy plugins
+## Optional engine plugins
 
-Some strategies are distributed separately as installable packages. For example,
-the `rationale_episode` strategy provides rationale-enhanced episodic memory and
+Some engines are distributed separately as installable packages. For example,
+the `rationale_episode` engine provides rationale-enhanced episodic memory and
 related CLI tools. Install it via:
 
 ```bash
-pip install compact_memory_rationale_episode_strategy
+pip install compact_memory_rationale_episode_engine
 ```
 
 Once installed, its commands are available through the main `compact-memory` CLI.

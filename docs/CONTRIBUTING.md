@@ -11,7 +11,7 @@ There are many ways you can contribute to the project:
 *   **Code Contributions:**
     *   **Bug Fixes:** Implementing fixes for reported bugs.
     *   **Core Framework Improvements:** Enhancements to the core functionalities of Compact Memory.
-    *   **New Compression Strategies:** Developing new strategies and packaging them as shareable plugins (see "Developing Compression Strategies" and "Sharing Strategies" in the documentation). We are particularly interested in innovative and effective strategies.
+    *   **New Compression Engines:** Developing new engines and packaging them as shareable plugins (see "Developing Compression Engines" and "Sharing Engines" in the documentation). We are particularly interested in innovative and effective engines.
     *   **New Validation Metrics:** Adding new metrics for evaluating compression or LLM responses.
 *   **Documentation Enhancements:** Improving existing documentation, writing new tutorials, or clarifying API references. Good documentation is crucial for a project's success.
 *   **New Examples or Tutorials:** Creating new example scripts or Jupyter notebooks that showcase how to use Compact Memory in different scenarios or integrate it with other tools.
@@ -37,7 +37,7 @@ There are many ways you can contribute to the project:
     ```bash
     git checkout -b my-feature-branch
     ```
-    Choose a descriptive branch name (e.g., `fix-cli-bug`, `add-new-strategy-template`).
+    Choose a descriptive branch name (e.g., `fix-cli-bug`, `add-new-engine-template`).
 
 ## Coding Standards
 

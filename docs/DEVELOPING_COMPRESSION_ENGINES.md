@@ -1,22 +1,22 @@
-# Developing Compression Strategies
+# Developing Compression Engines
 
-This guide provides a comprehensive walkthrough for researchers and developers looking to create new `CompressionStrategy` implementations within the Compact Memory framework. It covers the core concepts, practical steps, and best practices for building, testing, and integrating your custom strategies.
+This guide provides a comprehensive walkthrough for researchers and developers looking to create new `BaseCompressionEngine` implementations within the Compact Memory framework. It covers the core concepts, practical steps, and best practices for building, testing, and integrating your custom engines.
 
-## Core Concept: The `CompressionStrategy`
+## Core Concept: The `BaseCompressionEngine`
 
-At the heart of Compact Memory's extensibility is the `CompressionStrategy` abstract base class. Any new strategy you develop must inherit from this class and implement its required methods.
+At the heart of Compact Memory's extensibility is the `BaseCompressionEngine` abstract base class. Any new engine you develop must inherit from this class and implement its required methods.
 
-### Abstract Base Class: `CompressionStrategy.core.strategies_abc.CompressionStrategy`
+### Abstract Base Class: `BaseCompressionEngine.core.engines_abc.BaseCompressionEngine`
 
 ```python
 from abc import ABC, abstractmethod
 from typing import Union, List, Tuple, Any, Optional, Dict
 
-from CompressionStrategy.core.trace import CompressionTrace
-from CompressionStrategy.core.strategies_abc import CompressedMemory
+from BaseCompressionEngine.core.trace import CompressionTrace
+from BaseCompressionEngine.core.engines_abc import CompressedMemory
 
-class CompressionStrategy(ABC):
-    # Unique identifier for your strategy. This is crucial for registration and selection.
+class BaseCompressionEngine(ABC):
+    # Unique identifier for your engine. This is crucial for registration and selection.
     id: str
 
     @abstractmethod
@@ -31,16 +31,16 @@ class CompressionStrategy(ABC):
 
         Args:
             text_or_chunks: Either a single string of text or a list of pre-chunked strings.
-                            Your strategy needs to handle both cases or define its expected input.
+                            Your engine needs to handle both cases or define its expected input.
             llm_token_budget: The target maximum number of tokens (or a proxy like characters,
-                            depending on your strategy's design) that the compressed output
+                            depending on your engine's design) that the compressed output
                             should ideally have.
             **kwargs: A dictionary for additional keyword arguments. This commonly includes:
                 - `tokenizer`: An optional tokenizer function (e.g., from `tiktoken` or
                   `transformers`) that can be used for accurate token counting or
-                  token-aware processing. Strategies should be robust to its absence.
+                  token-aware processing. Engines should be robust to its absence.
                 - `source_document_id` (Optional): An identifier for the source document, useful for context.
-                - Other strategy-specific parameters passed during strategy instantiation or invocation.
+                - Other engine-specific parameters passed during engine instantiation or invocation.
 
         Returns:
             A tuple containing:
@@ -51,7 +51,7 @@ class CompressionStrategy(ABC):
         """
         pass
 
-    # Optional methods for strategies with learnable components
+    # Optional methods for engines with learnable components
     def save_learnable_components(self, path: str) -> None:
         """Persist any trainable state to `path`."""
         # pragma: no cover - optional
@@ -68,12 +68,12 @@ class CompressionStrategy(ABC):
 Your primary task is to implement the `compress` method. Here's what to consider:
 
 1.  **Input (`text_or_chunks`):**
-    *   Decide if your strategy works best with a single block of text or pre-chunked text.
+    *   Decide if your engine works best with a single block of text or pre-chunked text.
     *   If you expect chunks, you might need to join them or process them individually.
-    *   If you receive a single string, you might need to implement chunking logic within your strategy or use a provided chunker.
+    *   If you receive a single string, you might need to implement chunking logic within your engine or use a provided chunker.
 
 2.  **Token Budget (`llm_token_budget`):**
-    *   This is a crucial constraint. Your strategy must try to produce output that, when tokenized, is close to this budget.
+    *   This is a crucial constraint. Your engine must try to produce output that, when tokenized, is close to this budget.
     *   If a `tokenizer` is provided in `**kwargs`, use it for accurate counting.
     *   If no `tokenizer` is available, you might fall back to character counts or word counts as a proxy, but document this limitation.
     *   Consider edge cases: What if the budget is too small for any meaningful output?
@@ -87,20 +87,20 @@ Your primary task is to implement the `compress` method. Here's what to consider
 
 5.  **Tracing (`CompressionTrace`):**
     *   This is essential for transparency and debugging. Record key decisions and transformations.
-    *   Instantiate `CompressionTrace` with `strategy_name=self.id`, `strategy_params` (any parameters your strategy was initialized with or received), `input_summary` (e.g., original length/tokens), and `output_summary` (e.g., final length/tokens).
+    *   Instantiate `CompressionTrace` with `engine_name=self.id`, `engine_params` (any parameters your engine was initialized with or received), `input_summary` (e.g., original length/tokens), and `output_summary` (e.g., final length/tokens).
     *   Append dictionaries to `trace.steps` for each significant operation (e.g., `{"type": "chunking", "num_chunks": 5}` or `{"type": "summarization_model_call", "model_name": "t5-small"}`).
     *   Populate `trace.processing_ms` with the time taken.
     *   A `final_compressed_object_preview` is also useful.
     *   Refer to `docs/EXPLAINABLE_COMPRESSION.md` for standard vocabulary for trace step types.
 
-### Example: A Simple Truncation Strategy
+### Example: A Simple Truncation Engine
 
 ```python
-from CompressionStrategy.core.strategies_abc import CompressionStrategy, CompressedMemory
-from CompressionStrategy.core.trace import CompressionTrace
+from BaseCompressionEngine.core.engines_abc import BaseCompressionEngine, CompressedMemory
+from BaseCompressionEngine.core.trace import CompressionTrace
 from compact_memory.token_utils import get_tokenizer, token_count
 
-class SimpleTruncateStrategy(CompressionStrategy):
+class SimpleTruncateEngine(BaseCompressionEngine):
     id = "simple_truncate"
 
     def compress(self, text_or_chunks, llm_token_budget, **kwargs):
@@ -120,7 +120,7 @@ class SimpleTruncateStrategy(CompressionStrategy):
         original_tokens = token_count(actual_tokenizer_for_count, input_text)
 
         # Simple truncation logic (very naive)
-        # A real strategy would be more sophisticated, using the tokenizer
+        # A real engine would be more sophisticated, using the tokenizer
         # to truncate based on actual tokens.
         limit = llm_token_budget
         if tokenizer is str.split or actual_tokenizer_for_count == list(input_text): # if using fallback tokenizer
@@ -146,8 +146,8 @@ class SimpleTruncateStrategy(CompressionStrategy):
         final_compressed_tokens = token_count(actual_tokenizer_for_count, compressed_text)
 
         trace = CompressionTrace(
-            strategy_name=self.id,
-            strategy_params={"llm_token_budget": llm_token_budget},
+            engine_name=self.id,
+            engine_params={"llm_token_budget": llm_token_budget},
             input_summary={"original_text_length": len(input_text), "original_tokens": original_tokens},
             steps=[
                 {"type": "input_processing", "input_type": type(text_or_chunks).__name__},
@@ -165,11 +165,11 @@ class SimpleTruncateStrategy(CompressionStrategy):
 Effective budget management is key.
 
 *   **Prioritize `tokenizer`:** If `kwargs['tokenizer']` is available, use it. This allows for precise token counting and manipulation. Compact Memory often uses `tiktoken` (e.g., `get_tokenizer("gpt2")`) or tokenizers from the `transformers` library.
-*   **Fallback Mechanisms:** If no tokenizer is provided, your strategy must have a fallback. This could be:
+*   **Fallback Mechanisms:** If no tokenizer is provided, your engine must have a fallback. This could be:
     *   Character counts (e.g., assuming an average of 3-4 characters per token).
     *   Word counts.
     *   Clearly document this assumption and its potential inaccuracies.
-*   **Iterative Refinement:** Some strategies might need to iteratively refine the output to meet the budget, especially after summarization or transformation steps that can change token counts unpredictably.
+*   **Iterative Refinement:** Some engines might need to iteratively refine the output to meet the budget, especially after summarization or transformation steps that can change token counts unpredictably.
 *   **Over-budget Handling:** Decide how to handle cases where even minimal content exceeds the budget. Return an empty string? A specific warning in the trace?
 
 ## Accessing Shared Utilities
@@ -180,33 +180,33 @@ Compact Memory provides utilities that can be helpful:
     *   `compact_memory.token_utils.get_tokenizer(tokenizer_name_or_path)`: Helper to load `tiktoken` or `transformers` tokenizers.
     *   `compact_memory.token_utils.token_count(tokenizer, text)`: Counts tokens in a text using the provided tokenizer.
 *   **Chunking:**
-    *   While strategies can implement their own chunking, Compact Memory also has chunking utilities (e.g., `SentenceWindowChunker`) that can be used externally to prepare input for your strategy or internally if your strategy requires chunk-based processing. See `compact_memory.chunker`.
+    *   While engines can implement their own chunking, Compact Memory also has chunking utilities (e.g., `SentenceWindowChunker`) that can be used externally to prepare input for your engine or internally if your engine requires chunk-based processing. See `compact_memory.chunker`.
 *   **LLM Helpers (Optional):**
-    *   If your strategy needs to call an LLM, Compact Memory keeps this outside the core package. Check `examples/llm_helpers.py` for lightweight `run_llm()` wrappers that work with small local models or OpenAI.
+    *   If your engine needs to call an LLM, Compact Memory keeps this outside the core package. Check `examples/llm_helpers.py` for lightweight `run_llm()` wrappers that work with small local models or OpenAI.
     *   You can use these helpers directly or swap in your preferred framework (LangChain, AutoGen, etc.). The helpers simply take a prompt and return the generated text.
     *   Remember to manage API keys and errors in your own code when using external providers.
 
-## Structuring Strategy Logic
+## Structuring Engine Logic
 
 *   **Modularity:** Keep your compression logic well-organized. Helper methods for distinct steps (e.g., preprocessing, core compression, postprocessing) can improve readability.
-*   **Configuration:** If your strategy has tunable parameters (e.g., summarization model, number of sentences to keep), make them arguments to `__init__` with sensible defaults. These parameters should be recorded in the `CompressionTrace`.
+*   **Configuration:** If your engine has tunable parameters (e.g., summarization model, number of sentences to keep), make them arguments to `__init__` with sensible defaults. These parameters should be recorded in the `CompressionTrace`.
 *   **State:**
-    *   Most strategies should aim to be stateless within the `compress` call for a given input.
-    *   If your strategy has *learnable components* (e.g., a fine-tuned model), implement `save_learnable_components` and `load_learnable_components` to manage its state across sessions.
+    *   Most engines should aim to be stateless within the `compress` call for a given input.
+    *   If your engine has *learnable components* (e.g., a fine-tuned model), implement `save_learnable_components` and `load_learnable_components` to manage its state across sessions.
 
-## Testing Your Strategy
+## Testing Your Engine
 
 Rigorous testing is crucial. Compact Memory's experimentation framework helps with this.
 
 1.  **Unit Tests:**
-    *   Write standard Python unit tests for your strategy's core logic. Test edge cases, different input types, and budget handling.
+    *   Write standard Python unit tests for your engine's core logic. Test edge cases, different input types, and budget handling.
     *   Mock external dependencies like LLM calls if necessary.
 
 2.  **Experimentation Framework:**
-    *   Compact Memory provides tools to run experiments comparing strategies. This typically involves:
+    *   Compact Memory provides tools to run experiments comparing engines. This typically involves:
         *   A dataset (e.g., a collection of text files).
-        *   One or more compression strategies to test.
-        *   Configuration for each strategy (parameters, token budgets).
+        *   One or more compression engines to test.
+        *   Configuration for each engine (parameters, token budgets).
         *   Validation metrics to evaluate the output.
     *   **Key components:**
         *   `ExperimentConfig`, `ResponseExperimentConfig`, `HistoryExperimentConfig`: Dataclasses for defining experiment parameters.
@@ -214,39 +214,39 @@ Rigorous testing is crucial. Compact Memory's experimentation framework helps wi
         *   `ValidationMetric`: Base class for metrics that evaluate compression quality or task performance (e.g., ROUGE scores, LLM-based evaluation). See `docs/DEVELOPING_VALIDATION_METRICS.md`.
     *   **Workflow:**
         1.  Define an experiment configuration file (often YAML) or create config objects programmatically.
-        2.  Specify your strategy's ID and any parameters in the config.
+        2.  Specify your engine's ID and any parameters in the config.
         3.  Run the experiment using the CLI (`compact-memory experiment run ...`) or Python API.
-        4.  Analyze the output metrics to see how your strategy performs.
+        4.  Analyze the output metrics to see how your engine performs.
 
 3.  **`onboarding_demo.py`:**
-    *   The `examples/onboarding_demo.py` script shows a basic example of defining a strategy, registering it, and using it in an experiment. Use it as a reference.
+    *   The `examples/onboarding_demo.py` script shows a basic example of defining a engine, registering it, and using it in an experiment. Use it as a reference.
 
 4.  **Packaging for Experiments:**
-    *   If you package your strategy (see `docs/SHARING_STRATEGIES.md`), you can include example experiment configurations within your package. The CLI command `compact-memory dev run-package-experiment` can then execute these.
+    *   If you package your engine (see `docs/SHARING_STRATEGIES.md`), you can include example experiment configurations within your package. The CLI command `compact-memory dev run-package-experiment` can then execute these.
 
-## Registering Your Strategy
+## Registering Your Engine
 
-For Compact Memory to find and use your strategy, it needs to be registered.
+For Compact Memory to find and use your engine, it needs to be registered.
 
-*   **Plugin System:** The preferred way is through the plugin system. If your strategy is part of an installable Python package, you can register it via an entry point in your `pyproject.toml` or `setup.py`. See `docs/SHARING_STRATEGIES.md`.
+*   **Plugin System:** The preferred way is through the plugin system. If your engine is part of an installable Python package, you can register it via an entry point in your `pyproject.toml` or `setup.py`. See `docs/SHARING_STRATEGIES.md`.
 *   **Direct Registration (for local development/testing):**
     ```python
-    from compact_memory.registry import register_compression_strategy
-    from .my_strategy_module import MyCustomStrategy
+    from compact_memory.registry import register_compression_engine
+    from .my_engine_module import MyCustomEngine
 
-    register_compression_strategy(MyCustomStrategy.id, MyCustomStrategy)
+    register_compression_engine(MyCustomEngine.id, MyCustomEngine)
     ```
     This is useful in scripts or during development before packaging.
 
 ## Best Practices
 
 *   **Clarity and Simplicity:** Aim for understandable code.
-*   **Efficiency:** Be mindful of computational cost, especially if your strategy is complex or calls external services.
+*   **Efficiency:** Be mindful of computational cost, especially if your engine is complex or calls external services.
 *   **Robustness:** Handle potential errors gracefully (e.g., invalid inputs, API failures).
 *   **Comprehensive Tracing:** Good traces are invaluable for users and for your own debugging.
 *   **Documentation:**
-    *   Add detailed docstrings to your strategy class and methods.
-    *   If your strategy has unique dependencies or setup requirements, document them in a `README.md` if you package it.
-*   **Distribution:** When publishing on PyPI or GitHub, use the package naming pattern `compact_memory_<name>_strategy`.
+    *   Add detailed docstrings to your engine class and methods.
+    *   If your engine has unique dependencies or setup requirements, document them in a `README.md` if you package it.
+*   **Distribution:** When publishing on PyPI or GitHub, use the package naming pattern `compact_memory_<name>_engine`.
 
-By following this guide, you can effectively contribute new and innovative compression strategies to the Compact Memory ecosystem.
+By following this guide, you can effectively contribute new and innovative compression engines to the Compact Memory ecosystem.

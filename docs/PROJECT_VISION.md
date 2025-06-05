@@ -1,35 +1,35 @@
-This document serves as a conceptual guide to the Compact Memory platform. It covers the vision behind the project, illustrates key memory management strategies (such as the Prototype System and ActiveMemoryManager), discusses prompt assembly techniques, and highlights important areas for experimentation and learning within the Compact Memory framework. Its aim is to provide a foundational understanding of the principles and ideas driving the development of Compact Memory.
+This document serves as a conceptual guide to the Compact Memory platform. It covers the vision behind the project, illustrates key memory management engines (such as the Prototype System and ActiveMemoryManager), discusses prompt assembly techniques, and highlights important areas for experimentation and learning within the Compact Memory framework. Its aim is to provide a foundational understanding of the principles and ideas driving the development of Compact Memory.
 
 I. Vision: The Compact Memory Experimentation Platform
 
-Core Mission: To develop a platform for rapidly prototyping, testing, and validating diverse strategies for compressing textual information ("memory") to maximize its utility—including long-term coherence, evolving understanding, and efficient recall—within Large Language Model (LLM) token budgets. This is particularly crucial for applications where computational resources, API costs, or latency are significant concerns, and for enabling effective use of local/smaller LLMs with inherent token limitations.
-Guiding Philosophy: While we draw inspiration from human cognitive processes for potential compression strategies, the platform itself is designed to be agnostic, allowing for the implementation and comparison of a wide range of techniques, including those involving learned components or adaptive parameter tuning based on performance. Our aim is to foster innovation in memory management for LLMs.
-Development Tenet: Design for Experimentation and Pluggability: This is the cornerstone. The platform must feature a robust experimentation framework and clear interfaces for plugging in new compression algorithms (CompressionStrategy) and validation metrics (ValidationMetric).
+Core Mission: To develop a platform for rapidly prototyping, testing, and validating diverse engines for compressing textual information ("memory") to maximize its utility—including long-term coherence, evolving understanding, and efficient recall—within Large Language Model (LLM) token budgets. This is particularly crucial for applications where computational resources, API costs, or latency are significant concerns, and for enabling effective use of local/smaller LLMs with inherent token limitations.
+Guiding Philosophy: While we draw inspiration from human cognitive processes for potential compression engines, the platform itself is designed to be agnostic, allowing for the implementation and comparison of a wide range of techniques, including those involving learned components or adaptive parameter tuning based on performance. Our aim is to foster innovation in memory management for LLMs.
+Development Tenet: Design for Experimentation and Pluggability: This is the cornerstone. The platform must feature a robust experimentation framework and clear interfaces for plugging in new compression algorithms (BaseCompressionEngine) and validation metrics (ValidationMetric).
 
-II. Illustrative Memory Management Strategies & Platform Workflow
+II. Illustrative Memory Management Engines & Platform Workflow
 
-The platform supports a workflow where large texts are processed by a chosen `CompressionStrategy` before being passed to an LLM. To showcase the innovative potential of this approach, the following sections delve into core examples like the **Prototype System**, which focuses on evolving gist-based long-term memory, and the **ActiveMemoryManager**, designed for dynamic short-term conversational context. These strategies, inspired by cognitive processes, are implemented as pluggable components within the platform and highlight its capacity for sophisticated memory management.
+The platform supports a workflow where large texts are processed by a chosen `BaseCompressionEngine` before being passed to an LLM. To showcase the innovative potential of this approach, the following sections delve into core examples like the **Prototype System**, which focuses on evolving gist-based long-term memory, and the **ActiveMemoryManager**, designed for dynamic short-term conversational context. These engines, inspired by cognitive processes, are implemented as pluggable components within the platform and highlight its capacity for sophisticated memory management.
 
-A. CompressionStrategy Example: The Prototype System – Capturing the Gist
+A. BaseCompressionEngine Example: The Prototype System – Capturing the Gist
 
-Strategy Overview: Coarse Prototype Compression
-Gist-Based Processing: Inspired by Fuzzy-Trace Theory, this strategy prioritizes the extraction and storage of the essential meaning ("gist") over verbatim details.
+Engine Overview: Coarse Prototype Compression
+Gist-Based Processing: Inspired by Fuzzy-Trace Theory, this engine prioritizes the extraction and storage of the essential meaning ("gist") over verbatim details.
 Prototypes as Conceptual Centroids: Incoming information (memories) are snap-assigned to the nearest existing "prototype" (a vector representing a conceptual gist) or spawn new prototypes if sufficiently novel.
 Prototype Evolution: Prototypes are dynamic. Their vector representations and textual summaries evolve via an Exponential Moving Average (EMA) as new, related memories are assigned. Their strength increases with supporting evidence.
-This dynamic evolution distinguishes such strategies from typical RAG approaches, which often rely on static vector stores. Here, the memory *itself* learns and adapts.
+This dynamic evolution distinguishes such engines from typical RAG approaches, which often rely on static vector stores. Here, the memory *itself* learns and adapts.
 Schema-Driven Assimilation: New information is integrated by relating it to these existing conceptual structures.
-Example Tunable Parameters for this Strategy (via Experimentation Framework):
+Example Tunable Parameters for this Engine (via Experimentation Framework):
 - similarity_threshold (τ): For assigning memories to prototypes or spawning new ones.
 - ema_alpha (α): Learning rate for prototype vector/summary updates.
 - Prototype health metrics & thresholds.
-- Parameters for MemoryCreator sub-strategies (e.g., chunk size, summarization detail).
+- Parameters for MemoryCreator sub-engines (e.g., chunk size, summarization detail).
 
-B. CompressionStrategy Example: ActiveMemoryManager for Conversational Context
+B. BaseCompressionEngine Example: ActiveMemoryManager for Conversational Context
 
-Strategy Overview: ActiveMemoryManager for Dynamic Conversational Context Compression
-This strategy, embodied in the `ActiveMemoryManager`, is designed to dynamically manage and compress conversational history for an LLM. It operates like a sophisticated, limited-capacity working memory, intelligently selecting and retaining the most pertinent information from past interactions to inform the LLM's responses. It aims to maintain conversational coherence and relevance by ensuring that the LLM has access to crucial context, even from earlier parts of a long conversation, without exceeding token limits. This involves not just storing turns, but actively evaluating their importance and relevance as the dialogue unfolds.
+Engine Overview: ActiveMemoryManager for Dynamic Conversational Context Compression
+This engine, embodied in the `ActiveMemoryManager`, is designed to dynamically manage and compress conversational history for an LLM. It operates like a sophisticated, limited-capacity working memory, intelligently selecting and retaining the most pertinent information from past interactions to inform the LLM's responses. It aims to maintain conversational coherence and relevance by ensuring that the LLM has access to crucial context, even from earlier parts of a long conversation, without exceeding token limits. This involves not just storing turns, but actively evaluating their importance and relevance as the dialogue unfolds.
 
-Core Characteristics of this Strategy:
+Core Characteristics of this Engine:
 - Limited Capacity Adherence: The total information assembled for the LLM prompt strictly adheres to specified token limits.
 - Dynamic Content Selection: This is not merely about selecting the most recent items. Instead, `ActiveMemoryManager` employs a sophisticated, weighted system that considers the intrinsic importance of each conversational turn, its recency, and its relevance to the current query or topic. This allows for a nuanced selection of content that balances immediate context with significant past information.
 - Recency (Activation Decay): While recent conversational turns are naturally given importance, their salience (or "activation") gradually fades over time. This decay ensures that the memory buffer prioritizes current context. However, a turn's activation can be reinforced and its decay counteracted if it proves relevant to the ongoing discussion or has high intrinsic importance.
@@ -43,13 +43,13 @@ Core Characteristics of this Strategy:
 - Collaborative problem-solving tasks where the LLM needs to track changing goals and information states.
 - Scenarios requiring the LLM to maintain and reason over a dynamically changing "short-term memory" while potentially accessing a "long-term memory" (like the Prototype System).
 
-Mechanism within this Strategy (ActiveMemoryManager):
+Mechanism within this Engine (ActiveMemoryManager):
 - Stores ConversationalTurn objects with text, embedding, trace_strength, and current_activation_level.
 - Manages activation levels (decay, boosting).
 - Employs Prioritized Pruning for its history buffer.
-- The conceptual logic of `ActiveMemoryManager` is made available as a fully pluggable component through the `ActiveMemoryStrategy` class (ID: `active_memory_neuro`), which implements the `CompressionStrategy` interface and utilizes an `ActiveMemoryManager` instance internally.
+- The conceptual logic of `ActiveMemoryManager` is made available as a fully pluggable component through the `ActiveMemoryEngine` class (ID: `active_memory_neuro`), which implements the `BaseCompressionEngine` interface and utilizes an `ActiveMemoryManager` instance internally.
 
-Example Tunable Parameters for this Strategy (via Experimentation Framework):
+Example Tunable Parameters for this Engine (via Experimentation Framework):
 The dynamic behaviors of `ActiveMemoryManager`, such as how quickly recency fades or how much a relevant query boosts an older turn, are governed by `config_` parameters. These include `config_max_history_buffer_turns` (controlling the overall size of the memory buffer), `config_activation_decay_rate` (how quickly a turn's activation fades), and `config_relevance_boost_factor` (how much relevance to the current query amplifies a turn's activation). The platform's emphasis on experimentation allows developers to fine-tune these parameters to optimize performance for specific use cases and conversational styles.
 - Weights for trace_strength factors.
 - Parameters for current_activation_level dynamics.
@@ -118,56 +118,56 @@ Imagine a user planning a trip to Paris with an AI assistant. We'll use the foll
 
 C. Prompt Assembly with Compressed Memory
 
-Platform Support: The platform's workflow culminates in assembling a prompt for the LLM using the output of the selected CompressionStrategy. This involves:
+Platform Support: The platform's workflow culminates in assembling a prompt for the LLM using the output of the selected BaseCompressionEngine. This involves:
 - Prioritizing Current Input: The current user message is the primary focus.
-- Incorporating Compressed Active Memory: The chosen CompressionStrategy (e.g., an adapted ActiveMemoryManager) provides a selection of historical turns/compressed data. This selection adheres to a pre-defined token budget.
-- Retrieving Relevant Gist from LTM (if applicable to the strategy): Some strategies might also involve querying a long-term store (like the Prototype System) to retrieve relevant summaries or snippets, also within a budget.
+- Incorporating Compressed Active Memory: The chosen BaseCompressionEngine (e.g., an adapted ActiveMemoryManager) provides a selection of historical turns/compressed data. This selection adheres to a pre-defined token budget.
+- Retrieving Relevant Gist from LTM (if applicable to the engine): Some engines might also involve querying a long-term store (like the Prototype System) to retrieve relevant summaries or snippets, also within a budget.
 - Combining and Finalizing: The components are combined. LocalChatModel.prepare_prompt() can provide final intelligent summarization/recap if the total still exceeds limits.
-Goal of any CompressionStrategy Outputted to LLM: Maximize the density of relevant information (both recent interaction and long-term knowledge) within the LLM's context window, directly translating to efficiency gains.
+Goal of any BaseCompressionEngine Outputted to LLM: Maximize the density of relevant information (both recent interaction and long-term knowledge) within the LLM's context window, directly translating to efficiency gains.
 Key Experimentation Points in Prompt Assembly (via Experimentation Framework):
 - Token budget allocation ratios for different components of compressed memory.
-- Parameters for selecting content from the CompressionStrategy's output (e.g., config_prompt_num_forced_recent_turns if using an ActiveMemoryManager-like strategy).
-- top_k parameters if the strategy involves retrieval from an LTM-like component.
+- Parameters for selecting content from the BaseCompressionEngine's output (e.g., config_prompt_num_forced_recent_turns if using an ActiveMemoryManager-like engine).
+- top_k parameters if the engine involves retrieval from an LTM-like component.
 - Parameters for final recap/summarization logic.
 
 III. Learning through Experimentation on the Platform
 
 Primary Learning Mode: The platform's core purpose is to enable learning about memory compression. Developers and researchers use the experimentation framework to:
 - Test hypotheses about different compression techniques.
-- Compare the performance of various CompressionStrategy implementations.
-- Optimize parameters of these strategies using diverse ValidationMetrics.
-Strategy Refinement: Results from experiments feed back into the design and refinement of CompressionStrategy implementations.
+- Compare the performance of various BaseCompressionEngine implementations.
+- Optimize parameters of these engines using diverse ValidationMetrics.
+Engine Refinement: Results from experiments feed back into the design and refinement of BaseCompressionEngine implementations.
 Metric Development: The platform also supports experimentation with new ValidationMetrics to better assess the quality and utility of compressed memory.
 
 IV. Guiding Principles for Developers
 
-Seek Diverse Inspirations: For novel CompressionStrategy ideas, look to cognitive science, information theory, traditional summarization, knowledge graph techniques, vector quantization, etc.
-Design for Tunability and Experimentation: Crucially, expose key parameters in your CompressionStrategy and ValidationMetric implementations so they can be systematically tested and optimized via the experimentation framework.
-Develop for Pluggability: Design strategies and metrics against the defined ABC interfaces (CompressionStrategy, ValidationMetric) to ensure seamless integration.
+Seek Diverse Inspirations: For novel BaseCompressionEngine ideas, look to cognitive science, information theory, traditional summarization, knowledge graph techniques, vector quantization, etc.
+Design for Tunability and Experimentation: Crucially, expose key parameters in your BaseCompressionEngine and ValidationMetric implementations so they can be systematically tested and optimized via the experimentation framework.
+Develop for Pluggability: Design engines and metrics against the defined ABC interfaces (BaseCompressionEngine, ValidationMetric) to ensure seamless integration.
 Prioritize Clarity of Mechanism: Implemented mechanisms should be understandable, debuggable, and their impact measurable.
 Modularity: Encapsulate complex compression logic into well-defined, interchangeable modules.
-Iterate and Validate: Use the experimentation framework to rigorously validate that chosen strategies and parameters lead to improved performance on relevant tasks.
+Iterate and Validate: Use the experimentation framework to rigorously validate that chosen engines and parameters lead to improved performance on relevant tasks.
 
 V. Key Unknowns & Areas for Experimental Validation
 
-Comparative effectiveness of different classes of compression strategies (e.g., summarization vs. selective retrieval vs. structural compression vs. vector quantization).
+Comparative effectiveness of different classes of compression engines (e.g., summarization vs. selective retrieval vs. structural compression vs. vector quantization).
 Trade-offs between compression ratio, information loss, and computational cost for various techniques.
 Development of novel ValidationMetrics that accurately capture the "utility" of compressed memory for specific downstream tasks (e.g., QA, reasoning, dialogue coherence).
-Optimal parameter settings for specific CompressionStrategy implementations (e.g., weighting schemes for ActiveMemoryManager's trace_strength, or summarization model choices).
-- The efficacy of incorporating learned models (e.g., trainable summarizers, reinforcement learning for content selection) within these strategies.
-The impact of different LTM granularities (e.g., prototype τ) on the quality of information retrieved by strategies that use an LTM component.
-Scalability and performance characteristics of different compression strategies under heavy load or with very large text corpora.
+Optimal parameter settings for specific BaseCompressionEngine implementations (e.g., weighting schemes for ActiveMemoryManager's trace_strength, or summarization model choices).
+- The efficacy of incorporating learned models (e.g., trainable summarizers, reinforcement learning for content selection) within these engines.
+The impact of different LTM granularities (e.g., prototype τ) on the quality of information retrieved by engines that use an LTM component.
+Scalability and performance characteristics of different compression engines under heavy load or with very large text corpora.
 Best practices for allocating token budgets within a prompt when using different types of compressed memory.
 
 VI. Developer Notes
 
-The talk command, and generally the LLM interaction workflow, will need to be adapted to accept and utilize a chosen CompressionStrategy. If Agent.process_conversational_turn is the entry point, it will orchestrate the use of the active CompressionStrategy.
-Chainable strategies are now supported via `PipelineCompressionStrategy`, enabling a flexible memory pipeline for experimentation.
+The talk command, and generally the LLM interaction workflow, will need to be adapted to accept and utilize a chosen BaseCompressionEngine. If Agent.process_conversational_turn is the entry point, it will orchestrate the use of the active BaseCompressionEngine.
+Chainable engines are now supported via `PipelineBaseCompressionEngine`, enabling a flexible memory pipeline for experimentation.
 
-Specialized strategies with unique storage needs, such as the former
+Specialized engines with unique storage needs, such as the former
 `rationale_episode` episodic memory system, are provided as optional
-plugins. Install `compact_memory_rationale_episode_strategy` to add that
-strategy and its related CLI commands.
+plugins. Install `compact_memory_rationale_episode_engine` to add that
+engine and its related CLI commands.
 
 VII. Contribution Workflow Tips
 

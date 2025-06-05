@@ -1,7 +1,7 @@
 # Explainable Compression and Trace Visualization
 
-Compact Memory aims to make compression strategies transparent and debuggable. A
-`CompressionTrace` records the internal decisions of a strategy so that
+Compact Memory aims to make compression engines transparent and debuggable. A
+`CompressionTrace` records the internal decisions of a engine so that
 experiments can be analysed after the fact. The following guidelines describe how
 to produce informative traces and inspect them.
 
@@ -22,7 +22,7 @@ Each step in ``CompressionTrace.steps`` should include a ``type`` string and a
 - ``truncate_content`` – shortening content to fit a budget
 - ``score_item`` – assigning a relevance or importance score
 
-This list is extensible; strategies may introduce additional types when needed.
+This list is extensible; engines may introduce additional types when needed.
 
 ### Suggested ``details`` keys
 
@@ -46,7 +46,7 @@ of a saved ``CompressionTrace``. A ``--type`` option filters steps by type.
 $ compact-memory trace inspect trace.json --type filter_item
 ```
 
-The command prints the strategy name, then lists the matching steps with a short
+The command prints the engine name, then lists the matching steps with a short
 preview of each ``details`` dictionary. This makes it easy to understand why
 items were kept or removed during compression.
 
@@ -55,4 +55,4 @@ items were kept or removed during compression.
 Traces may also include saliency information so that selected text can be
 highlighted. The optional ``compact-memory trace visualize`` command renders an HTML
 file showing which parts of the original input influenced the output. This feature
-is experimental and only supported by certain strategies.
+is experimental and only supported by certain engines.
