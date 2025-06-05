@@ -31,6 +31,7 @@ def register_compression_strategy(
 
 
 def get_compression_strategy(id: str) -> Type[CompressionStrategy]:
+    """Return the CompressionStrategy class registered under ``id``."""
     return _COMPRESSION_REGISTRY[id]
 
 

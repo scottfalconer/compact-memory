@@ -497,7 +497,7 @@ def query(
 
 @app.command(
     "compress",
-    help='Compress text using a specified strategy. Compresses text from a string, file, or directory.\n\nUsage Examples:\n  compact-memory compress --text "Some very long text..." --strategy first_last --budget 100\n  compact-memory compress --file path/to/document.txt -s prototype -b 200 -o summary.txt\n  compact-memory compress --dir input_dir/ -s custom_package_strat -b 500 --output-dir output_dir/ --recursive -p "*.md"',
+    help='Compress text using a specified compression strategy. Compresses text from a string, file, or directory.\n\nUsage Examples:\n  compact-memory compress --text "Some very long text..." --strategy first_last --budget 100\n  compact-memory compress --file path/to/document.txt -s prototype -b 200 -o summary.txt\n  compact-memory compress --dir input_dir/ -s custom_package_strat -b 500 --output-dir output_dir/ --recursive -p "*.md"',
 )
 def compress(
     ctx: typer.Context,
@@ -525,7 +525,7 @@ def compress(
         None,
         "--strategy",
         "-s",
-        help="Compression strategy ID to use. Overrides the global default strategy.",
+        help="Specify the CompressionStrategy with --strategy. Overrides the global default.",
     ),
     output_file: Optional[Path] = typer.Option(
         None,
@@ -829,7 +829,7 @@ def list_strategies(
         "Version",
         "Source",
         "Status",
-        title="Available Compression Strategies",
+        title="Available CompressionStrategies",
     )
     meta = all_strategy_metadata()
     ids = available_strategies()
@@ -890,7 +890,7 @@ def inspect_strategy(
             "Strength",
             "Confidence",
             "Summary",
-            title=f"Prototypes for Agent at '{path}'",
+            title="Prototypes for Agent",
         )
         for p in protos:
             table.add_row(
@@ -1296,9 +1296,9 @@ def download_chat_model_cli(
 )
 def create_strategy_package(
     name: str = typer.Option(
-        "sample_strategy",
+        "compact_memory_example_strategy",
         "--name",
-        help="Name for the new strategy (e.g., 'my_custom_strategy'). Used for directory and strategy ID.",
+        help="Name for the new strategy package (e.g., 'compact_memory_my_strategy'). Used for directory and strategy ID.",
     ),
     path: Optional[Path] = typer.Option(
         None,

@@ -66,13 +66,14 @@ For researchers and developers interested in creating novel context compression 
 Key aspects of the framework include:
 
 *   **`CompressionStrategy` Base Class:** A clear abstract base class that defines the interface for all compression strategies. Implement this to integrate your custom logic into the Compact Memory ecosystem.
-*   **Validation Metrics:** A suite of metrics and the ability to define custom ones (`ValidationMetric`) to rigorously evaluate the performance and effectiveness of your strategies.
-*   **Plugin Architecture:** A system for packaging and sharing your strategies, making them discoverable and usable by others.
+*   **Validation Metrics:** A suite of metrics and the ability to define custom ones (`ValidationMetric`) to rigorously evaluate the performance and effectiveness of your CompressionStrategies.
+*   **Plugin Architecture:** A system for packaging and sharing your CompressionStrategies, making them discoverable and usable by others.
 
 To get started with building your own compression strategies, please refer to our detailed guide:
 *   **[Developing Compression Strategies](docs/DEVELOPING_COMPRESSION_STRATEGIES.md)**
 
-This guide will walk you through the process of creating a new strategy, from understanding the core components to testing and evaluation.
+This guide will walk you through the process of creating a new CompressionStrategy, from understanding the core components to testing and evaluation.
+
 
 ## Sharing and Discovering Strategies
 
@@ -91,16 +92,18 @@ To package your custom strategy for sharing, Compact Memory provides a command-l
 Use the `dev create-strategy-package` command:
 
 ```bash
-compact-memory dev create-strategy-package --name YourStrategyName
+compact-memory dev create-strategy-package --name compact_memory_my_strategy
 ```
 
-This will create a new directory (e.g., `YourStrategyName/`) containing:
+This will create a new directory (e.g., `compact_memory_my_strategy/`) containing:
 *   `strategy.py`: A template for your strategy code.
 *   `strategy_package.yaml`: A manifest file describing your strategy.
 *   `README.md`: Basic documentation for your package.
 *   `requirements.txt`: For any specific dependencies your strategy might have.
 
 After populating these files with your strategy's logic and details, it can be shared.
+
+The recommended package name pattern for publishing on PyPI or GitHub is `compact_memory_<name>_strategy`.
 
 For comprehensive details on packaging and the plugin architecture, see:
 *   **[Sharing Strategies](docs/SHARING_STRATEGIES.md)**
@@ -152,6 +155,10 @@ For users wanting to understand the foundational ideas behind Compact Memory:
 -   For a deeper dive into concepts and architecture, see our main documentation portal in `docs/README.md` (or `docs/index.md`).
 -   For conceptual background on memory strategies, refer to `docs/PROJECT_VISION.md`.
 
+### Glossary
+
+* **CompressionStrategy** – A pluggable algorithm that compresses input text into a shorter form while preserving meaning.
+
 ### Developing for Compact Memory
 
 For contributors or those looking to build custom solutions on top of Compact Memory:
@@ -165,6 +172,7 @@ For contributors or those looking to build custom solutions on top of Compact Me
 - Command-line interface for agent management (`agent init`, `agent stats`, `agent validate`, `agent clear`), data processing (`ingest`, `query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-strategies`, `dev evaluate-compression`, etc.).
 - Global configuration options settable via CLI, environment variables, or config files.
 - Pluggable memory compression strategies.
+ - Pluggable CompressionStrategies.
 - Pluggable embedding backends: random (default), OpenAI, or local sentence transformers.
 - Chunks rendered using a canonical **WHO/WHAT/WHEN/WHERE/WHY** template before embedding.
 - Runs smoothly in Colab; a notebook-based GUI is planned.

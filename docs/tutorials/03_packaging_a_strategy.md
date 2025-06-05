@@ -10,11 +10,11 @@ By the end of this tutorial, you will have a well-structured strategy package di
 ### 1. Generate the Package Template
 Compact Memory's CLI provides a handy tool to bootstrap a strategy package. Open your terminal and navigate to where you want to create your package directory.
 ```bash
-compact-memory dev create-strategy-package --name MyAwesomeStrategyPackage
+compact-memory dev create-strategy-package --name compact_memory_my_strategy
 ```
-This command will create a new directory named \`MyAwesomeStrategyPackage\` with the following structure:
+This command will create a new directory named \`compact_memory_my_strategy\` with the following structure:
 ```text
-MyAwesomeStrategyPackage/
+compact_memory_my_strategy/
 ├── strategy.py                      # Template strategy implementation
 ├── strategy_package.yaml            # Manifest file
 ├── README.md                        # Basic README for your package
@@ -23,7 +23,7 @@ MyAwesomeStrategyPackage/
     └── example.yaml
 ```
 ### 2. Add Your Strategy Code
-Now, replace the contents of the template \`MyAwesomeStrategyPackage/strategy.py\` with your actual strategy code from \`my_awesome_strategy.py\`.
+Now, replace the contents of the template \`compact_memory_my_strategy/strategy.py\` with your actual strategy code from \`my_awesome_strategy.py\`.
 Let's assume your \`my_awesome_strategy.py\` looked something like this:
 ```python
 from compact_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory
@@ -49,15 +49,15 @@ class MyAwesomeStrategy(CompressionStrategy):
         )
         return CompressedMemory(text=compressed_text), trace
 ```
-Copy this class into \`MyAwesomeStrategyPackage/strategy.py\`. You can delete the template \`MyStrategy\` class that was there.
+Copy this class into \`compact_memory_my_strategy/strategy.py\`. You can delete the template \`MyStrategy\` class that was there.
 ### 3. Update the Manifest File
-The \`strategy_package.yaml\` file is crucial. It tells Compact Memory about your strategy. Open \`MyAwesomeStrategyPackage/strategy_package.yaml\` and edit it. The template will look like this:
+The \`strategy_package.yaml\` file is crucial. It tells Compact Memory about your strategy. Open \`compact_memory_my_strategy/strategy_package.yaml\` and edit it. The template will look like this:
 ```yaml
 package_format_version: "1.0"
-strategy_id: MyAwesomeStrategyPackage # Placeholder from command
+strategy_id: compact_memory_my_strategy # Placeholder from command
 strategy_class_name: MyStrategy         # Placeholder from command
 strategy_module: strategy
-display_name: MyAwesomeStrategyPackage  # Placeholder from command
+display_name: compact_memory_my_strategy  # Placeholder from command
 version: "0.1.0"
 authors: []
 description: Describe the strategy
@@ -82,8 +82,8 @@ Key changes:
 *   `strategy_class_name`: Changed to \`"MyAwesomeStrategy"\`.
 *   `display_name`, `version`, `authors`, `description`: Updated with specific details.
 ### 4. Document Your Strategy and Dependencies
-Edit \`MyAwesomeStrategyPackage/README.md\`. Provide clear instructions on what your strategy does, how to use it, any parameters it accepts, and its benefits. A good README is essential for users.
-If your strategy has specific Python dependencies (e.g., \`nltk\`, \`scikit-learn\`), add them to \`MyAwesomeStrategyPackage/requirements.txt\`, one per line, like:
+Edit \`compact_memory_my_strategy/README.md\`. Provide clear instructions on what your strategy does, how to use it, any parameters it accepts, and its benefits. A good README is essential for users.
+If your strategy has specific Python dependencies (e.g., \`nltk\`, \`scikit-learn\`), add them to \`compact_memory_my_strategy/requirements.txt\`, one per line, like:
 ```text
 # In requirements.txt
 numpy>=1.20
@@ -92,14 +92,14 @@ scikit-learn==1.2.0
 ### 5. Validate Your Package
 Before sharing, use Compact Memory's validation tool to check for common issues:
 ```bash
-compact-memory dev validate-strategy-package path/to/MyAwesomeStrategyPackage
+compact-memory dev validate-strategy-package path/to/compact_memory_my_strategy
 ```
 This will check the manifest, ensure the strategy module and class can be loaded, and look for a \`requirements.txt\` and \`README.md\`.
 ### 6. Sharing Your Strategy
-Your strategy package directory (\`MyAwesomeStrategyPackage\`) is now ready! Here's how it can be shared and used:
-*   `Direct Sharing (Zip/Git):** You can zip the \`MyAwesomeStrategyPackage\` directory and share it. Users can then place it in their Compact Memory plugin directory.`
+Your strategy package directory (\`compact_memory_my_strategy\`) is now ready! Here's how it can be shared and used:
+*   `Direct Sharing (Zip/Git):** You can zip the \`compact_memory_my_strategy\` directory and share it. Users can then place it in their Compact Memory plugin directory.`
 *   `Python Package (Advanced):** For wider distribution (e.g., via PyPI), you would typically:`
-    *   `Add a \`pyproject.toml\` (or \`setup.py\`) to the root of \`MyAwesomeStrategyPackage\` or one level above it.`
+    *   `Add a \`pyproject.toml\` (or \`setup.py\`) to the root of \`compact_memory_my_strategy\` or one level above it.`
     *   `Configure this file to include your strategy files and register your strategy as a plugin using entry points. (Refer to \`docs/SHARING_STRATEGIES.md\` for details on entry points).`
     *   `Build your package (e.g., \`python -m build\`) and upload it to PyPI.`
 ### 7. Using the Packaged Strategy
