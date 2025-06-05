@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from compact_memory.engines import BaseCompressionEngine
+from compact_memory.engines import BaseCompressionEngine, load_engine
 
 
 def test_engine_ingest_and_recall(patch_embedding_model):
@@ -24,3 +24,8 @@ def test_engine_save_load(tmp_path: Path, patch_embedding_model):
     # ensure files exist
     assert (tmp_path / "entries.json").exists()
     assert (tmp_path / "embeddings.npy").exists()
+    assert (tmp_path / "engine_manifest.json").exists()
+
+    loaded = load_engine(tmp_path)
+    res2 = loaded.recall("world")
+    assert res2

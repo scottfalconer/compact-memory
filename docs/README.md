@@ -26,7 +26,7 @@ Below is a list of documents in this directory, along with a brief description o
 *   **Developer Guides**
     *   **[`ENGINE_DEVELOPMENT.md`](./ENGINE_DEVELOPMENT.md)**: Provides practical guidance and steps for implementing new `BaseCompressionEngine` implementations within the Compact Memory framework. Focuses on the "how-to."
         *   **Audience:** Developers actively building new compression engines.
-    *   **[`STRATEGY_DEVELOPMENT.md`](./STRATEGY_DEVELOPMENT.md)**: Best practices for writing, testing, and sharing CompressionEngines.
+    *   **[`DEVELOPING_COMPRESSION_ENGINES.md`](./DEVELOPING_COMPRESSION_ENGINES.md)**: Best practices for writing, testing, and sharing `BaseCompressionEngine` implementations.
         *   **Audience:** Contributors preparing reusable compression engines.
     *   **[`DEVELOPING_VALIDATION_METRICS.md`](./DEVELOPING_VALIDATION_METRICS.md)**: Offers guidance on creating custom `ValidationMetric` classes to evaluate the performance of compression engines.
         *   **Audience:** Developers and researchers looking to implement new ways of measuring memory effectiveness.
@@ -38,7 +38,7 @@ Below is a list of documents in this directory, along with a brief description o
         *   **Audience:** Researchers and developers evaluating and comparing compression engines.
     *   **[`ADVANCED_PARAMETER_TUNING.md`](./ADVANCED_PARAMETER_TUNING.md)**: (Assuming content based on title) Covers more advanced techniques for tuning parameters of compression engines and the experimentation setup.
         *   **Audience:** Experienced users looking to optimize performance.
-    *   **[`SHARING_STRATEGIES.md`](./SHARING_STRATEGIES.md)**: (Assuming content based on title) Guidelines or methods for packaging and sharing custom-developed compression engines.
+    *   **[`SHARING_ENGINES.md`](./SHARING_ENGINES.md)**: (Assuming content based on title) Guidelines or methods for packaging and sharing custom-developed compression engines.
         *   **Audience:** Developers and researchers who want to contribute or distribute their work.
 
 *   **Preprocessing & Cleanup**

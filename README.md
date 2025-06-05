@@ -108,7 +108,7 @@ After populating these files with your engine's logic and details, it can be sha
 The recommended package name pattern for publishing on PyPI or GitHub is `compact_memory_<name>_engine`.
 
 For comprehensive details on packaging and the plugin architecture, see:
-*   **[Sharing Engines](docs/SHARING_STRATEGIES.md)**
+*   **[Sharing Engines](docs/SHARING_ENGINES.md)**
 
 ### Finding, Installing, and Using Shared Engines
 
@@ -120,7 +120,7 @@ Shared engines can be distributed as standard Python packages (e.g., via PyPI) o
     ```
     Once installed in your Python environment, Compact Memory's plugin loader will automatically discover the engine if it correctly uses the entry point system.
 
-*   **Installation (Directory Packages):** For engines distributed as a directory, you can place them in a location scanned by Compact Memory. (Refer to `docs/SHARING_STRATEGIES.md` for details on plugin paths like `$COMPACT_MEMORY_PLUGINS_PATH`).
+*   **Installation (Directory Packages):** For engines distributed as a directory, you can place them in a location scanned by Compact Memory. (Refer to `docs/SHARING_ENGINES.md` for details on plugin paths like `$COMPACT_MEMORY_PLUGINS_PATH`).
 
 *   **Using a Shared Engine:** Once installed and discovered, you can use a shared engine like any built-in engine by specifying its `engine_id` in the CLI or Python API:
     ```bash
@@ -418,7 +418,7 @@ For more detailed information on Compact Memory's architecture, development guid
 -   **Architecture Deep Dive:** Understand the overall system design in `docs/ARCHITECTURE.md`.
 -   **Developing Compression Engines:** Learn how to create your own engines in `docs/ENGINE_DEVELOPMENT.md`.
 -   **Developing Validation Metrics:** Find guidance on building custom metrics in `docs/DEVELOPING_VALIDATION_METRICS.md`.
--   **Plugins:** Learn how to install or develop engine plugins in `docs/SHARING_STRATEGIES.md`.
+-   **Plugins:** Learn how to install or develop engine plugins in `docs/SHARING_ENGINES.md`.
 -   **Conceptual Guides:** Explore the ideas behind memory engines in `docs/PROJECT_VISION.md`.
 
 ## Designing Compression Engines

@@ -222,13 +222,13 @@ Rigorous testing is crucial. Compact Memory's experimentation framework helps wi
     *   The `examples/onboarding_demo.py` script shows a basic example of defining a engine, registering it, and using it in an experiment. Use it as a reference.
 
 4.  **Packaging for Experiments:**
-    *   If you package your engine (see `docs/SHARING_STRATEGIES.md`), you can include example experiment configurations within your package. The CLI command `compact-memory dev run-package-experiment` can then execute these.
+    *   If you package your engine (see `docs/SHARING_ENGINES.md`), you can include example experiment configurations within your package. The CLI command `compact-memory dev run-package-experiment` can then execute these.
 
 ## Registering Your Engine
 
 For Compact Memory to find and use your engine, it needs to be registered.
 
-*   **Plugin System:** The preferred way is through the plugin system. If your engine is part of an installable Python package, you can register it via an entry point in your `pyproject.toml` or `setup.py`. See `docs/SHARING_STRATEGIES.md`.
+*   **Plugin System:** The preferred way is through the plugin system. If your engine is part of an installable Python package, you can register it via an entry point in your `pyproject.toml` or `setup.py`. See `docs/SHARING_ENGINES.md`.
 *   **Direct Registration (for local development/testing):**
     ```python
     from compact_memory.registry import register_compression_engine
