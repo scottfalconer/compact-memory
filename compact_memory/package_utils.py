@@ -58,7 +58,7 @@ def load_strategy_class_from_module(
     if not module_path.exists():
         raise FileNotFoundError(f"Module file not found: {module_file_path}")
 
-    unique_name = f"gistmemory.packages.{module_path.stem}_{uuid.uuid4().hex}"
+    unique_name = f"compact_memory.packages.{module_path.stem}_{uuid.uuid4().hex}"
     spec = importlib.util.spec_from_file_location(unique_name, module_path)
     if spec is None or spec.loader is None:
         raise ImportError(f"Cannot load module from {module_file_path}")
@@ -79,7 +79,9 @@ def load_strategy_class_from_module(
     return cls
 
 
-def load_strategy_class(package_dir: Path, manifest: Dict[str, Any]) -> type[CompressionStrategy]:
+def load_strategy_class(
+    package_dir: Path, manifest: Dict[str, Any]
+) -> type[CompressionStrategy]:
     module_name = manifest["strategy_module"]
     class_name = manifest["strategy_class_name"]
     module_path = package_dir / f"{module_name}.py"
@@ -149,6 +151,7 @@ def validate_package_dir(package_dir: Path) -> tuple[list[str], list[str]]:
         warnings.append("README.md not found")
 
     return errors, warnings
+
 
 __all__ = [
     "load_manifest",

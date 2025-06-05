@@ -91,7 +91,7 @@ You can set default values for key options to avoid typing them repeatedly. Thes
 
 1.  **Set your preferred memory path:**
     ```bash
-    compact-memory config set compact_memory_path "~/gist_memories"
+    compact-memory config set compact_memory_path "~/compact_memories"
     ```
     *(The CLI will expand `~` to your home directory).*
 2.  **Set your default LLM:**
@@ -101,7 +101,7 @@ You can set default values for key options to avoid typing them repeatedly. Thes
 3.  **Initialize an agent (it will now use the default path if not specified):**
     ```bash
     compact-memory agent init
-    # If "~/gist_memories" does not exist, it will be created.
+    # If "~/compact_memories" does not exist, it will be created.
     # If it exists and is a valid agent, this might show an error unless it's empty or a different path is given.
     # Typically, you initialize to a specific new path first:
     # compact-memory agent init ./my_specific_agent_location

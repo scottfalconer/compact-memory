@@ -305,12 +305,13 @@ You can manage the user global configuration using the `config` commands:
 
 For example, to set your default memory path globally:
 ```bash
-compact-memory config set compact_memory_path ~/my_gist_memories
+# Set a default directory for your stored memories
+compact-memory config set compact_memory_path ~/my_compact_memories
 # Subsequent commands will use this path unless overridden by --memory-path or an environment variable.
 ```
 Or, set it using an environment variable for the current session:
 ```bash
-export COMPACT_MEMORY_PATH=~/my_gist_memories
+export COMPACT_MEMORY_PATH=~/my_compact_memories
 ```
 
 ## Quick Start / Core Workflow
