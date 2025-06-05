@@ -20,3 +20,5 @@ def test_engine_save_load(tmp_path: Path, patch_embedding_model) -> None:
     assert (dest / "engine_manifest.json").exists()
     assert (dest / "memories.json").exists()
     assert (dest / "vectors.npy").exists()
+    assert (dest / "entries.json").exists()
+    assert (dest / "embeddings.npy").exists()
