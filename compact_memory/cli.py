@@ -9,10 +9,8 @@ import time
 from dataclasses import asdict
 import sys
 from tqdm import tqdm
-import runpy
 
 import typer
-import portalocker
 from .token_utils import token_count
 from rich.table import Table
 from rich.console import Console
@@ -28,7 +26,7 @@ from .strategies.experimental import (
     ActiveMemoryManager,
     enable_all_experimental_strategies,
 )
-from .registry import (
+from .validation.registry import (
     _VALIDATION_METRIC_REGISTRY,
     get_validation_metric_class,
 )
@@ -59,11 +57,7 @@ from .package_utils import (
     validate_package_dir,
     check_requirements_installed,
 )
-from .response_experiment import ResponseExperimentConfig, run_response_experiment
-from .experiment_runner import (
-    ExperimentConfig,
-    run_experiment,
-)
+
 
 app = typer.Typer(
     help="Compact Memory: A CLI for intelligent information management using memory agents and advanced compression. Ingest, query, and compress information. Manage agent configurations and developer tools."
@@ -233,19 +227,6 @@ def main(
     )
 
 
-class PersistenceLock:
-    def __init__(self, path: Path) -> None:
-        self.file = (path / ".lock").open("a+")
-
-    def __enter__(self):
-        portalocker.lock(self.file, portalocker.LockFlags.EXCLUSIVE)
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        portalocker.unlock(self.file)
-        self.file.close()
-
-
 def _corrupt_exit(path: Path, exc: Exception) -> None:
     typer.echo(f"Error: Brain data is corrupted. {exc}", err=True)
     typer.echo(
@@ -256,10 +237,10 @@ def _corrupt_exit(path: Path, exc: Exception) -> None:
 
 
 def _load_agent(path: Path) -> Agent:
-    try:
-        return load_agent(path)
-    except Exception as exc:
-        _corrupt_exit(path, exc)
+    """Placeholder loader since on-disk storage was removed."""
+    raise RuntimeError(
+        "Persistent storage support was removed. Provide your own loader."
+    )
 
 
 # --- Agent Commands ---
@@ -323,38 +304,11 @@ def init(
     help="Displays statistics about the Compact Memory agent.\n\nUsage Examples:\n  compact-memory agent stats\n  compact-memory agent stats --memory-path path/to/my_agent --json",
 )
 def stats(
-    ctx: typer.Context,
-    memory_path_arg: Optional[str] = typer.Option(
-        None,
-        "--memory-path",
-        "-m",
-        help="Path to the agent directory. Overrides global setting if provided.",
-    ),
     json_output: bool = typer.Option(
         False, "--json", help="Output statistics in JSON format."
     ),
 ) -> None:
-    final_memory_path_str = (
-        memory_path_arg
-        if memory_path_arg is not None
-        else ctx.obj.get("compact_memory_path")
-    )
-    if final_memory_path_str is None:
-        typer.secho(
-            "Critical Error: Memory path could not be resolved for stats.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
-    path = Path(final_memory_path_str)
-    if not path.exists():
-        typer.secho(
-            f"Error: Memory path '{path}' not found or is invalid.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
-    agent = _load_agent(path)
+    agent = _load_agent(Path("."))
     data = agent.get_statistics()
     logging.debug("Collected statistics: %s", data)
     if json_output:
@@ -460,107 +414,10 @@ def clear(
 
 
 # --- Top-Level Commands ---
-@app.command(
-    "ingest",
-    help="Ingests text from a file or directory into the agent's memory.\n\nUsage Examples:\n  compact-memory ingest path/to/my_data.txt --tau 0.7\n  compact-memory ingest path/to/my_directory/",
-)
-def ingest(
-    ctx: typer.Context,
-    source: Path = typer.Argument(
-        ...,
-        help="Path to the text file or directory containing text files to ingest.",
-        exists=True,
-        file_okay=True,
-        dir_okay=True,
-        resolve_path=True,
-    ),
-    tau: Optional[float] = typer.Option(
-        None,
-        "--tau",
-        "-t",
-        help="Similarity threshold (0.5-0.95) for memory consolidation. Overrides agent's existing tau if set. If agent is new, this tau is used for initialization.",
-    ),
-    json_output: bool = typer.Option(
-        False, "--json", help="Output ingestion summary statistics in JSON format."
-    ),
-) -> None:
-    """
-    Ingests text from a specified file or all text files in a directory into the agent's memory.
-    The agent is determined by the global --memory-path option or configuration settings.
-    If the agent does not exist, it will be initialized with the provided --tau (or default).
-    """
-    memory_path_str = ctx.obj.get("compact_memory_path")
-    if not memory_path_str:
-        typer.secho(
-            "Error: Compact Memory path not set. Use --memory-path option, COMPACT_MEMORY_PATH env var, or set in config.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
-
-    agent_path = Path(memory_path_str)  # Ensured this is a Path object for consistency
-    final_tau = tau  # Use CLI tau if provided
-
-    if (
-        final_tau is None
-    ):  # If no CLI tau, try to load from existing agent or use default
-        if agent_path.exists() and (agent_path / "meta.json").is_file():
-            try:
-                with open(agent_path / "meta.json", "r") as f:
-                    meta_data = json.load(f)
-                agent_default_tau = meta_data.get("tau")
-                if agent_default_tau is not None:
-                    final_tau = agent_default_tau
-                else:
-                    final_tau = 0.8  # Default if not in meta
-                if tau is not None:  # CLI tau overrides agent's tau
-                    final_tau = tau
-                    typer.echo(
-                        f"Using provided tau: {final_tau} (overriding agent's tau: {agent_default_tau or 'Not Set'})"
-                    )
-                else:
-                    typer.echo(f"Using agent's existing tau: {final_tau}")
-            except Exception as e:
-                typer.secho(
-                    f"Could not load agent metadata to determine tau: {e}. Using default 0.8.",
-                    fg=typer.colors.YELLOW,
-                )
-                final_tau = 0.8
-        else:
-            final_tau = 0.8  # Default for new agent
-            typer.echo(
-                f"No agent found at {agent_path}. Initializing with tau: {final_tau}"
-            )
-    elif tau is not None:  # CLI tau provided
-        typer.echo(f"Using provided tau for ingestion: {final_tau}")
-
-    # ExperimentConfig expects 'dataset', 'similarity_threshold', and 'work_dir'.
-    # We use 'source' for dataset, 'final_tau' for similarity_threshold,
-    # and the global 'agent_path' as the 'work_dir' for ingestion.
-    cfg = ExperimentConfig(
-        dataset=source, similarity_threshold=final_tau, work_dir=agent_path
-    )
-
-    typer.echo(
-        f"Ingesting data from '{source}' into agent at '{agent_path}' with tau={final_tau}..."
-    )
-    try:
-        metrics = run_experiment(
-            cfg
-        )  # run_experiment handles agent loading/initialization
-        if json_output:
-            typer.echo(json.dumps(metrics))
-        else:
-            for k, v_val in metrics.items():
-                typer.echo(f"{k}: {v_val}")
-        typer.echo(f"Ingestion from '{source}' complete.")
-    except Exception as e:
-        typer.secho(
-            f"Error during ingestion from '{source}': {e}",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
+@app.command("ingest", help="Legacy ingest command (no longer supported).")
+def ingest() -> None:
+    typer.secho("Ingestion functionality was removed.", fg=typer.colors.YELLOW)
+    raise typer.Exit(code=1)
 
 
 @app.command(
@@ -576,65 +433,50 @@ def query(
         help="Display the token count of the final prompt sent to the LLM.",
     ),
 ) -> None:
-    final_memory_path_str = ctx.obj.get("compact_memory_path")
-    if final_memory_path_str is None:
+    dim = get_embedding_dim()
+    store = InMemoryVectorStore(embedding_dim=dim)
+    agent = Agent(store)
+    final_model_id = ctx.obj.get("default_model_id")  # Renamed for clarity
+    final_strategy_id = ctx.obj.get("default_strategy_id")  # Renamed for clarity
+
+    if final_model_id is None:
         typer.secho(
-            "Critical Error: Memory path could not be resolved for query.",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)  # Should be caught by main usually
-    path = Path(final_memory_path_str)
-    if not path.exists():
-        typer.secho(
-            f"Error: Compact Memory path '{path}' not found or is invalid. Initialize an agent first using 'agent init'.",
+            "Error: Default Model ID not specified. Use --model-id option or set in config.",
             fg=typer.colors.RED,
             err=True,
         )
         raise typer.Exit(code=1)
-    with PersistenceLock(path):
-        agent = _load_agent(path)
-        final_model_id = ctx.obj.get("default_model_id")  # Renamed for clarity
-        final_strategy_id = ctx.obj.get("default_strategy_id")  # Renamed for clarity
 
-        if final_model_id is None:
+    try:
+        agent._chat_model = local_llm.LocalChatModel(model_name=final_model_id)
+        agent._chat_model.load_model()
+    except RuntimeError as exc:
+        typer.secho(
+            f"Error loading chat model '{final_model_id}': {exc}",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)  # Added model_id to error
+
+    mgr = ActiveMemoryManager()
+    comp_strategy_instance = None
+    if final_strategy_id and final_strategy_id.lower() != "none":
+        try:
+            comp_cls = get_compression_strategy(final_strategy_id)
+            info = get_strategy_metadata(final_strategy_id)
+            if info and info.get("source") == "contrib":
+                typer.secho(
+                    "\u26a0\ufe0f Using experimental strategy from contrib: not officially supported.",
+                    fg=typer.colors.YELLOW,
+                )
+            comp_strategy_instance = comp_cls()
+        except KeyError:
             typer.secho(
-                "Error: Default Model ID not specified. Use --model-id option or set in config.",
-                fg=typer.colors.RED,
+                f"Error: Unknown compression strategy '{final_strategy_id}' (from global config/option). Available: {', '.join(available_strategies())}",
                 err=True,
+                fg=typer.colors.RED,
             )
             raise typer.Exit(code=1)
-
-        try:
-            agent._chat_model = local_llm.LocalChatModel(model_name=final_model_id)
-            agent._chat_model.load_model()
-        except RuntimeError as exc:
-            typer.secho(
-                f"Error loading chat model '{final_model_id}': {exc}",
-                err=True,
-                fg=typer.colors.RED,
-            )
-            raise typer.Exit(code=1)  # Added model_id to error
-
-        mgr = ActiveMemoryManager()
-        comp_strategy_instance = None  # Renamed for clarity
-        if final_strategy_id and final_strategy_id.lower() != "none":
-            try:
-                comp_cls = get_compression_strategy(final_strategy_id)
-                info = get_strategy_metadata(final_strategy_id)
-                if info and info.get("source") == "contrib":
-                    typer.secho(
-                        "\u26a0\ufe0f Using experimental strategy from contrib: not officially supported.",
-                        fg=typer.colors.YELLOW,
-                    )
-                comp_strategy_instance = comp_cls()
-            except KeyError:
-                typer.secho(
-                    f"Error: Unknown compression strategy '{final_strategy_id}' (from global config/option). Available: {', '.join(available_strategies())}",
-                    err=True,
-                    fg=typer.colors.RED,
-                )
-                raise typer.Exit(code=1)  # Added available strategies
 
         try:
             result = agent.receive_channel_message(
@@ -1021,13 +863,6 @@ def inspect_strategy(
         help="The name of the strategy to inspect. Currently, only 'prototype' is supported.",
     ),
     *,
-    ctx: typer.Context,
-    memory_path_arg: Optional[str] = typer.Option(
-        None,
-        "--memory-path",
-        "-m",
-        help="Path to the agent directory. Overrides global setting if provided. Required if 'list-prototypes' is used.",
-    ),
     list_prototypes: bool = typer.Option(
         False,
         "--list-prototypes",
@@ -1043,32 +878,12 @@ def inspect_strategy(
         raise typer.Exit(code=1)
 
     if list_prototypes:
-        final_memory_path_str = (
-            memory_path_arg
-            if memory_path_arg is not None
-            else ctx.obj.get("compact_memory_path")
-        )
-        if not final_memory_path_str:
-            typer.secho(
-                "Error: --memory-path is required when --list-prototypes is used.",
-                fg=typer.colors.RED,
-                err=True,
-            )
-            raise typer.Exit(code=1)
-
-        path = Path(final_memory_path_str)
-        if not path.exists():
-            typer.secho(
-                f"Error: Compact Memory path '{path}' not found or is invalid.",
-                fg=typer.colors.RED,
-                err=True,
-            )
-            raise typer.Exit(code=1)
-
-        agent = _load_agent(path)
+        dim = get_embedding_dim()
+        store = InMemoryVectorStore(embedding_dim=dim)
+        agent = Agent(store)
         protos = agent.get_prototypes_view()
         if not protos:
-            typer.echo(f"No prototypes found in agent at '{path}'.")
+            typer.echo("No prototypes found.")
             return
         table = Table(
             "ID",
@@ -1587,138 +1402,6 @@ def validate_strategy_package(
             typer.echo(e)
         raise typer.Exit(code=1)
     typer.echo(f"Strategy package at '{package_path}' appears valid.")
-
-
-@dev_app.command(
-    "run-package-experiment",
-    help="Runs an experiment defined within a compression strategy extension package.\n\nUsage Examples:\n  compact-memory dev run-package-experiment path/to/my_package --experiment main_test.yaml",
-)
-def run_package_experiment(
-    package_path: Path = typer.Argument(
-        ...,
-        help="Path to the root directory of the strategy package.",
-        exists=True,
-        file_okay=False,
-        dir_okay=True,
-        resolve_path=True,
-    ),
-    experiment: Optional[str] = typer.Option(
-        None,
-        "--experiment",
-        help="Name or relative path of the experiment configuration YAML file within the package's 'experiments' directory. If not specified, attempts to run a default experiment if defined in manifest.",
-    ),
-) -> None:
-    manifest = load_manifest(package_path / "strategy_package.yaml")
-    Strategy = load_strategy_class(package_path, manifest)
-    missing = check_requirements_installed(package_path / "requirements.txt")
-    if missing:
-        typer.secho(
-            f"Warning: The following package requirements are not installed: {', '.join(missing)}. This may cause errors.",
-            fg=typer.colors.YELLOW,
-        )
-
-    if experiment is None:
-        defaults = manifest.get("default_experiments", [])
-        if len(defaults) == 1:
-            experiment = defaults[0].get("path")
-    if experiment is None:
-        typer.secho(
-            "Error: No experiment specified and no single default experiment found in manifest.",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-
-    exp_path = Path(experiment)
-    if not exp_path.is_absolute():
-        exp_path = (
-            package_path / "experiments" / exp_path
-        )  # Assume relative to 'experiments' dir
-
-    if not exp_path.exists():
-        typer.secho(
-            f"Error: Experiment file '{exp_path}' not found.",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-
-    try:
-        cfg_data = yaml.safe_load(exp_path.read_text()) or {}
-    except Exception as e:
-        typer.secho(
-            f"Error loading experiment config '{exp_path}': {e}",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-
-    dataset_path_str = cfg_data.get("dataset")
-    if not dataset_path_str:
-        typer.secho(
-            f"Error: 'dataset' not specified in experiment config '{exp_path}'.",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-
-    dataset_path = Path(dataset_path_str)
-    if not dataset_path.is_absolute():
-        dataset_path = (package_path / dataset_path_str).resolve()
-
-    if not dataset_path.exists():
-        typer.secho(
-            f"Error: Dataset path '{dataset_path}' (resolved from '{dataset_path_str}') not found.",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-    cfg_data["dataset"] = str(dataset_path)
-
-    params = cfg_data.get("param_grid", [{}])
-    cfg = ResponseExperimentConfig(
-        dataset=Path(cfg_data["dataset"]),
-        param_grid=params,
-        validation_metrics=cfg_data.get("validation_metrics"),
-    )
-    strategy_params = cfg_data.get("packaged_strategy_config", {}).get(
-        "strategy_params", {}
-    )
-    strategy = Strategy(**strategy_params)
-
-    typer.echo(
-        f"Running experiment '{exp_path.name}' from package '{package_path.name}' with strategy '{manifest.get('strategy_id', 'Unknown')}'..."
-    )
-    results = run_response_experiment(cfg, strategy=strategy)
-    typer.echo("\n--- Experiment Results ---")
-    typer.echo(json.dumps(results, indent=2))
-
-
-@dev_app.command(
-    "run-hpo-script",
-    help="Executes a Python script, typically for Hyperparameter Optimization (HPO).\n\nUsage Examples:\n  compact-memory dev run-hpo-script path/to/my_hpo_optimizer.py",
-)
-def run_hpo_script(
-    script_path: Path = typer.Argument(
-        ...,
-        help="Path to the Python HPO script to execute.",
-        exists=True,
-        file_okay=True,
-        dir_okay=False,
-        resolve_path=True,
-    )
-) -> None:
-    typer.echo(f"Executing HPO script: {script_path}...")
-    try:
-        runpy.run_path(str(script_path), run_name="__main__")
-        typer.echo(f"Successfully executed HPO script: {script_path}")
-    except Exception as e:
-        typer.secho(
-            f"Error executing HPO script '{script_path}': {e}",
-            fg=typer.colors.RED,
-            err=True,
-        )
-        raise typer.Exit(code=1)
 
 
 @dev_app.command(

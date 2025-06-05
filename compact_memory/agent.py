@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Dict, List, Optional, TypedDict, Callable
 
 import logging
@@ -200,17 +199,11 @@ class Agent:
     def get_statistics(self) -> Dict[str, object]:
         """Return summary statistics about the current store."""
 
-        from .utils import get_disk_usage
-
-        path_value = self.store.path
-        path = Path(path_value) if path_value else None
-        disk_usage = get_disk_usage(path) if path is not None else 0
         return {
             "prototypes": len(self.store.prototypes),
             "memories": len(self.store.memories),
             "tau": self.similarity_threshold,
             "updated": self.store.meta.get("updated_at"),
-            "disk_usage": disk_usage,
         }
 
     # ------------------------------------------------------------------
@@ -253,7 +246,6 @@ class Agent:
         progress_callback: Optional[
             Callable[[int, int, bool, str, Optional[float]], None]
         ] = None,
-        save: bool = True,
         source_document_id: Optional[str] = None,
     ) -> List[Dict[str, object]]:
         """
@@ -273,7 +265,6 @@ class Agent:
                                progress during the ingestion of multiple chunks.
                                The callback might receive (current_chunk, total_chunks,
                                is_new_prototype, status_message, similarity_score).
-            save: If True (default), the memory store is saved to disk after ingestion.
             source_document_id: An optional identifier for the source of the text
                                 (e.g., a filename or URL).
 
@@ -289,7 +280,6 @@ class Agent:
             where=where,
             why=why,
             progress_callback=progress_callback,
-            save=save,
             source_document_id=source_document_id,
         )
 

@@ -10,7 +10,7 @@ except Exception:  # pragma: no cover - optional dependency missing
     evaluate = None  # type: ignore
 
 from .metrics_abc import ValidationMetric
-from ..registry import register_validation_metric
+from .registry import register_validation_metric
 
 
 class HFValidationMetric(ValidationMetric):
@@ -38,7 +38,9 @@ class RougeHFMetric(HFValidationMetric):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__("rouge", **kwargs)
 
-    def evaluate(self, llm_response: str, reference_answer: str, **kwargs: Any) -> Dict[str, float]:
+    def evaluate(
+        self, llm_response: str, reference_answer: str, **kwargs: Any
+    ) -> Dict[str, float]:
         compute_args = {}
         for key in ["rouge_types", "use_stemmer", "newline_sep"]:
             if key in self.config_params:
@@ -54,7 +56,9 @@ class BleuHFMetric(HFValidationMetric):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__("bleu", **kwargs)
 
-    def evaluate(self, llm_response: str, reference_answer: str, **kwargs: Any) -> Dict[str, float]:
+    def evaluate(
+        self, llm_response: str, reference_answer: str, **kwargs: Any
+    ) -> Dict[str, float]:
         compute_args = {}
         if "max_order" in self.config_params:
             compute_args["max_order"] = self.config_params["max_order"]
@@ -69,8 +73,12 @@ class MeteorHFMetric(HFValidationMetric):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__("meteor", **kwargs)
 
-    def evaluate(self, llm_response: str, reference_answer: str, **kwargs: Any) -> Dict[str, float]:
-        return self.metric_loader.compute(predictions=[llm_response], references=[reference_answer])
+    def evaluate(
+        self, llm_response: str, reference_answer: str, **kwargs: Any
+    ) -> Dict[str, float]:
+        return self.metric_loader.compute(
+            predictions=[llm_response], references=[reference_answer]
+        )
 
 
 class BertScoreHFMetric(HFValidationMetric):
@@ -79,7 +87,9 @@ class BertScoreHFMetric(HFValidationMetric):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__("bertscore", **kwargs)
 
-    def evaluate(self, llm_response: str, reference_answer: str, **kwargs: Any) -> Dict[str, float]:
+    def evaluate(
+        self, llm_response: str, reference_answer: str, **kwargs: Any
+    ) -> Dict[str, float]:
         compute_args = {}
         for key in ["lang", "model_type"]:
             if key in self.config_params:
@@ -92,7 +102,9 @@ class BertScoreHFMetric(HFValidationMetric):
 class ExactMatchMetric(ValidationMetric):
     metric_id = "exact_match"
 
-    def evaluate(self, llm_response: str, reference_answer: str, **kwargs: Any) -> Dict[str, float]:
+    def evaluate(
+        self, llm_response: str, reference_answer: str, **kwargs: Any
+    ) -> Dict[str, float]:
         match = float(llm_response.strip() == reference_answer.strip())
         return {"exact_match": match}
 

@@ -31,3 +31,6 @@ strategy self‑contained and portable.
 ## Pull Requests
 - Rebase on the latest `main` before creating a patch.
 - Summarize the purpose of the PR and note any limitations encountered during testing.
+
+## LLM Integration
+The `local_llm.py` module and `llm_providers` package are essential for Colab examples. Do not remove them when cleaning up the codebase.

@@ -1,12 +1,14 @@
-from compact_memory.registry import (
-    CompressionStrategy,
-    ValidationMetric,
+from compact_memory.compression.registry import (
     register_compression_strategy,
+    _COMPRESSION_REGISTRY,
+)
+from compact_memory.compression.strategies_abc import CompressionStrategy
+from compact_memory.validation.registry import (
     register_validation_metric,
     get_validation_metric_class,
-    _COMPRESSION_REGISTRY,
     _VALIDATION_METRIC_REGISTRY,
 )
+from compact_memory.validation.metrics_abc import ValidationMetric
 
 from compact_memory.compression.strategies_abc import (
     CompressedMemory,
@@ -28,7 +30,13 @@ def test_register_compression_strategy():
             trace = CompressionTrace(
                 strategy_name=self.id,
                 strategy_params={"llm_token_budget": llm_token_budget},
-                input_summary={"input_length": len(text_or_chunks if isinstance(text_or_chunks, str) else " ".join(text_or_chunks))},
+                input_summary={
+                    "input_length": len(
+                        text_or_chunks
+                        if isinstance(text_or_chunks, str)
+                        else " ".join(text_or_chunks)
+                    )
+                },
             )
             return compressed, trace
 
