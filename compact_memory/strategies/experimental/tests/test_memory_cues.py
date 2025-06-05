@@ -1,4 +1,6 @@
-from contrib.prototype_utils.memory_cues import MemoryCueRenderer
+from compact_memory.strategies.experimental.prototype_system_utils import (
+    MemoryCueRenderer,
+)
 
 
 def test_memory_cue_renderer_basic():
