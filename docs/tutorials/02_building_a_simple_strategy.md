@@ -1,5 +1,5 @@
 # Tutorial 2: Step-by-Step - Building a Simple compression engine
-This tutorial walks you through creating a basic compression engine for Compact Memory. It complements the main \`DEVELOPING_COMPRESSION_ENGINES.md\` guide by providing a hands-on example. We'll build a engine that keeps only the first N sentences of a text.
+This tutorial walks you through creating a basic compression engine for Compact Memory. It complements the main \`ENGINE_DEVELOPMENT.md\` guide by providing a hands-on example. We'll build a engine that keeps only the first N sentences of a text.
 ## Prerequisites
 *   `Compact Memory installed (\`pip install compact-memory\`).`
 *   `Familiarity with Python.`
@@ -184,4 +184,4 @@ This basic engine can be extended:
 *   `Configurable Sentence Delimiter: Allow users to specify custom sentence delimiters.`
 *   `Min/Max Sentences: Add parameters for minimum sentences to keep, regardless of budget (if feasible), or a hard maximum even if budget allows more.`
 ## Conclusion
-This tutorial demonstrated building a simple \`FirstNSentencesEngine\`, from defining the class to testing it. It illustrates the core components of a \`BaseCompressionEngine\` and how to integrate it with Compact Memory's utilities. For more advanced features like learnable components, detailed tracing, and packaging, refer to the main \`DEVELOPING_COMPRESSION_ENGINES.md\` guide and the \`SHARING_STRATEGIES.md\` guide.
+This tutorial demonstrated building a simple \`FirstNSentencesEngine\`, from defining the class to testing it. It illustrates the core components of a \`BaseCompressionEngine\` and how to integrate it with Compact Memory's utilities. For more advanced features like learnable components, detailed tracing, and packaging, refer to the main \`ENGINE_DEVELOPMENT.md\` guide and the \`SHARING_STRATEGIES.md\` guide.

@@ -61,7 +61,7 @@ from .package_utils import (
 
 
 app = typer.Typer(
-    help="Compact Memory: manage stored context containers and advanced compression. Ingest, query, and compress information. Manage container configurations and developer tools."
+    help="Compact Memory: manage engine stores and advanced compression. Ingest, query, and compress information. Manage engine store configurations and developer tools."
 )
 console = Console()
 
@@ -76,7 +76,7 @@ config_app = typer.Typer(
     help="Manage Compact Memory application configuration settings."
 )
 dev_app = typer.Typer(
-    help="Commands for compression strategy developers and researchers."
+    help="Commands for compression engine developers and researchers."
 )
 
 # --- Add New Command Groups to Main App ---
@@ -616,7 +616,7 @@ def compress(
     ),
     budget: int = typer.Option(
         ...,
-        help="Token budget for the compressed output. The strategy will aim to keep the output within this limit.",
+        help="Token budget for the compressed output. The engine will aim to keep the output within this limit.",
     ),
     verbose_stats: bool = typer.Option(
         False,
@@ -1014,18 +1014,23 @@ def list_metrics() -> None:
 
 
 @dev_app.command(
-    "list-strategies",
-    help="Lists all available compression strategy IDs, their versions, and sources (built-in or plugin).",
+    "list-engines",
+    help="Lists all available compression engine IDs, their versions, and sources (built-in or plugin).",
 )
-def list_strategies(
+@dev_app.command(
+    "list-strategies",
+    help="Lists all available compression engine IDs, their versions, and sources (built-in or plugin).",
+    hidden=True,
+)
+def list_registered_engines(
     include_contrib: bool = typer.Option(
-        False, "--include-contrib", help="Include experimental contrib strategies."
+        False, "--include-contrib", help="Include experimental contrib engines."
     )
 ) -> None:
-    """Displays a table of registered compression strategies."""
+    """Displays a table of registered compression engines."""
     load_plugins()  # Ensure plugins are loaded
     enable_all_experimental_engines()
-    # Experimental strategies register themselves; no legacy contrib layer
+    # Experimental engines register themselves; no legacy contrib layer
     table = Table(
         "Engine ID",
         "Display Name",
@@ -1037,7 +1042,7 @@ def list_strategies(
     meta = all_engine_metadata()
     ids = available_engines()
     if not ids:
-        typer.echo("No compression strategies found.")
+        typer.echo("No compression engines found.")
         return
     for sid in sorted(ids):
         info = meta.get(sid, {})
@@ -1058,7 +1063,7 @@ def list_strategies(
 
 @dev_app.command(
     "inspect-strategy",
-    help="Inspects aspects of a compression strategy, currently focused on 'prototype' strategy's beliefs.",
+    help="Inspects aspects of a compression engine, currently focused on 'prototype' engine's beliefs.",
 )
 def inspect_strategy(
     engine_name: str = typer.Argument(
@@ -1069,7 +1074,7 @@ def inspect_strategy(
     list_prototypes: bool = typer.Option(
         False,
         "--list-prototypes",
-        help="List consolidated prototypes (beliefs) if the strategy is 'prototype' and an engine store path is provided.",
+        help="List consolidated prototypes (beliefs) if the engine is 'prototype' and an engine store path is provided.",
     ),
 ) -> None:
     if engine_name.lower() != "prototype":
@@ -1495,18 +1500,18 @@ def download_chat_model_cli(
 
 @dev_app.command(
     "create-strategy-package",
-    help="Creates a new compression strategy extension package from a template. This command generates a template directory with all the necessary files to start developing a new, shareable strategy package, including a sample strategy, manifest file, and README.",
+    help="Creates a new compression engine extension package from a template. This command generates a template directory with all the necessary files to start developing a new, shareable engine package, including a sample engine, manifest file, and README.",
 )
 def create_strategy_package(
     name: str = typer.Option(
         "compact_memory_example_strategy",
         "--name",
-        help="Name for the new strategy package (e.g., 'compact_memory_my_strategy'). Used for directory and strategy ID.",
+        help="Name for the new engine package (e.g., 'compact_memory_my_engine'). Used for directory and engine ID.",
     ),
     path: Optional[Path] = typer.Option(
         None,
         "--path",
-        help="Directory where the strategy package will be created. Defaults to a new directory named after the strategy in the current location.",
+        help="Directory where the engine package will be created. Defaults to a new directory named after the engine in the current location.",
     ),
 ) -> None:
     target_dir = Path(path or name).resolve()  # Renamed for clarity
@@ -1581,17 +1586,17 @@ class MyEngine(BaseCompressionEngine):
     (target_dir / "experiments" / "example.yaml").write_text(
         """dataset: example.txt\nparam_grid:\n- {}\npackaged_strategy_config:\n  strategy_params: {}\n"""
     )
-    typer.echo(f"Successfully created strategy package '{name}' at: {target_dir}")
+    typer.echo(f"Successfully created engine package '{name}' at: {target_dir}")
 
 
 @dev_app.command(
     "validate-strategy-package",
-    help="Validates the structure and manifest of a compression strategy extension package.\n\nUsage Examples:\n  compact-memory dev validate-strategy-package path/to/my_strategy_pkg",
+    help="Validates the structure and manifest of a compression engine extension package.\n\nUsage Examples:\n  compact-memory dev validate-strategy-package path/to/my_engine_pkg",
 )
 def validate_strategy_package(
     package_path: Path = typer.Argument(
         ...,
-        help="Path to the root directory of the strategy package.",
+        help="Path to the root directory of the engine package.",
         exists=True,
         file_okay=False,
         dir_okay=True,
@@ -1605,7 +1610,7 @@ def validate_strategy_package(
         for e in errors:
             typer.echo(e)
         raise typer.Exit(code=1)
-    typer.echo(f"Strategy package at '{package_path}' appears valid.")
+    typer.echo(f"Engine package at '{package_path}' appears valid.")
 
 
 @dev_app.command(
