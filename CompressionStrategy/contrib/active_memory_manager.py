@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from ...prompt_budget import PromptBudget
+from compact_memory.prompt_budget import PromptBudget
 
-from ...token_utils import token_count
+from compact_memory.token_utils import token_count
 
 import numpy as np
 import logging

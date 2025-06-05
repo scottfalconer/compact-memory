@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-from compact_memory.strategies.experimental import ActiveMemoryManager, ConversationTurn
+from CompressionStrategy.contrib import ActiveMemoryManager, ConversationTurn
 
 
 def test_history_buffer_does_not_exceed_max_size():

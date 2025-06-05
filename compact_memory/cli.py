@@ -22,7 +22,7 @@ from .logging_utils import configure_logging
 from .agent import Agent
 from .vector_store import InMemoryVectorStore
 from . import local_llm
-from .strategies.experimental import (
+from CompressionStrategy.contrib import (
     ActiveMemoryManager,
     enable_all_experimental_strategies,
 )
@@ -42,7 +42,7 @@ from .embedding_pipeline import (
 from .utils import load_agent
 from compact_memory.config import Config, DEFAULT_CONFIG, USER_CONFIG_PATH
 
-from .compression import (
+from CompressionStrategy.core import (
     available_strategies,
     get_compression_strategy,
     all_strategy_metadata,
@@ -816,13 +816,7 @@ def list_strategies(
     """Displays a table of registered compression strategies."""
     load_plugins()  # Ensure plugins are loaded
     enable_all_experimental_strategies()
-    if include_contrib:
-        try:
-            from contrib import enable_all_contrib_strategies
-
-            enable_all_contrib_strategies()
-        except Exception:  # pragma: no cover - contrib may be missing
-            pass
+    # Experimental strategies register themselves; no legacy contrib layer
     table = Table(
         "Strategy ID",
         "Display Name",
@@ -1319,7 +1313,7 @@ def create_strategy_package(
     target_dir.mkdir(parents=True, exist_ok=True)
     (target_dir / "experiments").mkdir(exist_ok=True)
 
-    strategy_py_content = f"""from compact_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace
+    strategy_py_content = f"""from CompressionStrategy.core.strategies_abc import CompressionStrategy, CompressedMemory, CompressionTrace
 # Add any other necessary imports here
 
 class MyStrategy(CompressionStrategy):

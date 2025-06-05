@@ -51,7 +51,7 @@ Assistant:
 You can also call compression strategies programmatically:
 
 ```python
-from compact_memory.compression import get_compression_strategy
+from CompressionStrategy.core import get_compression_strategy
 from compact_memory.token_utils import get_tokenizer
 
 strategy = get_compression_strategy("first_last")()

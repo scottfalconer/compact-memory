@@ -1,8 +1,8 @@
-from compact_memory.compression.registry import (
+from CompressionStrategy.core.registry import (
     register_compression_strategy,
     _COMPRESSION_REGISTRY,
 )
-from compact_memory.compression.strategies_abc import CompressionStrategy
+from CompressionStrategy.core.strategies_abc import CompressionStrategy
 from compact_memory.validation.registry import (
     register_validation_metric,
     get_validation_metric_class,
@@ -10,7 +10,7 @@ from compact_memory.validation.registry import (
 )
 from compact_memory.validation.metrics_abc import ValidationMetric
 
-from compact_memory.compression.strategies_abc import (
+from CompressionStrategy.core.strategies_abc import (
     CompressedMemory,
     CompressionTrace,
 )

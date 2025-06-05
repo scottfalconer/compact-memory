@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import List, Union, Any
 
-from compact_memory.compression import NoCompression
-from compact_memory.compression.pipeline_strategy import PipelineCompressionStrategy
-from compact_memory.compression.strategies_abc import (
+from CompressionStrategy.core import register_compression_strategy, NoCompression
+from CompressionStrategy.core.pipeline_strategy import PipelineCompressionStrategy
+from CompressionStrategy.core.strategies_abc import (
     CompressionStrategy,
     CompressedMemory,
     CompressionTrace,
@@ -33,3 +33,8 @@ class ChainedStrategy(CompressionStrategy):
         self, path: str
     ) -> None:  # pragma: no cover - no learnables
         pass
+
+
+register_compression_strategy(ChainedStrategy.id, ChainedStrategy, source="contrib")
+
+__all__ = ["ChainedStrategy"]

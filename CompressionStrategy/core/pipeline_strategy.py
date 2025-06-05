@@ -28,7 +28,10 @@ class PipelineCompressionStrategy(CompressionStrategy):
 
     id = "pipeline"
 
-    def __init__(self, config_or_strategies: Union[PipelineStrategyConfig, List[CompressionStrategy]]):
+    def __init__(
+        self,
+        config_or_strategies: Union[PipelineStrategyConfig, List[CompressionStrategy]],
+    ):
         if isinstance(config_or_strategies, PipelineStrategyConfig):
             self.config = config_or_strategies
             self.strategies = [cfg.create() for cfg in self.config.strategies]

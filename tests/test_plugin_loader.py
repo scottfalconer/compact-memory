@@ -2,13 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from compact_memory.compression.registry import (
+from CompressionStrategy.core.registry import (
     _COMPRESSION_REGISTRY,
     _COMPRESSION_INFO,
     get_strategy_metadata,
 )
 from compact_memory.plugin_loader import load_plugins, PLUGIN_ENV_VAR
-from compact_memory.compression.strategies_abc import (
+from CompressionStrategy.core.strategies_abc import (
     CompressionStrategy,
     CompressedMemory,
     CompressionTrace,
@@ -19,7 +19,7 @@ def _create_plugin(pkg_dir: Path) -> None:
     pkg_dir.mkdir()
     (pkg_dir / "strategy.py").write_text(
         """
-from compact_memory.compression.strategies_abc import (
+from CompressionStrategy.core.strategies_abc import (
     CompressionStrategy,
     CompressedMemory,
     CompressionTrace,

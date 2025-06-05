@@ -16,8 +16,8 @@ Our strategy, \`FirstNSentencesStrategy\`, will:
 Create a Python file for your strategy, for example, \`my_strategies.py\`.
 ```python
 from typing import Union, List, Tuple, Any
-from compact_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory
-from compact_memory.compression.trace import CompressionTrace
+from CompressionStrategy.core.strategies_abc import CompressionStrategy, CompressedMemory
+from CompressionStrategy.core.trace import CompressionTrace
 from compact_memory.token_utils import get_tokenizer, token_count
 
 try:
@@ -146,7 +146,7 @@ compact-memory compress --text "Your long text here..." --strategy first_n_sente
 ```
 *   Python API:
 ```python
-from compact_memory.compression import get_compression_strategy
+from CompressionStrategy.core import get_compression_strategy
 # Assuming FirstNSentencesStrategy is registered or imported
 # For example, if you ran the __main__ block from my_strategies.py or imported it.
 

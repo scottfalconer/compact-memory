@@ -26,8 +26,8 @@ compact_memory_my_strategy/
 Now, replace the contents of the template \`compact_memory_my_strategy/strategy.py\` with your actual strategy code from \`my_awesome_strategy.py\`.
 Let's assume your \`my_awesome_strategy.py\` looked something like this:
 ```python
-from compact_memory.compression.strategies_abc import CompressionStrategy, CompressedMemory
-from compact_memory.compression.trace import CompressionTrace
+from CompressionStrategy.core.strategies_abc import CompressionStrategy, CompressedMemory
+from CompressionStrategy.core.trace import CompressionTrace
 # ... any other imports your strategy needs ...
 
 class MyAwesomeStrategy(CompressionStrategy):
@@ -109,7 +109,7 @@ compact-memory dev list-strategies # Your strategy should appear here
 compact-memory compress --file input.txt --strategy awesome_strat --budget 100 --strategy-params '{"custom_param": 10}'
 ```
 ```python
-from compact_memory.compression import get_compression_strategy
+from CompressionStrategy.core import get_compression_strategy
 MyStrategyClass = get_compression_strategy("awesome_strat")
 my_strat_instance = MyStrategyClass(custom_param=10)
 # ... use my_strat_instance.compress(...) ...

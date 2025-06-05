@@ -55,10 +55,10 @@ _lazy_map = {
     "token_count": "compact_memory.token_utils",
     "LearnedSummarizerStrategy": "compact_memory.learned_summarizer_strategy",
     "PromptBudget": "compact_memory.prompt_budget",
-    "CompressionStrategy": "compact_memory.compression",
-    "NoCompression": "compact_memory.compression",
+    "CompressionStrategy": "CompressionStrategy.core",
+    "NoCompression": "CompressionStrategy.core",
     "ValidationMetric": "compact_memory.validation.metrics_abc",
-    "StrategyConfig": "compact_memory.compression",
+    "StrategyConfig": "CompressionStrategy.core",
 }
 
 

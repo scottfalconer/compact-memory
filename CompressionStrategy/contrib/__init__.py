@@ -13,7 +13,6 @@ __all__ = [
     "ChainedStrategy",
     "RationaleEpisodeStrategy",
     "PrototypeSystemStrategy",
-    "EvidenceWriter",
     "LLMSummarisingChunker",
     "enable_all_experimental_strategies",
 ]
@@ -26,7 +25,6 @@ _lazy_modules = {
     "ChainedStrategy": ".chained",
     "RationaleEpisodeStrategy": ".rationale_episode",
     "PrototypeSystemStrategy": ".prototype_system",
-    "EvidenceWriter": ".prototype_system",
     "LLMSummarisingChunker": ".llm_summarising_chunker",
 }
 
