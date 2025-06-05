@@ -35,7 +35,7 @@ These are the primary commands for interacting with Compact Memory.
 
 ### `compact-memory ingest`
 
-Ingests a text file or files in a directory into a container's memory. The container is determined by the active `--memory-path` or its configured default.
+Ingests a text file or files in a directory into an engine store. The engine store is determined by the active `--memory-path` or its configured default.
 
 **Usage:** `compact-memory ingest [OPTIONS] SOURCE`
 
@@ -43,7 +43,7 @@ Ingests a text file or files in a directory into a container's memory. The conta
 *   `SOURCE`: Path to the text file or directory containing text files to ingest. (Required)
 
 **Options:**
-*   `--tau FLOAT`: Similarity threshold (0.5-0.95) for memory consolidation. Overrides the container's existing tau if set. If the container is new, this tau is used for initialization.
+*   `--tau FLOAT`: Similarity threshold (0.5-0.95) for memory consolidation. Overrides the engine store's existing tau if set. If the store is new, this tau is used for initialization.
 *   `--json`: Output ingestion summary statistics in JSON format.
 
 ### `compact-memory query`
@@ -53,7 +53,7 @@ Queries an engine store (specified by `--memory-path` or configuration) with the
 **Usage:** `compact-memory query [OPTIONS] QUERY_TEXT`
 
 **Arguments:**
-*   `QUERY_TEXT`: The query text to send to the container. (Required)
+*   `QUERY_TEXT`: The query text to send to the engine store. (Required)
 
 **Options:**
 *   `--show-prompt-tokens`: Display the token count of the final prompt sent to the LLM.
@@ -86,53 +86,53 @@ Compresses text content from a string, file, or directory using a specified engi
 
 Manage engine stores: initialize, inspect statistics, validate, and clear.
 
-The memory namespace is used to manage a named engine store for stored, compressed memories. It is not an AI agent.
+The engine namespace is used to manage a named engine store for stored, compressed memories. It is not an AI agent.
 
-**Usage:** `compact-memory memory [OPTIONS] COMMAND [ARGS]...`
+**Usage:** `compact-memory engine [OPTIONS] COMMAND [ARGS]...`
 
-#### `compact-memory memory init`
+#### `compact-memory engine init`
 
 Creates and initializes a new engine store in a specified directory.
 
-**Usage:** `compact-memory memory init [OPTIONS] TARGET_DIRECTORY`
+**Usage:** `compact-memory engine init [OPTIONS] TARGET_DIRECTORY`
 
 **Arguments:**
-*   `TARGET_DIRECTORY`: Directory to initialize the new container in. Will be created if it doesn't exist. (Required)
+*   `TARGET_DIRECTORY`: Directory to initialize the new engine store in. Will be created if it doesn't exist. (Required)
 
 **Options:**
-*   `--name TEXT`: A descriptive name for the container (default: "default").
+*   `--name TEXT`: A descriptive name for the engine store (default: "default").
 *   `--model-name TEXT`: Name of the sentence-transformer model for embeddings (default: "all-MiniLM-L6-v2").
 *   `--tau FLOAT`: Similarity threshold (tau) for memory consolidation, between 0.5 and 0.95 (default: 0.8).
 *   `--alpha FLOAT`: Alpha parameter, controlling the decay rate for memory importance (default: 0.1).
 *   `--chunker TEXT`: Chunking engine to use for processing text during ingestion (default: "sentence_window").
 
-#### `compact-memory memory stats`
+#### `compact-memory engine stats`
 
 Displays statistics about the Compact Memory engine store.
 
-**Usage:** `compact-memory memory stats [OPTIONS]`
+**Usage:** `compact-memory engine stats [OPTIONS]`
 
 **Options:**
-*   `--memory-path TEXT`: Path to the container directory. Overrides global setting if provided.
+*   `--memory-path TEXT`: Path to the engine store directory. Overrides global setting if provided.
 *   `--json`: Output statistics in JSON format.
 
-#### `compact-memory memory validate`
+#### `compact-memory engine validate`
 
-Validates the integrity of the container's storage.
+Validates the integrity of the engine store's storage.
 
-**Usage:** `compact-memory memory validate [OPTIONS]`
+**Usage:** `compact-memory engine validate [OPTIONS]`
 
 **Options:**
-*   `--memory-path TEXT`: Path to the container directory. Overrides global setting if provided.
+*   `--memory-path TEXT`: Path to the engine store directory. Overrides global setting if provided.
 
-#### `compact-memory memory clear`
+#### `compact-memory engine clear`
 
 Deletes all data from an engine store. This action is irreversible.
 
-**Usage:** `compact-memory memory clear [OPTIONS]`
+**Usage:** `compact-memory engine clear [OPTIONS]`
 
 **Options:**
-*   `--memory-path TEXT`: Path to the container directory. Overrides global setting if provided.
+*   `--memory-path TEXT`: Path to the engine store directory. Overrides global setting if provided.
 *   `--force / -f`: Force deletion without prompting for confirmation.
 *   `--dry-run`: Simulate deletion and show what would be deleted without actually removing files.
 
@@ -181,7 +181,7 @@ Inspects aspects of a compression engine, currently focused on 'prototype' engin
 **Arguments:**
 *   `STRATEGY_NAME`: The name of the engine to inspect. Currently, only 'prototype' is supported. (Required)
 **Options:**
-*   `--memory-path TEXT`: Path to the container directory. Overrides global setting if provided. Required if '--list-prototypes' is used.
+*   `--memory-path TEXT`: Path to the engine store directory. Overrides global setting if provided. Required if '--list-prototypes' is used.
 *   `--list-prototypes`: List consolidated prototypes (beliefs) if the engine is 'prototype' and a memory path is provided.
 
 #### `compact-memory dev evaluate-compression`

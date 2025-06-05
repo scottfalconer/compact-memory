@@ -100,7 +100,7 @@ Your engine package directory (\`compact_memory_my_engine\`) is now ready! Here'
 *   `Direct Sharing (Zip/Git):** You can zip the \`compact_memory_my_engine\` directory and share it. Users can then place it in their Compact Memory plugin directory.`
 *   `Python Package (Advanced):** For wider distribution (e.g., via PyPI), you would typically:`
     *   `Add a \`pyproject.toml\` (or \`setup.py\`) to the root of \`compact_memory_my_engine\` or one level above it.`
-    *   `Configure this file to include your engine files and register your engine as a plugin using entry points. (Refer to \`docs/SHARING_STRATEGIES.md\` for details on entry points).`
+    *   `Configure this file to include your engine files and register your engine as a plugin using entry points. (Refer to \`docs/SHARING_ENGINES.md\` for details on entry points).`
     *   `Build your package (e.g., \`python -m build\`) and upload it to PyPI.`
 ### 7. Using the Packaged Engine
 Once a user has your package (either by placing the directory in their plugins folder or by \`pip install\`-ing your Python package if you created one), they can use it like any other engine:
@@ -115,4 +115,4 @@ my_strat_instance = MyEngineClass(custom_param=10)
 # ... use my_strat_instance.compress(...) ...
 ```
 ## Conclusion
-You've successfully taken a engine idea, used \`dev create-engine-package\` to structure it, configured its manifest, and prepared it for sharing. This process helps build a robust ecosystem of compression engines for Compact Memory. For more details on plugin mechanisms and distribution, always refer to \`docs/SHARING_STRATEGIES.md\`.
+You've successfully taken a engine idea, used \`dev create-engine-package\` to structure it, configured its manifest, and prepared it for sharing. This process helps build a robust ecosystem of compression engines for Compact Memory. For more details on plugin mechanisms and distribution, always refer to \`docs/SHARING_ENGINES.md\`.

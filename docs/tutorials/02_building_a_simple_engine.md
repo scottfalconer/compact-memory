@@ -140,7 +140,7 @@ Explanation of the Code:
 ### 3. Using the Engine via Compact Memory CLI or API
 Once your engine is defined and you can import it (and optionally register it if not using a plugin mechanism for broader discovery), you can use it.
 *   CLI:
-To use via CLI, you'd typically package this engine (see \`SHARING_STRATEGIES.md\`). If \`my_engines.py\` was in a discoverable plugin directory, you could run:
+To use via CLI, you'd typically package this engine (see \`SHARING_ENGINES.md\`). If \`my_engines.py\` was in a discoverable plugin directory, you could run:
 ```bash
 compact-memory compress --text "Your long text here..." --engine first_n_sentences --budget 50 --engine-params '{"num_sentences": 2}'
 ```
@@ -184,4 +184,4 @@ This basic engine can be extended:
 *   `Configurable Sentence Delimiter: Allow users to specify custom sentence delimiters.`
 *   `Min/Max Sentences: Add parameters for minimum sentences to keep, regardless of budget (if feasible), or a hard maximum even if budget allows more.`
 ## Conclusion
-This tutorial demonstrated building a simple \`FirstNSentencesEngine\`, from defining the class to testing it. It illustrates the core components of a \`BaseCompressionEngine\` and how to integrate it with Compact Memory's utilities. For more advanced features like learnable components, detailed tracing, and packaging, refer to the main \`ENGINE_DEVELOPMENT.md\` guide and the \`SHARING_STRATEGIES.md\` guide.
+This tutorial demonstrated building a simple \`FirstNSentencesEngine\`, from defining the class to testing it. It illustrates the core components of a \`BaseCompressionEngine\` and how to integrate it with Compact Memory's utilities. For more advanced features like learnable components, detailed tracing, and packaging, refer to the main \`ENGINE_DEVELOPMENT.md\` guide and the \`SHARING_ENGINES.md\` guide.

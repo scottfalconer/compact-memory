@@ -39,6 +39,8 @@ class CompressionTrace:
 class BaseCompressionEngine:
     """Simple retrieval engine using MiniLM embeddings and FAISS."""
 
+    id = "base"
+
     def __init__(
         self,
         *,
@@ -121,6 +123,14 @@ class BaseCompressionEngine:
         """Persist memories and embeddings to ``path``."""
 
         os.makedirs(path, exist_ok=True)
+        manifest = {
+            "engine_id": getattr(self, "id", self.__class__.__name__),
+            "engine_class": f"{self.__class__.__module__}.{self.__class__.__qualname__}",
+        }
+        with open(
+            os.path.join(path, "engine_manifest.json"), "w", encoding="utf-8"
+        ) as fh:
+            json.dump(manifest, fh)
         with open(os.path.join(path, "entries.json"), "w", encoding="utf-8") as fh:
             json.dump(self.memories, fh)
         np.save(os.path.join(path, "embeddings.npy"), self.embeddings)
@@ -136,4 +146,35 @@ class BaseCompressionEngine:
         self._ensure_index()
 
 
-__all__ = ["BaseCompressionEngine", "CompressedMemory", "CompressionTrace"]
+def load_engine(path: str | os.PathLike) -> BaseCompressionEngine:
+    """Load a compression engine from ``path`` using its manifest."""
+
+    import importlib
+    from pathlib import Path
+    from ..engine_registry import get_compression_engine
+
+    p = Path(path)
+    with open(p / "engine_manifest.json", "r", encoding="utf-8") as fh:
+        manifest = json.load(fh)
+    engine_id = manifest.get("engine_id")
+    engine_class = manifest.get("engine_class")
+    cls = None
+    if engine_class:
+        mod_name, cls_name = engine_class.rsplit(".", 1)
+        mod = importlib.import_module(mod_name)
+        cls = getattr(mod, cls_name)
+    elif engine_id:
+        cls = get_compression_engine(engine_id)
+    else:
+        raise ValueError("Engine manifest missing engine_id or engine_class")
+    engine = cls()
+    engine.load(p)
+    return engine
+
+
+__all__ = [
+    "BaseCompressionEngine",
+    "CompressedMemory",
+    "CompressionTrace",
+    "load_engine",
+]
