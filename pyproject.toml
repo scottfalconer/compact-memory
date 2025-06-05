@@ -16,7 +16,7 @@ dependencies = [
     "faiss-cpu",
     "click>=8.2",
     "tqdm",
-    "pydantic",
+    "pydantic>=2.0",
     "pyyaml",
     "typer[all]>=0.16.0",
     "portalocker",
