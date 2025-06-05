@@ -12,7 +12,7 @@ if TYPE_CHECKING:  # pragma: no cover - for type hints only
     from .memory_container import MemoryContainer
 
 
-def load_agent(path: Path) -> "MemoryContainer":
+def load_memory_container(path: Path) -> "MemoryContainer":
     raise RuntimeError(
         "Persistent storage support was removed. Provide your own loader."
     )
@@ -38,4 +38,4 @@ def format_ingest_results(
     return lines
 
 
-__all__ = ["load_agent", "format_ingest_results"]
+__all__ = ["load_memory_container", "format_ingest_results"]

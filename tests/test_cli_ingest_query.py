@@ -28,6 +28,6 @@ def test_query_returns_reply(tmp_path: Path, monkeypatch):
     store = InMemoryVectorStore(embedding_dim=dim)
     agent = MemoryContainer(store)
     agent.add_memory("the sky is blue")
-    monkeypatch.setattr("compact_memory.cli._load_agent", lambda path: agent)
+    monkeypatch.setattr("compact_memory.cli.load_memory_container", lambda path: agent)
     result = runner.invoke(app, ["query", "sky?"], env=_env(tmp_path))
     assert result.exit_code == 0
