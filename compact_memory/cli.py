@@ -54,7 +54,7 @@ from .cli_plugins import load_cli_plugins
 from .package_utils import (
     load_manifest,
     validate_manifest,
-    load_strategy_class,
+    load_engine_class,
     validate_package_dir,
     check_requirements_installed,
 )
@@ -116,7 +116,7 @@ def main(
         "--model-id",
         help="Default model ID for LLM interactions. Overrides COMPACT_MEMORY_DEFAULT_MODEL_ID env var and configuration files.",
     ),
-    strategy_id: Optional[str] = typer.Option(
+    engine_id: Optional[str] = typer.Option(
         None,
         "--engine",
         help="Default compression engine ID. Overrides COMPACT_MEMORY_DEFAULT_ENGINE_ID env var and configuration files.",
@@ -156,7 +156,7 @@ def main(
         model_id if model_id is not None else config.get("default_model_id")
     )
     resolved_engine_id = (
-        strategy_id if strategy_id is not None else config.get("default_engine_id")
+        engine_id if engine_id is not None else config.get("default_engine_id")
     )
 
     if resolved_memory_path:
@@ -497,7 +497,7 @@ def query(
         raise typer.Exit(code=1)  # Added model_id to error
 
     mgr = ActiveMemoryManager()
-    comp_strategy_instance = None
+    comp_engine_instance = None
     if final_engine_id and final_engine_id.lower() != "none":
         try:
             comp_cls = get_compression_engine(final_engine_id)
@@ -507,7 +507,7 @@ def query(
                     "\u26a0\ufe0f Using experimental engine from contrib: not officially supported.",
                     fg=typer.colors.YELLOW,
                 )
-            comp_strategy_instance = comp_cls()
+            comp_engine_instance = comp_cls()
         except KeyError:
             typer.secho(
                 f"Error: Unknown compression engine '{final_engine_id}' (from global config/option). Available: {', '.join(available_engines())}",
@@ -518,7 +518,7 @@ def query(
 
         try:
             result = container.receive_channel_message(
-                "cli", query_text, mgr, compression=comp_strategy_instance
+                "cli", query_text, mgr, compression=comp_engine_instance
             )
         except TypeError:  # Older agents might not have compression param
             result = container.receive_channel_message("cli", query_text, mgr)
@@ -561,7 +561,7 @@ def compress(
         help="Path to a directory of input files",
     ),
     *,
-    strategy_arg: Optional[str] = typer.Option(
+    engine_arg: Optional[str] = typer.Option(
         None,
         "--engine",
         "-e",
@@ -625,7 +625,7 @@ def compress(
     ),
 ) -> None:
     final_engine_id = (
-        strategy_arg if strategy_arg is not None else ctx.obj.get("default_engine_id")
+        engine_arg if engine_arg is not None else ctx.obj.get("default_engine_id")
     )
     if not final_engine_id:
         typer.secho(
@@ -1580,7 +1580,7 @@ class MyEngine(BaseCompressionEngine):
         "authors": [],
         "description": "Describe the strategy",
     }
-    (target_dir / "strategy_package.yaml").write_text(yaml.safe_dump(manifest))
+    (target_dir / "engine_package.yaml").write_text(yaml.safe_dump(manifest))
     (target_dir / "requirements.txt").write_text("\n")
     (target_dir / "README.md").write_text(f"# {name}\n")
     (target_dir / "experiments" / "example.yaml").write_text(
