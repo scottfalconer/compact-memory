@@ -37,6 +37,10 @@ metrics = ["evaluate"]
 [project.scripts]
 compact-memory = "compact_memory.__main__:main"
 
+[project.entry-points."compact_memory.engines"]
+none = "compact_memory.engines.no_compression_engine:NoCompressionEngine"
+pipeline = "compact_memory.engines.pipeline_engine:PipelineEngine"
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["compact_memory", "compact_memory.*", "CompressionStrategy", "CompressionStrategy.*"]

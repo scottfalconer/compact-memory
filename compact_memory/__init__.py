@@ -27,13 +27,19 @@ __all__ = [
     "tokenize_text",
     "token_count",
     "PromptBudget",
-    "CompressionStrategy",
-    "NoCompression",
     "BaseCompressionEngine",
     "CompressedMemory",
     "CompressionTrace",
+    "PipelineEngineConfig",
+    "PipelineEngine",
+    "NoCompressionEngine",
     "ValidationMetric",
     "StrategyConfig",
+    "register_compression_engine",
+    "get_compression_engine",
+    "available_engines",
+    "get_engine_metadata",
+    "all_engine_metadata",
 ]
 
 _lazy_map = {
@@ -58,13 +64,19 @@ _lazy_map = {
     "token_count": "compact_memory.token_utils",
     "LearnedSummarizerStrategy": "CompressionStrategy.contrib.learned_summarizer_strategy",
     "PromptBudget": "compact_memory.prompt_budget",
-    "CompressionStrategy": "CompressionStrategy.core",
-    "NoCompression": "CompressionStrategy.core",
     "BaseCompressionEngine": "compact_memory.engines",
     "CompressedMemory": "compact_memory.engines",
     "CompressionTrace": "compact_memory.engines",
+    "PipelineEngineConfig": "compact_memory.engines.pipeline_engine",
+    "PipelineEngine": "compact_memory.engines.pipeline_engine",
+    "NoCompressionEngine": "compact_memory.engines.no_compression_engine",
     "ValidationMetric": "compact_memory.validation.metrics_abc",
     "StrategyConfig": "CompressionStrategy.core",
+    "register_compression_engine": "compact_memory.engine_registry",
+    "get_compression_engine": "compact_memory.engine_registry",
+    "available_engines": "compact_memory.engine_registry",
+    "get_engine_metadata": "compact_memory.engine_registry",
+    "all_engine_metadata": "compact_memory.engine_registry",
 }
 
 
