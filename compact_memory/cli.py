@@ -54,7 +54,7 @@ from .cli_plugins import load_cli_plugins
 from .package_utils import (
     load_manifest,
     validate_manifest,
-    load_strategy_class,
+    load_engine_class,
     validate_package_dir,
     check_requirements_installed,
 )
@@ -76,7 +76,7 @@ config_app = typer.Typer(
     help="Manage Compact Memory application configuration settings."
 )
 dev_app = typer.Typer(
-    help="Commands for compression strategy developers and researchers."
+    help="Commands for compression engine developers and researchers."
 )
 
 # --- Add New Command Groups to Main App ---
@@ -116,7 +116,7 @@ def main(
         "--model-id",
         help="Default model ID for LLM interactions. Overrides COMPACT_MEMORY_DEFAULT_MODEL_ID env var and configuration files.",
     ),
-    strategy_id: Optional[str] = typer.Option(
+    engine_id: Optional[str] = typer.Option(
         None,
         "--engine",
         help="Default compression engine ID. Overrides COMPACT_MEMORY_DEFAULT_ENGINE_ID env var and configuration files.",
@@ -156,7 +156,7 @@ def main(
         model_id if model_id is not None else config.get("default_model_id")
     )
     resolved_engine_id = (
-        strategy_id if strategy_id is not None else config.get("default_engine_id")
+        engine_id if engine_id is not None else config.get("default_engine_id")
     )
 
     if resolved_memory_path:
@@ -561,7 +561,7 @@ def compress(
         help="Path to a directory of input files",
     ),
     *,
-    strategy_arg: Optional[str] = typer.Option(
+    engine_option: Optional[str] = typer.Option(
         None,
         "--engine",
         "-e",
@@ -625,7 +625,7 @@ def compress(
     ),
 ) -> None:
     final_engine_id = (
-        strategy_arg if strategy_arg is not None else ctx.obj.get("default_engine_id")
+        engine_option if engine_option is not None else ctx.obj.get("default_engine_id")
     )
     if not final_engine_id:
         typer.secho(
@@ -1057,13 +1057,13 @@ def list_strategies(
 
 
 @dev_app.command(
-    "inspect-strategy",
-    help="Inspects aspects of a compression strategy, currently focused on 'prototype' strategy's beliefs.",
+    "inspect-engine",
+    help="Inspects aspects of a compression engine, currently focused on 'prototype' engine's beliefs.",
 )
-def inspect_strategy(
-    strategy_name: str = typer.Argument(
+def inspect_engine(
+    engine_id: str = typer.Argument(
         ...,
-        help="The name of the strategy to inspect. Currently, only 'prototype' is supported.",
+        help="The ID of the engine to inspect. Currently, only 'prototype' is supported.",
     ),
     *,
     list_prototypes: bool = typer.Option(
@@ -1072,9 +1072,9 @@ def inspect_strategy(
         help="List consolidated prototypes (beliefs) if the strategy is 'prototype' and an engine store path is provided.",
     ),
 ) -> None:
-    if strategy_name.lower() != "prototype":
+    if engine_id.lower() != "prototype":
         typer.secho(
-            f"Error: Inspection for strategy '{strategy_name}' is not supported. Only 'prototype' is currently inspectable.",
+            f"Error: Inspection for engine '{engine_id}' is not supported. Only 'prototype' is currently inspectable.",
             err=True,
             fg=typer.colors.RED,
         )
@@ -1105,7 +1105,7 @@ def inspect_strategy(
         console.print(table)
     else:
         typer.echo(
-            f"Strategy '{strategy_name}' is available. Use --list-prototypes and provide an engine store path to see its beliefs."
+            f"Engine '{engine_id}' is available. Use --list-prototypes and provide an engine store path to see its beliefs."
         )
 
 
@@ -1494,19 +1494,19 @@ def download_chat_model_cli(
 
 
 @dev_app.command(
-    "create-strategy-package",
-    help="Creates a new compression strategy extension package from a template. This command generates a template directory with all the necessary files to start developing a new, shareable strategy package, including a sample strategy, manifest file, and README.",
+    "create-engine-package",
+    help="Creates a new compression engine extension package from a template. This command generates a template directory with all the necessary files to start developing a new, shareable engine package, including a sample engine, manifest file, and README.",
 )
-def create_strategy_package(
+def create_engine_package(
     name: str = typer.Option(
         "compact_memory_example_strategy",
         "--name",
-        help="Name for the new strategy package (e.g., 'compact_memory_my_strategy'). Used for directory and strategy ID.",
+        help="Name for the new engine package (e.g., 'compact_memory_my_engine'). Used for directory and engine ID.",
     ),
     path: Optional[Path] = typer.Option(
         None,
         "--path",
-        help="Directory where the strategy package will be created. Defaults to a new directory named after the strategy in the current location.",
+        help="Directory where the engine package will be created. Defaults to a new directory named after the engine in the current location.",
     ),
 ) -> None:
     target_dir = Path(path or name).resolve()  # Renamed for clarity
@@ -1575,23 +1575,23 @@ class MyEngine(BaseCompressionEngine):
         "authors": [],
         "description": "Describe the strategy",
     }
-    (target_dir / "strategy_package.yaml").write_text(yaml.safe_dump(manifest))
+    (target_dir / "engine_package.yaml").write_text(yaml.safe_dump(manifest))
     (target_dir / "requirements.txt").write_text("\n")
     (target_dir / "README.md").write_text(f"# {name}\n")
     (target_dir / "experiments" / "example.yaml").write_text(
         """dataset: example.txt\nparam_grid:\n- {}\npackaged_strategy_config:\n  strategy_params: {}\n"""
     )
-    typer.echo(f"Successfully created strategy package '{name}' at: {target_dir}")
+    typer.echo(f"Successfully created engine package '{name}' at: {target_dir}")
 
 
 @dev_app.command(
-    "validate-strategy-package",
-    help="Validates the structure and manifest of a compression strategy extension package.\n\nUsage Examples:\n  compact-memory dev validate-strategy-package path/to/my_strategy_pkg",
+    "validate-engine-package",
+    help="Validates the structure and manifest of a compression engine extension package.\n\nUsage Examples:\n  compact-memory dev validate-engine-package path/to/my_engine_pkg",
 )
-def validate_strategy_package(
+def validate_engine_package(
     package_path: Path = typer.Argument(
         ...,
-        help="Path to the root directory of the strategy package.",
+        help="Path to the root directory of the engine package.",
         exists=True,
         file_okay=False,
         dir_okay=True,
@@ -1605,7 +1605,7 @@ def validate_strategy_package(
         for e in errors:
             typer.echo(e)
         raise typer.Exit(code=1)
-    typer.echo(f"Strategy package at '{package_path}' appears valid.")
+    typer.echo(f"Engine package at '{package_path}' appears valid.")
 
 
 @dev_app.command(

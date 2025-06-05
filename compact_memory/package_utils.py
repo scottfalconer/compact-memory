@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Utilities for working with strategy packages."""
+"""Utilities for working with engine packages."""
 
 import importlib.util
 import importlib
@@ -10,14 +10,14 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Dict, Type
 
-from compact_memory.engines import BaseCompressionEngine as CompressionStrategy
+from compact_memory.engines import BaseCompressionEngine
 
 
 REQUIRED_FIELDS = {
     "package_format_version",
-    "strategy_id",
-    "strategy_class_name",
-    "strategy_module",
+    "engine_id",
+    "engine_class_name",
+    "engine_module",
     "display_name",
     "version",
     "authors",
@@ -49,9 +49,9 @@ def import_module_from_path(name: str, path: Path) -> ModuleType:
     return module
 
 
-def load_strategy_class_from_module(
+def load_engine_class_from_module(
     module_file_path: str, class_name: str
-) -> Type[CompressionStrategy]:
+) -> Type[BaseCompressionEngine]:
     """Load and return ``class_name`` from ``module_file_path``."""
 
     module_path = Path(module_file_path)
@@ -74,23 +74,23 @@ def load_strategy_class_from_module(
     cls = getattr(module, class_name, None)
     if cls is None:
         raise ImportError(f"Class {class_name} not found in {module_file_path}")
-    if not isinstance(cls, type) or not issubclass(cls, CompressionStrategy):
-        raise TypeError(f"{class_name} is not a CompressionStrategy")
+    if not isinstance(cls, type) or not issubclass(cls, BaseCompressionEngine):
+        raise TypeError(f"{class_name} is not a BaseCompressionEngine")
     return cls
 
 
-def load_strategy_class(
+def load_engine_class(
     package_dir: Path, manifest: Dict[str, Any]
-) -> type[CompressionStrategy]:
-    module_name = manifest["strategy_module"]
-    class_name = manifest["strategy_class_name"]
+) -> type[BaseCompressionEngine]:
+    module_name = manifest["engine_module"]
+    class_name = manifest["engine_class_name"]
     module_path = package_dir / f"{module_name}.py"
     module = import_module_from_path(module_name, module_path)
     cls = getattr(module, class_name, None)
     if cls is None:
         raise ImportError(f"Class {class_name} not found in {module_name}")
-    if not issubclass(cls, CompressionStrategy):
-        raise TypeError(f"{class_name} is not a CompressionStrategy")
+    if not issubclass(cls, BaseCompressionEngine):
+        raise TypeError(f"{class_name} is not a BaseCompressionEngine")
     return cls
 
 
@@ -121,27 +121,27 @@ def validate_package_dir(package_dir: Path) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
 
-    manifest_path = package_dir / "strategy_package.yaml"
+    manifest_path = package_dir / "engine_package.yaml"
     if not manifest_path.exists():
-        errors.append("strategy_package.yaml not found")
+        errors.append("engine_package.yaml not found")
         return errors, warnings
 
     try:
         manifest = load_manifest(manifest_path)
     except Exception as exc:
-        errors.append(f"Invalid strategy_package.yaml: {exc}")
+        errors.append(f"Invalid engine_package.yaml: {exc}")
         return errors, warnings
 
     errors.extend(validate_manifest(manifest))
 
-    module_name = manifest.get("strategy_module")
+    module_name = manifest.get("engine_module")
     if module_name:
         module_path = package_dir / f"{module_name}.py"
         if not module_path.exists():
             errors.append(f"{module_path.name} not found")
         else:
             try:
-                load_strategy_class(package_dir, manifest)
+                load_engine_class(package_dir, manifest)
             except Exception as exc:
                 errors.append(str(exc))
 
@@ -157,8 +157,8 @@ __all__ = [
     "load_manifest",
     "validate_manifest",
     "import_module_from_path",
-    "load_strategy_class_from_module",
-    "load_strategy_class",
+    "load_engine_class_from_module",
+    "load_engine_class",
     "check_requirements_installed",
     "validate_package_dir",
 ]

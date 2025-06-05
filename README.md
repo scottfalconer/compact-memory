@@ -72,7 +72,7 @@ Key aspects of the framework include:
 *   **Plugin Architecture:** A system for packaging and sharing your CompressionEngines, making them discoverable and usable by others.
 
 To get started with building your own compression engines, please refer to our detailed guide:
-*   **[Developing Compression Engines](docs/DEVELOPING_COMPRESSION_STRATEGIES.md)**
+*   **[Developing Compression Engines](docs/DEVELOPING_COMPRESSION_ENGINES.md)**
 
 This guide will walk you through the process of creating a new BaseCompressionEngine, from understanding the core components to testing and evaluation.
 
@@ -165,13 +165,13 @@ For users wanting to understand the foundational ideas behind Compact Memory:
 
 For contributors or those looking to build custom solutions on top of Compact Memory:
 
--   Learn about developing custom `BaseCompressionEngine` implementations in `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`.
+-   Learn about developing custom `BaseCompressionEngine` implementations in `docs/DEVELOPING_COMPRESSION_ENGINES.md`.
 -   Understand how to create new `ValidationMetric` functions by reading `docs/DEVELOPING_VALIDATION_METRICS.md`.
 -   Review the overall system design in `docs/ARCHITECTURE.md`.
 
 ## Features
 
-- Command-line interface for memory container management (`memory init`, `memory stats`, `memory validate`, `memory clear`), data processing (`ingest`, `query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-engines`, `dev evaluate-compression`, etc.).
+- Command-line interface for engine store management (`engine init`, `engine stats`, `engine validate`, `engine clear`), data processing (`ingest`, `query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-engines`, `dev evaluate-compression`, etc.).
 - Global configuration options settable via CLI, environment variables, or config files.
 - Pluggable memory compression engines.
  - Pluggable CompressionEngines.
@@ -336,17 +336,17 @@ export COMPACT_MEMORY_PATH=~/my_compact_memories
 
 ## Quick Start / Core Workflow
 
-The `compact-memory` Command-Line Interface (CLI) is your primary tool for managing memory containers, ingesting data, querying, and summarizing.
+The `compact-memory` Command-Line Interface (CLI) is your primary tool for managing engine stores, ingesting data, querying, and summarizing.
 
-**1. Initialize a Memory Container:**
-First, create a new memory container. This directory will store the container's data.
+**1. Initialize an Engine Store:**
+First, create a new engine store. This directory will store the engine's data.
 ```bash
-compact-memory memory init ./my_memory --model-name sentence-transformers/all-MiniLM-L6-v2
+compact-memory engine init ./my_memory --model-name sentence-transformers/all-MiniLM-L6-v2
 ```
-This creates a memory container at `./my_memory`. The specified embedding model will be downloaded if not already present.
+This creates an engine store at `./my_memory`. The specified embedding model will be downloaded if not already present.
 
 **2. Configure Memory Path (Optional but Recommended for Convenience):**
-To avoid specifying `--memory-path ./my_memory` for every command that interacts with this container, you can set it globally for your user or for the current terminal session.
+To avoid specifying `--memory-path ./my_memory` for every command that interacts with this engine store, you can set it globally for your user or for the current terminal session.
 
 *   **Set globally (user config):**
     ```bash
@@ -359,7 +359,7 @@ To avoid specifying `--memory-path ./my_memory` for every command that interacts
     ```
 
 **3. Ingest Data:**
-Add information to the memory container.
+Add information to the engine store.
 ```bash
 # If compact_memory_path is set (globally or via env var):
 compact-memory ingest path/to/your_document.txt
@@ -416,7 +416,7 @@ For more detailed information on Compact Memory's architecture, development guid
 
 -   **Main Documentation Portal:** `docs/README.md` (or `docs/index.md`) serves as a Table of Contents and entry point for deeper documentation.
 -   **Architecture Deep Dive:** Understand the overall system design in `docs/ARCHITECTURE.md`.
--   **Developing Compression Engines:** Learn how to create your own engines in `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`.
+-   **Developing Compression Engines:** Learn how to create your own engines in `docs/DEVELOPING_COMPRESSION_ENGINES.md`.
 -   **Developing Validation Metrics:** Find guidance on building custom metrics in `docs/DEVELOPING_VALIDATION_METRICS.md`.
 -   **Plugins:** Learn how to install or develop engine plugins in `docs/SHARING_STRATEGIES.md`.
 -   **Conceptual Guides:** Explore the ideas behind memory engines in `docs/PROJECT_VISION.md`.
@@ -426,9 +426,9 @@ For more detailed information on Compact Memory's architecture, development guid
 Compact Memory is designed to support a wide variety of `BaseCompressionEngine` implementations. For detailed guidance on creating your own, including best practices for splitting documents into meaningful chunks (e.g., belief-sized ideas) and techniques for updating memory (like centroid updates), please see:
 
 -   `docs/COMPRESSION_STRATEGIES.md`
--   `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`
+-   `docs/DEVELOPING_COMPRESSION_ENGINES.md`
 
-The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during memory initialization (e.g., `compact-memory memory init ./my_memory --chunker agentic`) or programmatically within your custom engine (e.g., `agent.chunker = AgenticChunker()`).
+The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during engine initialization (e.g., `compact-memory engine init ./my_memory --chunker agentic`) or programmatically within your custom engine (e.g., `agent.chunker = AgenticChunker()`).
 
 ## Contributing
 
