@@ -34,6 +34,7 @@ from .engine_registry import (
     all_engine_metadata,
 )
 from .engines.no_compression_engine import NoCompressionEngine
+from .engines import load_engine
 from .validation.registry import (
     _VALIDATION_METRIC_REGISTRY,
     get_validation_metric_class,
@@ -238,13 +239,6 @@ def _corrupt_exit(path: Path, exc: Exception) -> None:
         err=True,
     )
     raise typer.Exit(code=1)
-
-
-def load_engine(path: Path) -> PrototypeEngine:
-    """Load a :class:`PrototypeEngine` from ``path``."""
-    from .utils import load_engine as _loader
-
-    return _loader(path)
 
 
 # --- Engine Commands ---
