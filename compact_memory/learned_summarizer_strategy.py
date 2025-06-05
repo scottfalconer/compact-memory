@@ -3,9 +3,12 @@ from __future__ import annotations
 """Example CompressionStrategy using a pretrained summarization model."""
 
 from typing import Any, Dict, List, Union, Tuple
-from transformers import pipeline
 
-from .compression.strategies_abc import CompressedMemory, CompressionStrategy, CompressionTrace
+from .compression.strategies_abc import (
+    CompressedMemory,
+    CompressionStrategy,
+    CompressionTrace,
+)
 
 
 class LearnedSummarizerStrategy(CompressionStrategy):
@@ -15,6 +18,12 @@ class LearnedSummarizerStrategy(CompressionStrategy):
 
     def __init__(self, model_name: str = "sshleifer/distilbart-cnn-12-6") -> None:
         self.model_name = model_name
+        try:
+            from transformers import pipeline
+        except Exception as exc:  # pragma: no cover - optional dependency
+            raise ImportError(
+                "transformers with PyTorch is required for LearnedSummarizerStrategy"
+            ) from exc
         self.summarizer = pipeline("summarization", model=model_name)
 
     def compress(
@@ -27,7 +36,9 @@ class LearnedSummarizerStrategy(CompressionStrategy):
             text = " ".join(text_or_chunks)
         else:
             text = str(text_or_chunks)
-        result = self.summarizer(text, max_length=llm_token_budget, min_length=1, do_sample=False)
+        result = self.summarizer(
+            text, max_length=llm_token_budget, min_length=1, do_sample=False
+        )
         summary = result[0]["summary_text"]
         compressed = CompressedMemory(text=summary)
         trace = CompressionTrace(
@@ -44,4 +55,10 @@ class LearnedSummarizerStrategy(CompressionStrategy):
         self.summarizer.save_pretrained(path)  # type: ignore[attr-defined]
 
     def load_learnable_components(self, path: str) -> None:
+        try:
+            from transformers import pipeline
+        except Exception as exc:  # pragma: no cover - optional dependency
+            raise ImportError(
+                "transformers with PyTorch is required for LearnedSummarizerStrategy"
+            ) from exc
         self.summarizer = pipeline("summarization", model=path)

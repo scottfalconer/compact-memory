@@ -18,14 +18,9 @@ dependencies = [
     "tqdm",
     "pydantic",
     "pyyaml",
-    "sentence-transformers",
-    "transformers",
-    "spacy",
     "typer[all]>=0.16.0",
     "portalocker",
     "rich>=13.6",
-    "google-generativeai",
-    "evaluate",
 ]
 
 [project.optional-dependencies]
@@ -34,6 +29,10 @@ chroma = ["chromadb"]
 spacy = ["spacy"]
 optuna = ["optuna"]
 ray = ["ray[tune]"]
+embedding = ["sentence-transformers", "torch"]
+local = ["transformers", "torch"]
+gemini = ["google-generativeai"]
+metrics = ["evaluate"]
 
 [project.scripts]
 compact-memory = "compact_memory.__main__:main"

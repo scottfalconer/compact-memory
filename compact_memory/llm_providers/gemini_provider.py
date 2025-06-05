@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any, Dict
 import os
 
-import google.generativeai as genai
 
 from ..llm_providers_abc import LLMProvider
 
@@ -20,6 +19,12 @@ class GeminiProvider(LLMProvider):
         return self.MODEL_TOKEN_LIMITS.get(model_name, default)
 
     def count_tokens(self, text: str, model_name: str, **kwargs) -> int:
+        try:
+            import google.generativeai as genai
+        except Exception as exc:  # pragma: no cover - optional dependency
+            raise ImportError(
+                "google-generativeai is required for GeminiProvider"
+            ) from exc
         model = genai.GenerativeModel(model_name)
         return model.count_tokens(text).total_tokens
 
@@ -33,6 +38,12 @@ class GeminiProvider(LLMProvider):
         api_key = llm_kwargs.pop("api_key", None)
         if api_key is None:
             api_key = os.getenv("GEMINI_API_KEY")
+        try:
+            import google.generativeai as genai
+        except Exception as exc:  # pragma: no cover - optional dependency
+            raise ImportError(
+                "google-generativeai is required for GeminiProvider"
+            ) from exc
         if api_key:
             genai.configure(api_key=api_key)
         model = genai.GenerativeModel(model_name)
