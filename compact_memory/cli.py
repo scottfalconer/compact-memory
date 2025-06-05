@@ -26,6 +26,14 @@ from CompressionStrategy.contrib import (
     ActiveMemoryManager,
     enable_all_experimental_strategies,
 )
+from .engine_registry import (
+    register_compression_engine,
+    get_compression_engine,
+    available_engines,
+    get_engine_metadata,
+    all_engine_metadata,
+)
+from .engines.no_compression_engine import NoCompressionEngine
 from .validation.registry import (
     _VALIDATION_METRIC_REGISTRY,
     get_validation_metric_class,
@@ -63,8 +71,11 @@ app = typer.Typer(
 )
 console = Console()
 
+# Register built-in engines
+register_compression_engine(NoCompressionEngine.id, NoCompressionEngine)
+
 # --- New Command Groups ---
-memory_app = typer.Typer(
+engine_app = typer.Typer(
     help="Manage memory containers: initialize, inspect statistics, validate, and clear."
 )
 config_app = typer.Typer(
@@ -75,7 +86,7 @@ dev_app = typer.Typer(
 )
 
 # --- Add New Command Groups to Main App ---
-app.add_typer(memory_app, name="memory")
+app.add_typer(engine_app, name="engine")
 app.add_typer(config_app, name="config")
 app.add_typer(dev_app, name="dev")
 
@@ -113,8 +124,8 @@ def main(
     ),
     strategy_id: Optional[str] = typer.Option(
         None,
-        "--strategy-id",
-        help="Default compression strategy ID. Overrides COMPACT_MEMORY_DEFAULT_STRATEGY_ID env var and configuration files.",
+        "--engine",
+        help="Default compression engine ID. Overrides COMPACT_MEMORY_DEFAULT_STRATEGY_ID env var and configuration files.",
     ),
     version: Optional[bool] = typer.Option(
         None,
@@ -150,7 +161,7 @@ def main(
     resolved_model_id = (
         model_id if model_id is not None else config.get("default_model_id")
     )
-    resolved_strategy_id = (
+    resolved_engine_id = (
         strategy_id if strategy_id is not None else config.get("default_strategy_id")
     )
 
@@ -220,7 +231,7 @@ def main(
             "log_file": resolved_log_file,
             "compact_memory_path": resolved_memory_path,
             "default_model_id": resolved_model_id,
-            "default_strategy_id": resolved_strategy_id,
+            "default_strategy_id": resolved_engine_id,
             # "config": config, # Already present
         }
     )
@@ -242,10 +253,46 @@ def load_memory_container(path: Path) -> PrototypeEngine:
     return _loader(path)
 
 
-# --- Memory Commands ---
-@memory_app.command(
+# --- Engine Commands ---
+@engine_app.command("list", help="Lists all available compression engine IDs.")
+def list_engines() -> None:
+    load_plugins()
+    ids = available_engines()
+    meta = all_engine_metadata()
+    if not ids:
+        typer.echo("No compression engines found.")
+        return
+    table = Table(
+        "Engine ID",
+        "Display Name",
+        "Version",
+        "Source",
+        title="Available Compression Engines",
+    )
+    for eid in sorted(ids):
+        info = meta.get(eid, {})
+        table.add_row(
+            eid,
+            info.get("display_name", eid) or eid,
+            info.get("version", "N/A") or "N/A",
+            info.get("source", "built-in") or "built-in",
+        )
+    console.print(table)
+
+
+@engine_app.command("info", help="Show metadata for a specific engine ID.")
+def engine_info(engine_id: str) -> None:
+    load_plugins()
+    info = get_engine_metadata(engine_id)
+    if not info:
+        typer.secho(f"Engine '{engine_id}' not found.", err=True, fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+    typer.echo(json.dumps(info))
+
+
+@engine_app.command(
     "init",
-    help="Initializes a new Compact Memory memory container in a specified directory.\n\nUsage Examples:\n  compact-memory memory init ./my_memory_dir\n  compact-memory memory init /path/to/another_container --name 'research_mem' --model-name 'sentence-transformers/all-mpnet-base-v2' --tau 0.75",
+    help="Initializes a new Compact Memory memory container in a specified directory.\n\nUsage Examples:\n  compact-memory engine init ./my_memory_dir\n  compact-memory engine init /path/to/another_container --name 'research_mem' --model-name 'sentence-transformers/all-mpnet-base-v2' --tau 0.75",
 )
 def init(
     target_directory: Path = typer.Argument(
@@ -300,9 +347,9 @@ def init(
     typer.echo(f"Successfully initialized Compact Memory memory container at {path}")
 
 
-@memory_app.command(
+@engine_app.command(
     "stats",
-    help="Displays statistics about the Compact Memory memory container.\n\nUsage Examples:\n  compact-memory memory stats\n  compact-memory memory stats --memory-path path/to/my_container --json",
+    help="Displays statistics about the Compact Memory memory container.\n\nUsage Examples:\n  compact-memory engine stats\n  compact-memory engine stats --memory-path path/to/my_container --json",
 )
 def stats(
     json_output: bool = typer.Option(
@@ -319,7 +366,7 @@ def stats(
             typer.echo(f"{k}: {v}")
 
 
-@memory_app.command(
+@engine_app.command(
     "validate", help="Validates the integrity of the memory container's storage."
 )
 def validate_memory_storage(
@@ -350,9 +397,9 @@ def validate_memory_storage(
     typer.echo("No built-in storage to validate.")
 
 
-@memory_app.command(
+@engine_app.command(
     "clear",
-    help="Deletes all data from a memory container. This action is irreversible.\n\nUsage Examples:\n  compact-memory memory clear --force\n  compact-memory memory clear --memory-path path/to/another_container --dry-run",
+    help="Deletes all data from a memory container. This action is irreversible.\n\nUsage Examples:\n  compact-memory engine clear --force\n  compact-memory engine clear --memory-path path/to/another_container --dry-run",
 )
 def clear(
     ctx: typer.Context,
@@ -434,7 +481,7 @@ def query(
     store = InMemoryVectorStore(embedding_dim=dim)
     container = PrototypeEngine(store)
     final_model_id = ctx.obj.get("default_model_id")  # Renamed for clarity
-    final_strategy_id = ctx.obj.get("default_strategy_id")  # Renamed for clarity
+    final_engine_id = ctx.obj.get("default_strategy_id")  # Renamed for clarity
 
     if final_model_id is None:
         typer.secho(
@@ -457,19 +504,19 @@ def query(
 
     mgr = ActiveMemoryManager()
     comp_strategy_instance = None
-    if final_strategy_id and final_strategy_id.lower() != "none":
+    if final_engine_id and final_engine_id.lower() != "none":
         try:
-            comp_cls = get_compression_strategy(final_strategy_id)
-            info = get_strategy_metadata(final_strategy_id)
+            comp_cls = get_compression_engine(final_engine_id)
+            info = get_engine_metadata(final_engine_id)
             if info and info.get("source") == "contrib":
                 typer.secho(
-                    "\u26a0\ufe0f Using experimental strategy from contrib: not officially supported.",
+                    "\u26a0\ufe0f Using experimental engine from contrib: not officially supported.",
                     fg=typer.colors.YELLOW,
                 )
             comp_strategy_instance = comp_cls()
         except KeyError:
             typer.secho(
-                f"Error: Unknown compression strategy '{final_strategy_id}' (from global config/option). Available: {', '.join(available_strategies())}",
+                f"Error: Unknown compression engine '{final_engine_id}' (from global config/option). Available: {', '.join(available_engines())}",
                 err=True,
                 fg=typer.colors.RED,
             )
@@ -496,7 +543,7 @@ def query(
 
 @app.command(
     "compress",
-    help='Compress text using a specified compression strategy. Compresses text from a string, file, or directory.\n\nUsage Examples:\n  compact-memory compress --text "Some very long text..." --strategy first_last --budget 100\n  compact-memory compress --file path/to/document.txt -s prototype -b 200 -o summary.txt\n  compact-memory compress --dir input_dir/ -s custom_package_strat -b 500 --output-dir output_dir/ --recursive -p "*.md"',
+    help='Compress text using a specified compression engine. Compresses text from a string, file, or directory.\n\nUsage Examples:\n  compact-memory compress --text "Some very long text..." --engine none --budget 100\n  compact-memory compress --file path/to/document.txt -e prototype -b 200 -o summary.txt\n  compact-memory compress --dir input_dir/ -e custom_engine -b 500 --output-dir output_dir/ --recursive -p "*.md"',
 )
 def compress(
     ctx: typer.Context,
@@ -522,9 +569,9 @@ def compress(
     *,
     strategy_arg: Optional[str] = typer.Option(
         None,
-        "--strategy",
-        "-s",
-        help="Specify the CompressionStrategy with --strategy. Overrides the global default.",
+        "--engine",
+        "-e",
+        help="Specify the compression engine with --engine. Overrides the global default.",
     ),
     output_file: Optional[Path] = typer.Option(
         None,
@@ -583,12 +630,12 @@ def compress(
         help="Show detailed token counts and processing time per item.",
     ),
 ) -> None:
-    final_strategy_id = (
+    final_engine_id = (
         strategy_arg if strategy_arg is not None else ctx.obj.get("default_strategy_id")
     )
-    if not final_strategy_id:
+    if not final_engine_id:
         typer.secho(
-            "Error: Compression strategy not specified. Use --strategy option or set COMPACT_MEMORY_DEFAULT_STRATEGY_ID / config.",
+            "Error: Compression engine not specified. Use --engine option or set COMPACT_MEMORY_DEFAULT_STRATEGY_ID / config.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -638,7 +685,7 @@ def compress(
             compress_text_to_memory(
                 container,
                 text,
-                final_strategy_id,
+                final_engine_id,
                 budget,
                 verbose_stats,
                 tokenizer,
@@ -647,7 +694,7 @@ def compress(
             compress_file_to_memory(
                 container,
                 file,
-                final_strategy_id,
+                final_engine_id,
                 budget,
                 verbose_stats,
                 tokenizer,
@@ -656,7 +703,7 @@ def compress(
             compress_directory_to_memory(
                 container,
                 dir,
-                final_strategy_id,
+                final_engine_id,
                 budget,
                 recursive,
                 pattern,
@@ -669,7 +716,7 @@ def compress(
                 text = sys.stdin.read()
             compress_text(
                 text,
-                final_strategy_id,
+                final_engine_id,
                 budget,
                 output_file,
                 output_trace,
@@ -680,7 +727,7 @@ def compress(
         elif file is not None:
             compress_file(
                 file,
-                final_strategy_id,
+                final_engine_id,
                 budget,
                 output_file,
                 verbose_stats,
@@ -696,7 +743,7 @@ def compress(
                 )
             compress_directory(
                 dir,
-                final_strategy_id,
+                final_engine_id,
                 budget,
                 output_dir,
                 recursive,
@@ -711,7 +758,7 @@ def compress(
 # --- Helper functions for compress (formerly summarize/compress_text) ---
 def compress_text(
     text_content: str,
-    strategy_id: str,
+    engine_id: str,
     budget: int,
     output_file: Optional[Path],
     trace_file: Optional[Path],
@@ -720,16 +767,16 @@ def compress_text(
     json_output: bool = False,
 ) -> None:
     try:
-        strat_cls = get_compression_strategy(strategy_id)
-        info = get_strategy_metadata(strategy_id)
+        strat_cls = get_compression_engine(engine_id)
+        info = get_engine_metadata(engine_id)
         if info and info.get("source") == "contrib":
             typer.secho(
-                "\u26a0\ufe0f Using experimental strategy from contrib: not officially supported.",
+                "\u26a0\ufe0f Using experimental engine from contrib: not officially supported.",
                 fg=typer.colors.YELLOW,
             )
     except KeyError:
         typer.secho(
-            f"Unknown compression strategy '{strategy_id}'. Available: {', '.join(available_strategies())}",
+            f"Unknown compression engine '{engine_id}'. Available: {', '.join(available_engines())}",
             err=True,
             fg=typer.colors.RED,
         )
@@ -783,7 +830,7 @@ def compress_text(
 
 def compress_file(
     file_path: Path,
-    strategy_id: str,
+    engine_id: str,
     budget: int,
     output_file: Optional[Path],
     verbose_stats: bool,
@@ -801,7 +848,7 @@ def compress_file(
         raise typer.Exit(code=1)
     compress_text(
         text_content,
-        strategy_id,
+        engine_id,
         budget,
         output_file,
         trace_file,
@@ -813,7 +860,7 @@ def compress_file(
 
 def compress_directory(
     dir_path: Path,
-    strategy_id: str,
+    engine_id: str,
     budget: int,
     output_dir_param: Optional[Path],
     recursive: bool,
@@ -857,7 +904,7 @@ def compress_directory(
             )
         compress_file(
             input_file,
-            strategy_id,
+            engine_id,
             budget,
             out_path,
             verbose_stats,
@@ -873,7 +920,7 @@ def compress_directory(
 def compress_text_to_memory(
     container: PrototypeEngine,
     text: str,
-    strategy_id: str,
+    engine_id: str,
     budget: int,
     verbose_stats: bool,
     tokenizer: Any,
@@ -881,10 +928,10 @@ def compress_text_to_memory(
 ) -> None:
     start = time.time()
     try:
-        strat_cls = get_compression_strategy(strategy_id)
+        strat_cls = get_compression_engine(engine_id)
     except KeyError:
         typer.secho(
-            f"Unknown compression strategy '{strategy_id}'. Available: {', '.join(available_strategies())}",
+            f"Unknown compression engine '{engine_id}'. Available: {', '.join(available_engines())}",
             err=True,
             fg=typer.colors.RED,
         )
@@ -908,7 +955,7 @@ def compress_text_to_memory(
 def compress_file_to_memory(
     container: PrototypeEngine,
     file_path: Path,
-    strategy_id: str,
+    engine_id: str,
     budget: int,
     verbose_stats: bool,
     tokenizer: Any,
@@ -920,7 +967,7 @@ def compress_file_to_memory(
     compress_text_to_memory(
         container,
         text_content,
-        strategy_id,
+        engine_id,
         budget,
         verbose_stats,
         tokenizer,
@@ -931,7 +978,7 @@ def compress_file_to_memory(
 def compress_directory_to_memory(
     container: PrototypeEngine,
     dir_path: Path,
-    strategy_id: str,
+    engine_id: str,
     budget: int,
     recursive: bool,
     pattern: str,
@@ -950,7 +997,7 @@ def compress_directory_to_memory(
         compress_file_to_memory(
             container,
             input_file,
-            strategy_id,
+            engine_id,
             budget,
             verbose_stats,
             tokenizer,
