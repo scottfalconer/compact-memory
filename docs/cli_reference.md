@@ -165,9 +165,9 @@ Lists all available compression engine IDs, their versions, and sources (built-i
 
 #### `compact-memory dev inspect-engine`
 Inspects aspects of a compression engine, currently focused on 'prototype' engine's beliefs.
-**Usage:** `compact-memory dev inspect-engine [OPTIONS] STRATEGY_NAME`
+**Usage:** `compact-memory dev inspect-engine [OPTIONS] ENGINE_NAME`
 **Arguments:**
-*   `STRATEGY_NAME`: The name of the engine to inspect. Currently, only 'prototype' is supported. (Required)
+*   `ENGINE_NAME`: The name of the engine to inspect. Currently, only 'prototype' is supported. (Required)
 **Options:**
 *   `--memory-path TEXT`: Path to the engine store directory. Overrides global setting if provided. Required if '--list-prototypes' is used.
 *   `--list-prototypes`: List consolidated prototypes (beliefs) if the engine is 'prototype' and a memory path is provided.
