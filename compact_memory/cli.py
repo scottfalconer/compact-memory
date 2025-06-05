@@ -1499,12 +1499,12 @@ def download_chat_model_cli(
 
 
 @dev_app.command(
-    "create-strategy-package",
+    "create-engine-package",
     help="Creates a new compression engine extension package from a template. This command generates a template directory with all the necessary files to start developing a new, shareable engine package, including a sample engine, manifest file, and README.",
 )
-def create_strategy_package(
+def create_engine_package(
     name: str = typer.Option(
-        "compact_memory_example_strategy",
+        "compact_memory_example_engine",
         "--name",
         help="Name for the new engine package (e.g., 'compact_memory_my_engine'). Used for directory and engine ID.",
     ),
@@ -1528,7 +1528,7 @@ def create_strategy_package(
     (target_dir / "experiments").mkdir(exist_ok=True)
 
     # Template for creating a new engine package
-    strategy_py_content = f"""from compact_memory.engines import BaseCompressionEngine, CompressedMemory, CompressionTrace
+    engine_py_content = f"""from compact_memory.engines import BaseCompressionEngine, CompressedMemory, CompressionTrace
 # Add any other necessary imports here
 
 class MyEngine(BaseCompressionEngine):
@@ -1568,17 +1568,17 @@ class MyEngine(BaseCompressionEngine):
         )
         return CompressedMemory(text=compressed_text), trace
 """
-    (target_dir / "strategy.py").write_text(strategy_py_content)
+    (target_dir / "engine.py").write_text(engine_py_content)
 
     manifest = {
         "package_format_version": "1.0",
         "engine_id": name,
         "engine_class_name": "MyEngine",
-        "engine_module": "strategy",
+        "engine_module": "engine",
         "display_name": name,
         "version": "0.1.0",
         "authors": [],
-        "description": "Describe the strategy",
+        "description": "Describe the engine",
     }
     (target_dir / "engine_package.yaml").write_text(yaml.safe_dump(manifest))
     (target_dir / "requirements.txt").write_text("\n")
@@ -1590,10 +1590,10 @@ class MyEngine(BaseCompressionEngine):
 
 
 @dev_app.command(
-    "validate-strategy-package",
-    help="Validates the structure and manifest of a compression engine extension package.\n\nUsage Examples:\n  compact-memory dev validate-strategy-package path/to/my_engine_pkg",
+    "validate-engine-package",
+    help="Validates the structure and manifest of a compression engine extension package.\n\nUsage Examples:\n  compact-memory dev validate-engine-package path/to/my_engine_pkg",
 )
-def validate_strategy_package(
+def validate_engine_package(
     package_path: Path = typer.Argument(
         ...,
         help="Path to the root directory of the engine package.",
