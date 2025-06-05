@@ -6,11 +6,11 @@ from typing import Any, Dict, Optional, Tuple
 
 # Default configuration values
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "compact_memory_path": "~/.local/share/compact_memory",
-    "default_model_id": "openai/gpt-3.5-turbo",
-    "default_engine_id": "default",
-    "verbose": False,
-    "log_file": None,
+    "compact_memory_path": "~/.local/share/compact_memory", # Default storage path, tilde will be expanded.
+    "default_model_id": "openai/gpt-3.5-turbo", # Default model for LLM interactions.
+    "default_engine_id": "none", # Default engine for operations like history compression. "none" (NoCompressionEngine) is a safe, valid default.
+    "verbose": False, # Default verbosity.
+    "log_file": None, # Default log file path (None means no file logging by default).
 }
 
 # Configuration file paths
@@ -88,20 +88,54 @@ class Config:
                         actual_value = int(env_var_value_str)
                     elif isinstance(default_value, float):  # Added float casting
                         actual_value = float(env_var_value_str)
-                    else:
-                        actual_value = env_var_value_str  # Assume string
+                    else: # String values
+                        if key == "compact_memory_path" and env_var_value_str:
+                            # For 'compact_memory_path', expand '~' and resolve to an absolute path.
+                            try:
+                                actual_value = str(pathlib.Path(env_var_value_str).expanduser().resolve())
+                            except Exception as e: # Handle potential errors during path resolution (e.g., invalid chars)
+                                print(f"Warning: Could not expand/resolve path '{env_var_value_str}' for {env_var_name}. Using raw value. Error: {e}", file=sys.stderr)
+                                actual_value = env_var_value_str # Fallback to the raw string value
+                        else:
+                            actual_value = env_var_value_str
 
                     self._config[key] = actual_value
                     self._sources[key] = f"{SOURCE_ENV_VAR} ({env_var_name})"
-                except ValueError:
+                except ValueError: # Catches errors from int(), float()
                     print(
-                        f"Warning: Could not cast env var {env_var_name} value '{env_var_value_str}' to type {type(default_value)}. Using string value."
+                        f"Warning: Could not cast env var {env_var_name} value '{env_var_value_str}' to type {type(default_value)}. Using string value.", file=sys.stderr
                     )
-                    self._config[key] = env_var_value_str
+                    # For compact_memory_path, if casting failed but it's a string, still try to expand/resolve
+                    if key == "compact_memory_path" and isinstance(env_var_value_str, str) and env_var_value_str:
+                        try:
+                            self._config[key] = str(pathlib.Path(env_var_value_str).expanduser().resolve())
+                        except Exception as e:
+                            print(f"Warning: Could not expand path '{env_var_value_str}' for {env_var_name} after casting error. Using raw value. Error: {e}", file=sys.stderr)
+                            self._config[key] = env_var_value_str # Fallback to raw value
+                    else:
+                        self._config[key] = env_var_value_str # Fallback for other keys or if not string path
                     self._sources[key] = f"{SOURCE_ENV_VAR} ({env_var_name})"
 
+
     def get(self, key: str, default: Any = None) -> Any:
-        return self._config.get(key, default)
+        # Special handling for compact_memory_path to ensure it's expanded if coming from defaults or files
+        # Env var case is handled during _load_env_vars
+        value = self._config.get(key, default)
+        if key == "compact_memory_path" and isinstance(value, str):
+            source = self._sources.get(key)
+            # If the path is from defaults or config files (not already processed env var or runtime override),
+            # ensure it's expanded and resolved.
+            if source and source != SOURCE_ENV_VAR and source != SOURCE_OVERRIDE:
+                # Check if path looks like it needs expansion (contains '~' or isn't absolute).
+                # This avoids re-processing already absolute paths unnecessarily, though resolve() handles it.
+                if "~" in value or (not pathlib.Path(value).is_absolute() and not value.startswith(os.path.sep + os.path.sep)): # Handle UNC paths for Windows correctly
+                    try:
+                        # Expand user directory (~) and resolve to an absolute path.
+                        return str(pathlib.Path(value).expanduser().resolve())
+                    except Exception as e: # Handle potential errors during path resolution
+                        print(f"Warning: Could not expand/resolve path '{value}' for {key} from {source}. Using original value. Error: {e}", file=sys.stderr)
+                        return value # Return original value if expansion fails
+        return value
 
     def set(self, key: str, value: Any, source: str = SOURCE_OVERRIDE) -> bool:
         """

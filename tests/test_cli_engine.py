@@ -3,7 +3,8 @@ import json
 from typer.testing import CliRunner
 
 from compact_memory.cli import app
-from compact_memory.engines import load_engine, PrototypeEngine
+from compact_memory.engines import load_engine
+from compact_memory.prototype_engine import PrototypeEngine # Corrected import
 from compact_memory.engine_registry import available_engines # To check against list output
 
 # DummyTruncEngine might be needed if testing init with it, but current tests focus on prototype or default

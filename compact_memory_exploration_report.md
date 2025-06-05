@@ -29,7 +29,7 @@ Automated tests were run using `pytest`.
 *   Further `pytest` runs revealed issues with **engine registration**. `PrototypeEngine` and `FirstLastEngine` were not being correctly registered for discovery by `get_compression_engine`. This was resolved by:
     *   Ensuring `PrototypeEngine` had a unique `id`.
     *   Moving the registration of `NoCompressionEngine` and `FirstLastEngine` to `compact_memory/engines/__init__.py`.
-    *   Registering `PrototypeEngine` in `compact_memory/cli.py` to avoid re-introducing circular dependencies with the `engines` package.
+    *   Registering `PrototypeEngine` in `compact_memory/cli.py` to avoid re-introducing circular dependencies with the `engines` package. (This was later further improved by centralizing all built-in engine registrations).
 *   Several other test failures were addressed by:
     *   Modifying `BaseCompressionEngine.__init__` to correctly handle arbitrary `**kwargs` from loaded configurations and to manage `chunker_id` precedence.
     *   Adjusting test assertions for `test_cli_engine.py::test_engine_list` (not expecting "base" engine).
@@ -38,12 +38,7 @@ Automated tests were run using `pytest`.
     *   Ensuring `load_engine` passes configuration dictionaries correctly.
     *   Modifying `compress_text_to_memory` in `cli.py` to use `add_memory` for `PrototypeEngine`.
 
-After these fixes, running `pytest -k "not test_cli_compress and not test_cli_ingest_query"` resulted in **98 out of 98 selected tests passing**.
-The remaining **3 failing tests** (out of 119 total) are in:
-*   `tests/test_cli_compress.py` (2 failures)
-*   `tests/test_cli_ingest_query.py` (1 failure)
-
-These failures seem related to CLI workflows for the `PrototypeEngine`, specifically how data is ingested via `compact-memory compress --memory-path ...` and subsequently queried, or how the `COMPACT_MEMORY_PATH` is handled by the `query` command in the test environment.
+Previously, there were 3 failing tests related to CLI workflows for the `PrototypeEngine`. **These have been fixed, and all 119 tests in the suite now pass.**
 
 ## 4. CLI Usage
 
@@ -93,20 +88,20 @@ The `dev list-engines` command and registrations confirmed the following main en
 ## 8. Areas for Improvement / Suggestions
 
 *   **Bug Fixes:**
-    *   Address the 3 remaining failing tests in `test_cli_compress.py` and `test_cli_ingest_query.py`. These seem to relate to `PrototypeEngine` usage via CLI, particularly with `--memory-path` ingestion and querying.
+    *   **[RESOLVED]** Address the 3 remaining failing tests in `test_cli_compress.py` and `test_cli_ingest_query.py`. These were fixed by ensuring engine state is saved after CLI ingestion and adjusting test environments.
 *   **Engine Registration:**
-    *   Standardize engine registration. Having registrations in `engines/__init__.py`, `cli.py`, and also within engine modules themselves (like `first_last_engine.py` originally did) can be confusing and led to discovery issues. A single, clear mechanism (e.g., all built-in engines registered in `engines/__init__.py` or via a dedicated registry function called at startup) would be better.
+    *   **[RESOLVED]** Standardize engine registration. This was done by centralizing built-in engine registration into `compact_memory/engines/registry.py` via a `register_builtin_engines()` function, which is called from `compact_memory/engines/__init__.py`.
 *   **Environment/Configuration (`COMPACT_MEMORY_PATH`):**
-    *   Improve the reliability of `COMPACT_MEMORY_PATH` environment variable detection across different CLI command executions and Typer contexts. If an engine store is initialized in one command, subsequent commands in the same logical session (even if separate `run_in_bash_session` calls in testing) should ideally respect the active `COMPACT_MEMORY_PATH` without needing the global `--memory-path` flag repeatedly.
+    *   **[IMPROVED]** Improve the reliability of `COMPACT_MEMORY_PATH` environment variable detection. Path handling in the `Config` class (e.g., tilde expansion, absolute path resolution) has been made more robust. Instantiating a fresh `Config` object per CLI invocation also helps. However, specific issues with `CliRunner`'s environment variable propagation in the test suite required using explicit CLI options for some test cases.
 *   **Error Handling & User Experience:**
-    *   Provide more specific error messages. For example, when `query` fails due to a missing default model or history compression engine, guide the user on how to set these defaults (e.g., `compact-memory config set default_model_id <model>`, `compact-memory config set default_engine_id <engine>`).
+    *   **[RESOLVED]** Provide more specific error messages. The `query` command in `cli.py` now offers more detailed guidance if the default model ID or history compression engine ID is missing or invalid, suggesting `config set` commands.
 *   **Default Models/Engines:**
     *   The default chat model (`gpt2`) is very basic. Consider guiding users to set a more capable (though still local/free) default during initial setup or via a config command.
-    *   The default "default_engine_id" for history compression being "default" (which isn't a valid engine ID) caused an error. This default should probably be "none" or another safe, valid engine.
+    *   **[RESOLVED]** The default "default_engine_id" for history compression being "default" (which isn't a valid engine ID) caused an error. This default has been changed to "none".
 *   **`get_tokenizer` Utility:**
-    *   The `api_test.py` script attempted to import `get_tokenizer` from `compact_memory.token_utils`, but this function does not exist. If this was an old utility, it should be removed from examples/tests. If it's intended to exist, it should be implemented.
+    *   **[RESOLVED]** The `api_test.py` script attempted to import `get_tokenizer` from `compact_memory.token_utils`, but this function does not exist. The unused import and related commented-out code have been removed from `api_test.py`.
 *   **Documentation Updates:**
-    *   Review and update documentation to reflect changes made (e.g., model download commands, engine registration if it's standardized) and to clarify configuration priorities (CLI flags vs. env vars vs. config files).
+    *   **[IMPROVED]** Review and update documentation. In-code comments and docstrings related to engine registration, default configuration, path handling, and CLI changes have been updated. A full review of external documentation files (`.md`) was not part of this scope.
 
 ## 9. Questions for Further Exploration
 
@@ -128,4 +123,4 @@ Based on this initial exploration:
 
 ## 11. Conclusion
 
-The `compact-memory` toolkit is a promising project with a solid conceptual foundation and a useful set of features for both developers and researchers working with LLMs. Its modular engine design and dual CLI/Python API provide flexibility. While the installation and initial setup presented some challenges (circular imports, engine registration inconsistencies, environment variable handling in tests/CLI), these were largely resolvable and point to areas for refinement in the developer experience and internal architecture. The core functionalities for compressing text and managing memory stores appear to be in place. With the remaining test failures addressed and some improvements to configuration management and engine registration, `compact-memory` could become a valuable asset for the LLM community.
+The `compact-memory` toolkit is a promising project with a solid conceptual foundation and a useful set of features for both developers and researchers working with LLMs. Its modular engine design and dual CLI/Python API provide flexibility. While the installation and initial setup presented some challenges (circular imports, engine registration inconsistencies, environment variable handling in tests/CLI), these were largely resolvable and point to areas for refinement in the developer experience and internal architecture. The core functionalities for compressing text and managing memory stores appear to be in place. With the remaining test failures addressed and some improvements to configuration management and engine registration, `compact_memory` could become a valuable asset for the LLM community.
