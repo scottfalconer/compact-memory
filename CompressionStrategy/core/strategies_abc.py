@@ -3,26 +3,9 @@ from __future__ import annotations
 """Abstract interface for memory compression strategies."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Dict, List, Union, Any, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from .trace import CompressionTrace
-
-
-@dataclass
-class CompressedMemory:
-    """
-    Simple container for compressed memory text and associated metadata.
-
-    Attributes:
-        text: The compressed string output from a compression strategy.
-        metadata: An optional dictionary to hold any additional information
-                  about the compressed content, such as source IDs, timestamps,
-                  or strategy-specific details.
-    """
-
-    text: str
-    metadata: Optional[Dict[str, Any]] = None
+from compact_memory.engines import CompressedMemory, CompressionTrace
 
 
 class CompressionStrategy(ABC):
