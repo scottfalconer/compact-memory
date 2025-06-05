@@ -60,4 +60,4 @@ compressed, _ = strategy.compress(text_to_compress, llm_token_budget=50)
 print(compressed.text)
 ```
 
-The [CLI reference](docs/cli_reference.md) and [API reference](docs/api_reference.md) contain additional details.
+The [CLI reference](cli_reference.md) and [API reference](api_reference.md) contain additional details.

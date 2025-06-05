@@ -1,6 +1,6 @@
 # TODO
 
-This file tracks outstanding work based on `docs/PROJECT_VISION.md` and the latest v3 implementation plan.
+This file tracks outstanding work based on `PROJECT_VISION.md` and the latest v3 implementation plan.
 
 ## 1 · Data-Model & Storage Layer
 _Completed in v0.1.1._
@@ -42,8 +42,8 @@ _Completed in v0.1.1._
 - Record conflicts in a JSON Lines log for later review.
 
 ## 9 · Documentation & OSS Polish
-- Write `docs/architecture.md` describing the storage format and workflow.
-- Document the JSON store versioning rules in `docs/storage_format.md`.
+- Write `ARCHITECTURE.md` describing the storage format and workflow.
+- Document the JSON store versioning rules in `STORAGE_FORMAT.md`.
 - Update README with a quick-start example and security note.
 - List third‑party license notices.
 

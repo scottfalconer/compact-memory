@@ -25,7 +25,7 @@ Below is a list of documents in this directory, along with a brief description o
 *   **Developer Guides**
     *   **[`DEVELOPING_COMPRESSION_STRATEGIES.md`](./DEVELOPING_COMPRESSION_STRATEGIES.md)**: Provides practical guidance and steps for implementing new `CompressionStrategy` implementations within the Compact Memory framework. Focuses on the "how-to."
         *   **Audience:** Developers actively building new compression strategies.
-    *   **[`../STRATEGY_DEVELOPMENT.md`](../STRATEGY_DEVELOPMENT.md)**: Best practices for writing, testing, and sharing CompressionStrategies.
+    *   **[`STRATEGY_DEVELOPMENT.md`](./STRATEGY_DEVELOPMENT.md)**: Best practices for writing, testing, and sharing CompressionStrategies.
         *   **Audience:** Contributors preparing reusable compression strategies.
     *   **[`DEVELOPING_VALIDATION_METRICS.md`](./DEVELOPING_VALIDATION_METRICS.md)**: Offers guidance on creating custom `ValidationMetric` classes to evaluate the performance of compression strategies.
         *   **Audience:** Developers and researchers looking to implement new ways of measuring memory effectiveness.
@@ -48,7 +48,7 @@ Below is a list of documents in this directory, along with a brief description o
 ## Suggested Reading Paths
 
 *   **For Users Wanting to Apply Compact Memory:**
-    1.  Start with the main project [README.md](../README.md) and the [USAGE guide](../USAGE.md).
+    1.  Start with the main project [README.md](../README.md) and the [USAGE guide](./USAGE.md).
     2.  Review [`QUERY_TIPS.md`](./QUERY_TIPS.md) for effective information retrieval.
 
 *   **For Developers Building New Compression Strategies:**

@@ -25,7 +25,7 @@ class ExtractiveSummaryCreator(MemoryCreator):
     This very simple extractor acts as a lightweight summarisation
     strategy that works in offline environments without any additional
     dependencies.  It allows experiments with pluggable memory creation
-    engines as mentioned in ``TODO.md``.
+    engines as mentioned in ``docs/TODO.md``.
     """
 
     def __init__(self, max_words: int = 50) -> None:

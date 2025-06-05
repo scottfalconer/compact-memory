@@ -4,6 +4,8 @@ Compact Memory is a toolkit for compressing and managing text context for Large
 Language Models (LLMs). It helps you keep important information accessible while
 staying within tight token budgets.
 
+For the complete project documentation, see [docs/README.md](docs/README.md).
+
 The project offers:
 *   **A ready-to-use toolkit** – Command-Line Interface and Python API for
     applying compression strategies in your own pipelines.
@@ -55,7 +57,7 @@ Compress a text file to 100 tokens using the default strategy:
 compact-memory compress --file my_document.txt --budget 100
 ```
 
-See [USAGE.md](USAGE.md) for more CLI examples and Python API usage.
+See [USAGE.md](docs/USAGE.md) for more CLI examples and Python API usage.
 
 <!-- Detailed usage examples have moved to USAGE.md -->
 
@@ -430,7 +432,7 @@ The `AgenticChunker` is an example of an advanced chunking mechanism. You can en
 
 ## Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on setting up a development environment, coding style, and how to run tests before submitting pull requests.
+We welcome contributions! Please see [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines on setting up a development environment, coding style, and how to run tests before submitting pull requests.
 
 ## Query Tips
 
