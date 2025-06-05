@@ -10,7 +10,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Dict, Type
 
-from CompressionStrategy.core.strategies_abc import CompressionStrategy
+from compact_memory.engines import BaseCompressionEngine as CompressionStrategy
 
 
 REQUIRED_FIELDS = {

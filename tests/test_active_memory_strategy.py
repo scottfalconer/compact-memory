@@ -2,11 +2,11 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from CompressionStrategy.contrib import (
-    ActiveMemoryStrategy,
+from compact_memory.engines.active_memory_engine import (
+    ActiveMemoryEngine,
     ActiveMemoryManager,
 )
-from CompressionStrategy.core.trace import CompressionTrace
+from compact_memory.engines import CompressionTrace
 
 
 # --- Mocking Utilities -----------------------------------------------------
@@ -49,14 +49,14 @@ def clear_mock_cache() -> None:
 
 
 def test_instantiation_default_params() -> None:
-    strategy = ActiveMemoryStrategy()
+    strategy = ActiveMemoryEngine()
     assert isinstance(strategy.manager, ActiveMemoryManager)
     assert strategy.manager.config_max_history_buffer_turns == 100
     assert strategy.id == "active_memory_neuro"
 
 
 def test_instantiation_custom_params() -> None:
-    strategy = ActiveMemoryStrategy(
+    strategy = ActiveMemoryEngine(
         config_max_history_buffer_turns=5,
         config_activation_decay_rate=0.5,
     )
@@ -65,7 +65,7 @@ def test_instantiation_custom_params() -> None:
 
 
 def test_add_single_turn() -> None:
-    strategy = ActiveMemoryStrategy()
+    strategy = ActiveMemoryEngine()
     text = "Hello, world!"
     embedding = get_mock_embedding(text)
     strategy.add_turn(text, turn_embedding=embedding)
@@ -79,10 +79,10 @@ def test_add_single_turn() -> None:
 
 def test_compress_empty_history(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "CompressionStrategy.contrib.active_memory_strategy.embed_text",
+        "compact_memory.engines.active_memory_engine.embed_text",
         mock_embed_texts_func,
     )
-    strategy = ActiveMemoryStrategy()
+    strategy = ActiveMemoryEngine()
     query = "Test query"
     compressed, trace = strategy.compress(query, 50, tokenizer=mock_tokenizer_func)
 
@@ -95,10 +95,10 @@ def test_compress_empty_history(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_compress_simple_history_fits_budget(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "CompressionStrategy.contrib.active_memory_strategy.embed_text",
+        "compact_memory.engines.active_memory_engine.embed_text",
         mock_embed_texts_func,
     )
-    strategy = ActiveMemoryStrategy(config_prompt_num_forced_recent_turns=2)
+    strategy = ActiveMemoryEngine(config_prompt_num_forced_recent_turns=2)
     info1 = "Old important info"
     info2 = "Recent relevant info"
     strategy.add_turn(info1, turn_embedding=get_mock_embedding(info1))
@@ -111,10 +111,10 @@ def test_compress_simple_history_fits_budget(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_compress_respects_token_budget(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "CompressionStrategy.contrib.active_memory_strategy.embed_text",
+        "compact_memory.engines.active_memory_engine.embed_text",
         mock_embed_texts_func,
     )
-    strategy = ActiveMemoryStrategy(config_prompt_num_forced_recent_turns=0)
+    strategy = ActiveMemoryEngine(config_prompt_num_forced_recent_turns=0)
     strategy.add_turn(
         "This is a long turn one.",
         turn_embedding=get_mock_embedding("This is a long turn one."),
@@ -132,10 +132,10 @@ def test_compress_respects_token_budget(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_compress_pruning_max_history(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "CompressionStrategy.contrib.active_memory_strategy.embed_text",
+        "compact_memory.engines.active_memory_engine.embed_text",
         mock_embed_texts_func,
     )
-    strategy = ActiveMemoryStrategy(
+    strategy = ActiveMemoryEngine(
         config_max_history_buffer_turns=2,
         config_prompt_num_forced_recent_turns=0,
     )
@@ -164,10 +164,10 @@ def test_compress_relevance_boosting_surfaces_older_turn(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        "CompressionStrategy.contrib.active_memory_strategy.embed_text",
+        "compact_memory.engines.active_memory_engine.embed_text",
         mock_embed_texts_func,
     )
-    strategy = ActiveMemoryStrategy(
+    strategy = ActiveMemoryEngine(
         config_max_history_buffer_turns=3,
         config_prompt_num_forced_recent_turns=0,
         config_relevance_boost_factor=2.0,

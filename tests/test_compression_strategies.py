@@ -1,13 +1,15 @@
-from CompressionStrategy.core import (
-    CompressionStrategy,
+from compact_memory.engines import (
+    BaseCompressionEngine as CompressionStrategy,
     CompressedMemory,
     CompressionTrace,
-    NoCompression,
-    PipelineCompressionStrategy,
-    PipelineStrategyConfig,
-    StrategyConfig,
-    register_compression_strategy,
 )
+from compact_memory.engines.no_compression_engine import NoCompressionEngine
+from compact_memory.engines.pipeline_engine import (
+    PipelineEngine,
+    PipelineEngineConfig,
+    StrategyConfig,
+)
+from compact_memory.engines.registry import register_compression_engine
 
 
 class DummyStrategy(CompressionStrategy):
@@ -62,7 +64,7 @@ class SimpleTokenizer:
 
 def test_no_compression_truncates_and_traces():
     tokenizer = SimpleTokenizer()
-    strat = NoCompression()
+    strat = NoCompressionEngine()
     compressed, trace = strat.compress(
         ["alpha", "bravo", "charlie"],
         llm_token_budget=2,
@@ -73,10 +75,10 @@ def test_no_compression_truncates_and_traces():
 
 
 def test_no_compression_trace_details():
-    """Validate trace information for NoCompression."""
+    """Validate trace information for NoCompressionEngine."""
     tokenizer = SimpleTokenizer()
     text = "alpha bravo charlie"
-    compressed, trace = NoCompression().compress(
+    compressed, trace = NoCompressionEngine().compress(
         text,
         llm_token_budget=2,
         tokenizer=tokenizer,
@@ -90,7 +92,7 @@ def test_no_compression_trace_details():
 
 
 def test_pipeline_strategy_executes_in_order():
-    strat = PipelineCompressionStrategy([DummyStrategy(), DummyStrategy()])
+    strat = PipelineEngine([DummyStrategy(), DummyStrategy()])
     compressed, trace = strat.compress(
         ["alpha", "bravo", "charlie"], llm_token_budget=5
     )
@@ -109,7 +111,7 @@ def test_pipeline_strategy_executes_in_order():
 
 def test_pipeline_trace_contains_step_details():
     """Verify nested step traces are recorded correctly."""
-    strat = PipelineCompressionStrategy([DummyStrategy(), DummyStrategy()])
+    strat = PipelineEngine([DummyStrategy(), DummyStrategy()])
     compressed, trace = strat.compress(
         ["alpha", "bravo", "charlie"], llm_token_budget=5
     )
@@ -131,8 +133,8 @@ def test_pipeline_trace_contains_step_details():
 
 
 def test_pipeline_strategy_config_instantiates_from_registry():
-    register_compression_strategy(DummyStrategy.id, DummyStrategy)
-    cfg = PipelineStrategyConfig(
+    register_compression_engine(DummyStrategy.id, DummyStrategy)
+    cfg = PipelineEngineConfig(
         strategies=[
             StrategyConfig(strategy_name=DummyStrategy.id),
             StrategyConfig(strategy_name=DummyStrategy.id),

@@ -5,8 +5,8 @@ from compact_memory.package_utils import (
     validate_package_dir,
     check_requirements_installed,
 )
-from CompressionStrategy.core.strategies_abc import (
-    CompressionStrategy,
+from compact_memory.engines import (
+    BaseCompressionEngine as CompressionStrategy,
     CompressedMemory,
     CompressionTrace,
 )
@@ -15,8 +15,8 @@ from CompressionStrategy.core.strategies_abc import (
 def _write_strategy_module(path: Path) -> None:
     path.write_text(
         """
-from CompressionStrategy.core.strategies_abc import (
-    CompressionStrategy,
+from compact_memory.engines import (
+    BaseCompressionEngine as CompressionStrategy,
     CompressedMemory,
     CompressionTrace,
 )

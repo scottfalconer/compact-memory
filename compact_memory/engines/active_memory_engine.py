@@ -3,22 +3,16 @@ from __future__ import annotations
 from typing import List, Optional, Any, Dict, Union, Tuple
 
 import numpy as np
-from CompressionStrategy.core.strategies_abc import (
-    CompressionStrategy,
-    CompressedMemory,
-)
-from CompressionStrategy.core.trace import CompressionTrace
-from .active_memory_manager import ActiveMemoryManager, ConversationTurn
+from . import BaseCompressionEngine, CompressedMemory, CompressionTrace
+from ..active_memory_manager import ActiveMemoryManager, ConversationTurn
 from compact_memory.prompt_budget import PromptBudget
 from compact_memory.embedding_pipeline import embed_text
-from CompressionStrategy.core import (
-    register_compression_strategy,
-)  # Added for registration
+from .registry import register_compression_engine
 
 # from compact_memory.token_utils import token_count # token_count is used within ActiveMemoryManager
 
 
-class ActiveMemoryStrategy(CompressionStrategy):
+class ActiveMemoryEngine(BaseCompressionEngine):
     """
     A compression strategy that utilizes an ActiveMemoryManager instance
     to dynamically select and compress conversational context.
@@ -195,8 +189,6 @@ class ActiveMemoryStrategy(CompressionStrategy):
         pass
 
 
-register_compression_strategy(
-    ActiveMemoryStrategy.id, ActiveMemoryStrategy, source="contrib"
-)
+register_compression_engine(ActiveMemoryEngine.id, ActiveMemoryEngine, source="contrib")
 
-__all__ = ["ActiveMemoryStrategy", "ActiveMemoryManager", "ConversationTurn"]
+__all__ = ["ActiveMemoryEngine", "ActiveMemoryManager", "ConversationTurn"]
