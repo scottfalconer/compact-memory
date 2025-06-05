@@ -8,3 +8,6 @@ venv/
 *.egg-info/
 # ignore database
 /compact_memory_db/
+
+# Ignore build directory
+build/

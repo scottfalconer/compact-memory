@@ -40,7 +40,13 @@ def available_engines() -> List[str]:
 
 
 def get_engine_metadata(id: str) -> Dict[str, Optional[str]] | None:
-    return _ENGINE_INFO.get(id)
+    info = _ENGINE_INFO.get(id)
+    if info:
+        # Make a copy and add the id to it
+        info_with_id = info.copy()
+        info_with_id["engine_id"] = id # Changed "id" to "engine_id"
+        return info_with_id
+    return None
 
 
 def all_engine_metadata() -> Dict[str, Dict[str, Optional[str]]]:

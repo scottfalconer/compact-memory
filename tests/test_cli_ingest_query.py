@@ -14,7 +14,7 @@ runner = CliRunner()
 
 def _env(tmp_path: Path) -> dict[str, str]:
     return {
-        "COMPACT_MEMORY_COMPACT_MEMORY_PATH": str(tmp_path),
+        "COMPACT_MEMORY_PATH": str(tmp_path), # Corrected env var name
         "COMPACT_MEMORY_DEFAULT_ENGINE_ID": "none",
         "COMPACT_MEMORY_DEFAULT_MODEL_ID": "tiny-gpt2",
     }
@@ -53,7 +53,7 @@ def test_query_returns_reply(tmp_path: Path, patch_embedding_model): # Added pat
     # 3. Run the query using the CLI, targeting the initialized and populated store
     query_cmd_params = [
         "query",
-        "--memory-path", str(store_path),
+        # "--memory-path", str(store_path), # Query command uses global --memory-path or env var
         "sky?",
     ]
     # Ensure COMPACT_MEMORY_PATH is not doubly specified if already in _env,
@@ -62,7 +62,11 @@ def test_query_returns_reply(tmp_path: Path, patch_embedding_model): # Added pat
     # if Typer prioritizes CLI args. Let's assume --memory-path in query command
     # correctly targets the store.
 
-    query_result = runner.invoke(app, query_cmd_params, env=env_vars)
+    # Set COMPACT_MEMORY_PATH specifically for this query invocation
+    query_env_vars = env_vars.copy()
+    query_env_vars["COMPACT_MEMORY_PATH"] = str(store_path)
+
+    query_result = runner.invoke(app, query_cmd_params, env=query_env_vars)
     assert query_result.exit_code == 0, f"Query command failed: {query_result.stderr}"
 
     # Assert that the reply contains relevant information.
