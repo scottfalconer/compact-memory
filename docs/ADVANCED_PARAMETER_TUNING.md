@@ -41,7 +41,7 @@ compact-memory experiment optimize path/to/optimize_script.py
 ```
 
 The script has full access to the Compact Memory API, so you can define
-custom search spaces or strategies.
+custom search spaces or engines.
 
 ## Optional Dependencies
 
@@ -55,11 +55,11 @@ pip install compact-memory[ray]
 
 ## Suggested AutoML Improvements
 
-Leveraging AutoML libraries to tune compression strategies can greatly speed up
+Leveraging AutoML libraries to tune compression engines can greatly speed up
 experimentation. The ideas below help refine search spaces and evaluation
 workflows:
 
-1. **Diversify the search space** – sample across different `CompressionStrategy`
+1. **Diversify the search space** – sample across different `BaseCompressionEngine`
    implementations and vary key parameters such as summary length, similarity
    thresholds and token budgets.
 2. **Early stopping callbacks** – abort unpromising trials early to save compute

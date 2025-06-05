@@ -1,19 +1,19 @@
 """
 Demonstrates key features of the Compact Memory platform, emphasizing its role
-as an **Experimentation Platform** for compression strategies.
+as an **Experimentation Platform** for compression engines.
 
 This script covers:
-1.  **Defining a Custom Strategy:** Shows the basic structure of a `CompressionStrategy`
-    (using a simple `TruncateStrategy` as an example).
+1.  **Defining a Custom Engine:** Shows the basic structure of a `BaseCompressionEngine`
+    (using a simple `TruncateEngine` as an example).
 2.  **Data Ingestion:** Uses `ExperimentConfig` and `run_experiment` to process data,
     which can be a preliminary step in an experimental pipeline.
-3.  **Direct Compression:** Illustrates how to use a strategy programmatically for
+3.  **Direct Compression:** Illustrates how to use an engine programmatically for
     direct text compression and inspection of results.
 4.  **Running Experiments:**
     *   Uses `HistoryExperimentConfig` and `run_history_experiment` to evaluate
-        a strategy's impact on maintaining dialogue history coherence.
+        an engine's impact on maintaining dialogue history coherence.
     *   Uses `ResponseExperimentConfig` and `run_response_experiment` to assess
-        how a strategy affects the quality of LLM responses generated using
+        how an engine affects the quality of LLM responses generated using
         compressed context.
     *   Highlights the use of `param_grid` for systematically testing different
         configurations and comparing their outcomes.
@@ -21,6 +21,7 @@ This script covers:
 The overall goal is to show how developers can leverage Compact Memory to
 create, test, and validate different memory compression techniques.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -34,27 +35,27 @@ from compact_memory import (
     run_history_experiment,
     run_response_experiment,
 )
-from compact_memory.compression import (
-    CompressionStrategy,
+from compact_memory.engines import (
+    BaseCompressionEngine,
     CompressedMemory,
     CompressionTrace,
 )
-from compact_memory.registry import register_compression_strategy
+from compact_memory.engine_registry import register_compression_engine
 
 
-# This TruncateStrategy is a very basic example. Its main purpose in this demo
-# is to illustrate how a custom strategy is defined, registered, and then used
-# within the experiment runners. More sophisticated strategies would involve
+# This TruncateEngine is a very basic example. Its main purpose in this demo
+# is to illustrate how a custom engine is defined, registered, and then used
+# within the experiment runners. More sophisticated engines would involve
 # complex logic for selecting, summarizing, or transforming text.
 # As an "Experimentation Platform", Compact Memory allows you to plug in such
-# strategies and rigorously evaluate their performance using the experiment runners.
-class TruncateStrategy(CompressionStrategy):
+# engines and rigorously evaluate their performance using the experiment runners.
+class TruncateEngine(BaseCompressionEngine):
     """
-    Minimalistic example `CompressionStrategy` for demonstration purposes.
-    This shows the basic structure required to implement the CompressionStrategy interface.
+    Minimalistic example `BaseCompressionEngine` for demonstration purposes.
+    This shows the basic structure required to implement the BaseCompressionEngine interface.
     """
 
-    # The unique identifier for this strategy, used for registration and selection.
+    # The unique identifier for this engine, used for registration and selection.
     id = "truncate"
 
     def compress(
@@ -66,7 +67,7 @@ class TruncateStrategy(CompressionStrategy):
         Args:
             text_or_chunks: The input text or list of text chunks to compress.
             llm_token_budget: The target maximum number of characters (acting as a proxy for tokens here).
-            **kwargs: Additional keyword arguments (not used in this simple strategy).
+            **kwargs: Additional keyword arguments (not used in this simple engine).
 
         Returns:
             A tuple containing:
@@ -91,26 +92,36 @@ class TruncateStrategy(CompressionStrategy):
         return compressed, trace
 
 
-register_compression_strategy(TruncateStrategy.id, TruncateStrategy)
+register_compression_engine(TruncateEngine.id, TruncateEngine)
 
 
 def main() -> None:
     print("Starting Compact Memory Onboarding Demo...")
-    print("This demo showcases how the Compact Memory framework can be used as an experimentation platform.")
-    print("You'll see how to define a strategy, ingest data, perform direct compression,")
-    print("and run history and response experiments to evaluate strategy performance.")
+    print(
+        "This demo showcases how the Compact Memory framework can be used as an experimentation platform."
+    )
+    print(
+        "You'll see how to define an engine, ingest data, perform direct compression,"
+    )
+    print("and run history and response experiments to evaluate engine performance.")
     print("-" * 70)
 
     # --- Section 1: Basic Data Ingestion with ExperimentConfig ---
     print("\nSection 1: Basic Data Ingestion")
-    print("Demonstrates using ExperimentConfig. While shown here with a default behavior,")
-    print("you could specify different strategies in a config to see their effect on ingestion.")
-    print("This is the first step in many experimentation pipelines: preparing and understanding your data.")
+    print(
+        "Demonstrates using ExperimentConfig. While shown here with a default behavior,"
+    )
+    print(
+        "you could specify different engines in a config to see their effect on ingestion."
+    )
+    print(
+        "This is the first step in many experimentation pipelines: preparing and understanding your data."
+    )
     data_file = (
         Path(__file__).parents[1] / "sample_data" / "moon_landing" / "01_landing.txt"
     )
-    # ExperimentConfig can be used to run baseline processing or to apply a specific strategy during ingestion.
-    # For experimentation, you might create multiple ExperimentConfig objects with different strategy settings
+    # ExperimentConfig can be used to run baseline processing or to apply a specific engine during ingestion.
+    # For experimentation, you might create multiple ExperimentConfig objects with different engine settings
     # to compare their effects on how data is initially processed or on the resulting memory store.
     cfg = ExperimentConfig(dataset=data_file)
     metrics = run_experiment(cfg)
@@ -120,38 +131,62 @@ def main() -> None:
     print("-" * 70)
 
     # --- Section 2: Direct Compression ---
-    print("\nSection 2: Direct Compression with a Custom Strategy")
-    print("Shows how a developer can programmatically invoke any registered compression strategy.")
-    print("This is useful for quick tests, debugging, or integrating compression into custom workflows.")
+    print("\nSection 2: Direct Compression with a Custom Engine")
+    print(
+        "Shows how a developer can programmatically invoke any registered compression engine."
+    )
+    print(
+        "This is useful for quick tests, debugging, or integrating compression into custom workflows."
+    )
     sample_text = Path(data_file).read_text()
-    strategy = TruncateStrategy() # Initialize our custom strategy.
-    print(f"Using strategy: {strategy.id}")
+    engine = TruncateEngine()  # Initialize our custom engine.
+    print(f"Using engine: {engine.id}")
     # Get the trace by assigning the second element of the tuple to a variable
-    compressed_memory, trace = strategy.compress(sample_text, llm_token_budget=40) # Compress to 40 chars
+    compressed_memory, trace = engine.compress(
+        sample_text, llm_token_budget=40
+    )  # Compress to 40 chars
     print(f"Compressed preview: {compressed_memory.text!r}")
-    print(f"Compression trace details: {trace.strategy_name}, input: {trace.input_summary.get('input_length')}, output: {trace.output_summary.get('final_length')}")
+    print(
+        f"Compression trace details: {trace.strategy_name}, input: {trace.input_summary.get('input_length')}, output: {trace.output_summary.get('final_length')}"
+    )
     print("--- End Section 2 ---")
     print("-" * 70)
 
-    # --- Section 3: History and Response Experiments for Strategy Evaluation ---
-    print("\nSection 3: Evaluating Strategies with History and Response Experiments")
+    # --- Section 3: History and Response Experiments for Engine Evaluation ---
+    print("\nSection 3: Evaluating Engines with History and Response Experiments")
     print("This is core to the 'Experimentation Platform' aspect.")
-    print("We use HistoryExperimentConfig and ResponseExperimentConfig to systematically evaluate")
-    print("how different strategies or configurations impact performance on specific tasks.")
+    print(
+        "We use HistoryExperimentConfig and ResponseExperimentConfig to systematically evaluate"
+    )
+    print(
+        "how different engines or configurations impact performance on specific tasks."
+    )
 
-    hist_dataset = Path(__file__).parents[1] / "tests" / "data" / "history_dialogues.yaml"
-    resp_dataset = Path(__file__).parents[1] / "tests" / "data" / "response_dialogues.yaml"
+    hist_dataset = (
+        Path(__file__).parents[1] / "tests" / "data" / "history_dialogues.yaml"
+    )
+    resp_dataset = (
+        Path(__file__).parents[1] / "tests" / "data" / "response_dialogues.yaml"
+    )
 
-    print(f"\nUsing registered strategy '{TruncateStrategy.id}' for these experiments.")
-    print("The 'param_grid' allows testing different strategy parameters or system settings.")
+    print(f"\nUsing registered engine '{TruncateEngine.id}' for these experiments.")
+    print(
+        "The 'param_grid' allows testing different engine parameters or system settings."
+    )
     # The param_grid allows you to define variations in parameters.
-    # For a real strategy, you might test different budget sizes, summarization techniques, etc.
+    # For a real engine, you might test different budget sizes, summarization techniques, etc.
     # The experiment runners will execute runs for each combination in the grid.
     params = [
-        {"config_prompt_num_forced_recent_turns": 1, "_experiment_name": "Force 1 Recent Turn"},
-        {"config_prompt_num_forced_recent_turns": 2, "_experiment_name": "Force 2 Recent Turns"},
+        {
+            "config_prompt_num_forced_recent_turns": 1,
+            "_experiment_name": "Force 1 Recent Turn",
+        },
+        {
+            "config_prompt_num_forced_recent_turns": 2,
+            "_experiment_name": "Force 2 Recent Turns",
+        },
     ]
-    # Example: If TruncateStrategy took a 'mode' parameter, you could have:
+    # Example: If TruncateEngine took a 'mode' parameter, you could have:
     # params = [
     #     {"strategy_params": {"mode": "leading"}, "config_prompt_num_forced_recent_turns": 1},
     #     {"strategy_params": {"mode": "trailing"}, "config_prompt_num_forced_recent_turns": 1},
@@ -165,14 +200,22 @@ def main() -> None:
     hist_results = run_history_experiment(hist_cfg)
     print("\nHistory experiment results:")
     print(yaml.safe_dump(hist_results, sort_keys=False))
-    print("These results help quantify how well the memory (as shaped by the strategy) supports coherent dialogue.")
+    print(
+        "These results help quantify how well the memory (as shaped by the engine) supports coherent dialogue."
+    )
 
-    print("\nRunning Response Experiment (evaluates quality of LLM responses with compressed context)...")
+    print(
+        "\nRunning Response Experiment (evaluates quality of LLM responses with compressed context)..."
+    )
     resp_results = run_response_experiment(resp_cfg)
     print("\nResponse experiment results:")
     print(yaml.safe_dump(resp_results, sort_keys=False))
-    print("These results help quantify the impact of compression on the final LLM output quality.")
-    print("By comparing results from different strategies/params, developers can choose the best approach.")
+    print(
+        "These results help quantify the impact of compression on the final LLM output quality."
+    )
+    print(
+        "By comparing results from different strategies/params, developers can choose the best approach."
+    )
     print("--- End Section 3 ---")
     print("-" * 70)
     print("Onboarding Demo Finished.")

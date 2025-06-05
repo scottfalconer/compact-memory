@@ -34,7 +34,7 @@ experimented with.
 - **`embedding_pipeline.py`** – loads a SentenceTransformer model and
   exposes `embed_text`. A deterministic `MockEncoder` is available for
   tests. Embeddings are cached and normalised.
-- **`compression/pipeline_strategy.py`** – implements `PipelineCompressionStrategy`
+- **`compression/pipeline_engine.py`** – implements `PipelineBaseCompressionEngine`
   allowing multiple compression steps to be chained.
 - **`chunker.py`** – implements sentence-window based chunking with token
   overlap and a fixed-size fallback. The registry allows different
@@ -45,7 +45,7 @@ experimented with.
   prototypes.
 - **`cli.py`** – Typer-based command line app supporting `init`,
   `stats`, `validate`, `clear`, `download-model`, `download-chat-model`,
-  `experiment` and `strategy inspect`. Persistence is
+  `experiment` and `engine inspect`. Persistence is
   locked during writes to avoid corruption.
 - Additional vector store implementations can be developed by
   extending the interfaces used by a vector store interface. This keeps

@@ -8,7 +8,7 @@ These options can be used with any command:
 
 *   `--memory-path TEXT`: Path to the Compact Memory memory directory. Overrides environment variables and configuration files. (e.g., `-m ./my_memory_data`)
 *   `--model-id TEXT`: Default model ID for LLM interactions (e.g., `openai/gpt-4-turbo`). Overrides environment variables and configuration files.
-*   `--strategy TEXT`: Default compression strategy ID (e.g., `prototype`). Overrides environment variables and configuration files.
+*   `--engine TEXT`: Default compression engine ID (e.g., `prototype`). Overrides environment variables and configuration files.
 *   `--log-file PATH`: Path to write debug logs. If not set, logs are not written to file.
 *   `--verbose / -V`: Enable verbose (DEBUG level) logging to console and log file (if specified).
 *   `--version / -v`: Show the application version and exit.
@@ -60,7 +60,7 @@ Queries a memory container (specified by `--memory-path` or configuration) with 
 
 ### `compact-memory compress`
 
-Compresses text content from a string, file, or directory using a specified strategy and token budget. This is a standalone utility.
+Compresses text content from a string, file, or directory using a specified engine and token budget. This is a standalone utility.
 
 **Usage:** `compact-memory compress [OPTIONS] (--text TEXT | --file PATH | --dir PATH)`
 
@@ -70,8 +70,8 @@ Compresses text content from a string, file, or directory using a specified stra
 *   `--dir PATH`: Path to a directory of files.
 
 **Options:**
-*   `--strategy / -s TEXT`: Compression strategy ID to use. Overrides the global default strategy. (Required if no global default is set)
-*   `--budget INTEGER`: Token budget for the compressed output. The strategy will aim to keep the output within this limit. (Required)
+*   `--engine / -s TEXT`: compression engine ID to use. Overrides the global default engine. (Required if no global default is set)
+*   `--budget INTEGER`: Token budget for the compressed output. The engine will aim to keep the output within this limit. (Required)
 *   `--output / -o PATH`: File path to write compressed output when using `--text` or `--file`. Prints to console if unspecified.
 *   `--output-dir PATH`: Directory to write compressed files when using `--dir`.
 *   `--output-trace PATH`: File path to write the `CompressionTrace` JSON object. (Not valid with `--dir`).
@@ -104,7 +104,7 @@ Creates and initializes a new memory container in a specified directory.
 *   `--model-name TEXT`: Name of the sentence-transformer model for embeddings (default: "all-MiniLM-L6-v2").
 *   `--tau FLOAT`: Similarity threshold (tau) for memory consolidation, between 0.5 and 0.95 (default: 0.8).
 *   `--alpha FLOAT`: Alpha parameter, controlling the decay rate for memory importance (default: 0.1).
-*   `--chunker TEXT`: Chunking strategy to use for processing text during ingestion (default: "sentence_window").
+*   `--chunker TEXT`: Chunking engine to use for processing text during ingestion (default: "sentence_window").
 
 #### `compact-memory memory stats`
 
@@ -163,7 +163,7 @@ Displays current Compact Memory configuration values, their effective settings, 
 
 ### `compact-memory dev`
 
-Developer tools for testing, evaluation, strategy/package management, and model downloads.
+Developer tools for testing, evaluation, engine/package management, and model downloads.
 
 **Usage:** `compact-memory dev [OPTIONS] COMMAND [ARGS]...`
 
@@ -171,18 +171,18 @@ Developer tools for testing, evaluation, strategy/package management, and model 
 Lists all available validation metric IDs that can be used in evaluations.
 **Usage:** `compact-memory dev list-metrics`
 
-#### `compact-memory dev list-strategies`
-Lists all available compression strategy IDs, their versions, and sources (built-in or plugin).
-**Usage:** `compact-memory dev list-strategies`
+#### `compact-memory dev list-engines`
+Lists all available compression engine IDs, their versions, and sources (built-in or plugin).
+**Usage:** `compact-memory dev list-engines`
 
-#### `compact-memory dev inspect-strategy`
-Inspects aspects of a compression strategy, currently focused on 'prototype' strategy's beliefs.
-**Usage:** `compact-memory dev inspect-strategy [OPTIONS] STRATEGY_NAME`
+#### `compact-memory dev inspect-engine`
+Inspects aspects of a compression engine, currently focused on 'prototype' engine's beliefs.
+**Usage:** `compact-memory dev inspect-engine [OPTIONS] STRATEGY_NAME`
 **Arguments:**
-*   `STRATEGY_NAME`: The name of the strategy to inspect. Currently, only 'prototype' is supported. (Required)
+*   `STRATEGY_NAME`: The name of the engine to inspect. Currently, only 'prototype' is supported. (Required)
 **Options:**
 *   `--memory-path TEXT`: Path to the container directory. Overrides global setting if provided. Required if '--list-prototypes' is used.
-*   `--list-prototypes`: List consolidated prototypes (beliefs) if the strategy is 'prototype' and a memory path is provided.
+*   `--list-prototypes`: List consolidated prototypes (beliefs) if the engine is 'prototype' and a memory path is provided.
 
 #### `compact-memory dev evaluate-compression`
 Evaluates compressed text against original text using a specified metric.
@@ -231,24 +231,24 @@ Downloads a specified causal Language Model (e.g., for chat) from Hugging Face.
 **Options:**
 *   `--model-name TEXT`: Name of the Hugging Face causal LM to download (default: "tiny-gpt2").
 
-#### `compact-memory dev create-strategy-package`
-Creates a new compression strategy extension package from a template.
-**Usage:** `compact-memory dev create-strategy-package [OPTIONS]`
+#### `compact-memory dev create-engine-package`
+Creates a new compression engine extension package from a template.
+**Usage:** `compact-memory dev create-engine-package [OPTIONS]`
 **Options:**
-*   `--name TEXT`: Name for the new strategy package (e.g., `compact_memory_my_strategy`). Used for directory and strategy ID (default: "compact_memory_example_strategy").
-*   `--path PATH`: Directory where the strategy package will be created. Defaults to a new directory named after the strategy in the current location.
+*   `--name TEXT`: Name for the new engine package (e.g., `compact_memory_my_engine`). Used for directory and engine ID (default: "compact_memory_example_engine").
+*   `--path PATH`: Directory where the engine package will be created. Defaults to a new directory named after the engine in the current location.
 
-#### `compact-memory dev validate-strategy-package`
-Validates the structure and manifest of a compression strategy extension package.
-**Usage:** `compact-memory dev validate-strategy-package [OPTIONS] PACKAGE_PATH`
+#### `compact-memory dev validate-engine-package`
+Validates the structure and manifest of a compression engine extension package.
+**Usage:** `compact-memory dev validate-engine-package [OPTIONS] PACKAGE_PATH`
 **Arguments:**
-*   `PACKAGE_PATH`: Path to the root directory of the strategy package. (Required)
+*   `PACKAGE_PATH`: Path to the root directory of the engine package. (Required)
 
 #### `compact-memory dev run-package-experiment`
-Runs an experiment defined within a compression strategy extension package.
+Runs an experiment defined within a compression engine extension package.
 **Usage:** `compact-memory dev run-package-experiment [OPTIONS] PACKAGE_PATH`
 **Arguments:**
-*   `PACKAGE_PATH`: Path to the root directory of the strategy package. (Required)
+*   `PACKAGE_PATH`: Path to the root directory of the engine package. (Required)
 **Options:**
 *   `--experiment TEXT`: Name or relative path of the experiment configuration YAML file within the package's 'experiments' directory. If not specified, attempts to run a default experiment if defined in manifest.
 

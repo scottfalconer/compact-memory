@@ -1,6 +1,6 @@
 # Tutorial 1: Integrating Compact Memory into Your LLM Pipeline
 
-This tutorial demonstrates how to programmatically use an existing compression strategy from Compact Memory to compress text and then integrate that compressed text into a pipeline with a Large Language Model (LLM). This is ideal for users who want to apply pre-built strategies to optimize context in their applications.
+This tutorial demonstrates how to programmatically use an existing compression engine from Compact Memory to compress text and then integrate that compressed text into a pipeline with a Large Language Model (LLM). This is ideal for users who want to apply pre-built engines to optimize context in their applications.
 
 **Scenario:** You have a long piece of text (e.g., a document, an article, or extensive user history) that you need to feed to an LLM, but it exceeds the LLM\'s context window or your desired token budget. You want to use Compact Memory to compress this text before sending it to the LLM.
 
@@ -23,10 +23,10 @@ This tutorial demonstrates how to programmatically use an existing compression s
 First, let\'s import the required components from Compact Memory and any other libraries.
 
 ```python
-from CompressionStrategy.core import (
-    get_compression_strategy,
+from BaseCompressionEngine.core import (
+    get_compression_engine,
     CompressedMemory,
-    CompressionStrategy,
+    BaseCompressionEngine,
 )
 from compact_memory.token_utils import get_tokenizer, token_count # For token counting
 import os # For API keys, if needed
@@ -47,24 +47,24 @@ def my_llm_call(prompt: str, model_name: str = "gpt-3.5-turbo") -> str:
     return f"LLM response based on the provided context about the text."
 ```
 
-### 2. Select and Load a Compression Strategy
+### 2. Select and Load a compression engine
 
-Compact Memory comes with built-in strategies, and you might have installed others as plugins. You can list available strategies using the CLI (`compact-memory dev list-strategies`). For this example, we\'ll use the `first_last` strategy, which simply takes the beginning and end of the text.
+Compact Memory comes with built-in engines, and you might have installed others as plugins. You can list available engines using the CLI (`compact-memory dev list-engines`). For this example, we\'ll use the `first_last` engine, which simply takes the beginning and end of the text.
 
 ```python
-# Choose a strategy ID
+# Choose a engine ID
 # For this example, \'first_last\' is simple. Other options could be \'truncate\',
 # or more advanced ones if available (e.g., \'prototype\' if you have an agent store).
-strategy_id = "first_last"
+engine_id = "first_last"
 
 try:
-    # Get the strategy class
-    StrategyClass = get_compression_strategy(strategy_id)
-    # Instantiate the strategy
-    compression_strategy: CompressionStrategy = StrategyClass()
-    print(f"Successfully loaded strategy: {strategy_id}")
+    # Get the engine class
+    EngineClass = get_compression_engine(engine_id)
+    # Instantiate the engine
+    compression_engine: BaseCompressionEngine = EngineClass()
+    print(f"Successfully loaded engine: {engine_id}")
 except KeyError:
-    print(f"Error: Strategy \'{strategy_id}\' not found. Ensure it\'s a valid built-in or plugin strategy.")
+    print(f"Error: Engine \'{engine_id}\' not found. Ensure it\'s a valid built-in or plugin engine.")
     exit()
 ```
 
@@ -96,7 +96,7 @@ token_budget = 75 # Aim for approximately 75 tokens
 
 ### 4. Obtain a Tokenizer (Recommended)
 
-Using a tokenizer helps the strategy adhere to the `token_budget` more accurately and allows you to verify token counts.
+Using a tokenizer helps the engine adhere to the `token_budget` more accurately and allows you to verify token counts.
 
 ```python
 try:
@@ -115,14 +115,14 @@ print(f"Original text approximate token count: {original_token_count}")
 
 ### 5. Compress the Text
 
-Now, use the loaded strategy to compress your text.
+Now, use the loaded engine to compress your text.
 
 ```python
 # The compress method returns a CompressedMemory object and a CompressionTrace object
-compressed_memory, trace = compression_strategy.compress(
+compressed_memory, trace = compression_engine.compress(
     text_or_chunks=long_text_to_compress,
     llm_token_budget=token_budget,
-    tokenizer=tokenizer # Pass the tokenizer to the strategy
+    tokenizer=tokenizer # Pass the tokenizer to the engine
 )
 
 # Access the compressed text
@@ -130,9 +130,9 @@ final_compressed_text = compressed_memory.text
 
 # Optional: Review trace information and token counts
 print(f"--- Compression Results ---")
-print(f"Strategy Used: {trace.strategy_name}")
-if trace.strategy_params:
-    print(f"Strategy Parameters: {trace.strategy_params}")
+print(f"Engine Used: {trace.engine_name}")
+if trace.engine_params:
+    print(f"Engine Parameters: {trace.engine_params}")
 print(f"Compressed Text: \'{final_compressed_text}\'")
 compressed_token_count = token_count(tokenizer, final_compressed_text)
 print(f"Compressed text approximate token count: {compressed_token_count}")
@@ -169,10 +169,10 @@ print(llm_response)
 ## Complete Example Script
 
 ```python
-from CompressionStrategy.core import (
-    get_compression_strategy,
+from BaseCompressionEngine.core import (
+    get_compression_engine,
     CompressedMemory,
-    CompressionStrategy,
+    BaseCompressionEngine,
 )
 from compact_memory.token_utils import get_tokenizer, token_count
 import os
@@ -186,14 +186,14 @@ def my_llm_call(prompt: str, model_name: str = "gpt-3.5-turbo") -> str:
     return f"LLM response based on the provided context about the text."
 
 def run_pipeline():
-    # 1. Select and Load a Compression Strategy
-    strategy_id = "first_last"
+    # 1. Select and Load a compression engine
+    engine_id = "first_last"
     try:
-        StrategyClass = get_compression_strategy(strategy_id)
-        compression_strategy: CompressionStrategy = StrategyClass()
-        print(f"Successfully loaded strategy: {strategy_id}")
+        EngineClass = get_compression_engine(engine_id)
+        compression_engine: BaseCompressionEngine = EngineClass()
+        print(f"Successfully loaded engine: {engine_id}")
     except KeyError:
-        print(f"Error: Strategy \'{strategy_id}\' not found.")
+        print(f"Error: Engine \'{engine_id}\' not found.")
         return
 
     # 2. Prepare Your Text and Define Budget
@@ -226,7 +226,7 @@ the internal combustion engine, and mass production techniques.
     print(f"Original text approximate token count: {original_token_count}")
 
     # 4. Compress the Text
-    compressed_memory, trace = compression_strategy.compress(
+    compressed_memory, trace = compression_engine.compress(
         text_or_chunks=long_text_to_compress,
         llm_token_budget=token_budget,
         tokenizer=tokenizer
@@ -234,7 +234,7 @@ the internal combustion engine, and mass production techniques.
     final_compressed_text = compressed_memory.text
 
     print(f"--- Compression Results ---")
-    print(f"Strategy Used: {trace.strategy_name}")
+    print(f"Engine Used: {trace.engine_name}")
     print(f"Compressed Text: \'{final_compressed_text}\'")
     compressed_token_count = token_count(tokenizer, final_compressed_text)
     print(f"Compressed text approximate token count: {compressed_token_count}")
@@ -253,4 +253,4 @@ if __name__ == "__main__":
 
 ## Conclusion
 
-This tutorial showed how to integrate Compact Memory into a Python-based LLM pipeline. By loading a strategy, compressing text to a specified budget, and then using that compressed text as context for an LLM, you can effectively manage longer inputs and optimize your LLM interactions. You can adapt this workflow with different strategies and integrate it into more complex applications.
+This tutorial showed how to integrate Compact Memory into a Python-based LLM pipeline. By loading a engine, compressing text to a specified budget, and then using that compressed text as context for an LLM, you can effectively manage longer inputs and optimize your LLM interactions. You can adapt this workflow with different engines and integrate it into more complex applications.
