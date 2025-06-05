@@ -10,22 +10,22 @@ from .registry import get_compression_engine
 
 
 @dataclass
-class StrategyConfig:
+class EngineConfig:
     """Configuration for creating a :class:`BaseCompressionEngine`."""
 
-    strategy_name: str
-    strategy_params: dict[str, Any] = field(default_factory=dict)
+    engine_name: str
+    engine_params: dict[str, Any] = field(default_factory=dict)
 
     def create(self) -> BaseCompressionEngine:
-        cls = get_compression_engine(self.strategy_name)
-        return cls(**self.strategy_params)
+        cls = get_compression_engine(self.engine_name)
+        return cls(**self.engine_params)
 
 
 @dataclass
-class PipelineEngineConfig:
+class PipelineConfig:
     """Configuration for :class:`PipelineEngine`."""
 
-    strategies: List[StrategyConfig] = field(default_factory=list)
+    engines: List[EngineConfig] = field(default_factory=list)
 
     def create(self) -> "PipelineEngine":
         return PipelineEngine(self)
@@ -38,18 +38,18 @@ class PipelineEngine(BaseCompressionEngine):
 
     def __init__(
         self,
-        config_or_strategies: Union[PipelineEngineConfig, List[BaseCompressionEngine]],
+        config_or_engines: Union[PipelineConfig, List[BaseCompressionEngine]],
     ) -> None:
         super().__init__()
-        if isinstance(config_or_strategies, PipelineEngineConfig):
-            self.config = config_or_strategies
-            self.strategies = [
-                get_compression_engine(cfg.strategy_name)(**cfg.strategy_params)
-                for cfg in self.config.strategies
+        if isinstance(config_or_engines, PipelineConfig):
+            self.config = config_or_engines
+            self.engines = [
+                get_compression_engine(cfg.engine_name)(**cfg.engine_params)
+                for cfg in self.config.engines
             ]
         else:
-            self.config = PipelineEngineConfig()
-            self.strategies = list(config_or_strategies)
+            self.config = PipelineConfig()
+            self.engines = list(config_or_engines)
 
     def compress(
         self,
@@ -59,15 +59,15 @@ class PipelineEngine(BaseCompressionEngine):
     ) -> tuple[CompressedMemory, CompressionTrace]:
         current = text_or_chunks
         step_traces = []
-        for strat in self.strategies:
-            compressed, trace = strat.compress(current, llm_token_budget, **kwargs)
-            step_traces.append({"strategy": strat.id, "trace": trace})
+        for engine in self.engines:
+            compressed, trace = engine.compress(current, llm_token_budget, **kwargs)
+            step_traces.append({"strategy": engine.id, "trace": trace})
             current = compressed.text
         final = CompressedMemory(text=current)
         pipeline_trace = CompressionTrace(
             engine_name=self.id,
             strategy_params={},
-            input_summary={"num_steps": len(self.strategies)},
+            input_summary={"num_steps": len(self.engines)},
             steps=step_traces,
             output_summary={"output_length": len(final.text)},
             final_compressed_object_preview=final.text[:50],
@@ -75,4 +75,4 @@ class PipelineEngine(BaseCompressionEngine):
         return final, pipeline_trace
 
 
-__all__ = ["StrategyConfig", "PipelineEngineConfig", "PipelineEngine"]
+__all__ = ["EngineConfig", "PipelineConfig", "PipelineEngine"]
