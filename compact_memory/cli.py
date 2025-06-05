@@ -280,7 +280,7 @@ def engine_info(engine_id: str) -> None:
 
 @engine_app.command(
     "init",
-    help="Initializes a new Compact Memory engine store in a specified directory.\n\nUsage Examples:\n  compact-memory engine init ./my_memory_dir\n  compact-memory engine init /path/to/another_container --name 'research_mem' --model-name 'sentence-transformers/all-mpnet-base-v2' --tau 0.75",
+    help="Initializes a new Compact Memory engine store in a specified directory.\n\nUsage Examples:\n  compact-memory engine init ./my_engine_dir --engine prototype\n  compact-memory engine init /path/to/store --engine prototype --name 'research_mem' --tau 0.75 --chunker SentenceWindowChunker",
 )
 def init(
     target_directory: Path = typer.Argument(
@@ -290,23 +290,22 @@ def init(
     ),
     *,
     ctx: typer.Context,
-    name: str = typer.Option(
-        "default", help="A descriptive name for the engine store."
+    engine_id_arg: Optional[str] = typer.Option(
+        None,
+        "--engine",
+        "-e",
+        help="The ID of the compression engine to initialize."
     ),
-    model_name: str = typer.Option(
-        "all-MiniLM-L6-v2",
-        help="Name of the sentence-transformer model for embeddings.",
+    name: str = typer.Option(
+        "default_store", help="A descriptive name for the engine store or its configuration."
     ),
     tau: float = typer.Option(
         0.8,
-        help="Similarity threshold (tau) for memory consolidation, between 0.5 and 0.95.",
-    ),  # Added range to help
-    alpha: float = typer.Option(
-        0.1, help="Alpha parameter, controlling the decay rate for memory importance."
+        help="Similarity threshold for 'prototype' engine, between 0.5 and 0.95.",
     ),
     chunker: str = typer.Option(
-        "sentence_window",
-        help="Chunking strategy to use for processing text during ingestion.",
+        "SentenceWindowChunker", # Default to class name, assuming it's an ID.
+        help="Identifier for the chunker to be used (e.g., 'SentenceWindowChunker').",
     ),
 ) -> None:
     path = target_directory.expanduser()
@@ -317,22 +316,59 @@ def init(
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
-    if not 0.5 <= tau <= 0.95:
-        typer.secho(
-            "Error: --tau must be between 0.5 and 0.95.", err=True, fg=typer.colors.RED
-        )
-        raise typer.Exit(code=1)  # Keep runtime check
+
+    # Determine Engine ID
+    final_engine_id = engine_id_arg or ctx.obj.get("default_engine_id") or "prototype"
+    typer.echo(f"Initializing with engine ID: {final_engine_id}")
+
+    if final_engine_id == "prototype": # Specific check for tau with prototype
+        if not 0.5 <= tau <= 0.95:
+            typer.secho(
+                "Error: --tau must be between 0.5 and 0.95 for the 'prototype' engine.", err=True, fg=typer.colors.RED
+            )
+            raise typer.Exit(code=1)
+
+    # Prepare Engine Configuration
+    engine_config = {}
+    engine_config['chunker_id'] = chunker
+    # 'name' could be used for various things depending on the engine,
+    # e.g. a metadata field if the engine supports it, or part of its internal config.
+    engine_config['name'] = name
+
+    if final_engine_id == 'prototype':
+        engine_config['similarity_threshold'] = tau
+        # PrototypeEngine's __init__ will use this from the config.
+        # Other PrototypeEngine specific params like dedup_cache, update_summaries
+        # will use their defaults in PrototypeEngine.__init__ unless also exposed via CLI options
+        # and added to engine_config here.
+
+    # Instantiate and Save Engine
     try:
-        dim = get_embedding_dim()
-    except RuntimeError as exc:
-        typer.echo(str(exc), err=True)
+        EngineCls = get_compression_engine(final_engine_id)
+    except KeyError:
+        typer.secho(
+            f"Error: Engine ID '{final_engine_id}' not found. Available engines: {', '.join(available_engines())}",
+            err=True,
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(code=1)
-    store = InMemoryVectorStore(embedding_dim=dim)
-    store.meta.update(
-        {"memory_name": name, "tau": tau, "alpha": alpha, "chunker": chunker}
-    )
-    store.save()
-    typer.echo(f"Successfully initialized Compact Memory engine store at {path}")
+
+    try:
+        # Engines are expected to handle their own default store creation if needed,
+        # e.g. PrototypeEngine creates an InMemoryVectorStore if no store instance is passed.
+        # The config here is for the engine's parameters.
+        engine = EngineCls(config=engine_config)
+        path.mkdir(parents=True, exist_ok=True) # Ensure directory exists before saving
+        engine.save(path)
+        typer.echo(f"Successfully initialized Compact Memory engine store with engine '{final_engine_id}' at {path}")
+    except EmbeddingDimensionMismatchError as exc: # This might still occur if an engine tries to load incompatible embeddings
+        typer.secho(f"Error during engine initialization: {exc}", err=True, fg=typer.colors.RED)
+        # Consider removing specific EmbeddingDimensionMismatchError if engines handle this internally or raise more generic errors.
+        raise typer.Exit(code=1)
+    except Exception as exc:
+        typer.secho(f"An unexpected error occurred during engine initialization or save: {exc}", err=True, fg=typer.colors.RED)
+        logging.exception("Failed to initialize engine store.") # Log stack trace for debugging
+        raise typer.Exit(code=1)
 
 
 @engine_app.command(
@@ -481,11 +517,30 @@ def query(
         help="Display the token count of the final prompt sent to the LLM.",
     ),
 ) -> None:
-    dim = get_embedding_dim()
-    store = InMemoryVectorStore(embedding_dim=dim)
-    container = PrototypeEngine(store)
-    final_model_id = ctx.obj.get("default_model_id")  # Renamed for clarity
-    final_engine_id = ctx.obj.get("default_engine_id")  # Renamed for clarity
+    resolved_memory_path_str = ctx.obj.get("compact_memory_path")
+    if not resolved_memory_path_str:
+        typer.secho(
+            "Error: Memory path not set. Use --memory-path or configure it globally.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    resolved_memory_path = Path(resolved_memory_path_str)
+
+    try:
+        engine = load_engine(resolved_memory_path)
+    except FileNotFoundError:
+        typer.secho(f"Error: Engine store not found at '{resolved_memory_path}'. Please initialize it first using 'compact-memory engine init'.", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    except Exception as e:
+        typer.secho(f"Error loading engine from '{resolved_memory_path}': {e}", fg=typer.colors.RED, err=True)
+        logging.exception(f"Failed to load engine from {resolved_memory_path}")
+        raise typer.Exit(code=1)
+
+    final_model_id = ctx.obj.get("default_model_id")
+    # final_engine_id is the ID for the *history compression* engine, not the main loaded engine.
+    final_history_compression_engine_id = ctx.obj.get("default_engine_id")
 
     if final_model_id is None:
         typer.secho(
@@ -496,45 +551,73 @@ def query(
         raise typer.Exit(code=1)
 
     try:
-        container._chat_model = local_llm.LocalChatModel(model_name=final_model_id)
-        container._chat_model.load_model()
+        # Assuming the loaded engine might need a chat model attached for receive_channel_message
+        # This might need to be refactored if not all engines use _chat_model attribute.
+        engine._chat_model = local_llm.LocalChatModel(model_name=final_model_id)
+        engine._chat_model.load_model()
     except RuntimeError as exc:
         typer.secho(
             f"Error loading chat model '{final_model_id}': {exc}",
             err=True,
             fg=typer.colors.RED,
         )
-        raise typer.Exit(code=1)  # Added model_id to error
+        raise typer.Exit(code=1)
+    except AttributeError:
+        typer.secho(
+            f"Warning: The loaded engine type '{type(engine).__name__}' may not support direct chat model assignment via '_chat_model'. Querying may fail if it relies on this.",
+            fg=typer.colors.YELLOW,
+        )
+
 
     mgr = ActiveMemoryManager()
-    comp_engine_instance = None
-    if final_engine_id and final_engine_id.lower() != "none":
+    history_comp_engine_instance = None
+    if final_history_compression_engine_id and final_history_compression_engine_id.lower() != "none":
         try:
-            comp_cls = get_compression_engine(final_engine_id)
-            info = get_engine_metadata(final_engine_id)
+            comp_cls = get_compression_engine(final_history_compression_engine_id)
+            info = get_engine_metadata(final_history_compression_engine_id)
             if info and info.get("source") == "contrib":
                 typer.secho(
-                    "\u26a0\ufe0f Using experimental engine from contrib: not officially supported.",
+                    "\u26a0\ufe0f Using experimental engine for history compression from contrib: not officially supported.",
                     fg=typer.colors.YELLOW,
                 )
-            comp_engine_instance = comp_cls()
+            history_comp_engine_instance = comp_cls()
         except KeyError:
             typer.secho(
-                f"Error: Unknown compression engine '{final_engine_id}' (from global config/option). Available: {', '.join(available_engines())}",
+                f"Error: Unknown history compression engine '{final_history_compression_engine_id}' (from global config/option). Available: {', '.join(available_engines())}",
                 err=True,
                 fg=typer.colors.RED,
             )
             raise typer.Exit(code=1)
 
-        try:
-            result = container.receive_channel_message(
-                "cli", query_text, mgr, compression=comp_engine_instance
-            )
-        except TypeError:  # Older agents might not have compression param
-            result = container.receive_channel_message("cli", query_text, mgr)
+    try:
+        # Ensure the loaded engine has a receive_channel_message method
+        if not hasattr(engine, "receive_channel_message"):
+            typer.secho(f"Error: The loaded engine type '{type(engine).__name__}' does not support the 'receive_channel_message' method required for querying.", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
 
-        reply = result.get("reply")
-        if reply:
+        result = engine.receive_channel_message(
+            "cli", query_text, mgr, compression=history_comp_engine_instance
+        )
+    except TypeError as e:
+        # Check if error is due to unexpected keyword argument 'compression'
+        if "got an unexpected keyword argument 'compression'" in str(e) or "takes at most 3 positional arguments" in str(e):
+             typer.secho(
+                f"Warning: Engine type '{type(engine).__name__}' does not support 'compression' parameter for history. Retrying without it.",
+                fg=typer.colors.YELLOW,
+            )
+             result = engine.receive_channel_message("cli", query_text, mgr)
+        else:
+            typer.secho(f"Error during query processing: {e}", fg=typer.colors.RED, err=True)
+            logging.exception("Query processing failed.")
+            raise typer.Exit(code=1)
+    except Exception as e:
+        typer.secho(f"An unexpected error occurred during query: {e}", fg=typer.colors.RED, err=True)
+        logging.exception("Unexpected error during query.")
+        raise typer.Exit(code=1)
+
+
+    reply = result.get("reply")
+    if reply:
             typer.echo(reply)
         else:
             typer.secho(
@@ -600,11 +683,6 @@ def compress(
         "--memory-path",
         "-m",
         help="Path of the engine store directory to store the compressed content",
-    ),
-    init_memory: bool = typer.Option(
-        False,
-        "--init-memory",
-        help="Initialize a new engine store at --memory-path if it does not exist",
     ),
     output_trace: Optional[Path] = typer.Option(
         None,
@@ -682,12 +760,12 @@ def compress(
             raise typer.Exit(1)
 
     if final_memory_path_str:
-        container = load_engine(Path(final_memory_path_str))
+        main_engine_instance = load_engine(Path(final_memory_path_str))
         if text is not None:
             if text == "-":
                 text = sys.stdin.read()
             compress_text_to_memory(
-                container,
+                main_engine_instance,
                 text,
                 final_engine_id,
                 budget,
@@ -696,7 +774,7 @@ def compress(
             )
         elif file is not None:
             compress_file_to_memory(
-                container,
+                main_engine_instance,
                 file,
                 final_engine_id,
                 budget,
@@ -705,7 +783,7 @@ def compress(
             )
         else:
             compress_directory_to_memory(
-                container,
+                main_engine_instance,
                 dir,
                 final_engine_id,
                 budget,
@@ -922,31 +1000,39 @@ def compress_directory(
 
 
 def compress_text_to_memory(
-    container: PrototypeEngine,
+    main_engine: BaseCompressionEngine,
     text: str,
-    engine_id: str,
+    engine_id: str, # This is the ID for the one-shot compression strategy
     budget: int,
     verbose_stats: bool,
     tokenizer: Any,
-    source_document_id: str | None = None,
+    source_document_id: str | None = None, # Kept for potential future use with ingest
 ) -> None:
     start = time.time()
     try:
+        # strat_cls is for the one-shot compression, not the main_engine type
         strat_cls = get_compression_engine(engine_id)
     except KeyError:
         typer.secho(
-            f"Unknown compression engine '{engine_id}'. Available: {', '.join(available_engines())}",
+            f"Unknown one-shot compression engine '{engine_id}'. Available: {', '.join(available_engines())}",
             err=True,
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
-    strat = strat_cls()
+
+    strat = strat_cls() # Instance of the one-shot compression engine
     result = strat.compress(text, budget, tokenizer=tokenizer)
     if isinstance(result, tuple):
-        compressed, _ = result
+        compressed, _ = result # We only need the compressed text part
     else:
-        compressed = result
-    container.add_memory(compressed.text, source_document_id=source_document_id)
+        compressed = result # If compress only returns CompressedMemory object
+
+    # Now ingest the compressed text into the main_engine
+    # BaseCompressionEngine.ingest currently only takes `text: str`.
+    # If `source_document_id` or other metadata needs to be passed,
+    # `BaseCompressionEngine.ingest` would need to be updated.
+    main_engine.ingest(compressed.text)
+
     elapsed = (time.time() - start) * 1000
     if verbose_stats:
         orig_tokens = token_count(tokenizer, text)
@@ -957,9 +1043,9 @@ def compress_text_to_memory(
 
 
 def compress_file_to_memory(
-    container: PrototypeEngine,
+    main_engine: BaseCompressionEngine,
     file_path: Path,
-    engine_id: str,
+    engine_id: str, # ID for one-shot compression strategy
     budget: int,
     verbose_stats: bool,
     tokenizer: Any,
@@ -969,20 +1055,20 @@ def compress_file_to_memory(
         raise typer.Exit(code=1)
     text_content = file_path.read_text()
     compress_text_to_memory(
-        container,
+        main_engine, # Pass the main_engine instance
         text_content,
         engine_id,
         budget,
         verbose_stats,
         tokenizer,
-        source_document_id=str(file_path),
+        source_document_id=str(file_path), # Still passed, but ingest won't use it yet
     )
 
 
 def compress_directory_to_memory(
-    container: PrototypeEngine,
+    main_engine: BaseCompressionEngine,
     dir_path: Path,
-    engine_id: str,
+    engine_id: str, # ID for one-shot compression strategy
     budget: int,
     recursive: bool,
     pattern: str,
@@ -999,7 +1085,7 @@ def compress_directory_to_memory(
     for input_file in files:
         typer.echo(f"Processing {input_file}...")
         compress_file_to_memory(
-            container,
+            main_engine, # Pass the main_engine instance
             input_file,
             engine_id,
             budget,

@@ -47,7 +47,17 @@ class BaseCompressionEngine:
         chunker: SentenceWindowChunker | None = None,
         embedding_fn: Callable[[str | Sequence[str]], np.ndarray] = embed_text,
         preprocess_fn: Callable[[str], str] | None = None,
+        config: Optional[Dict[str, Any]] = None,
     ) -> None:
+        if config is not None:
+            self.config = config
+        else:
+            self.config = {}
+            if chunker:
+                self.config['chunker_id'] = type(chunker).__name__
+            # Note: embedding_fn and preprocess_fn are not easily serializable by default.
+            # Subclasses would need to handle serialization/deserialization if they are configurable.
+
         self.chunker = chunker or SentenceWindowChunker()
         self.embedding_fn = embedding_fn
         self.preprocess_fn = preprocess_fn
@@ -55,6 +65,22 @@ class BaseCompressionEngine:
         dim = get_embedding_dim()
         self.embeddings = np.zeros((0, dim), dtype=np.float32)
         self.index: faiss.IndexFlatIP | None = None
+
+    # --------------------------------------------------
+    def _compress_chunk(self, chunk_text: str) -> str:
+        """
+        Compresses a single text chunk.
+
+        This method is intended to be overridden by subclasses to implement
+        specific compression logic. By default, it returns the chunk unmodified.
+
+        Args:
+            chunk_text: The text chunk to compress.
+
+        Returns:
+            The compressed text chunk.
+        """
+        return chunk_text
 
     # --------------------------------------------------
     def _ensure_index(self) -> None:
@@ -66,16 +92,19 @@ class BaseCompressionEngine:
     def ingest(self, text: str) -> List[str]:
         """Chunk and store ``text`` in the engine."""
 
-        chunks = self.chunker.chunk(text)
-        if not chunks:
+        raw_chunks = self.chunker.chunk(text)
+        if not raw_chunks:
             return []
-        vecs = self.embedding_fn(chunks, preprocess_fn=self.preprocess_fn)
+
+        processed_chunks = [self._compress_chunk(chunk) for chunk in raw_chunks]
+
+        vecs = self.embedding_fn(processed_chunks, preprocess_fn=self.preprocess_fn)
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
         ids: List[str] = []
-        for chunk, vec in zip(chunks, vecs):
+        for processed_chunk_text, vec in zip(processed_chunks, vecs):
             mid = uuid.uuid4().hex
-            self.memories.append({"id": mid, "text": chunk})
+            self.memories.append({"id": mid, "text": processed_chunk_text})
             self.embeddings = np.vstack([self.embeddings, vec.astype(np.float32)])
             ids.append(mid)
         if self.index is None:
@@ -126,6 +155,7 @@ class BaseCompressionEngine:
         manifest = {
             "engine_id": getattr(self, "id", self.__class__.__name__),
             "engine_class": f"{self.__class__.__module__}.{self.__class__.__qualname__}",
+            "config": self.config,
         }
         with open(
             os.path.join(path, "engine_manifest.json"), "w", encoding="utf-8"
@@ -158,6 +188,7 @@ def load_engine(path: str | os.PathLike) -> BaseCompressionEngine:
         manifest = json.load(fh)
     engine_id = manifest.get("engine_id")
     engine_class = manifest.get("engine_class")
+    engine_config = manifest.get("config", {})
     cls = None
     if engine_class:
         mod_name, cls_name = engine_class.rsplit(".", 1)
@@ -167,19 +198,13 @@ def load_engine(path: str | os.PathLike) -> BaseCompressionEngine:
         cls = get_compression_engine(engine_id)
     else:
         raise ValueError("Engine manifest missing engine_id or engine_class")
-    try:
-        engine = cls()
-    except TypeError as e:  # handle engines requiring a store
-        if "store" in str(e):
-            import numpy as np
-            from ..vector_store import InMemoryVectorStore
 
-            vecs = np.load(p / "vectors.npy")
-            dim = vecs.shape[1] if vecs.ndim > 1 else len(vecs)
-            store = InMemoryVectorStore(embedding_dim=dim)
-            engine = cls(store)
-        else:
-            raise
+    # Instantiate the engine, passing the config if available
+    if engine_config:
+        engine = cls(**engine_config)
+    else:
+        engine = cls()
+
     engine.load(p)
     return engine
 
