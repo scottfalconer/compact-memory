@@ -37,7 +37,7 @@ class NoCompressionEngine(BaseCompressionEngine):
             text = truncate_text(tokenizer, text, llm_token_budget)
         compressed = CompressedMemory(text=text)
         trace = CompressionTrace(
-            strategy_name=self.id,
+            engine_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
             input_summary={"input_length": len(text)},
             output_summary={"output_length": len(text)},

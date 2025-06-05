@@ -26,7 +26,7 @@ class DummyPluginEngine(BaseCompressionEngine):
 
     def compress(self, text_or_chunks, llm_token_budget, **kwargs):
         return CompressedMemory(text='x'), CompressionTrace(
-            strategy_name=self.id,
+            engine_name=self.id,
             strategy_params={},
             input_summary={},
             steps=[],
@@ -72,7 +72,7 @@ def test_load_entrypoint_plugin(monkeypatch: pytest.MonkeyPatch) -> None:
 
         def compress(self, text_or_chunks, llm_token_budget, **kwargs):
             return CompressedMemory(text="y"), CompressionTrace(
-                strategy_name=self.id,
+                engine_name=self.id,
                 strategy_params={},
                 input_summary={},
                 steps=[],

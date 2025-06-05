@@ -65,7 +65,7 @@ class PipelineEngine(BaseCompressionEngine):
             current = compressed.text
         final = CompressedMemory(text=current)
         pipeline_trace = CompressionTrace(
-            strategy_name=self.id,
+            engine_name=self.id,
             strategy_params={},
             input_summary={"num_steps": len(self.strategies)},
             steps=step_traces,

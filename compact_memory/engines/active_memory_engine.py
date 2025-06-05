@@ -170,7 +170,7 @@ class ActiveMemoryEngine(BaseCompressionEngine):
         # trace_events = kwargs.get('trace_events', []) # Check how trace_events is passed
         # trace_events.extend(trace_steps)
         compression_trace = CompressionTrace(
-            strategy_name=self.id,
+            engine_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
             input_summary={"history_len": len(self.manager.history)},
             steps=trace_steps,

@@ -35,7 +35,7 @@ class SamplePipelineEngine(BaseCompressionEngine):
         compressed_text = text_content[:llm_token_budget]
 
         trace = CompressionTrace(
-            strategy_name=self.id,
+            engine_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
             input_summary={"original_length": len(text_content)},
             output_summary={"compressed_length": len(compressed_text)},
