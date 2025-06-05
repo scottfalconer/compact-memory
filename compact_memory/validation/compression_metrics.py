@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict
 
 from .metrics_abc import ValidationMetric
-from ..registry import register_validation_metric
+from .registry import register_validation_metric
 
 
 class CompressionRatioMetric(ValidationMetric):

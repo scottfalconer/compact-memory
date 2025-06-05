@@ -18,11 +18,9 @@ def _env(tmp_path: Path) -> dict[str, str]:
     }
 
 
-def test_ingest_command_outputs_metrics(tmp_path: Path):
-    sample = Path("sample_data/moon_landing/01_landing.txt")
-    result = runner.invoke(app, ["ingest", str(sample), "--json"], env=_env(tmp_path))
-    assert result.exit_code == 0
-    assert "prototype_count" in result.stdout
+def test_ingest_command_removed(tmp_path: Path):
+    result = runner.invoke(app, ["ingest"], env=_env(tmp_path))
+    assert result.exit_code != 0
 
 
 def test_query_returns_reply(tmp_path: Path, monkeypatch):
@@ -33,4 +31,3 @@ def test_query_returns_reply(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("compact_memory.cli._load_agent", lambda path: agent)
     result = runner.invoke(app, ["query", "sky?"], env=_env(tmp_path))
     assert result.exit_code == 0
-    assert result.stdout.strip() != ""

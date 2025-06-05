@@ -22,12 +22,6 @@ __all__ = [
     "AgenticChunker",
     "DEFAULT_MEMORY_PATH",
     "LocalChatModel",
-    "ExperimentConfig",
-    "run_experiment",
-    "HistoryExperimentConfig",
-    "run_history_experiment",
-    "ResponseExperimentConfig",
-    "run_response_experiment",
     "LearnedSummarizerStrategy",
     "load_agent",
     "tokenize_text",
@@ -36,7 +30,6 @@ __all__ = [
     "CompressionStrategy",
     "NoCompression",
     "ValidationMetric",
-    "run_params_trial",
     "StrategyConfig",
 ]
 
@@ -57,12 +50,6 @@ _lazy_map = {
     "AgenticChunker": "compact_memory.chunker",
     "DEFAULT_MEMORY_PATH": "compact_memory.config",
     "LocalChatModel": "compact_memory.local_llm",
-    "ExperimentConfig": "compact_memory.experiments.config",
-    "run_experiment": "compact_memory.experiment_runner",
-    "HistoryExperimentConfig": "compact_memory.history_experiment",
-    "run_history_experiment": "compact_memory.history_experiment",
-    "ResponseExperimentConfig": "compact_memory.response_experiment",
-    "run_response_experiment": "compact_memory.response_experiment",
     "load_agent": "compact_memory.utils",
     "tokenize_text": "compact_memory.token_utils",
     "token_count": "compact_memory.token_utils",
@@ -71,7 +58,6 @@ _lazy_map = {
     "CompressionStrategy": "compact_memory.compression",
     "NoCompression": "compact_memory.compression",
     "ValidationMetric": "compact_memory.validation.metrics_abc",
-    "run_params_trial": "compact_memory.hpo",
     "StrategyConfig": "compact_memory.compression",
 }
 

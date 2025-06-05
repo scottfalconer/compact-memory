@@ -1,25 +1,11 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, List
 
 
 from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
 from .embedding_pipeline import get_embedding_dim, EmbeddingDimensionMismatchError
-
-
-def get_disk_usage(path: Path) -> int:
-    """Return total size of files under ``path`` in bytes."""
-    size = 0
-    for root, _, files in os.walk(path):
-        for name in files:
-            fp = Path(root) / name
-            try:
-                size += fp.stat().st_size
-            except OSError:
-                pass
-    return size
 
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
@@ -52,4 +38,4 @@ def format_ingest_results(
     return lines
 
 
-__all__ = ["load_agent", "get_disk_usage", "format_ingest_results"]
+__all__ = ["load_agent", "format_ingest_results"]
