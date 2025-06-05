@@ -1072,10 +1072,10 @@ def list_registered_engines(
 
 
 @dev_app.command(
-    "inspect-strategy",
+    "inspect-engine",
     help="Inspects aspects of a compression engine, currently focused on 'prototype' engine's beliefs.",
 )
-def inspect_strategy(
+def inspect_engine(
     engine_name: str = typer.Argument(
         ...,
         help="The name of the engine to inspect. Currently, only 'prototype' is supported.",
