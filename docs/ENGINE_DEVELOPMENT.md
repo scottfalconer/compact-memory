@@ -6,14 +6,13 @@ This guide provides a comprehensive walkthrough for researchers and developers l
 
 At the heart of Compact Memory's extensibility is the `BaseCompressionEngine` abstract base class. Any new engine you develop must inherit from this class and implement its required methods.
 
-### Abstract Base Class: `BaseCompressionEngine.core.engines_abc.BaseCompressionEngine`
+### Abstract Base Class: `compact_memory.engines.BaseCompressionEngine`
 
 ```python
 from abc import ABC, abstractmethod
 from typing import Union, List, Tuple, Any, Optional, Dict
 
-from BaseCompressionEngine.core.trace import CompressionTrace
-from BaseCompressionEngine.core.engines_abc import CompressedMemory
+from compact_memory.engines import CompressionTrace, CompressedMemory
 
 class BaseCompressionEngine(ABC):
     # Unique identifier for your engine. This is crucial for registration and selection.
@@ -96,8 +95,7 @@ Your primary task is to implement the `compress` method. Here's what to consider
 ### Example: A Simple Truncation Engine
 
 ```python
-from BaseCompressionEngine.core.engines_abc import BaseCompressionEngine, CompressedMemory
-from BaseCompressionEngine.core.trace import CompressionTrace
+from compact_memory.engines import BaseCompressionEngine, CompressedMemory, CompressionTrace
 from compact_memory.token_utils import get_tokenizer, token_count
 
 class SimpleTruncateEngine(BaseCompressionEngine):

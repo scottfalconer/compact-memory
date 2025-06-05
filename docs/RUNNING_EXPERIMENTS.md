@@ -17,7 +17,7 @@ cfg = ResponseExperimentConfig(
 ```
 
 During the run each metric is instantiated and its scores averaged across the
-Beyond task-specific accuracy, experiments should ideally capture efficiency metrics. The `CompressionTrace` object (see `BaseCompressionEngine/core/trace.py`) is designed to hold such details. Key metrics include:
+Beyond task-specific accuracy, experiments should ideally capture efficiency metrics. The `CompressionTrace` object (see `compact_memory/engines/__init__.py`) is designed to hold such details. Key metrics include:
     * Final compressed prompt token count.
     * Original uncompressed token count.
     * Processing time of the compression engine.

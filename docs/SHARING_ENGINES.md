@@ -23,7 +23,7 @@ Compact Memory discovers available compression engines through two primary mecha
 2.  **Local Plugin Directories:**
     *   For development, testing, or simpler distribution without creating a full Python package, Compact Memory can load engines from specific local directories.
     *   These directories must contain valid "engine packages" (see below).
-    *   Compact Memory checks the path specified by the `COMPACT_MEMORY_PLUGINS_PATH` environment variable. This variable can contain multiple paths, separated by the OS's standard path separator (e.g., `:` for Linux/macOS, `;` for Windows).
+*   Compact Memory checks the path specified by the `COMPACT_MEMORY_ENGINES_PATH` environment variable. This variable can contain multiple paths, separated by the OS's standard path separator (e.g., `:` for Linux/macOS, `;` for Windows).
     *   It also checks a default user-specific plugin directory (e.g., `~/.local/share/compact_memory/plugins` on Linux, or similar paths on other OSes, determined by the `platformdirs` library).
     *   Engines found in these directories are registered. If multiple engines with the same ID are found, a precedence order applies (typically, local directory plugins might override entry point plugins, and built-in engines have the highest precedence unless overridden by a plugin specifically designed to do so). Use `compact-memory dev list-engines` to see which engine is active and its source.
 
@@ -150,7 +150,7 @@ This will check for required files, fields in the manifest, and basic loadabilit
         ```
     *   **Python API:**
         ```python
-        from BaseCompressionEngine.core import get_compression_engine
+        from compact_memory import get_compression_engine
 
         engine_instance = get_compression_engine("<shared_engine_id>")()
         compressed_mem, trace = engine_instance.compress(text, budget)
