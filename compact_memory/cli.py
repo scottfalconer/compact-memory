@@ -19,7 +19,7 @@ from compact_memory import __version__
 from .logging_utils import configure_logging
 
 
-from .memory_container import MemoryContainer
+from .prototype_engine import PrototypeEngine
 from .vector_store import InMemoryVectorStore
 from . import local_llm
 from CompressionStrategy.contrib import (
@@ -235,11 +235,11 @@ def _corrupt_exit(path: Path, exc: Exception) -> None:
     raise typer.Exit(code=1)
 
 
-def load_memory_container(path: Path) -> MemoryContainer:
-    """Placeholder loader since on-disk storage was removed."""
-    raise RuntimeError(
-        "Persistent storage support was removed. Provide your own loader."
-    )
+def load_memory_container(path: Path) -> PrototypeEngine:
+    """Load a :class:`PrototypeEngine` from ``path``."""
+    from .utils import load_memory_container as _loader
+
+    return _loader(path)
 
 
 # --- Memory Commands ---
@@ -432,7 +432,7 @@ def query(
 ) -> None:
     dim = get_embedding_dim()
     store = InMemoryVectorStore(embedding_dim=dim)
-    container = MemoryContainer(store)
+    container = PrototypeEngine(store)
     final_model_id = ctx.obj.get("default_model_id")  # Renamed for clarity
     final_strategy_id = ctx.obj.get("default_strategy_id")  # Renamed for clarity
 
@@ -871,7 +871,7 @@ def compress_directory(
 
 
 def compress_text_to_memory(
-    container: MemoryContainer,
+    container: PrototypeEngine,
     text: str,
     strategy_id: str,
     budget: int,
@@ -906,7 +906,7 @@ def compress_text_to_memory(
 
 
 def compress_file_to_memory(
-    container: MemoryContainer,
+    container: PrototypeEngine,
     file_path: Path,
     strategy_id: str,
     budget: int,
@@ -929,7 +929,7 @@ def compress_file_to_memory(
 
 
 def compress_directory_to_memory(
-    container: MemoryContainer,
+    container: PrototypeEngine,
     dir_path: Path,
     strategy_id: str,
     budget: int,
@@ -1042,7 +1042,7 @@ def inspect_strategy(
     if list_prototypes:
         dim = get_embedding_dim()
         store = InMemoryVectorStore(embedding_dim=dim)
-        container = MemoryContainer(store)
+        container = PrototypeEngine(store)
         protos = container.get_prototypes_view()
         if not protos:
             typer.echo("No prototypes found.")
@@ -1052,7 +1052,7 @@ def inspect_strategy(
             "Strength",
             "Confidence",
             "Summary",
-            title="Prototypes for MemoryContainer",
+            title="Prototypes for PrototypeEngine",
         )
         for p in protos:
             table.add_row(

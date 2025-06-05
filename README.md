@@ -450,7 +450,7 @@ Compact Memory no longer performs built-in line filtering or heuristic cleanup w
 def remove_blank_lines(text: str) -> str:
     return "\n".join(line for line in text.splitlines() if line.strip())
 
-agent = MemoryContainer(store, preprocess_fn=remove_blank_lines)
+agent = PrototypeEngine(store, preprocess_fn=remove_blank_lines)
 ```
 
 This hook enables custom regex cleanup, spaCy pipelines or LLM-powered summarization prior to compression.

@@ -4,22 +4,49 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, List
 
 
-from .chunker import SentenceWindowChunker, _CHUNKER_REGISTRY
-from .embedding_pipeline import get_embedding_dim, EmbeddingDimensionMismatchError
+from .embedding_pipeline import get_embedding_dim
+from .vector_store import InMemoryVectorStore
 
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
-    from .memory_container import MemoryContainer
+    from .prototype_engine import PrototypeEngine
 
 
-def load_memory_container(path: Path) -> "MemoryContainer":
-    raise RuntimeError(
-        "Persistent storage support was removed. Provide your own loader."
-    )
+def load_memory_container(path: Path) -> "PrototypeEngine":
+    """Load a :class:`PrototypeEngine` from ``path``."""
+
+    from .prototype_engine import PrototypeEngine
+    from .models import BeliefPrototype, RawMemory
+    import json
+    import numpy as np
+
+    manifest_file = path / "engine_manifest.json"
+    memories_file = path / "memories.json"
+    vectors_file = path / "vectors.npy"
+
+    with open(manifest_file, "r", encoding="utf-8") as fh:
+        manifest = json.load(fh)
+
+    meta = manifest.get("meta", {})
+    dim = meta.get("embedding_dim", get_embedding_dim())
+    normalized = meta.get("normalized", True)
+    store = InMemoryVectorStore(embedding_dim=dim, normalized=normalized)
+    store.meta = meta
+    store.prototypes = [BeliefPrototype(**p) for p in manifest.get("prototypes", [])]
+    store.proto_vectors = np.load(vectors_file)
+
+    with open(memories_file, "r", encoding="utf-8") as fh:
+        store.memories = [RawMemory(**m) for m in json.load(fh)]
+
+    store.index = {p.prototype_id: i for i, p in enumerate(store.prototypes)}
+    store._index_dirty = True
+
+    engine = PrototypeEngine(store)
+    return engine
 
 
 def format_ingest_results(
-    agent: "MemoryContainer", results: Iterable[dict[str, object]]
+    agent: "PrototypeEngine", results: Iterable[dict[str, object]]
 ) -> List[str]:
     """Return user-friendly messages for ``agent.add_memory`` results."""
 
