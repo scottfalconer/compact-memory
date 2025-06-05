@@ -51,7 +51,7 @@ Assistant:
 You can also call compression engines programmatically:
 
 ```python
-from BaseCompressionEngine.core import get_compression_engine
+from compact_memory import get_compression_engine
 from compact_memory.token_utils import get_tokenizer
 
 engine = get_compression_engine("first_last")()

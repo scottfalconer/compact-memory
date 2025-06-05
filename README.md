@@ -120,14 +120,14 @@ Shared engines can be distributed as standard Python packages (e.g., via PyPI) o
     ```
     Once installed in your Python environment, Compact Memory's plugin loader will automatically discover the engine if it correctly uses the entry point system.
 
-*   **Installation (Directory Packages):** For engines distributed as a directory, you can place them in a location scanned by Compact Memory. (Refer to `docs/SHARING_ENGINES.md` for details on plugin paths like `$COMPACT_MEMORY_PLUGINS_PATH`).
+*   **Installation (Directory Packages):** For engines distributed as a directory, you can place them in a location scanned by Compact Memory. (Refer to `docs/SHARING_ENGINES.md` for details on plugin paths like `$COMPACT_MEMORY_ENGINES_PATH`).
 
 *   **Using a Shared Engine:** Once installed and discovered, you can use a shared engine like any built-in engine by specifying its `engine_id` in the CLI or Python API:
     ```bash
     compact-memory compress --text "my text" --engine community_engine_id --budget 100
     ```
     ```python
-    from BaseCompressionEngine.core import get_compression_engine
+    from compact_memory import get_compression_engine
     engine = get_compression_engine("community_engine_id")()
     # ... use the engine
     ```
@@ -171,7 +171,7 @@ For contributors or those looking to build custom solutions on top of Compact Me
 
 ## Features
 
-- Command-line interface for memory container management (`memory init`, `memory stats`, `memory validate`, `memory clear`), data processing (`ingest`, `query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-engines`, `dev evaluate-compression`, etc.).
+- Command-line interface for memory container management (`memory init`, `memory stats`, `memory validate`, `memory clear`), data processing (`query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-engines`, `dev evaluate-compression`, etc.).
 - Global configuration options settable via CLI, environment variables, or config files.
 - Pluggable memory compression engines.
  - Pluggable CompressionEngines.
@@ -313,7 +313,7 @@ You can also set a default location for the on-disk memory store and other globa
 ## Configuration
 
 Compact Memory uses a hierarchical configuration system:
-1.  **Command-line arguments:** Highest precedence (e.g., `compact-memory --memory-path ./my_memory ingest ...`).
+1.  **Command-line arguments:** Highest precedence (e.g., `compact-memory --memory-path ./my_memory compress --file data.txt --engine prototype --budget 100`).
 2.  **Environment variables:** (e.g., `COMPACT_MEMORY_PATH`, `COMPACT_MEMORY_DEFAULT_MODEL_ID`, `COMPACT_MEMORY_DEFAULT_ENGINE_ID`).
 3.  **Local project config:** `.gmconfig.yaml` in the current directory.
 4.  **User global config:** `~/.config/compact_memory/config.yaml`.
@@ -336,7 +336,7 @@ export COMPACT_MEMORY_PATH=~/my_compact_memories
 
 ## Quick Start / Core Workflow
 
-The `compact-memory` Command-Line Interface (CLI) is your primary tool for managing memory containers, ingesting data, querying, and summarizing.
+The `compact-memory` Command-Line Interface (CLI) is your primary tool for managing memory containers, compressing data, querying, and summarizing.
 
 **1. Initialize a Memory Container:**
 First, create a new memory container. This directory will store the container's data.
@@ -352,21 +352,21 @@ To avoid specifying `--memory-path ./my_memory` for every command that interacts
     ```bash
     compact-memory config set compact_memory_path ./my_memory
     ```
-    Now, `compact-memory` commands like `ingest` and `query` will default to using `./my_memory`.
+    Now, `compact-memory` commands like `compress` and `query` will default to using `./my_memory`.
 *   **Set for current session (environment variable):**
     ```bash
     export COMPACT_MEMORY_PATH=$(pwd)/my_memory
     ```
 
-**3. Ingest Data:**
-Add information to the memory container.
+**3. Compress Data into the Container:**
+Add information by compressing files directly into the memory store.
 ```bash
 # If compact_memory_path is set (globally or via env var):
-compact-memory ingest path/to/your_document.txt
-compact-memory ingest path/to/your_data_directory/
+compact-memory compress --file path/to/your_document.txt --engine prototype --budget 200
+compact-memory compress --dir path/to/your_data_directory/ --engine prototype --budget 200
 
 # Or, specify the memory path directly for a specific command:
-compact-memory --memory-path ./my_memory ingest path/to/your_document.txt
+compact-memory compress --memory-path ./my_memory --file path/to/your_document.txt --engine prototype --budget 200
 ```
 
 **4. Query the Container:**

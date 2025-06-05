@@ -23,11 +23,8 @@ This tutorial demonstrates how to programmatically use an existing compression e
 First, let\'s import the required components from Compact Memory and any other libraries.
 
 ```python
-from BaseCompressionEngine.core import (
-    get_compression_engine,
-    CompressedMemory,
-    BaseCompressionEngine,
-)
+from compact_memory import get_compression_engine
+from compact_memory.engines import CompressedMemory, BaseCompressionEngine
 from compact_memory.token_utils import get_tokenizer, token_count # For token counting
 import os # For API keys, if needed
 
@@ -169,11 +166,8 @@ print(llm_response)
 ## Complete Example Script
 
 ```python
-from BaseCompressionEngine.core import (
-    get_compression_engine,
-    CompressedMemory,
-    BaseCompressionEngine,
-)
+from compact_memory import get_compression_engine
+from compact_memory.engines import CompressedMemory, BaseCompressionEngine
 from compact_memory.token_utils import get_tokenizer, token_count
 import os
 

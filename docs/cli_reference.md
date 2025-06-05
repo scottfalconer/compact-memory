@@ -33,18 +33,6 @@ You can manage your global configuration using the `compact-memory config` comma
 
 These are the primary commands for interacting with Compact Memory.
 
-### `compact-memory ingest`
-
-Ingests a text file or files in a directory into an engine store. The engine store is determined by the active `--memory-path` or its configured default.
-
-**Usage:** `compact-memory ingest [OPTIONS] SOURCE`
-
-**Arguments:**
-*   `SOURCE`: Path to the text file or directory containing text files to ingest. (Required)
-
-**Options:**
-*   `--tau FLOAT`: Similarity threshold (0.5-0.95) for memory consolidation. Overrides the engine store's existing tau if set. If the store is new, this tau is used for initialization.
-*   `--json`: Output ingestion summary statistics in JSON format.
 
 ### `compact-memory query`
 

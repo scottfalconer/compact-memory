@@ -16,8 +16,7 @@ Our engine, \`FirstNSentencesEngine\`, will:
 Create a Python file for your engine, for example, \`my_engines.py\`.
 ```python
 from typing import Union, List, Tuple, Any
-from BaseCompressionEngine.core.engines_abc import BaseCompressionEngine, CompressedMemory
-from BaseCompressionEngine.core.trace import CompressionTrace
+from compact_memory.engines import BaseCompressionEngine, CompressedMemory, CompressionTrace
 from compact_memory.token_utils import get_tokenizer, token_count
 
 try:
@@ -146,7 +145,7 @@ compact-memory compress --text "Your long text here..." --engine first_n_sentenc
 ```
 *   Python API:
 ```python
-from BaseCompressionEngine.core import get_compression_engine
+from compact_memory import get_compression_engine
 # Assuming FirstNSentencesEngine is registered or imported
 # For example, if you ran the __main__ block from my_engines.py or imported it.
 

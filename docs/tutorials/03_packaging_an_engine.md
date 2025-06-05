@@ -26,8 +26,7 @@ compact_memory_my_engine/
 Now, replace the contents of the template \`compact_memory_my_engine/engine.py\` with your actual engine code from \`my_awesome_engine.py\`.
 Let's assume your \`my_awesome_engine.py\` looked something like this:
 ```python
-from BaseCompressionEngine.core.engines_abc import BaseCompressionEngine, CompressedMemory
-from BaseCompressionEngine.core.trace import CompressionTrace
+from compact_memory.engines import BaseCompressionEngine, CompressedMemory, CompressionTrace
 # ... any other imports your engine needs ...
 
 class MyAwesomeEngine(BaseCompressionEngine):
@@ -109,7 +108,7 @@ compact-memory dev list-engines # Your engine should appear here
 compact-memory compress --file input.txt --engine awesome_strat --budget 100 --engine-params '{"custom_param": 10}'
 ```
 ```python
-from BaseCompressionEngine.core import get_compression_engine
+from compact_memory import get_compression_engine
 MyEngineClass = get_compression_engine("awesome_strat")
 my_strat_instance = MyEngineClass(custom_param=10)
 # ... use my_strat_instance.compress(...) ...

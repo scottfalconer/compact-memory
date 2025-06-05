@@ -3,14 +3,14 @@ This section provides a reference for the core public APIs of Compact Memory, pa
 > **Note:** The content below is a manually curated list of key components. A full, auto-generated API reference (e.g., via Sphinx) is recommended for complete details and is planned for future updates.
 ## Core Engine Development APIs
 The following classes and modules are fundamental when developing new compression engines.
-### `BaseCompressionEngine.core.engines_abc.BaseCompressionEngine`
+### `compact_memory.engines.BaseCompressionEngine`
 The abstract base class for all compression engines. Developers must subclass this to create new engines.
 *   `Key methods: \`compress(self, text_or_chunks, llm_token_budget, **kwargs)\``
 *   `Key attributes: \`id\` (string identifier for the engine)`
-### `BaseCompressionEngine.core.engines_abc.CompressedMemory`
+### `compact_memory.engines.CompressedMemory`
 A data class that holds the output of a compression operation.
 *   `Key attributes: \`text\` (string, the compressed content), \`metadata\` (optional dictionary)`
-### `BaseCompressionEngine.core.trace.CompressionTrace`
+### `compact_memory.engines.CompressionTrace`
 A data class used to record the steps and metadata of a compression process. Essential for debugging and explainability.
 *   `Key attributes: \`engine_name\`, \`engine_params\`, \`input_summary\`, \`steps\` (list of dicts), \`output_summary\`, \`processing_ms\`, \`final_compressed_object_preview\``
 ## Core Validation APIs
