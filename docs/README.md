@@ -15,7 +15,7 @@ Below is a list of documents in this directory, along with a brief description o
     *   **Audience:** Researchers, developers looking for inspiration for new engines, and anyone interested in the theoretical underpinnings of the platform.
 
 *   **Conceptual Guides for Engines**
-    *   **[`COMPRESSION_STRATEGIES.md`](./COMPRESSION_STRATEGIES.md)**: Discusses techniques for segmenting source documents and post-processing for creating effective compression engines. Focuses on the "what" and "why."
+    *   **[`COMPRESSION_ENGINES.md`](./COMPRESSION_ENGINES.md)**: Discusses techniques for segmenting source documents and post-processing for creating effective compression engines. Focuses on the "what" and "why."
         *   **Audience:** Researchers and developers designing new compression engines.
 *   **[`QUERY_TIPS.md`](./QUERY_TIPS.md)**: Explains how to shape search queries for effective retrieval, especially when using structured note layouts.
 *   **[`MIGRATION_TO_ENGINES.md`](./MIGRATION_TO_ENGINES.md)**: Describes how to update existing code from strategies and containers to the new engine API.
@@ -24,7 +24,7 @@ Below is a list of documents in this directory, along with a brief description o
         *   **Audience:** Researchers and developers interested in the interpretability of memory systems.
 
 *   **Developer Guides**
-    *   **[`DEVELOPING_COMPRESSION_ENGINES.md`](./DEVELOPING_COMPRESSION_ENGINES.md)**: Provides practical guidance and steps for implementing new `BaseCompressionEngine` implementations within the Compact Memory framework. Focuses on the "how-to."
+    *   **[`ENGINE_DEVELOPMENT.md`](./ENGINE_DEVELOPMENT.md)**: Provides practical guidance and steps for implementing new `BaseCompressionEngine` implementations within the Compact Memory framework. Focuses on the "how-to."
         *   **Audience:** Developers actively building new compression engines.
     *   **[`STRATEGY_DEVELOPMENT.md`](./STRATEGY_DEVELOPMENT.md)**: Best practices for writing, testing, and sharing CompressionEngines.
         *   **Audience:** Contributors preparing reusable compression engines.
@@ -54,8 +54,8 @@ Below is a list of documents in this directory, along with a brief description o
 
 *   **For Developers Building New Compression Engines:**
     1.  Understand the core concepts in [`PROJECT_VISION.md`](./PROJECT_VISION.md).
-    2.  Study the conceptual approaches in [`COMPRESSION_STRATEGIES.md`](./COMPRESSION_STRATEGIES.md).
-    3.  Follow the practical implementation guide in [`DEVELOPING_COMPRESSION_ENGINES.md`](./DEVELOPING_COMPRESSION_ENGINES.md).
+    2.  Study the conceptual approaches in [`COMPRESSION_ENGINES.md`](./COMPRESSION_ENGINES.md).
+    3.  Follow the practical implementation guide in [`ENGINE_DEVELOPMENT.md`](./ENGINE_DEVELOPMENT.md).
     4.  Refer to [`ARCHITECTURE.md`](./ARCHITECTURE.md) for how engines fit into the broader system.
     5.  Learn about evaluation with [`DEVELOPING_VALIDATION_METRICS.md`](./DEVELOPING_VALIDATION_METRICS.md).
 
