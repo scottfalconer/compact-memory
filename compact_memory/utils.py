@@ -9,17 +9,17 @@ from .embedding_pipeline import get_embedding_dim, EmbeddingDimensionMismatchErr
 
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
-    from .agent import Agent
+    from .memory_container import MemoryContainer
 
 
-def load_agent(path: Path) -> "Agent":
+def load_agent(path: Path) -> "MemoryContainer":
     raise RuntimeError(
         "Persistent storage support was removed. Provide your own loader."
     )
 
 
 def format_ingest_results(
-    agent: "Agent", results: Iterable[dict[str, object]]
+    agent: "MemoryContainer", results: Iterable[dict[str, object]]
 ) -> List[str]:
     """Return user-friendly messages for ``agent.add_memory`` results."""
 

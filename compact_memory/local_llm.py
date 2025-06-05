@@ -11,7 +11,7 @@ from typing import Optional, TYPE_CHECKING, Iterable, Callable
 from .llm_providers_abc import LLMProvider
 
 if TYPE_CHECKING:  # pragma: no cover - for type hints only
-    from .agent import Agent
+    from .memory_container import MemoryContainer
 
 from .token_utils import token_count
 
@@ -266,7 +266,7 @@ class LocalChatModel(LLMProvider):
     # ------------------------------------------------------------------
     def prepare_prompt(
         self,
-        agent: Agent,
+        agent: MemoryContainer,
         prompt: str,
         *,
         recent_tokens: int = 600,

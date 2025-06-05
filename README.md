@@ -169,7 +169,7 @@ For contributors or those looking to build custom solutions on top of Compact Me
 
 ## Features
 
-- Command-line interface for agent management (`agent init`, `agent stats`, `agent validate`, `agent clear`), data processing (`ingest`, `query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-strategies`, `dev evaluate-compression`, etc.).
+- Command-line interface for memory container management (`memory init`, `memory stats`, `memory validate`, `memory clear`), data processing (`ingest`, `query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-strategies`, `dev evaluate-compression`, etc.).
 - Global configuration options settable via CLI, environment variables, or config files.
 - Pluggable memory compression strategies.
  - Pluggable CompressionStrategies.
@@ -311,7 +311,7 @@ You can also set a default location for the on-disk memory store and other globa
 ## Configuration
 
 Compact Memory uses a hierarchical configuration system:
-1.  **Command-line arguments:** Highest precedence (e.g., `compact-memory --memory-path ./my_agent ingest ...`).
+1.  **Command-line arguments:** Highest precedence (e.g., `compact-memory --memory-path ./my_memory ingest ...`).
 2.  **Environment variables:** (e.g., `COMPACT_MEMORY_PATH`, `COMPACT_MEMORY_DEFAULT_MODEL_ID`, `COMPACT_MEMORY_DEFAULT_STRATEGY_ID`).
 3.  **Local project config:** `.gmconfig.yaml` in the current directory.
 4.  **User global config:** `~/.config/compact_memory/config.yaml`.
@@ -334,54 +334,54 @@ export COMPACT_MEMORY_PATH=~/my_compact_memories
 
 ## Quick Start / Core Workflow
 
-The `compact-memory` Command-Line Interface (CLI) is your primary tool for managing memory agents, ingesting data, querying, and summarizing.
+The `compact-memory` Command-Line Interface (CLI) is your primary tool for managing memory containers, ingesting data, querying, and summarizing.
 
-**1. Initialize an Agent:**
-First, create a new memory agent. This directory will store the agent's data.
+**1. Initialize a Memory Container:**
+First, create a new memory container. This directory will store the container's data.
 ```bash
-compact-memory agent init ./my_agent --model-name sentence-transformers/all-MiniLM-L6-v2
+compact-memory memory init ./my_memory --model-name sentence-transformers/all-MiniLM-L6-v2
 ```
-This creates an agent at `./my_agent`. The specified embedding model will be downloaded if not already present.
+This creates a memory container at `./my_memory`. The specified embedding model will be downloaded if not already present.
 
 **2. Configure Memory Path (Optional but Recommended for Convenience):**
-To avoid specifying `--memory-path ./my_agent` for every command that interacts with this agent, you can set it globally for your user or for the current terminal session.
+To avoid specifying `--memory-path ./my_memory` for every command that interacts with this container, you can set it globally for your user or for the current terminal session.
 
 *   **Set globally (user config):**
     ```bash
-    compact-memory config set compact_memory_path ./my_agent
+    compact-memory config set compact_memory_path ./my_memory
     ```
-    Now, `compact-memory` commands like `ingest` and `query` will default to using `./my_agent`.
+    Now, `compact-memory` commands like `ingest` and `query` will default to using `./my_memory`.
 *   **Set for current session (environment variable):**
     ```bash
-    export COMPACT_MEMORY_PATH=$(pwd)/my_agent
+    export COMPACT_MEMORY_PATH=$(pwd)/my_memory
     ```
 
 **3. Ingest Data:**
-Add information to the agent's memory.
+Add information to the memory container.
 ```bash
 # If compact_memory_path is set (globally or via env var):
 compact-memory ingest path/to/your_document.txt
 compact-memory ingest path/to/your_data_directory/
 
 # Or, specify the memory path directly for a specific command:
-compact-memory --memory-path ./my_agent ingest path/to/your_document.txt
+compact-memory --memory-path ./my_memory ingest path/to/your_document.txt
 ```
 
-**4. Query the Agent:**
-Ask questions based on the ingested information. The agent uses its configured default model and strategy unless overridden.
+**4. Query the Container:**
+Ask questions based on the ingested information. The container uses its configured default model and strategy unless overridden.
 ```bash
 # If compact_memory_path is set:
 compact-memory query "What was mentioned about project X?"
 
 # Or, specify the memory path directly:
-compact-memory --memory-path ./my_agent query "What was mentioned about project X?"
+compact-memory --memory-path ./my_memory query "What was mentioned about project X?"
 
 # You can also override the default model or strategy for a specific query:
 compact-memory query "Summarize recent findings on AI ethics" --model-id openai/gpt-4-turbo --strategy prototype
 ```
 
 **5. Compress Text (Standalone Utility):**
-Compress text using a specific strategy without necessarily interacting with an agent's stored memory. This is useful for quick text compression tasks.
+Compress text using a specific strategy without necessarily interacting with a container's stored memory. This is useful for quick text compression tasks.
 ```bash
 compact-memory compress --text "This is a very long piece of text that needs to be shorter." --strategy first_last --budget 50
 compact-memory compress --file path/to/another_document.txt -s prototype -b 200 -o compressed_summary.txt
@@ -426,7 +426,7 @@ Compact Memory is designed to support a wide variety of `CompressionStrategy` im
 -   `docs/COMPRESSION_STRATEGIES.md`
 -   `docs/DEVELOPING_COMPRESSION_STRATEGIES.md`
 
-The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during agent initialization (e.g., `compact-memory agent init ./my_memory --chunker agentic`) or programmatically within your custom strategy (e.g., `agent.chunker = AgenticChunker()`).
+The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during memory initialization (e.g., `compact-memory memory init ./my_memory --chunker agentic`) or programmatically within your custom strategy (e.g., `agent.chunker = AgenticChunker()`).
 
 ## Contributing
 
@@ -448,7 +448,7 @@ Compact Memory no longer performs built-in line filtering or heuristic cleanup w
 def remove_blank_lines(text: str) -> str:
     return "\n".join(line for line in text.splitlines() if line.strip())
 
-agent = Agent(store, preprocess_fn=remove_blank_lines)
+agent = MemoryContainer(store, preprocess_fn=remove_blank_lines)
 ```
 
 This hook enables custom regex cleanup, spaCy pipelines or LLM-powered summarization prior to compression.

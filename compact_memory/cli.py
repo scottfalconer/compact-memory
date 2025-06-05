@@ -19,7 +19,7 @@ from compact_memory import __version__
 from .logging_utils import configure_logging
 
 
-from .agent import Agent
+from .memory_container import MemoryContainer
 from .vector_store import InMemoryVectorStore
 from . import local_llm
 from CompressionStrategy.contrib import (
@@ -60,13 +60,13 @@ from .package_utils import (
 
 
 app = typer.Typer(
-    help="Compact Memory: A CLI for intelligent information management using memory agents and advanced compression. Ingest, query, and compress information. Manage agent configurations and developer tools."
+    help="Compact Memory: manage stored context containers and advanced compression. Ingest, query, and compress information. Manage container configurations and developer tools."
 )
 console = Console()
 
 # --- New Command Groups ---
-agent_app = typer.Typer(
-    help="Manage memory agents: initialize, inspect statistics, validate, and clear."
+memory_app = typer.Typer(
+    help="Manage memory containers: initialize, inspect statistics, validate, and clear."
 )
 config_app = typer.Typer(
     help="Manage Compact Memory application configuration settings."
@@ -76,7 +76,7 @@ dev_app = typer.Typer(
 )
 
 # --- Add New Command Groups to Main App ---
-app.add_typer(agent_app, name="agent")
+app.add_typer(memory_app, name="memory")
 app.add_typer(config_app, name="config")
 app.add_typer(dev_app, name="dev")
 
@@ -236,17 +236,17 @@ def _corrupt_exit(path: Path, exc: Exception) -> None:
     raise typer.Exit(code=1)
 
 
-def _load_agent(path: Path) -> Agent:
+def _load_agent(path: Path) -> MemoryContainer:
     """Placeholder loader since on-disk storage was removed."""
     raise RuntimeError(
         "Persistent storage support was removed. Provide your own loader."
     )
 
 
-# --- Agent Commands ---
-@agent_app.command(
+# --- Memory Commands ---
+@memory_app.command(
     "init",
-    help="Initializes a new Compact Memory agent in a specified directory.\n\nUsage Examples:\n  compact-memory agent init ./my_agent_dir\n  compact-memory agent init /path/to/another_agent --name 'research_agent' --model-name 'sentence-transformers/all-mpnet-base-v2' --tau 0.75",
+    help="Initializes a new Compact Memory memory container in a specified directory.\n\nUsage Examples:\n  compact-memory memory init ./my_memory_dir\n  compact-memory memory init /path/to/another_container --name 'research_mem' --model-name 'sentence-transformers/all-mpnet-base-v2' --tau 0.75",
 )
 def init(
     target_directory: Path = typer.Argument(
@@ -299,9 +299,9 @@ def init(
     typer.echo(f"Successfully initialized Compact Memory agent at {path}")
 
 
-@agent_app.command(
+@memory_app.command(
     "stats",
-    help="Displays statistics about the Compact Memory agent.\n\nUsage Examples:\n  compact-memory agent stats\n  compact-memory agent stats --memory-path path/to/my_agent --json",
+    help="Displays statistics about the Compact Memory memory container.\n\nUsage Examples:\n  compact-memory memory stats\n  compact-memory memory stats --memory-path path/to/my_container --json",
 )
 def stats(
     json_output: bool = typer.Option(
@@ -318,7 +318,9 @@ def stats(
             typer.echo(f"{k}: {v}")
 
 
-@agent_app.command("validate", help="Validates the integrity of the agent's storage.")
+@memory_app.command(
+    "validate", help="Validates the integrity of the memory container's storage."
+)
 def validate_agent_storage(
     ctx: typer.Context,
     memory_path_arg: Optional[str] = typer.Option(
@@ -351,9 +353,9 @@ def validate_agent_storage(
     typer.echo("No built-in storage to validate.")
 
 
-@agent_app.command(
+@memory_app.command(
     "clear",
-    help="Deletes all data from an agent's memory. This action is irreversible.\n\nUsage Examples:\n  compact-memory agent clear --force\n  compact-memory agent clear --memory-path path/to/another_agent --dry-run",
+    help="Deletes all data from a memory container. This action is irreversible.\n\nUsage Examples:\n  compact-memory memory clear --force\n  compact-memory memory clear --memory-path path/to/another_container --dry-run",
 )
 def clear(
     ctx: typer.Context,
@@ -435,7 +437,7 @@ def query(
 ) -> None:
     dim = get_embedding_dim()
     store = InMemoryVectorStore(embedding_dim=dim)
-    agent = Agent(store)
+    agent = MemoryContainer(store)
     final_model_id = ctx.obj.get("default_model_id")  # Renamed for clarity
     final_strategy_id = ctx.obj.get("default_strategy_id")  # Renamed for clarity
 
@@ -874,7 +876,7 @@ def inspect_strategy(
     if list_prototypes:
         dim = get_embedding_dim()
         store = InMemoryVectorStore(embedding_dim=dim)
-        agent = Agent(store)
+        agent = MemoryContainer(store)
         protos = agent.get_prototypes_view()
         if not protos:
             typer.echo("No prototypes found.")
@@ -884,7 +886,7 @@ def inspect_strategy(
             "Strength",
             "Confidence",
             "Summary",
-            title="Prototypes for Agent",
+            title="Prototypes for MemoryContainer",
         )
         for p in protos:
             table.add_row(

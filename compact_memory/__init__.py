@@ -1,4 +1,4 @@
-"""Compact Memory Agent package with lazy loading of submodules."""
+"""Compact Memory package with lazy loading of submodules."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ __all__ = [
     "ConversationalTurn",
     "VectorStore",
     "InMemoryVectorStore",
-    "Agent",
+    "MemoryContainer",
     "QueryResult",
     "PrototypeHit",
     "MemoryHit",
@@ -40,10 +40,10 @@ _lazy_map = {
     "ConversationalTurn": "compact_memory.models",
     "VectorStore": "compact_memory.vector_store",
     "InMemoryVectorStore": "compact_memory.vector_store",
-    "Agent": "compact_memory.agent",
-    "QueryResult": "compact_memory.agent",
-    "PrototypeHit": "compact_memory.agent",
-    "MemoryHit": "compact_memory.agent",
+    "MemoryContainer": "compact_memory.memory_container",
+    "QueryResult": "compact_memory.memory_container",
+    "PrototypeHit": "compact_memory.memory_container",
+    "MemoryHit": "compact_memory.memory_container",
     "embed_text": "compact_memory.embedding_pipeline",
     "SentenceWindowChunker": "compact_memory.chunker",
     "FixedSizeChunker": "compact_memory.chunker",

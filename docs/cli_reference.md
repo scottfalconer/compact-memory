@@ -6,7 +6,7 @@ This document provides a comprehensive reference for the Compact Memory Command 
 
 These options can be used with any command:
 
-*   `--memory-path TEXT`: Path to the Compact Memory agent directory. Overrides environment variables and configuration files. (e.g., `-m ./my_agent_data`)
+*   `--memory-path TEXT`: Path to the Compact Memory memory directory. Overrides environment variables and configuration files. (e.g., `-m ./my_memory_data`)
 *   `--model-id TEXT`: Default model ID for LLM interactions (e.g., `openai/gpt-4-turbo`). Overrides environment variables and configuration files.
 *   `--strategy TEXT`: Default compression strategy ID (e.g., `prototype`). Overrides environment variables and configuration files.
 *   `--log-file PATH`: Path to write debug logs. If not set, logs are not written to file.
@@ -18,7 +18,7 @@ These options can be used with any command:
 
 Compact Memory uses a hierarchical configuration system. Settings are resolved in the following order of precedence (highest first):
 
-1.  **Command-Line Arguments:** Options provided directly with a command (e.g., `--memory-path ./my_agent`).
+1.  **Command-Line Arguments:** Options provided directly with a command (e.g., `--memory-path ./my_memory`).
 2.  **Environment Variables:**
     *   `COMPACT_MEMORY_PATH`
     *   `COMPACT_MEMORY_DEFAULT_MODEL_ID`
@@ -35,7 +35,7 @@ These are the primary commands for interacting with Compact Memory.
 
 ### `compact-memory ingest`
 
-Ingests a text file or files in a directory into an agent's memory. The agent is determined by the active `--memory-path` or its configured default.
+Ingests a text file or files in a directory into a container's memory. The container is determined by the active `--memory-path` or its configured default.
 
 **Usage:** `compact-memory ingest [OPTIONS] SOURCE`
 
@@ -43,17 +43,17 @@ Ingests a text file or files in a directory into an agent's memory. The agent is
 *   `SOURCE`: Path to the text file or directory containing text files to ingest. (Required)
 
 **Options:**
-*   `--tau FLOAT`: Similarity threshold (0.5-0.95) for memory consolidation. Overrides agent's existing tau if set. If agent is new, this tau is used for initialization.
+*   `--tau FLOAT`: Similarity threshold (0.5-0.95) for memory consolidation. Overrides the container's existing tau if set. If the container is new, this tau is used for initialization.
 *   `--json`: Output ingestion summary statistics in JSON format.
 
 ### `compact-memory query`
 
-Queries an agent (specified by `--memory-path` or configuration) with the provided text and returns an AI-generated response.
+Queries a memory container (specified by `--memory-path` or configuration) with the provided text and returns an AI-generated response.
 
 **Usage:** `compact-memory query [OPTIONS] QUERY_TEXT`
 
 **Arguments:**
-*   `QUERY_TEXT`: The query text to send to the agent. (Required)
+*   `QUERY_TEXT`: The query text to send to the container. (Required)
 
 **Options:**
 *   `--show-prompt-tokens`: Display the token count of the final prompt sent to the LLM.
@@ -82,55 +82,57 @@ Compresses text content from a string, file, or directory using a specified stra
 
 ## Command Groups
 
-### `compact-memory agent`
+### `compact-memory memory`
 
-Manage memory agents: initialize, inspect statistics, validate, and clear.
+Manage memory containers: initialize, inspect statistics, validate, and clear.
 
-**Usage:** `compact-memory agent [OPTIONS] COMMAND [ARGS]...`
+The memory namespace is used to manage a named container for stored, compressed memories. It is not an AI agent.
 
-#### `compact-memory agent init`
+**Usage:** `compact-memory memory [OPTIONS] COMMAND [ARGS]...`
 
-Creates and initializes a new agent data store in a specified directory.
+#### `compact-memory memory init`
 
-**Usage:** `compact-memory agent init [OPTIONS] TARGET_DIRECTORY`
+Creates and initializes a new memory container in a specified directory.
+
+**Usage:** `compact-memory memory init [OPTIONS] TARGET_DIRECTORY`
 
 **Arguments:**
-*   `TARGET_DIRECTORY`: Directory to initialize the new agent in. Will be created if it doesn't exist. (Required)
+*   `TARGET_DIRECTORY`: Directory to initialize the new container in. Will be created if it doesn't exist. (Required)
 
 **Options:**
-*   `--name TEXT`: A descriptive name for the agent (default: "default").
+*   `--name TEXT`: A descriptive name for the container (default: "default").
 *   `--model-name TEXT`: Name of the sentence-transformer model for embeddings (default: "all-MiniLM-L6-v2").
 *   `--tau FLOAT`: Similarity threshold (tau) for memory consolidation, between 0.5 and 0.95 (default: 0.8).
 *   `--alpha FLOAT`: Alpha parameter, controlling the decay rate for memory importance (default: 0.1).
 *   `--chunker TEXT`: Chunking strategy to use for processing text during ingestion (default: "sentence_window").
 
-#### `compact-memory agent stats`
+#### `compact-memory memory stats`
 
-Displays statistics about the Compact Memory agent.
+Displays statistics about the Compact Memory memory container.
 
-**Usage:** `compact-memory agent stats [OPTIONS]`
+**Usage:** `compact-memory memory stats [OPTIONS]`
 
 **Options:**
-*   `--memory-path TEXT`: Path to the agent directory. Overrides global setting if provided.
+*   `--memory-path TEXT`: Path to the container directory. Overrides global setting if provided.
 *   `--json`: Output statistics in JSON format.
 
-#### `compact-memory agent validate`
+#### `compact-memory memory validate`
 
-Validates the integrity of the agent's storage.
+Validates the integrity of the container's storage.
 
-**Usage:** `compact-memory agent validate [OPTIONS]`
-
-**Options:**
-*   `--memory-path TEXT`: Path to the agent directory. Overrides global setting if provided.
-
-#### `compact-memory agent clear`
-
-Deletes all data from an agent's memory. This action is irreversible.
-
-**Usage:** `compact-memory agent clear [OPTIONS]`
+**Usage:** `compact-memory memory validate [OPTIONS]`
 
 **Options:**
-*   `--memory-path TEXT`: Path to the agent directory. Overrides global setting if provided.
+*   `--memory-path TEXT`: Path to the container directory. Overrides global setting if provided.
+
+#### `compact-memory memory clear`
+
+Deletes all data from a memory container. This action is irreversible.
+
+**Usage:** `compact-memory memory clear [OPTIONS]`
+
+**Options:**
+*   `--memory-path TEXT`: Path to the container directory. Overrides global setting if provided.
 *   `--force / -f`: Force deletion without prompting for confirmation.
 *   `--dry-run`: Simulate deletion and show what would be deleted without actually removing files.
 
@@ -179,8 +181,8 @@ Inspects aspects of a compression strategy, currently focused on 'prototype' str
 **Arguments:**
 *   `STRATEGY_NAME`: The name of the strategy to inspect. Currently, only 'prototype' is supported. (Required)
 **Options:**
-*   `--memory-path TEXT`: Path to the agent directory. Overrides global setting if provided. Required if '--list-prototypes' is used.
-*   `--list-prototypes`: List consolidated prototypes (beliefs) if the strategy is 'prototype' and an agent path is provided.
+*   `--memory-path TEXT`: Path to the container directory. Overrides global setting if provided. Required if '--list-prototypes' is used.
+*   `--list-prototypes`: List consolidated prototypes (beliefs) if the strategy is 'prototype' and a memory path is provided.
 
 #### `compact-memory dev evaluate-compression`
 Evaluates compressed text against original text using a specified metric.
