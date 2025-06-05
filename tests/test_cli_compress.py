@@ -371,7 +371,7 @@ def test_compress_nonexistent_dir(tmp_path: Path):
 
 def test_compress_uses_default_strategy(tmp_path: Path):
     env = _env(tmp_path)
-    env["COMPACT_MEMORY_DEFAULT_STRATEGY_ID"] = "none"
+    env["COMPACT_MEMORY_DEFAULT_ENGINE_ID"] = "none"
     result = runner.invoke(
         app,
         ["compress", "--text", "foobar", "--budget", "10"],
@@ -383,7 +383,7 @@ def test_compress_uses_default_strategy(tmp_path: Path):
 
 def test_compress_override_default_strategy(tmp_path: Path):
     env = _env(tmp_path)
-    env["COMPACT_MEMORY_DEFAULT_STRATEGY_ID"] = DummyTruncEngine.id
+    env["COMPACT_MEMORY_DEFAULT_ENGINE_ID"] = DummyTruncEngine.id
     result = runner.invoke(
         app,
         [

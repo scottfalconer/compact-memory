@@ -125,7 +125,7 @@ def main(
     strategy_id: Optional[str] = typer.Option(
         None,
         "--engine",
-        help="Default compression engine ID. Overrides COMPACT_MEMORY_DEFAULT_STRATEGY_ID env var and configuration files.",
+        help="Default compression engine ID. Overrides COMPACT_MEMORY_DEFAULT_ENGINE_ID env var and configuration files.",
     ),
     version: Optional[bool] = typer.Option(
         None,
@@ -162,7 +162,7 @@ def main(
         model_id if model_id is not None else config.get("default_model_id")
     )
     resolved_engine_id = (
-        strategy_id if strategy_id is not None else config.get("default_strategy_id")
+        strategy_id if strategy_id is not None else config.get("default_engine_id")
     )
 
     if resolved_memory_path:
@@ -231,7 +231,7 @@ def main(
             "log_file": resolved_log_file,
             "compact_memory_path": resolved_memory_path,
             "default_model_id": resolved_model_id,
-            "default_strategy_id": resolved_engine_id,
+            "default_engine_id": resolved_engine_id,
             # "config": config, # Already present
         }
     )
@@ -481,7 +481,7 @@ def query(
     store = InMemoryVectorStore(embedding_dim=dim)
     container = PrototypeEngine(store)
     final_model_id = ctx.obj.get("default_model_id")  # Renamed for clarity
-    final_engine_id = ctx.obj.get("default_strategy_id")  # Renamed for clarity
+    final_engine_id = ctx.obj.get("default_engine_id")  # Renamed for clarity
 
     if final_model_id is None:
         typer.secho(
@@ -631,11 +631,11 @@ def compress(
     ),
 ) -> None:
     final_engine_id = (
-        strategy_arg if strategy_arg is not None else ctx.obj.get("default_strategy_id")
+        strategy_arg if strategy_arg is not None else ctx.obj.get("default_engine_id")
     )
     if not final_engine_id:
         typer.secho(
-            "Error: Compression engine not specified. Use --engine option or set COMPACT_MEMORY_DEFAULT_STRATEGY_ID / config.",
+            "Error: Compression engine not specified. Use --engine option or set COMPACT_MEMORY_DEFAULT_ENGINE_ID / config.",
             fg=typer.colors.RED,
             err=True,
         )
@@ -1703,7 +1703,7 @@ def config_set_command(
 
 @config_app.command(
     "show",
-    help="Displays current Compact Memory configuration values, their effective settings, and their sources.\n\nUsage Examples:\n  compact-memory config show\n  compact-memory config show --key default_strategy_id",
+    help="Displays current Compact Memory configuration values, their effective settings, and their sources.\n\nUsage Examples:\n  compact-memory config show\n  compact-memory config show --key default_engine_id",
 )
 def config_show_command(
     ctx: typer.Context,

@@ -22,7 +22,7 @@ Compact Memory uses a hierarchical configuration system. Settings are resolved i
 2.  **Environment Variables:**
     *   `COMPACT_MEMORY_PATH`
     *   `COMPACT_MEMORY_DEFAULT_MODEL_ID`
-    *   `COMPACT_MEMORY_DEFAULT_STRATEGY_ID`
+    *   `COMPACT_MEMORY_DEFAULT_ENGINE_ID`
 3.  **Local Project Configuration:** A `.gmconfig.yaml` file in the current working directory.
 4.  **User Global Configuration:** A `config.yaml` file located in `~/.config/compact_memory/config.yaml` (path may vary slightly by OS).
 5.  **Application Defaults:** Hardcoded default values within the application.

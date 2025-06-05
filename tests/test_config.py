@@ -60,24 +60,24 @@ def test_local_config_override(monkeypatch: pytest.MonkeyPatch, patched_config: 
     local_file = cfg.LOCAL_CONFIG_PATH
     local_file.write_text(
         yaml.dump(
-            {"default_model_id": "local/model", "default_strategy_id": "local_strategy"}
+            {"default_model_id": "local/model", "default_engine_id": "local_strategy"}
         )
     )
     conf = cfg.Config()
     assert conf.get("default_model_id") == "local/model"
     assert conf.get_with_source("default_model_id")[1] == cfg.SOURCE_LOCAL_CONFIG
-    assert conf.get("default_strategy_id") == "local_strategy"
-    assert conf.get_with_source("default_strategy_id")[1] == cfg.SOURCE_LOCAL_CONFIG
+    assert conf.get("default_engine_id") == "local_strategy"
+    assert conf.get_with_source("default_engine_id")[1] == cfg.SOURCE_LOCAL_CONFIG
 
 
 def test_env_var_override(monkeypatch: pytest.MonkeyPatch, patched_config: Path):
-    monkeypatch.setenv(cfg.ENV_VAR_PREFIX + "DEFAULT_STRATEGY_ID", "env_strategy")
+    monkeypatch.setenv(cfg.ENV_VAR_PREFIX + "DEFAULT_ENGINE_ID", "env_strategy")
     monkeypatch.setenv(cfg.ENV_VAR_PREFIX + "COMPACT_MEMORY_PATH", "/env/path")
     conf = cfg.Config()
     assert conf.get("compact_memory_path") == "/env/path"
     assert conf.get_with_source("compact_memory_path")[1].startswith(cfg.SOURCE_ENV_VAR)
-    assert conf.get("default_strategy_id") == "env_strategy"
-    assert conf.get_with_source("default_strategy_id")[1].startswith(cfg.SOURCE_ENV_VAR)
+    assert conf.get("default_engine_id") == "env_strategy"
+    assert conf.get_with_source("default_engine_id")[1].startswith(cfg.SOURCE_ENV_VAR)
 
 
 def test_update_from_cli(patched_config: Path):

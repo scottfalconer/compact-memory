@@ -13,7 +13,7 @@ runner = CliRunner()
 def _env(tmp_path: Path) -> dict[str, str]:
     return {
         "COMPACT_MEMORY_COMPACT_MEMORY_PATH": str(tmp_path),
-        "COMPACT_MEMORY_DEFAULT_STRATEGY_ID": "none",
+        "COMPACT_MEMORY_DEFAULT_ENGINE_ID": "none",
         "COMPACT_MEMORY_DEFAULT_MODEL_ID": "tiny-gpt2",
     }
 
