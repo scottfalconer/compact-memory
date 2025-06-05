@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, TypedDict, Callable
 
+import hashlib
+import uuid
+from collections import OrderedDict
+import numpy as np
+
 import logging
 from pathlib import Path
 
@@ -9,15 +14,16 @@ from pathlib import Path
 from .chunker import Chunker, SentenceWindowChunker
 from .embedding_pipeline import embed_text
 from .vector_store import VectorStore
+from .prototype_system_utils import render_five_w_template
 from .memory_creation import (
     ExtractiveSummaryCreator,
     MemoryCreator,
 )
+from .models import BeliefPrototype, RawMemory
 from .prompt_budget import PromptBudget
 from .token_utils import truncate_text, token_count
 from compact_memory.contrib import ActiveMemoryManager
 from compact_memory.contrib import ConversationTurn
-from compact_memory.prototype_system import PrototypeSystemEngine
 from compact_memory.engines import (
     BaseCompressionEngine,
     CompressedMemory,
@@ -77,7 +83,27 @@ class QueryResult(dict):
         return html
 
 
-class PrototypeEngine:
+class _LRUSet:
+    """Simple fixed-size LRU cache for SHA hashes."""
+
+    def __init__(self, size: int = 128) -> None:
+        self.size = size
+        self._cache: "OrderedDict[str, None]" = OrderedDict()
+
+    def add(self, item: str) -> bool:
+        if item in self._cache:
+            self._cache.move_to_end(item)
+            return False
+        self._cache[item] = None
+        if len(self._cache) > self.size:
+            self._cache.popitem(last=False)
+        return True
+
+    def __contains__(self, item: str) -> bool:
+        return item in self._cache
+
+
+class PrototypeEngine(BaseCompressionEngine):
     """
     Core component for managing and interacting with a memory store.
 
@@ -85,17 +111,14 @@ class PrototypeEngine:
     `VectorStore`, managing memory prototypes, querying the memory,
     and processing conversational turns with optional compression.
 
-    It utilizes a `PrototypeSystemEngine` internally to handle the
-    mechanics of memory consolidation and retrieval. Developers typically
-    interact with the PrototypeEngine by providing it with a pre-configured store
-    and then using its methods like `add_memory`, `query`, and
-    `receive_channel_message`.
+    This engine directly manages memory prototypes, handling consolidation and
+    retrieval. Developers typically interact with it by providing a pre-configured
+    store and then using its methods like ``add_memory``, ``query`` and
+    ``receive_channel_message``.
 
     Attributes:
         store (VectorStore): The underlying vector store for memories and prototypes.
-        prototype_system (PrototypeSystemEngine): Handles memory consolidation and querying logic.
-        metrics (Dict[str, Any]): A dictionary of metrics collected during operations
-                                  (primarily from `PrototypeSystemEngine`).
+        metrics (Dict[str, Any]): A dictionary of metrics collected during operations.
         prompt_budget (Optional[PromptBudget]): Configuration for managing prompt sizes
                                              when interacting with LLMs.
     """
@@ -112,71 +135,61 @@ class PrototypeEngine:
         prompt_budget: PromptBudget | None = None,
         preprocess_fn: Callable[[str], str] | None = None,
     ) -> None:
-        """
-        Initializes the PrototypeEngine.
-
-            Args:
-                store: The `VectorStore` instance to be used for storing
-                       and retrieving memories and prototypes.
-                chunker: A `Chunker` instance for splitting text during ingestion.
-                         Defaults to `SentenceWindowChunker` if None.
-                similarity_threshold: The threshold (tau) for determining if a new memory
-                                      should be merged with an existing prototype.
-                                      Value between 0.0 and 1.0.
-                dedup_cache: The size of the cache used for deduplicating recent memories
-                             to avoid redundant processing.
-                summary_creator: A `MemoryCreator` instance responsible for generating
-                                 summaries for new prototypes. Defaults to
-                                 `ExtractiveSummaryCreator` if None.
-                update_summaries: If True, summaries of existing prototypes may be updated
-                                  when new, highly similar memories are ingested.
-                prompt_budget: A `PromptBudget` object to manage and allocate token budgets
-                               for different parts of an LLM prompt (e.g., query, history, LTM).
-        """
+        """Initialize the engine."""
         self.store = store
-        self.prototype_system = PrototypeSystemEngine(
-            store,
-            chunker=chunker,
-            similarity_threshold=similarity_threshold,
-            dedup_cache=dedup_cache,
-            summary_creator=summary_creator,
-            update_summaries=update_summaries,
-            preprocess_fn=preprocess_fn,
+        super().__init__(
+            chunker=chunker or SentenceWindowChunker(), preprocess_fn=preprocess_fn
         )
-        self.metrics = self.prototype_system.metrics
+
+        if not 0.5 <= similarity_threshold <= 0.95:
+            raise ValueError("similarity_threshold must be between 0.5 and 0.95")
+
+        self._chunker = self.chunker
+        self.similarity_threshold = float(similarity_threshold)
+        self.summary_creator = summary_creator or ExtractiveSummaryCreator(max_words=25)
+        self.update_summaries = update_summaries
+        self.metrics = {
+            "memories_ingested": 0,
+            "prototypes_spawned": 0,
+            "duplicates_skipped": 0,
+            "prototypes_updated": 0,
+            "prototype_vector_change_magnitude": 0.0,
+        }
+        self._dedup = _LRUSet(size=dedup_cache)
         self.prompt_budget = prompt_budget
+        self.preprocess_fn = preprocess_fn
 
     # ------------------------------------------------------------------
     @property
     def chunker(self) -> Chunker:
         """Return the current :class:`Chunker`."""
-        return self.prototype_system.chunker
+        return self._chunker
 
     @chunker.setter
     def chunker(self, value: Chunker) -> None:
         if not isinstance(value, Chunker):
             raise TypeError("chunker must implement Chunker interface")
-        self.prototype_system.chunker = value
+        self._chunker = value
         self.store.meta["chunker"] = getattr(value, "id", type(value).__name__)
 
     # ------------------------------------------------------------------
     @property
     def similarity_threshold(self) -> float:
-        return self.prototype_system.similarity_threshold
+        return self._similarity_threshold
 
     @similarity_threshold.setter
     def similarity_threshold(self, value: float) -> None:
-        self.prototype_system.similarity_threshold = value
+        self._similarity_threshold = float(value)
         self.store.meta["tau"] = float(value)
 
     # ------------------------------------------------------------------
     @property
     def summary_creator(self) -> MemoryCreator:
-        return self.prototype_system.summary_creator
+        return self._summary_creator
 
     @summary_creator.setter
     def summary_creator(self, value: MemoryCreator) -> None:
-        self.prototype_system.summary_creator = value
+        self._summary_creator = value
 
     # ------------------------------------------------------------------
     def configure(
@@ -275,16 +288,89 @@ class PrototypeEngine:
             A list of dictionaries, where each dictionary represents the status or
             outcome of processing a single chunk from the input text.
         """
-        return self.prototype_system.add_memory(
-            text,
-            who=who,
-            what=what,
-            when=when,
-            where=where,
-            why=why,
-            progress_callback=progress_callback,
-            source_document_id=source_document_id,
-        )
+        digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        if digest in self._dedup:
+            self.metrics["duplicates_skipped"] += 1
+            return [{"duplicate": True}]
+        self._dedup.add(digest)
+
+        if self.preprocess_fn is not None:
+            text = self.preprocess_fn(text)
+
+        chunks = self.chunker.chunk(text)
+        if not chunks:
+            return []
+        canonical = [
+            render_five_w_template(
+                c, who=who, what=what, when=when, where=where, why=why
+            )
+            for c in chunks
+        ]
+        vecs = embed_text(canonical)
+        if vecs.ndim == 1:
+            vecs = vecs.reshape(1, -1)
+
+        results: List[Dict[str, object]] = []
+        total = len(chunks)
+        for idx, (chunk, vec) in enumerate(zip(chunks, vecs), 1):
+            mem_id = str(uuid.uuid4())
+            nearest = self.store.find_nearest(vec, k=1)
+            if not nearest and len(self.store.prototypes) > 0:
+                raise VectorIndexCorrupt("prototype index inconsistent")
+            spawned = False
+            sim: Optional[float] = None
+            if nearest:
+                pid, sim = nearest[0]
+            if nearest and sim is not None and sim >= self.similarity_threshold:
+                change = self.store.update_prototype(pid, vec, mem_id)
+                self.metrics["prototypes_updated"] += 1
+                n = self.metrics["prototypes_updated"]
+                prev = self.metrics.get("prototype_vector_change_magnitude", 0.0)
+                self.metrics["prototype_vector_change_magnitude"] = (
+                    prev * (n - 1) + change
+                ) / n
+            else:
+                summary = self.summary_creator.create(chunk)
+                proto = BeliefPrototype(
+                    prototype_id=str(uuid.uuid4()),
+                    vector_row_index=0,
+                    summary_text=summary,
+                    strength=1.0,
+                    confidence=1.0,
+                    constituent_memory_ids=[mem_id],
+                )
+                self.store.add_prototype(proto, vec)
+                pid = proto.prototype_id
+                spawned = True
+                self.metrics["prototypes_spawned"] += 1
+
+            raw_mem = RawMemory(
+                memory_id=mem_id,
+                raw_text_hash=hashlib.sha256(chunk.encode("utf-8")).hexdigest(),
+                assigned_prototype_id=pid,
+                source_document_id=source_document_id,
+                raw_text=chunk,
+                embedding=list(map(float, vec)),
+            )
+            self.store.add_memory(raw_mem)
+            self.metrics["memories_ingested"] += 1
+            if self.update_summaries:
+                texts = [
+                    m.raw_text
+                    for m in self.store.memories
+                    if m.assigned_prototype_id == pid
+                ][:5]
+                words = " ".join(texts).split()
+                summary = " ".join(words[:25])
+                for p in self.store.prototypes:
+                    if p.prototype_id == pid:
+                        p.summary_text = summary
+                        break
+            results.append({"prototype_id": pid, "spawned": spawned, "sim": sim})
+            if progress_callback:
+                progress_callback(idx, total, spawned, pid, sim)
+
+        return results
 
     # ------------------------------------------------------------------
     def query(
@@ -316,13 +402,65 @@ class PrototypeEngine:
                 - "memories": A list of `MemoryHit` dicts.
                 - "status": A status message about the query.
         """
-        res = self.prototype_system.query(
-            text,
-            top_k_prototypes=top_k_prototypes,
-            top_k_memories=top_k_memories,
-            include_hypotheses=include_hypotheses,
-        )
-        return QueryResult(res["prototypes"], res["memories"], res["status"])
+        vec = embed_text(text)
+        if vec.ndim != 1:
+            vec = vec.reshape(-1)
+        nearest = self.store.find_nearest(vec, k=top_k_prototypes)
+        if not nearest:
+            return QueryResult([], [], "no_match")
+
+        proto_map = {p.prototype_id: p for p in self.store.prototypes}
+        proto_results: List[Dict[str, object]] = []
+        memory_candidates: List[tuple[float, RawMemory]] = []
+
+        for pid, sim in nearest:
+            proto = proto_map.get(pid)
+            if not proto:
+                continue
+            proto_results.append({"id": pid, "summary": proto.summary_text, "sim": sim})
+            for mid in proto.constituent_memory_ids:
+                mem = next((m for m in self.store.memories if m.memory_id == mid), None)
+                if mem is None:
+                    continue
+                if mem.embedding is not None:
+                    mem_vec = np.array(mem.embedding, dtype=np.float32)
+                    mem_sim = float(np.dot(vec, mem_vec))
+                else:
+                    mem_sim = float(sim)
+                memory_candidates.append((mem_sim, mem))
+
+        memory_candidates.sort(key=lambda x: -x[0])
+        mem_results = [
+            {"id": m.memory_id, "text": m.raw_text, "sim": s}
+            for s, m in memory_candidates[:top_k_memories]
+        ]
+
+        return QueryResult(proto_results, mem_results, "ok")
+
+    # ------------------------------------------------------------------
+    def compress(
+        self,
+        text_or_chunks: str | List[str],
+        llm_token_budget: int,
+        *,
+        tokenizer=None,
+    ) -> CompressedMemory:
+        """Compress by retrieving relevant memories and truncating."""
+
+        if isinstance(text_or_chunks, list):
+            query_text = " ".join(text_or_chunks)
+        else:
+            query_text = text_or_chunks
+
+        result = self.query(query_text, top_k_prototypes=1, top_k_memories=3)
+        proto_summaries = "; ".join(p["summary"] for p in result.get("prototypes", []))
+        mem_texts = "; ".join(m["text"] for m in result.get("memories", []))
+        combined = " ".join(filter(None, [proto_summaries, mem_texts]))
+        if tokenizer is not None:
+            compressed = truncate_text(tokenizer, combined, llm_token_budget)
+        else:
+            compressed = combined[:llm_token_budget]
+        return CompressedMemory(text=compressed, metadata={"status": result["status"]})
 
     # ------------------------------------------------------------------
     def process_conversational_turn(
@@ -620,6 +758,7 @@ class PrototypeEngine:
         import json
 
         path = Path(path)
+        super().save(path)
         path.mkdir(parents=True, exist_ok=True)
         manifest = {
             "meta": self.store.meta,
@@ -642,6 +781,10 @@ class PrototypeEngine:
         from .models import BeliefPrototype, RawMemory
 
         path = Path(path)
+        try:
+            super().load(path)
+        except Exception:
+            pass
         with open(path / "engine_manifest.json", "r", encoding="utf-8") as fh:
             manifest = json.load(fh)
         with open(path / "memories.json", "r", encoding="utf-8") as fh:
