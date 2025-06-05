@@ -11,6 +11,7 @@ __all__ = [
     "ConversationTurn",
     "FirstLastStrategy",
     "ChainedStrategy",
+    "LearnedSummarizerStrategy",
     "RationaleEpisodeStrategy",
     "PrototypeSystemStrategy",
     "LLMSummarisingChunker",
@@ -26,6 +27,7 @@ _lazy_modules = {
     "RationaleEpisodeStrategy": ".rationale_episode",
     "PrototypeSystemStrategy": ".prototype_system",
     "LLMSummarisingChunker": ".llm_summarising_chunker",
+    "LearnedSummarizerStrategy": ".learned_summarizer_strategy",
 }
 
 
