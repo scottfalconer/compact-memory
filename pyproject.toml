@@ -21,6 +21,7 @@ dependencies = [
     "typer>=0.16.0",
     "portalocker",
     "rich>=13.6",
+    "platformdirs",
 ]
 
 [project.optional-dependencies]
