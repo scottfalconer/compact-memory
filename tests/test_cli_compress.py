@@ -44,7 +44,7 @@ def _env(tmp_path: Path) -> dict[str, str]:
     }
 
 
-runner = CliRunner()
+runner = CliRunner(env={'MIX_STDERR': 'False'})
 
 
 def test_compress_text_option(tmp_path: Path):

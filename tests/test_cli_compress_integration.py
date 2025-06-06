@@ -3,7 +3,7 @@ from typer.testing import CliRunner
 from compact_memory.cli import app  # import the Typer app
 from pathlib import Path  # Make sure Path is imported
 
-runner = CliRunner()
+runner = CliRunner(env={'MIX_STDERR': 'False'})
 
 
 def test_compress_text_input_stdout():
