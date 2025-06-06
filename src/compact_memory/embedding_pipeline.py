@@ -65,7 +65,8 @@ def _load_model(model_name: str, device: str) -> SentenceTransformer:
             SentenceTransformer = _ST
         except Exception as exc:  # pragma: no cover - optional dependency
             raise ImportError(
-                "sentence-transformers is required for embedding"
+                "sentence-transformers is required for embedding. "
+                "Install with 'pip install \"compact-memory[embedding]\"'."
             ) from exc
     if torch is None:
         try:
