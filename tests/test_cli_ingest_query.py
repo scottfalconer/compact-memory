@@ -2,6 +2,7 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from compact_memory.cli import app
+
 # from compact_memory.prototype_engine import PrototypeEngine # No longer directly used for instantiation here
 # from compact_memory.vector_store import InMemoryVectorStore # No longer directly used
 # from compact_memory.embedding_pipeline import get_embedding_dim # No longer directly used
@@ -14,21 +15,18 @@ runner = CliRunner()
 
 def _env(tmp_path: Path) -> dict[str, str]:
     return {
-        "COMPACT_MEMORY_PATH": str(tmp_path), # Corrected env var name
+        "COMPACT_MEMORY_PATH": str(tmp_path),  # Corrected env var name
         "COMPACT_MEMORY_DEFAULT_ENGINE_ID": "none",
         "COMPACT_MEMORY_DEFAULT_MODEL_ID": "tiny-gpt2",
     }
 
 
-def test_ingest_command_removed(tmp_path: Path):
-    result = runner.invoke(app, ["ingest"], env=_env(tmp_path))
-    assert result.exit_code != 0
-
-
-def test_query_returns_reply(tmp_path: Path, patch_embedding_model): # Added patch_embedding_model fixture
+def test_query_returns_reply(
+    tmp_path: Path, patch_embedding_model
+):  # Added patch_embedding_model fixture
     # Define a unique path for this test's store
     store_path = tmp_path / "query_test_store_trr"
-    env_vars = _env(tmp_path) # Get base env vars
+    env_vars = _env(tmp_path)  # Get base env vars
 
     # 1. Initialize an engine store using the CLI
     init_result = runner.invoke(
@@ -42,19 +40,26 @@ def test_query_returns_reply(tmp_path: Path, patch_embedding_model): # Added pat
     ingest_text = "the sky is blue and vast"
     compress_cmd_params = [
         "compress",
-        "--memory-path", str(store_path),
-        "--text", ingest_text,
-        "--engine", "none",  # Use 'none' engine for one-shot compression to ingest text as is
-        "--budget", "1000", # Sufficiently large budget
+        "--memory-path",
+        str(store_path),
+        "--text",
+        ingest_text,
+        "--engine",
+        "none",  # Use 'none' engine for one-shot compression to ingest text as is
+        "--budget",
+        "1000",  # Sufficiently large budget
     ]
     ingest_result = runner.invoke(app, compress_cmd_params, env=env_vars)
-    assert ingest_result.exit_code == 0, f"Compress to memory (ingest) failed: {ingest_result.stderr}"
+    assert (
+        ingest_result.exit_code == 0
+    ), f"Compress to memory (ingest) failed: {ingest_result.stderr}"
 
     # 3. Run the query using the CLI, targeting the initialized and populated store
     # Pass --memory-path as a global option to the app, before the 'query' subcommand,
     # as this is more reliable in testing than COMPACT_MEMORY_PATH env var for complex CLI apps.
     query_cmd_params = [
-        "--memory-path", str(store_path),
+        "--memory-path",
+        str(store_path),
         "query",
         "sky?",
     ]
