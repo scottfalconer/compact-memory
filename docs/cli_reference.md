@@ -162,7 +162,6 @@ Lists all available validation metric IDs that can be used in evaluations.
 Lists all available compression engine IDs, their versions, and sources (built-in or plugin).
 
 *   **Options:**
-    *   `--include-contrib`: Include experimental contrib engines.
 
 #### `compact-memory dev inspect-engine ENGINE_NAME`
 
