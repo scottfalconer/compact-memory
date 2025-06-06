@@ -5,7 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Union, Any
 
-from . import BaseCompressionEngine, CompressedMemory, CompressionTrace
+# Import base classes directly to avoid package-level registration
+from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
 from .registry import get_compression_engine
 
 

@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import List, Optional, Any, Dict, Union, Tuple
 
 import numpy as np
-from . import BaseCompressionEngine, CompressedMemory, CompressionTrace
+
+# Import base classes directly to avoid package import side effects
+from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
 from ..active_memory_manager import ActiveMemoryManager, ConversationTurn
 from compact_memory.prompt_budget import PromptBudget
 from compact_memory.embedding_pipeline import embed_text
