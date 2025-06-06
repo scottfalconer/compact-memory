@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Any, List
 
 from compact_memory.token_utils import truncate_text
-from . import BaseCompressionEngine, CompressedMemory, CompressionTrace
+
+# Import directly from base to avoid triggering package-level side effects
+from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
 
 try:  # pragma: no cover - optional dependency
     import tiktoken

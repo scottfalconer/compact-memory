@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import List, Union, Any
 
-from . import BaseCompressionEngine, CompressedMemory, CompressionTrace
+# Import directly from base to avoid package import side effects
+from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
 from .registry import register_compression_engine
 
 
