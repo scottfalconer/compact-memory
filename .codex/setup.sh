@@ -15,13 +15,10 @@ set -euo pipefail
 # Install a minimal subset of dependencies for the test suite. The environment
 # already includes Python and common tooling, so we avoid heavy optional
 # packages and model downloads during the 300s setup window.
-if [ -f requirements.txt ]; then
-    pip3 install --prefer-binary \
-        openai tiktoken numpy faiss-cpu click>=8.2 tqdm pydantic \
-        pyyaml transformers spacy "typer[all]>=0.16.0" portalocker \
-        "rich>=13.6"
-    # Install the project itself without pulling in extra dependencies.
-    pip3 install -e . --no-build-isolation --no-deps
+# Install the project and its dependencies as declared in pyproject.toml
+if [ -f pyproject.toml ]; then
+    # Editable install so source changes are picked up without reinstalling
+    pip3 install -e . --no-build-isolation
 fi
 
 # Tools used by CI for linting and testing
