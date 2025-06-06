@@ -2,11 +2,14 @@ import json
 import sys
 import time
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, List, Dict
 from dataclasses import asdict  # For trace output
 
 import typer
 
+from compact_memory.config import Config
+from compact_memory.llm_providers_abc import LLMProvider
+from compact_memory.llm_providers.factory import create_llm_provider
 from compact_memory.token_utils import token_count  # Assuming this is its new location
 from compact_memory.engines.registry import (
     get_compression_engine,
@@ -61,6 +64,36 @@ def compress_command(  # Renamed from compress
         "-e",
         help="Specify the compression engine. Overrides the global default.",
     ),
+    # LLM Configuration Options
+    llm_config: Optional[str] = typer.Option(
+        None, "--llm-config", help="Name of LLM configuration to use (from llm_models_config.yaml)"
+    ),
+    llm_provider_type: Optional[str] = typer.Option(
+        None, "--llm-provider-type", help="Type of LLM provider (e.g., \"local\", \"openai\", \"mock\")"
+    ),
+    llm_model_name: Optional[str] = typer.Option(
+        None, "--llm-model-name", help="Name or path of the LLM model to use"
+    ),
+    llm_api_key: Optional[str] = typer.Option(
+        None, "--llm-api-key", help="API key for remote LLM providers (e.g., OpenAI)"
+    ),
+    # ReadAgent Specific Options
+    readagent_gist_model_name: Optional[str] = typer.Option(
+        None, "--readagent-gist-model-name", help="[ReadAgent] Override model name for gist summarization phase"
+    ),
+    readagent_gist_length: Optional[int] = typer.Option(
+        None, "--readagent-gist-length", help="[ReadAgent] Override target token length for gist summaries (default: 100)"
+    ),
+    readagent_lookup_max_tokens: Optional[int] = typer.Option(
+        None, "--readagent-lookup-max-tokens", help="[ReadAgent] Override max new tokens for lookup phase output (default: 50)"
+    ),
+    readagent_qa_model_name: Optional[str] = typer.Option(
+        None, "--readagent-qa-model-name", help="[ReadAgent] Override model name for Q&A answering phase"
+    ),
+    readagent_qa_max_new_tokens: Optional[int] = typer.Option(
+        None, "--readagent-qa-max-new-tokens", help="[ReadAgent] Override max new tokens for Q&A answer generation (default: 250)"
+    ),
+    # Output Options
     output_file: Optional[Path] = typer.Option(
         None,
         "-o",
@@ -118,6 +151,11 @@ def compress_command(  # Renamed from compress
     ),
 ) -> None:
     """Compress text or files using a one-shot engine."""
+    app_config: Config = ctx.obj.get("config")
+    if not app_config:
+        app_config = Config()
+        typer.secho("Warning: Global app config not found in context, loaded a new one.", fg=typer.colors.YELLOW)
+
     final_engine_id = (
         engine_arg if engine_arg is not None else ctx.obj.get("default_engine_id")
     )
@@ -129,7 +167,130 @@ def compress_command(  # Renamed from compress
         )
         raise typer.Exit(code=1)
 
-    # Attempt to get a tokenizer
+    # --- LLM Setup and Engine Instantiation ---
+    llm_provider_instance: Optional[LLMProvider] = None
+    engine_override_config: Dict[str, Any] = {}
+
+    try:
+        EngineCls = get_compression_engine(final_engine_id)
+    except KeyError:
+        typer.secho(
+            f"Error: Unknown one-shot compression engine '{final_engine_id}'. Available: {', '.join(available_engines())}",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    engine_requires_llm = getattr(EngineCls, 'requires_llm', False)
+
+    if engine_requires_llm:
+        if llm_config and llm_provider_type:
+            typer.secho(
+                "Error: --llm-config cannot be used with --llm-provider-type. "
+                "Please use one method for LLM configuration.",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+        if llm_provider_type and not llm_model_name:
+            typer.secho(
+                "Error: --llm-model-name must be provided if --llm-provider-type is specified.",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+        if llm_model_name and not llm_provider_type and not llm_config:
+            typer.secho(
+                "Error: --llm-provider-type must be provided if --llm-model-name is specified without --llm-config.",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
+        actual_llm_config_name = llm_config
+        actual_llm_provider_type = llm_provider_type
+        actual_llm_model_name = llm_model_name
+        actual_llm_api_key = llm_api_key
+
+        if not actual_llm_config_name and not actual_llm_provider_type:
+            default_model_id = app_config.get("default_model_id")
+            if default_model_id:
+                typer.secho(f"No LLM specified directly; using default from config: {default_model_id}", fg=typer.colors.BLUE)
+                if default_model_id in app_config.get_all_llm_configs():
+                    actual_llm_config_name = default_model_id
+                elif '/' in default_model_id:
+                    parts = default_model_id.split('/', 1)
+                    actual_llm_provider_type = parts[0]
+                    actual_llm_model_name = parts[1]
+                else:
+                    typer.secho(
+                        f"Error: Default model ID '{default_model_id}' is not a valid named configuration "
+                        "or 'provider/model_name' format.",
+                        fg=typer.colors.RED,
+                        err=True,
+                    )
+                    raise typer.Exit(code=1)
+            else:
+                typer.secho(
+                    f"Error: Engine '{final_engine_id}' requires an LLM. Please provide LLM configuration "
+                    "via --llm-config or --llm-provider-type/--llm-model-name, or set a default_model_id "
+                    "in the global config.",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+
+        try:
+            llm_provider_instance = create_llm_provider(
+                config_name=actual_llm_config_name,
+                provider_type=actual_llm_provider_type,
+                model_name=actual_llm_model_name,
+                api_key=actual_llm_api_key,
+                app_config=app_config,
+            )
+        except (ValueError, ImportError) as e:
+            typer.secho(f"Error creating LLM provider: {e}", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
+
+        if final_engine_id == "readagent_gist":
+            if readagent_gist_model_name is not None:
+                engine_override_config["gist_model_name"] = readagent_gist_model_name
+            elif actual_llm_model_name:
+                 engine_override_config["gist_model_name"] = actual_llm_model_name
+
+            if readagent_gist_length is not None:
+                engine_override_config["gist_length"] = readagent_gist_length
+
+            if readagent_lookup_max_tokens is not None:
+                engine_override_config["lookup_max_tokens"] = readagent_lookup_max_tokens
+
+            if readagent_qa_model_name is not None:
+                engine_override_config["qa_model_name"] = readagent_qa_model_name
+            elif actual_llm_model_name:
+                engine_override_config["qa_model_name"] = actual_llm_model_name
+
+            if readagent_qa_max_new_tokens is not None:
+                engine_override_config["qa_max_new_tokens"] = readagent_qa_max_new_tokens
+
+    engine_info = get_engine_metadata(final_engine_id)
+    if engine_info and engine_info.get("source") == "contrib":
+        typer.secho(
+            f"\u26a0\ufe0f Using experimental one-shot compression engine '{final_engine_id}' from contrib.",
+            fg=typer.colors.YELLOW,
+        )
+
+    engine_instance: BaseCompressionEngine
+    if engine_requires_llm:
+        if not llm_provider_instance:
+            typer.secho("Critical error: LLM provider not initialized when required.", fg=typer.colors.RED, err=True)
+            raise typer.Exit(1)
+        engine_instance = EngineCls(config=engine_override_config, llm_provider=llm_provider_instance)
+    else:
+        engine_instance = EngineCls()
+
+    # --- Tokenizer Setup ---
     try:
         import tiktoken
 
@@ -231,7 +392,7 @@ def compress_command(  # Renamed from compress
     if memory_path_arg:
         resolved_memory_path = Path(memory_path_arg).expanduser().resolve()
         try:
-            main_engine_instance = load_engine(resolved_memory_path)
+            persistent_store_engine = load_engine(resolved_memory_path) # This is the target store
         except FileNotFoundError:
             typer.secho(
                 f"Error: Engine store at '{resolved_memory_path}' not found. Initialize with 'engine init'.",
@@ -241,36 +402,37 @@ def compress_command(  # Renamed from compress
             raise typer.Exit(code=1)
         except Exception as e:
             typer.secho(
-                f"Error loading engine from '{resolved_memory_path}': {e}",
+                f"Error loading engine store from '{resolved_memory_path}': {e}",
                 fg=typer.colors.RED,
                 err=True,
             )
             raise typer.Exit(code=1)
 
+        # The 'engine_instance' (configured with LLM if needed) is used for one-shot compression
         if text is not None:
             actual_text = sys.stdin.read() if text == "-" else text
             _compress_text_to_memory(
-                main_engine_instance,
+                persistent_store_engine,
                 actual_text,
-                final_engine_id,
+                engine_instance, # one-shot compressor
                 budget,
                 verbose_stats,
                 tokenizer_func,
             )
         elif file is not None:
             _compress_file_to_memory(
-                main_engine_instance,
+                persistent_store_engine,
                 file,
-                final_engine_id,
+                engine_instance, # one-shot compressor
                 budget,
                 verbose_stats,
                 tokenizer_func,
             )
-        elif dir_path is not None:  # This was dir in the original, renamed to dir_path
+        elif dir_path is not None:
             _compress_directory_to_memory(
-                main_engine_instance,
+                persistent_store_engine,
                 dir_path,
-                final_engine_id,
+                engine_instance, # one-shot compressor
                 budget,
                 recursive,
                 pattern,
@@ -278,11 +440,11 @@ def compress_command(  # Renamed from compress
                 tokenizer_func,
             )
 
-        # Persist changes to the engine store
+        # Persist changes to the persistent_store_engine
         try:
-            main_engine_instance.save(resolved_memory_path)
+            persistent_store_engine.save(resolved_memory_path)
             typer.secho(
-                f"Content compressed and saved to engine store at '{resolved_memory_path}'.",
+                f"Content compressed (using '{final_engine_id}') and saved to engine store at '{resolved_memory_path}'.",
                 fg=typer.colors.GREEN,
             )
         except Exception as e:
@@ -293,12 +455,12 @@ def compress_command(  # Renamed from compress
             )
             raise typer.Exit(code=1)
 
-    else:  # Output to file or stdout
+    else:  # Output to file or stdout using the configured engine_instance
         if text is not None:
             actual_text = sys.stdin.read() if text == "-" else text
             _compress_text_to_file_or_stdout(
                 actual_text,
-                final_engine_id,
+                engine_instance, # Pass instantiated engine
                 budget,
                 output_file,
                 output_trace,
@@ -309,7 +471,7 @@ def compress_command(  # Renamed from compress
         elif file is not None:
             _compress_file_to_file_or_stdout(
                 file,
-                final_engine_id,
+                engine_instance, # Pass instantiated engine
                 budget,
                 output_file,
                 output_trace,
@@ -317,10 +479,10 @@ def compress_command(  # Renamed from compress
                 tokenizer_func,
                 json_output,
             )
-        elif dir_path is not None:  # This was dir in the original
+        elif dir_path is not None:
             _compress_directory_to_files(
                 dir_path,
-                final_engine_id,
+                engine_instance, # Pass instantiated engine
                 budget,
                 output_dir,
                 recursive,
@@ -330,53 +492,37 @@ def compress_command(  # Renamed from compress
             )
 
 
-# --- Helper Functions (adapted from original CLI, now internal to this module) ---
-
-
-def _get_one_shot_compression_engine(engine_id: str) -> BaseCompressionEngine:
-    """Helper to get and instantiate a one-shot compression engine."""
-    try:
-        EngineCls = get_compression_engine(engine_id)
-        info = get_engine_metadata(engine_id)
-        if info and info.get("source") == "contrib":  # 'contrib' source check
-            typer.secho(
-                f"\u26a0\ufe0f Using experimental one-shot compression engine '{engine_id}' from contrib.",
-                fg=typer.colors.YELLOW,
-            )
-        return EngineCls()
-    except KeyError:
-        typer.secho(
-            f"Error: Unknown one-shot compression engine '{engine_id}'. Available: {', '.join(available_engines())}",
-            err=True,
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(code=1)
-
+# --- Helper Functions ---
+# _get_one_shot_compression_engine is removed as its logic is now integrated into compress_command.
 
 def _compress_text_core(
-    text_content: str, engine_id: str, budget: int, tokenizer: Any
+    text_content: str, engine: BaseCompressionEngine, budget: int, tokenizer: Any
 ) -> tuple[CompressedMemory, Optional[CompressionTrace], float]:
-    """Core logic to compress text, returns compressed memory, trace, and time."""
-    engine = _get_one_shot_compression_engine(engine_id)
+    """Core logic to compress text using a pre-configured engine instance."""
+    # engine is already instantiated and passed in.
     start_time = time.time()
     result = engine.compress(text_content, budget, tokenizer=tokenizer)
     elapsed_ms = (time.time() - start_time) * 1000
 
-    if (
-        isinstance(result, tuple) and len(result) == 2
-    ):  # Expected (CompressedMemory, CompressionTrace)
+    if isinstance(result, tuple) and len(result) == 2:
         compressed_mem, trace_obj = result
-    elif isinstance(result, CompressedMemory):  # Only CompressedMemory returned
+    elif isinstance(result, CompressedMemory):
         compressed_mem, trace_obj = result, None
-    else:  # Unexpected result
+    else:
+        # Try to get engine name from its config for a more informative error
+        engine_name = "current engine"
+        if hasattr(engine, 'config') and isinstance(engine.config, dict) and 'name' in engine.config:
+            engine_name = engine.config['name']
+        elif hasattr(engine, 'id'): # if it has an id attribute
+             engine_name = engine.id
         typer.secho(
-            f"Error: Compression engine '{engine_id}' returned an unexpected result type: {type(result)}",
+            f"Error: Compression engine '{engine_name}' returned an unexpected result type: {type(result)}",
             err=True,
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
 
-    if trace_obj and trace_obj.processing_ms is None:  # Populate if engine didn't
+    if trace_obj and trace_obj.processing_ms is None:
         trace_obj.processing_ms = elapsed_ms
 
     return compressed_mem, trace_obj, elapsed_ms
@@ -458,7 +604,7 @@ def _output_results(
 
 def _compress_text_to_file_or_stdout(
     text_content: str,
-    engine_id: str,
+    engine: BaseCompressionEngine, # Changed from engine_id
     budget: int,
     output_file: Optional[Path],
     trace_file: Optional[Path],
@@ -467,7 +613,7 @@ def _compress_text_to_file_or_stdout(
     json_output: bool,
 ) -> None:
     compressed_mem, trace_obj, elapsed_ms = _compress_text_core(
-        text_content, engine_id, budget, tokenizer
+        text_content, engine, budget, tokenizer # Pass engine instance
     )
     _output_results(
         "stdin/text arg",
@@ -484,7 +630,7 @@ def _compress_text_to_file_or_stdout(
 
 def _compress_file_to_file_or_stdout(
     file_path: Path,
-    engine_id: str,
+    engine: BaseCompressionEngine, # Changed from engine_id
     budget: int,
     output_file: Optional[Path],
     trace_file: Optional[Path],
@@ -500,13 +646,8 @@ def _compress_file_to_file_or_stdout(
         )
         raise typer.Exit(1)
 
-    # If output_file is not specified, and not json_output, derive it for single file processing
-    # This behavior is slightly different from original for clarity: output is explicit or stdout.
-    # Original might have created suffixed file by default.
-    # For this refactor, if no -o, it goes to stdout unless json_output.
-
     compressed_mem, trace_obj, elapsed_ms = _compress_text_core(
-        text_content, engine_id, budget, tokenizer
+        text_content, engine, budget, tokenizer # Pass engine instance
     )
     _output_results(
         f"file: {file_path.name}",
@@ -523,11 +664,11 @@ def _compress_file_to_file_or_stdout(
 
 def _compress_directory_to_files(
     dir_path_obj: Path,
-    engine_id: str,
-    budget: int,  # Renamed dir_path to dir_path_obj
+    engine: BaseCompressionEngine, # Changed from engine_id
+    budget: int,
     output_dir_obj: Optional[Path],
     recursive: bool,
-    pattern: str,  # Renamed output_dir to output_dir_obj
+    pattern: str,
     verbose_stats: bool,
     tokenizer: Any,
 ) -> None:
@@ -539,9 +680,9 @@ def _compress_directory_to_files(
         return
 
     processed_count = 0
-    for input_file_path in files_to_process:  # Renamed input_file
+    for input_file_path in files_to_process:
         if not input_file_path.is_file():
-            continue  # Skip subdirectories that might match glob
+            continue
 
         typer.echo(f"Processing {input_file_path}...")
         try:
@@ -551,11 +692,11 @@ def _compress_directory_to_files(
                 f"  Error reading file {input_file_path}: {e}",
                 err=True,
                 fg=typer.colors.YELLOW,
-            )  # Yellow for per-file error
+            )
             continue
 
         compressed_mem, trace_obj, elapsed_ms = _compress_text_core(
-            text_content, engine_id, budget, tokenizer
+            text_content, engine, budget, tokenizer # Pass engine instance
         )
 
         # Determine output path for this file
@@ -604,50 +745,49 @@ def _compress_directory_to_files(
 
 
 def _compress_text_to_memory(
-    main_engine_instance: BaseCompressionEngine,
-    text_to_compress: str,  # Renamed variables
-    one_shot_engine_id: str,
-    budget: int,  # Renamed variables
+    persistent_store_engine: BaseCompressionEngine,
+    text_to_compress: str,
+    one_shot_compressor_engine: BaseCompressionEngine, # The --engine for this run
+    budget: int,
     verbose_stats: bool,
     tokenizer: Any,
-    source_document_id: Optional[str] = "text_input",  # Default ID
+    source_document_id: Optional[str] = "text_input",
 ) -> None:
+    # Use the one_shot_compressor_engine (which might be LLM-backed) to compress
     compressed_mem, _, elapsed_ms = _compress_text_core(
-        text_to_compress, one_shot_engine_id, budget, tokenizer
+        text_to_compress, one_shot_compressor_engine, budget, tokenizer
     )
 
-    # Ingest into the main engine instance
-    # This part depends on how main_engine_instance expects to ingest pre-compressed content.
-    # Assuming a method like `add_compressed_memory` or adapting `ingest`.
-    # The original code used `main_engine.add_memory` for PrototypeEngine or `main_engine.ingest` for others.
-    if isinstance(main_engine_instance, PrototypeEngine):
-        # PrototypeEngine specific method if it exists and is preferred for pre-compressed
-        main_engine_instance.add_memory(
+    # Ingest the result into the persistent_store_engine
+    if isinstance(persistent_store_engine, PrototypeEngine):
+        persistent_store_engine.add_memory(
             compressed_mem.text, source_document_id=source_document_id
         )
     else:
-        # Generic ingest, assuming it can take a string.
-        # If engines need more structured input for pre-compressed text, this needs adjustment.
-        main_engine_instance.ingest(compressed_mem.text)
-        # Or if there's a specific method for pre-compressed:
-        # main_engine_instance.ingest_compressed(compressed_mem, source_id=source_document_id)
+        persistent_store_engine.ingest(compressed_mem.text)
 
     if verbose_stats:
         orig_tokens = token_count(tokenizer, text_to_compress)
         comp_tokens = token_count(tokenizer, compressed_mem.text)
+        compressor_name = "current compressor" # Fallback name
+        if hasattr(one_shot_compressor_engine, 'config') and isinstance(one_shot_compressor_engine.config, dict) and 'name' in one_shot_compressor_engine.config:
+            compressor_name = one_shot_compressor_engine.config['name']
+        elif hasattr(one_shot_compressor_engine, 'id'):
+             compressor_name = one_shot_compressor_engine.id
+
         typer.echo(f"Source: {source_document_id}")
         typer.echo(
-            f"Original tokens: {orig_tokens}\nCompressed tokens (one-shot): {comp_tokens}\nTime (one-shot) ms: {elapsed_ms:.1f}"
+            f"Original tokens: {orig_tokens}\nCompressed tokens (using '{compressor_name}'): {comp_tokens}\nTime (one-shot) ms: {elapsed_ms:.1f}"
         )
         typer.echo(
-            f"Compressed text ingested into main engine at '{main_engine_instance.path if hasattr(main_engine_instance, 'path') else 'memory store'}'."
+            f"Compressed text ingested into main engine store at '{persistent_store_engine.path if hasattr(persistent_store_engine, 'path') else 'memory store'}'."
         )
 
 
 def _compress_file_to_memory(
-    main_engine_instance: BaseCompressionEngine,
-    file_path_obj: Path,  # Renamed
-    one_shot_engine_id: str,
+    persistent_store_engine: BaseCompressionEngine,
+    file_path_obj: Path,
+    one_shot_compressor_engine: BaseCompressionEngine,
     budget: int,
     verbose_stats: bool,
     tokenizer: Any,
@@ -663,9 +803,9 @@ def _compress_file_to_memory(
         return
 
     _compress_text_to_memory(
-        main_engine_instance,
+        persistent_store_engine,
         text_content,
-        one_shot_engine_id,
+        one_shot_compressor_engine,
         budget,
         verbose_stats,
         tokenizer,
@@ -674,9 +814,9 @@ def _compress_file_to_memory(
 
 
 def _compress_directory_to_memory(
-    main_engine_instance: BaseCompressionEngine,
-    dir_path_obj: Path,  # Renamed
-    one_shot_engine_id: str,
+    persistent_store_engine: BaseCompressionEngine,
+    dir_path_obj: Path,
+    one_shot_compressor_engine: BaseCompressionEngine,
     budget: int,
     recursive: bool,
     pattern: str,
@@ -698,9 +838,9 @@ def _compress_directory_to_memory(
             continue
         typer.echo(f"Processing {input_file_path} for memory compression...")
         _compress_file_to_memory(
-            main_engine_instance,
+            persistent_store_engine,
             input_file_path,
-            one_shot_engine_id,
+            one_shot_compressor_engine,
             budget,
             verbose_stats,
             tokenizer,

@@ -1,13 +1,16 @@
 import json
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import logging
 
 import typer
 from rich.table import Table
 from rich.console import Console
 
+from compact_memory.config import Config
+from compact_memory.llm_providers_abc import LLMProvider
+from compact_memory.llm_providers.factory import create_llm_provider
 from compact_memory.engines import load_engine
 from compact_memory.engines.registry import (
     available_engines,
@@ -90,6 +93,36 @@ def init_command(  # Renamed from init
         "-e",
         help="The ID of the compression engine to initialize."
     ),
+    # LLM Configuration Options
+    llm_config: Optional[str] = typer.Option(
+        None, "--llm-config", help="Name of LLM configuration to use (from llm_models_config.yaml)"
+    ),
+    llm_provider_type: Optional[str] = typer.Option(
+        None, "--llm-provider-type", help="Type of LLM provider (e.g., \"local\", \"openai\", \"mock\")"
+    ),
+    llm_model_name: Optional[str] = typer.Option(
+        None, "--llm-model-name", help="Name or path of the LLM model to use"
+    ),
+    llm_api_key: Optional[str] = typer.Option(
+        None, "--llm-api-key", help="API key for remote LLM providers (e.g., OpenAI)"
+    ),
+    # ReadAgent Specific Options
+    readagent_gist_model_name: Optional[str] = typer.Option(
+        None, "--readagent-gist-model-name", help="[ReadAgent] Override model name for gist summarization phase"
+    ),
+    readagent_gist_length: Optional[int] = typer.Option(
+        None, "--readagent-gist-length", help="[ReadAgent] Override target token length for gist summaries (default: 100)"
+    ),
+    readagent_lookup_max_tokens: Optional[int] = typer.Option(
+        None, "--readagent-lookup-max-tokens", help="[ReadAgent] Override max new tokens for lookup phase output (default: 50)"
+    ),
+    readagent_qa_model_name: Optional[str] = typer.Option(
+        None, "--readagent-qa-model-name", help="[ReadAgent] Override model name for Q&A answering phase"
+    ),
+    readagent_qa_max_new_tokens: Optional[int] = typer.Option(
+        None, "--readagent-qa-max-new-tokens", help="[ReadAgent] Override max new tokens for Q&A answer generation (default: 250)"
+    ),
+    # Existing options
     name: str = typer.Option(
         "default_store", help="A descriptive name for the engine store or its configuration."
     ),
@@ -111,22 +144,30 @@ def init_command(  # Renamed from init
         )
         raise typer.Exit(code=1)
 
-    final_engine_id = engine_id_arg or ctx.obj.get("default_engine_id") or "prototype"
-    typer.echo(f"Initializing with engine ID: {final_engine_id}")
+    app_config: Config = ctx.obj.get("config")
+    if not app_config:
+        app_config = Config()
+        typer.secho("Warning: Global app config not found in context, loaded a new one.", fg=typer.colors.YELLOW)
 
-    if final_engine_id == "prototype":
+    final_engine_id = engine_id_arg or ctx.obj.get("default_engine_id") or "prototype"
+    typer.echo(f"Initializing engine store for engine ID: {final_engine_id} at {path}")
+
+    # Base engine config from direct flags
+    engine_config: Dict[str, Any] = {
+        'chunker_id': chunker,
+        'name': name,
+    }
+    if final_engine_id == 'prototype':
         if not 0.5 <= tau <= 0.95:
             typer.secho(
                 "Error: --tau must be between 0.5 and 0.95 for the 'prototype' engine.", err=True, fg=typer.colors.RED
             )
             raise typer.Exit(code=1)
-
-    engine_config = {}
-    engine_config['chunker_id'] = chunker
-    engine_config['name'] = name
-
-    if final_engine_id == 'prototype':
         engine_config['similarity_threshold'] = tau
+
+    # --- LLM Setup ---
+    llm_provider_instance: Optional[LLMProvider] = None
+    cli_llm_override_config: Dict[str, Any] = {}
 
     try:
         EngineCls = get_compression_engine(final_engine_id)
@@ -138,13 +179,113 @@ def init_command(  # Renamed from init
         )
         raise typer.Exit(code=1)
 
+    engine_requires_llm = getattr(EngineCls, 'requires_llm', False)
+
+    if engine_requires_llm:
+        if llm_config and llm_provider_type:
+            typer.secho(
+                "Error: --llm-config cannot be used with --llm-provider-type. "
+                "Please use one method for LLM configuration.",
+                fg=typer.colors.RED, err=True
+            )
+            raise typer.Exit(code=1)
+
+        if llm_provider_type and not llm_model_name:
+            typer.secho("Error: --llm-model-name must be provided if --llm-provider-type is specified.", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
+
+        if llm_model_name and not llm_provider_type and not llm_config:
+            typer.secho("Error: --llm-provider-type must be provided if --llm-model-name is specified without --llm-config.", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
+
+        actual_llm_config_name = llm_config
+        actual_llm_provider_type = llm_provider_type
+        actual_llm_model_name = llm_model_name
+        actual_llm_api_key = llm_api_key
+
+        if not actual_llm_config_name and not actual_llm_provider_type:
+            default_model_id = app_config.get("default_model_id")
+            if default_model_id:
+                typer.secho(f"No LLM specified directly for init; using default from global config: {default_model_id}", fg=typer.colors.BLUE)
+                if default_model_id in app_config.get_all_llm_configs():
+                    actual_llm_config_name = default_model_id
+                elif '/' in default_model_id:
+                    parts = default_model_id.split('/', 1)
+                    actual_llm_provider_type = parts[0]
+                    actual_llm_model_name = parts[1]
+                else:
+                    typer.secho(
+                        f"Error: Default model ID '{default_model_id}' is not a valid named configuration or 'provider/model_name' format.",
+                        fg=typer.colors.RED, err=True
+                    )
+                    raise typer.Exit(code=1)
+            else:
+                typer.secho(
+                    f"Error: Engine '{final_engine_id}' requires an LLM for initialization. Please provide LLM configuration "
+                    "via --llm-config or --llm-provider-type/--llm-model-name, or set a default_model_id in the global config.",
+                    fg=typer.colors.RED, err=True
+                )
+                raise typer.Exit(code=1)
+
+        try:
+            llm_provider_instance = create_llm_provider(
+                config_name=actual_llm_config_name,
+                provider_type=actual_llm_provider_type,
+                model_name=actual_llm_model_name,
+                api_key=actual_llm_api_key,
+                app_config=app_config,
+            )
+        except (ValueError, ImportError) as e:
+            typer.secho(f"Error creating LLM provider for init: {e}", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
+
+        # Specific ReadAgent config overrides from CLI for init
+        # These will be merged into the main engine_config
+        if final_engine_id == "readagent_gist": # Or a more generic check for engines that use these settings
+            if readagent_gist_model_name is not None:
+                cli_llm_override_config["gist_model_name"] = readagent_gist_model_name
+            elif actual_llm_model_name: # Default from main LLM config if not specified for gist
+                 cli_llm_override_config["gist_model_name"] = actual_llm_model_name
+
+            if readagent_gist_length is not None:
+                cli_llm_override_config["gist_length"] = readagent_gist_length
+
+            if readagent_lookup_max_tokens is not None:
+                cli_llm_override_config["lookup_max_tokens"] = readagent_lookup_max_tokens
+
+            if readagent_qa_model_name is not None:
+                cli_llm_override_config["qa_model_name"] = readagent_qa_model_name
+            elif actual_llm_model_name: # Default from main LLM config if not specified for QA
+                cli_llm_override_config["qa_model_name"] = actual_llm_model_name
+
+            if readagent_qa_max_new_tokens is not None:
+                cli_llm_override_config["qa_max_new_tokens"] = readagent_qa_max_new_tokens
+
+        # Merge LLM override config into the main engine config
+        # CLI overrides for these specific keys take precedence
+        engine_config.update(cli_llm_override_config)
+
+    # --- Instantiate and Save Engine ---
     try:
-        engine = EngineCls(config=engine_config)
+        engine: Any # BaseCompressionEngine once all engines conform
+        if engine_requires_llm:
+            if not llm_provider_instance: # Should be caught above, but defensive check
+                typer.secho("Critical error: LLM provider not initialized for LLM-dependent engine.", fg=typer.colors.RED, err=True)
+                raise typer.Exit(1)
+            engine = EngineCls(config=engine_config, llm_provider=llm_provider_instance)
+        else:
+            engine = EngineCls(config=engine_config)
+
         path.mkdir(parents=True, exist_ok=True)
-        engine.save(path)
+        engine.save(path) # The engine's save method should handle persisting its config, including LLM related parts if designed to.
         typer.echo(f"Successfully initialized Compact Memory engine store with engine '{final_engine_id}' at {path}")
+        if cli_llm_override_config:
+             typer.secho(f"  Applied LLM specific configurations: {cli_llm_override_config}", fg=typer.colors.BLUE)
+        if llm_provider_instance:
+             typer.secho(f"  LLM Provider: {type(llm_provider_instance).__name__} configured.", fg=typer.colors.BLUE)
+
     except EmbeddingDimensionMismatchError as exc:
-        typer.secho(f"Error during engine initialization: {exc}", err=True, fg=typer.colors.RED)
+        typer.secho(f"Error during engine initialization: {exc}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
     except Exception as exc:
         typer.secho(f"An unexpected error occurred during engine initialization or save: {exc}", err=True, fg=typer.colors.RED)

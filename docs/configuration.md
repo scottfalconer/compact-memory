@@ -116,4 +116,55 @@ You can set default values for key options to avoid typing them repeatedly. Thes
     ```
 
 By effectively using the configuration layers, especially `compact-memory config set` for your global defaults, you can significantly simplify your interactions with the Compact Memory CLI. Remember that command-line options always override these defaults if you need to work with a different agent or setting temporarily.
+
+## LLM Model Configurations (`llm_models_config.yaml`)
+
+For more complex LLM configurations, especially when using multiple LLMs or different settings for various tasks, you can create an `llm_models_config.yaml` file. By default, Compact Memory looks for this file in the current working directory (your project's root).
+
+This file allows you to define named configurations for different LLM providers and models. You can then refer to these configurations using the `--llm-config NAME` option in commands like `compact-memory compress` or `compact-memory engine init`.
+
+**Example `llm_models_config.yaml`:**
+
+```yaml
+# llm_models_config.yaml example
+
+my-local-summarizer:
+  provider: local
+  # model_path: /path/to/your/models/mistral-7b-instruct  # If your local provider uses model_path
+  model_name: mistralai/Mistral-7B-Instruct-v0.1 # Or a Hugging Face model name
+  # Other parameters specific to the local provider can be added here.
+
+my-openai-gpt4:
+  provider: openai
+  model_name: gpt-4-turbo
+  # api_key: sk-YOUR_OPENAI_KEY_HERE # Optional: can be stored here or in env variables.
+  # max_tokens: 8000 # Example of a parameter an engine might use if passed this config.
+
+my-openai-gpt3-5:
+  provider: openai
+  model_name: gpt-3.5-turbo
+
+another-mock-config:
+  provider: mock
+  # Mock provider usually doesn't need more config, but you could add custom fields if your mock was extended.
+
+# Configuration for a Gemini model
+my-gemini-pro:
+  provider: gemini
+  model_name: gemini-pro
+  # api_key: YOUR_GOOGLE_API_KEY # Optional, can use GOOGLE_API_KEY env var
+```
+
+**Key Fields:**
+
+*   **`provider`**: (Mandatory) Specifies the type of LLM provider. Examples: `local`, `openai`, `gemini`, `mock`.
+*   **`model_name`**: The identifier for the model used by the provider (e.g., `gpt-4-turbo` for OpenAI, `mistralai/Mistral-7B-Instruct-v0.1` for a Hugging Face model used with `local` provider).
+*   **`model_path`**: Some local providers might use this to specify the direct path to model files. (Usage depends on the specific local provider's implementation).
+*   **`api_key`**: API key for remote services like OpenAI or Gemini.
+    *   **Security Note:** Storing API keys in plaintext YAML is convenient for personal use but is generally discouraged for security reasons, especially if the file is shared or version-controlled. It's often safer to use environment variables (e.g., `OPENAI_API_KEY`, `GOOGLE_API_KEY`) which the providers typically read automatically.
+*   Other fields (like `max_tokens` in the example) can be added. These are not directly used by the LLM provider factory itself but can be part of the configuration dictionary passed to an engine if the engine is designed to interpret them.
+
+When you use the `--llm-config NAME` CLI flag (e.g., `compact-memory compress ... --llm-config my-local-summarizer`), Compact Memory will load the settings from the corresponding block in `llm_models_config.yaml`.
+
+This system allows you to manage multiple LLM setups cleanly and switch between them easily for different operations or projects.
 ```

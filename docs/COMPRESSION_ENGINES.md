@@ -15,6 +15,8 @@ In the context of LLMs and memory systems, "compression" refers to techniques th
 
 Compression is not necessarily about achieving the highest possible data compression ratio in a traditional sense (like Gzip). Instead, it's about "semantic compression" or "information distillation."
 
+**Note on LLM-Dependent Engines:** Some advanced compression engines, particularly those performing abstractive summarization or complex transformations (e.g., a future `readagent_gist` engine), may require a Large Language Model (LLM) to function. Configuring these LLMs (selecting the provider, model, API keys, etc.) is crucial for such engines. For details on how to configure LLMs when using these engines via the CLI, please refer to the `compact-memory compress --help` output, the [CLI Reference](./cli_reference.md), and the [Configuration Guide](./configuration.md#llm-model-configurations-llm_models_configyaml).
+
 ## 2. Types of Compression Engines/Strategies
 
 ### a. Extractive Summarization (Truncation-based)
