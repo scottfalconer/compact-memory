@@ -5,7 +5,7 @@ from compact_memory.engines import (
     CompressedMemory,
     CompressionTrace,
 )
-from compact_memory.engine_registry import register_compression_engine
+from compact_memory.engines.registry import register_compression_engine
 
 # --- Define or Import a Sample Engine ---
 # For this example, we'll define a simple engine.
@@ -82,7 +82,7 @@ def main():
     try:
         engine_instance = SamplePipelineEngine()
         # Or, if using the registry:
-        # from compact_memory.engine_registry import get_compression_engine
+        # from compact_memory.engines.registry import get_compression_engine
         # engine_instance = get_compression_engine("sample_pipeline_engine")()
     except Exception as e:
         print(f"Error initializing engine: {e}")

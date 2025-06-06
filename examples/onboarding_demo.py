@@ -40,7 +40,7 @@ from compact_memory.engines import (
     CompressedMemory,
     CompressionTrace,
 )
-from compact_memory.engine_registry import register_compression_engine
+from compact_memory.engines.registry import register_compression_engine
 
 
 # This TruncateEngine is a very basic example. Its main purpose in this demo

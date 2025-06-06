@@ -5,7 +5,7 @@ from typer.testing import CliRunner
 from compact_memory.cli import app
 from compact_memory.engines import load_engine
 from compact_memory.prototype_engine import PrototypeEngine # Corrected import
-from compact_memory.engine_registry import available_engines # To check against list output
+from compact_memory.engines.registry import available_engines # To check against list output
 
 # DummyTruncEngine might be needed if testing init with it, but current tests focus on prototype or default
 # from compact_memory.engines import BaseCompressionEngine
@@ -128,7 +128,7 @@ def test_engine_validate(tmp_path: Path, patch_embedding_model):
     assert validate_result.exit_code == 0, f"CLI Error: {validate_result.stderr}"
     # Current 'validate' command for prototype engine (or generic engine) prints a simple message.
     # This assertion might change if validate's output becomes more detailed.
-    assert "No built-in storage to validate" in validate_result.stdout # Based on current CLI behavior for generic engine
+    assert "No specific storage validation implemented" in validate_result.stdout # Updated assertion
     # If PrototypeEngine had specific validation, this would be different.
     # For example, if it checked its own files:
     # assert f"Validation for engine at '{store_path}' completed." in validate_result.stdout

@@ -181,7 +181,7 @@ For your engine to be discoverable by `get_compression_engine(engine_id)` and th
 You can manually register your engine class:
 
 ```python
-from compact_memory.engine_registry import register_compression_engine
+from compact_memory.engines.registry import register_compression_engine
 from .my_engine_module import MyCustomEngine # Assuming your engine is in this module
 
 register_compression_engine(MyCustomEngine.id, MyCustomEngine)
@@ -212,7 +212,7 @@ from compact_memory.engines import (
     CompressedMemory,
     CompressionTrace,
 )
-from compact_memory.engine_registry import register_compression_engine
+from compact_memory.engines.registry import register_compression_engine
 
 class SimpleTruncEngine(BaseCompressionEngine):
     id = "simple_trunc"

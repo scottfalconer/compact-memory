@@ -1,4 +1,4 @@
-from compact_memory.engine_registry import (
+from compact_memory.engines.registry import (
     register_compression_engine,
     _ENGINE_REGISTRY,
 )

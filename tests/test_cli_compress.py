@@ -2,7 +2,7 @@ from pathlib import Path
 import json
 from typer.testing import CliRunner
 from compact_memory.cli import app
-from compact_memory.engine_registry import register_compression_engine
+from compact_memory.engines.registry import register_compression_engine
 from compact_memory.engines import (
     BaseCompressionEngine,
     CompressedMemory,
@@ -152,7 +152,7 @@ def test_compress_invalid_combo(tmp_path: Path):
         env=_env(tmp_path),
     )
     assert result.exit_code != 0
-    assert "specify exactly ONE" in result.stderr
+    assert "Specify exactly ONE of --text, --file, or --dir" in result.stderr
 
 
 def test_compress_file_output_file(tmp_path: Path):
@@ -247,7 +247,7 @@ def test_compress_invalid_strategy(tmp_path: Path):
         env=_env(tmp_path),
     )
     assert result.exit_code != 0
-    assert "Unknown compression engine" in result.stderr
+    assert "Unknown one-shot compression engine" in result.stderr
 
 
 def test_compress_budget_truncation(tmp_path: Path):
