@@ -1,5 +1,0 @@
-Compact Memory is a toolkit for compressing and managing text context for Large Language Models (LLMs).
-It helps you keep important information accessible while staying within tight token budgets.
-The project offers a ready-to-use toolkit and a flexible framework for developing new compression engines.
-Benefits include evolving gist-based understanding, optimizing context for resource efficiency, and active memory management.
-Compact Memory is for researchers and developers pushing LLM capabilities.
