@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 
-from compact_memory.engine_registry import (
+from compact_memory.engines.registry import (
     _ENGINE_REGISTRY,
     _ENGINE_INFO,
     get_engine_metadata,

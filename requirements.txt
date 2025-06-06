@@ -1,13 +1,2 @@
-openai
-tiktoken
-numpy
-faiss-cpu
-click>=8.2
-tqdm
-pydantic>=2.0
-pyyaml
 pytest
-rich>=13.6
-typer[all]>=0.16.0
-portalocker
 flake8

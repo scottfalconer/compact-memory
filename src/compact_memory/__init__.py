@@ -26,11 +26,11 @@ _lazy_map = {
     "PipelineConfig": "compact_memory.engines.pipeline_engine",
     "PipelineEngine": "compact_memory.engines.pipeline_engine",
     "NoCompressionEngine": "compact_memory.engines.no_compression_engine",
-    "register_compression_engine": "compact_memory.engine_registry",
-    "get_compression_engine": "compact_memory.engine_registry",
-    "available_engines": "compact_memory.engine_registry",
-    "get_engine_metadata": "compact_memory.engine_registry",
-    "all_engine_metadata": "compact_memory.engine_registry",
+    "register_compression_engine": "compact_memory.engines.registry",
+    "get_compression_engine": "compact_memory.engines.registry",
+    "available_engines": "compact_memory.engines.registry",
+    "get_engine_metadata": "compact_memory.engines.registry",
+    "all_engine_metadata": "compact_memory.engines.registry",
 }
 
 

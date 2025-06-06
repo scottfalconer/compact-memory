@@ -13,7 +13,7 @@ from typing import Iterable
 
 from platformdirs import user_data_dir
 
-from .engine_registry import register_compression_engine, get_engine_metadata
+from compact_memory.engines.registry import register_compression_engine, get_engine_metadata
 from .engines import BaseCompressionEngine
 from .package_utils import load_manifest
 

@@ -43,7 +43,7 @@ pipeline = "compact_memory.engines.pipeline_engine:PipelineEngine"
 first_last = "compact_memory.engines.first_last_engine:FirstLastEngine"
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]
 include = ["compact_memory", "compact_memory.*"]
 
 [tool.setuptools.package-data]
