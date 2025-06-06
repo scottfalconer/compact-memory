@@ -1,4 +1,10 @@
 import unittest
+from unittest.mock import patch, ANY
+from typer.testing import CliRunner
+from compact_memory.cli.main import app
+from compact_memory.config import DEFAULT_CONFIG
+# from compact_memory.llm_models_config import LLM_MODELS_CONFIG_PATH # Not strictly needed if we assume config exists
+
 from compact_memory.llm_providers import MockLLMProvider # Added
 from compact_memory.engines.ReadAgent.engine import ReadAgentGistEngine
 from compact_memory.chunker import SentenceWindowChunker
@@ -221,6 +227,52 @@ class TestReadAgentGistEngine(unittest.TestCase):
 
         truncation_logged = any(step['type'] == 'summary_truncation' for step in trace.steps)
         self.assertTrue(truncation_logged, "Summary truncation was not logged.")
+
+    @patch("compact_memory.llm_providers.local_provider.LocalTransformersProvider.generate_response")
+    def test_readagent_gist_engine_cli_uses_default_llm(self, mock_generate_response):
+        runner = CliRunner()
+        # This is the text that the ReadAgentGistEngine will output as the compressed result,
+        # as it's the return value of the mocked LLM call.
+        mock_llm_output = "Mocked LLM response for tiny-gpt2"
+        mock_generate_response.return_value = mock_llm_output
+
+        original_model_id = DEFAULT_CONFIG["default_model_id"]
+        DEFAULT_CONFIG["default_model_id"] = "tiny-gpt2"
+        # Assumption: 'tiny-gpt2' is in llm_models_config.yaml and configured to use the 'local' provider.
+        # The 'local' provider is LocalTransformersProvider.
+        # ReadAgentGistEngine's default gist_model_name is 'distilgpt2' and default gist_length is 100.
+
+        try:
+            result = runner.invoke(
+                app,
+                [
+                    "compress",
+                    "--text",
+                    "Test document for ReadAgentGistEngine CLI.",
+                    "--budget", # CLI budget is for the final output. ReadAgentGistEngine produces one LLM output as its result.
+                    "50",     # If LLM output is >50, it would be truncated by the CLI wrapper normally.
+                              # Here, mock_llm_output is shorter than 50.
+                    "--engine",
+                    "readagent_gist",
+                    # No --model-id, so it should pick up default_model_id from global config to select the provider.
+                ],
+            )
+
+            self.assertEqual(result.exit_code, 0, msg=f"CLI Error: {result.stdout} {result.exception}")
+            # The output of the compress command should be the LLM's response.
+            self.assertIn(mock_llm_output, result.stdout)
+
+            # Check that the mocked LocalTransformersProvider's generate_response was called correctly.
+            # ReadAgentGistEngine, when not configured via its own params (which CLI doesn't do for one-shot),
+            # uses its default gist_model_name ('distilgpt2') and gist_length (100).
+            mock_generate_response.assert_any_call(
+                prompt=ANY, # The exact prompt depends on the engine's template and input text.
+                model_name="distilgpt2",
+                max_new_tokens=100
+            )
+
+        finally:
+            DEFAULT_CONFIG["default_model_id"] = original_model_id
 
 if __name__ == '__main__':
     unittest.main()
