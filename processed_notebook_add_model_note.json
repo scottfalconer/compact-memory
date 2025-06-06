@@ -5,7 +5,7 @@
    "source": [
     "# Compact Memory User Guide\n",
     "\n",
-    "Welcome to the `compact-memory` user guide! This notebook provides a hands-on introduction to the `compact-memory` library, focusing on its command-line interface. This version includes packaging for simplified usage.\\n",
+    "Welcome to the `compact-memory` user guide! This notebook provides a hands-on introduction to the `compact-memory` library, focusing on its command-line interface.\\n",
     "\n",
     "`compact-memory` helps you manage and compress text data (like dialogue history or large documents) to fit within the limited context windows of Large Language Models (LLMs) while retaining essential information. This guide focuses on using the `compact-memory` library.\\n",
     "\n",
@@ -55,7 +55,7 @@
   {
    "cell_type": "markdown",
    "source": [
-    "Now that we are inside the `compact-memory` directory (from the `scottfalconer/compact-memory` repository), we can install the package and its dependencies using relative paths."
+    "Now that we are inside the `compact-memory` directory, we can install the package and its dependencies using relative paths."
    ],
    "metadata": {}
   },
@@ -123,9 +123,9 @@
    "source": [
     "### 1.6 Download Pre-trained Models for `compact-memory`\n",
     "\n",
-    "Download the default embedding model (for text vectorization) and a small chat model (for response generation experiments) using the `compact-memory` CLI. The CLI should be available after the `pip install .` step.\\n",
-    "\\n",
-    "For the chat model, this guide uses `gpt2`, a smaller model suitable for local demonstrations without requiring API keys. The library can be configured to use other models, including more powerful ones like the default `openai/gpt-3.5-turbo`."
+    "Download the default embedding model (for text vectorization) and a small chat model (for response generation experiments) using the `compact-memory` CLI. The CLI should be available after the `pip install .` step.\n",
+    "\n",
+    "For the chat model, this guide uses , a smaller model suitable for local demonstrations without requiring API keys. The library can be configured to use other models, including more powerful ones like the default ."
    ],
    "metadata": {}
   },
@@ -369,9 +369,9 @@
     "\n",
     "The `compact-memory` CLI offers other utilities. Here are a few, with examples of how to get their help messages:\n",
     "\n",
-    "-   `download-model`, `download-chat-model`: We used these in the setup to fetch models (e.g., `all-MiniLM-L6-v2`, `gpt2`).\\n",
-    "-   `engine stats`: Provides statistics about the engine store's storage.\\n",
-    "-   `engine validate`: Validates the integrity of the engine store's storage."
+    "-   `download-model`, `download-chat-model`: We used these in the setup to fetch models (e.g., `all-MiniLM-L6-v2`, `tiny-gpt2`).\n",
+    "-   `stats`: Provides statistics about datasets or memory files.\n",
+    "-   `validate`: Validates configuration files or memory formats against the library's schemas."
    ],
    "metadata": {}
   },
@@ -381,9 +381,9 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "!compact-memory engine stats --help\\n",
+    "!compact-memory agent stats --help\n",
     "!echo \"\\n---------------------------------------\\n\" # Visual separator\n",
-    "!compact-memory engine validate --help"
+    "!compact-memory agent validate --help"
    ]
   },
   {
@@ -392,7 +392,7 @@
    "source": [
     "## 3. Conclusion and Next Steps\n",
     "\n",
-    "This notebook has provided a user-focused introduction to the `compact-memory` library, specifically covering:\\n",
+    "This notebook has provided a user-focused introduction to the `scottfalconer/compact-memory` fork, specifically covering:\n",
     "-   **Installation and Setup**: How to get the library ready for use.\n",
     "-   **Command Line Interface (CLI)**: Practical examples of using the CLI to compress text, try different strategies, and provide context to an LLM with the `talk` command.\n",
     "\n",
@@ -404,7 +404,7 @@
     "We encourage you to experiment with the CLI commands and strategies shown in this guide using your own data.\n",
     "\n",
     "### Further Resources:\n",
-    "-   **GitHub Repository**: [https://github.com/google/compact-memory](https://github.com/google/compact-memory)\\n",
+    "-   **GitHub Repository**: [https://github.com/scottfalconer/compact-memory](https://github.com/scottfalconer/compact-memory)\n",
     "-   **CLI Help**: Use `compact-memory --help`, `compact-memory compress --help`, and `compact-memory talk --help` in your terminal for detailed CLI options.\n",
     "-   **Examples Folder**: Check the `examples/` directory in the repository for any other user-oriented examples or showcases that may be added.\n",
     "\n",

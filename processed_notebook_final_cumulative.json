@@ -5,16 +5,16 @@
    "source": [
     "# Compact Memory User Guide\n",
     "\n",
-    "Welcome to the `compact-memory` user guide! This notebook provides a hands-on introduction to the `compact-memory` library, focusing on its command-line interface.\n",
+    "Welcome to the  user guide! This notebook provides a hands-on introduction to the  library, focusing on its command-line interface.\n",
     "\n",
-    "`compact-memory` helps you manage and compress text data (like dialogue history or large documents) to fit within the limited context windows of Large Language Models (LLMs) while retaining essential information. This guide focuses on using the `compact-memory` library.\n",
+    " helps you manage and compress text data (like dialogue history or large documents) to fit within the limited context windows of Large Language Models (LLMs) while retaining essential information. This guide focuses on using the  library.\n",
     "\n",
     "This notebook will walk you through:\n",
-    "1.  **Setup**: Cloning the `compact-memory` repository, changing into its directory, and installing the package along with dependencies.\n",
-    "2.  **Command Line Interface (CLI)**: A tour of the `compact-memory` CLI for compressing text, trying different strategies, and interacting with an LLM.\n",
-    "3.  **Conclusion**: Summary and next steps for using `compact-memory`.\n",
+    "1.  **Setup**: Cloning the  repository, changing into its directory, and installing the package along with dependencies.\n",
+    "2.  **Command Line Interface (CLI)**: A tour of the  CLI for compressing text, trying different strategies, and interacting with an LLM.\n",
+    "3.  **Conclusion**: Summary and next steps for using .\n",
     "\n",
-    "**Important Note on Notebook Execution**: This notebook uses `%cd` to change the current directory. Subsequent cells will operate from within the cloned `compact-memory` repository root.\n",
+    "**Important Note on Notebook Execution**: This notebook uses  to change the current directory. Subsequent cells will operate from within the cloned  repository root.\n",
     "\n",
     "Let's get started!"
    ],
@@ -25,7 +25,7 @@
    "source": [
     "## 1. Initial Setup: Install Dependencies\n",
     "\n",
-    "First, we need to set up the environment. This involves cloning the `compact-memory` repository, changing our current directory into it, installing the package from local source, and then downloading necessary dependencies and models.\n",
+    "First, we need to set up the environment. This involves cloning the  repository, changing our current directory into it, installing the package from local source, and then downloading necessary dependencies and models.\n",
     "\n",
     "**Note**: If you are running this notebook locally and have already cloned this repository and set up a virtual environment from within the repo root, you might be able to skip some of these steps. However, these cells are designed to work in a fresh Google Colab environment."
    ],
@@ -55,7 +55,7 @@
   {
    "cell_type": "markdown",
    "source": [
-    "Now that we are inside the `compact-memory` directory, we can install the package and its dependencies using relative paths."
+    "Now that we are inside the `compact-memory` directory (from the `scottfalconer/compact-memory` repository), we can install the package and its dependencies using relative paths."
    ],
    "metadata": {}
   },
@@ -123,9 +123,7 @@
    "source": [
     "### 1.6 Download Pre-trained Models for `compact-memory`\n",
     "\n",
-    "Download the default embedding model (for text vectorization) and a small chat model (for response generation experiments) using the `compact-memory` CLI. The CLI should be available after the `pip install .` step.\n",
-    "\n",
-    "For the chat model, this guide uses `gpt2`, a smaller model suitable for local demonstrations without requiring API keys. The library can be configured to use other models, including more powerful ones like the default `openai/gpt-3.5-turbo`."
+    "Download the default embedding model (for text vectorization) and a small chat model (for response generation experiments) using the `compact-memory` CLI. The CLI should be available after the `pip install .` step."
    ],
    "metadata": {}
   },
@@ -196,25 +194,15 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "!compact-memory --help"
+    "### 2.2 Compression Command ()\n",
+    "\n",
+    "The  command lets you apply a compression engine to various forms of input: a direct line of text (using ), or a single file or an entire directory (by providing the path as a positional argument). The following subsections will demonstrate these use cases.\n",
+    "\n",
+    "The CLI uses strategies that are built into  (e.g., , , , ). For these examples, we'll use some of these built-in strategies."
    ]
   },
   {
    "cell_type": "markdown",
-   "source": [
-    "### 2.2 Compression Command (`compress`)\n",
-    "\n",
-    "The `compress` command lets you apply a compression engine to various forms of input: a direct line of text (using `--text`), or a single file or an entire directory (by providing the path as a positional argument). The following subsections will demonstrate these use cases.\n",
-    "\n",
-    "The CLI uses strategies that are built into `compact-memory` (e.g., `prototype`, `pipeline`, `none`, `first_last`). For these examples, we'll use some of these built-in strategies."
-   ],
-   "metadata": {}
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
    "source": [
     "# Example: Compress a short text string using the 'prototype' engine\n",
     "# This command demonstrates compressing a simple line of text. \n",
@@ -226,16 +214,6 @@
     "# The 'prototype' engine is employed to summarize the content within a 100-token budget.\n",
     "# To compress a file, provide its path as an argument using --input-file. For instance:\n",
     "!compact-memory compress --engine prototype --input-file sample_data/moon_landing/full.txt --budget 100"
-   ]
-  },
-  {
-   "cell_type": "markdown",
-   "source": [
-    "# Example: Compress an entire directory using the 'gist' engine\n",
-    "# This command demonstrates compressing all supported files within a directory.\n",
-    "# We use the 'sample_data/moon_landing' directory.\n",
-    "# The 'gist' engine will be applied to each file, and the overall output might be a concatenation or structured representation.\n",
-    "# The `compress` command automatically detects that this is a directory and processes its contents.\n"
    ],
    "metadata": {}
   },
@@ -245,36 +223,52 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "# Example: Compress an entire directory using the 'prototype' engine\n",
-    "# This command demonstrates compressing all supported files within a directory.\n",
-    "# We use the 'sample_data/moon_landing' directory.\n",
-    "# The 'prototype' engine will be applied to each file.\n",
-    "# The `compress` command uses --input-dir for directory paths.\n",
-    "!compact-memory compress --engine prototype --input-dir sample_data/moon_landing --budget 200\n",
-    "# You might want to add --output some_directory_output.json if you want to inspect results later"
+    "# Example: Compress a short text string using the 'truncate' engine (if available as a built-in/plugin)\n",
+    "# This command demonstrates compressing a simple line of text. \n",
+    "# We use the 'truncate' engine to keep the beginning of the text, fitting it within a 20-token budget.\n",
+    "!compact-memory compress --engine truncate --text \"This is a fairly long sentence that we want to compress using the command line interface to a small number of tokens.\" --budget 20\n",
+    "\n",
+    "# Example: Compress a text file using the 'gist' engine\n",
+    "# This command demonstrates compressing an entire file. We use 'sample_data/moon_landing/full.txt'.\n",
+    "# The 'gist' engine is employed to summarize the content within a 100-token budget.\n",
+    "# To compress a file, provide its path as an argument. For instance:\n",
+    "!compact-memory compress --engine gist sample_data/moon_landing/full.txt --budget 100"
    ]
   },
   {
    "cell_type": "markdown",
-   "metadata": {},
    "source": [
-    "#### Choosing a Engine with `--engine`\n",
-    "\n",
-    "The `--engine` option is key to controlling how `compact-memory` compresses your text. Different strategies have different behaviors:\n",
-    "\n",
-    "*   **`prototype`**: Aims to create a compressed representation using a prototype-based approach. (Example used above).\n",
-    "*   **`pipeline`**: Allows chaining multiple processing steps (more advanced and requires specific configuration not covered in this basic example).\n",
-    "*   **`none`**: Passes through the text without compression (useful for baseline or token counting).\n",
-    "*   **`first_last`**: A simple engine that typically keeps the first and last parts of the text.\n",
-    "\n",
-    "You can switch between them easily. For example, to process our `full.txt` using `none` (no compression) instead of `prototype`:"
-   ]
+    "# Example: Compress an entire directory using the 'prototype' engine\n",
+    "# This command demonstrates compressing all supported files within a directory.\n",
+    "# We use the 'sample_data/moon_landing' directory.\n",
+    "# The 'prototype' engine will be applied to each file.\n",
+    "# The  command uses --input-dir for directory paths.\n",
+    "!compact-memory compress --engine prototype --input-dir sample_data/moon_landing --budget 200\n",
+    "# You might want to add --output some_directory_output.json if you want to inspect results later"
+   ],
+   "metadata": {}
   },
   {
    "cell_type": "code",
    "execution_count": null,
    "metadata": {},
    "outputs": [],
+   "source": [
+    "#### Choosing a Engine with \n",
+    "\n",
+    "The  option is key to controlling how  compresses your text. Different strategies have different behaviors:\n",
+    "\n",
+    "*   ****: Aims to create a compressed representation using a prototype-based approach. (Example used above).\n",
+    "*   ****: Allows chaining multiple processing steps (more advanced and requires specific configuration not covered in this basic example).\n",
+    "*   ****: Passes through the text without compression (useful for baseline or token counting).\n",
+    "*   ****: A simple engine that typically keeps the first and last parts of the text.\n",
+    "\n",
+    "You can switch between them easily. For example, to process our  using  (no compression) instead of :"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
    "source": [
     "# Example of using a different engine (none) on the full.txt file\n",
     "# To process a file, provide its path as an argument using --input-file. For instance:\n",
@@ -282,17 +276,26 @@
    ]
   },
   {
-   "cell_type": "markdown",
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
    "source": [
-    "Common options for `compact-memory compress`:\n",
-    "-   `--engine <name>`: ID of the compression engine (e.g., `prototype`, `pipeline`).\n",
-    "-   `--text \"<string>\"`: The text string to compress.\n",
-    "-   `<path_to_file_or_dir>`: (Positional) Path to the text file or directory to compress when `--text` is not used.\n",
-    "-   `--budget <int>`: The target token budget.\n",
-    "-   `--tokenizer <name>`: (Optional) Specify a tokenizer if the engine shouldn't use its default.\n",
-    "-   `--output <path>`: (Optional) Path to save the compressed output (e.g., as JSON). The compressed text is typically printed to the standard output if `--output` is not specified. Using `--output` is recommended for saving results, especially for larger inputs or when integrating into scripts.\n"
-   ],
-   "metadata": {}
+    "# Example of using a different engine (truncate) on the full.txt file\n",
+    "# To compress a file, provide its path as an argument. For instance:\n",
+    "!compact-memory compress --engine truncate sample_data/moon_landing/full.txt --budget 100"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# This attempts a non-interactive query with a specified chat model.\n",
+    "# The CLI might provide a single response or indicate it's for interactive use.\n",
+    "!compact-memory talk --chat-model gpt2 --message \"What is the capital of France?\""
+   ]
   },
   {
    "cell_type": "markdown",
@@ -301,9 +304,9 @@
     "\n",
     "The `compact-memory` CLI offers other utilities. Here are a few, with examples of how to get their help messages:\n",
     "\n",
-    "-   `download-model`, `download-chat-model`: We used these in the setup to fetch models (e.g., `all-MiniLM-L6-v2`, `gpt2`).\n",
-    "-   `engine stats`: Provides statistics about the engine store's storage.\n",
-    "-   `engine validate`: Validates the integrity of the engine store's storage."
+    "-   `download-model`, `download-chat-model`: We used these in the setup to fetch models (e.g., `all-MiniLM-L6-v2`, `tiny-gpt2`).\n",
+    "-   `stats`: Provides statistics about datasets or memory files.\n",
+    "-   `validate`: Validates configuration files or memory formats against the library's schemas."
    ],
    "metadata": {}
   },
@@ -313,9 +316,9 @@
    "metadata": {},
    "outputs": [],
    "source": [
-    "!compact-memory engine stats --help\n",
+    "!compact-memory agent stats --help\n",
     "!echo \"\\n---------------------------------------\\n\" # Visual separator\n",
-    "!compact-memory engine validate --help"
+    "!compact-memory agent validate --help"
    ]
   },
   {
@@ -324,7 +327,7 @@
    "source": [
     "## 3. Conclusion and Next Steps\n",
     "\n",
-    "This notebook has provided a user-focused introduction to the `compact-memory` library, specifically covering:\n",
+    "This notebook has provided a user-focused introduction to the `scottfalconer/compact-memory` fork, specifically covering:\n",
     "-   **Installation and Setup**: How to get the library ready for use.\n",
     "-   **Command Line Interface (CLI)**: Practical examples of using the CLI to compress text, try different strategies, and provide context to an LLM with the `talk` command.\n",
     "\n",
@@ -336,8 +339,8 @@
     "We encourage you to experiment with the CLI commands and strategies shown in this guide using your own data.\n",
     "\n",
     "### Further Resources:\n",
-    "-   **GitHub Repository**: [https://github.com/google/compact-memory](https://github.com/google/compact-memory)\n",
-    "-   CLI Help: Use the help commands in your terminal.\n",
+    "-   **GitHub Repository**: [https://github.com/scottfalconer/compact-memory](https://github.com/scottfalconer/compact-memory)\n",
+    "-   **CLI Help**: Use `compact-memory --help`, `compact-memory compress --help`, and `compact-memory talk --help` in your terminal for detailed CLI options.\n",
     "-   **Examples Folder**: Check the `examples/` directory in the repository for any other user-oriented examples or showcases that may be added.\n",
     "\n",
     "Happy compressing!"
