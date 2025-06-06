@@ -260,6 +260,12 @@ This project requires **Python 3.11+**.
    ```bash
    pip install -r requirements.txt
    ```
+   The CLI also relies on the `platformdirs` package for determining
+   user-specific plugin paths. It is included in the project's
+   dependencies but can be installed manually if needed:
+   ```bash
+   pip install platformdirs
+   ```
    Optional features such as spaCy sentence segmentation or local models
    require extra dependencies. Install them with pip extras, e.g.:
    ```bash

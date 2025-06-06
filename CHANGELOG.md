@@ -5,4 +5,5 @@
 
 ## Enhancements
 - Terminology standardized: documentation and CLI now consistently refer to compression engines, replacing the leftover “CompressionStrategies” term.
+- Added `platformdirs` as a required dependency to ensure plugin discovery works across operating systems.
 
