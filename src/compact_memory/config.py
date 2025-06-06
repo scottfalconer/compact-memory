@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional, Tuple
 # Default configuration values
 DEFAULT_CONFIG: Dict[str, Any] = {
     "compact_memory_path": "~/.local/share/compact_memory", # Default storage path, tilde will be expanded.
-    "default_model_id": "openai/gpt-3.5-turbo", # Default model for LLM interactions.
+    "default_model_id": "tiny-gpt2", # Default model for LLM interactions.
     "default_engine_id": "none", # Default engine for operations like history compression. "none" (NoCompressionEngine) is a safe, valid default.
     "verbose": False, # Default verbosity.
     "log_file": None, # Default log file path (None means no file logging by default).
