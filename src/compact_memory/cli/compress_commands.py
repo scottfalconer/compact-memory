@@ -235,9 +235,9 @@ def compress_command(  # Renamed from compress
     if memory_path_arg:
         resolved_memory_path = Path(memory_path_arg).expanduser().resolve()
         try:
-        # config_obj is ctx.obj["config"], default_model_id is ctx.obj["default_model_id"]
-        # These are now passed down through ctx.
-        main_engine_instance = load_engine(resolved_memory_path) # load_engine might also need config for LLM if it initializes one. For now, assume not.
+            # config_obj is ctx.obj["config"], default_model_id is ctx.obj["default_model_id"]
+            # These are now passed down through ctx.
+            main_engine_instance = load_engine(resolved_memory_path) # load_engine might also need config for LLM if it initializes one. For now, assume not.
         except FileNotFoundError:
             typer.secho(
                 f"Error: Engine store at '{resolved_memory_path}' not found. Initialize with 'engine init'.",
