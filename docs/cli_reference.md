@@ -32,11 +32,25 @@ Initializes a new Compact Memory engine store in the specified directory.
     *   `--tau FLOAT`: Similarity threshold for the 'prototype' engine (default: 0.8). Valid range: 0.5 to 0.95. This is stored as `similarity_threshold` in the prototype engine's configuration.
     *   `--chunker TEXT`: Identifier for the chunker to be used by the engine (default: "SentenceWindowChunker"). This is stored as `chunker_id` in the engine's configuration.
     *   `--help`: Show help message.
+*   **LLM Configuration for Engine Initialization:**
+    If you are initializing an engine that inherently requires or can be configured with a Large Language Model (LLM) by default (e.g., an anticipated `readagent_gist` engine), you can also provide LLM configuration flags during `init`. These flags are identical to those available for the `compress` command (see below) and allow pre-configuring the engine's default LLM behavior if the engine supports it.
+    *   `--llm-config NAME`
+    *   `--llm-provider-type TEXT`
+    *   `--llm-model-name TEXT`
+    *   `--llm-api-key TEXT`
+    *   `--readagent-gist-model-name TEXT`
+    *   `--readagent-gist-length INT`
+    *   `--readagent-lookup-max-tokens INT`
+    *   `--readagent-qa-model-name TEXT`
+    *   `--readagent-qa-max-new-tokens INT`
+    The engine's `save()` method would be responsible for persisting these settings if it's designed to do so. Refer to the specific engine's documentation for how it utilizes these initial LLM configurations.
 
 *   **Usage Examples:**
     ```bash
     compact-memory engine init ./my_prototype_store --engine prototype --name "My Research Store" --tau 0.75
     compact-memory engine init ./my_base_store --engine base --chunker "MyCustomChunkerID"
+    # Example for an LLM-dependent engine (conceptual)
+    compact-memory engine init ./my_readagent_store --engine readagent_gist --llm-config my-openai-model
     ```
 
 #### `compact-memory engine list`
@@ -129,6 +143,46 @@ Compresses text using a specified compression engine. Can read from a string, fi
         compact-memory engine init ./my_main_store --engine prototype
         # Now, compress some text using 'dummy_trunc' and ingest the result into 'my_main_store'
         compact-memory compress --memory-path ./my_main_store --text "This is a long text to be truncated and then ingested." --engine dummy_trunc --budget 50
+        ```
+*   **LLM Configuration for `compress`:**
+    If using a one-shot `--engine` that requires a Large Language Model (LLM), such as a hypothetical `readagent_gist` engine for summarization, you must provide LLM configuration. This can be done in several ways:
+    1.  **Using a Named Configuration (Recommended):**
+        Define your LLM setups in `llm_models_config.yaml` (see [Configuration Documentation](configuration.md#llm-model-configurations-llm_models_configyaml)) and use:
+        *   `--llm-config NAME`: Specifies the name of the configuration block from `llm_models_config.yaml` (e.g., `my-local-model`).
+    2.  **Directly Specifying Provider and Model:**
+        *   `--llm-provider-type TEXT`: Type of LLM provider (e.g., "local", "openai", "mock").
+        *   `--llm-model-name TEXT`: Name or path of the LLM model to use (e.g., `mistral-7b`, `gpt-3.5-turbo`). This is mandatory if `--llm-provider-type` is used.
+        *   `--llm-api-key TEXT`: API key for remote LLM providers (e.g., OpenAI). Alternatively, use environment variables like `OPENAI_API_KEY`.
+    3.  **Global Default:**
+        If no LLM options are provided directly, the system will look for a `default_model_id` in your global `compact-memory` configuration. This ID can be a named configuration from `llm_models_config.yaml` or a string in the format "provider/model\_name".
+
+*   **ReadAgent-Specific Flags for `compress`:**
+    When using an engine like `readagent_gist` (or a similar engine designed for multi-phase summarization/Q&A), these flags allow overriding specific aspects of its LLM usage. If the corresponding `...-model-name` is not provided, it defaults to the main `--llm-model-name` if specified.
+    *   `--readagent-gist-model-name TEXT`: Override model name for the gist summarization phase.
+    *   `--readagent-gist-length INT`: Override target token length for gist summaries (default: 100).
+    *   `--readagent-lookup-max-tokens INT`: Override max new tokens for the lookup phase output (default: 50).
+    *   `--readagent-qa-model-name TEXT`: Override model name for the Q&A answering phase.
+    *   `--readagent-qa-max-new-tokens INT`: Override max new tokens for Q&A answer generation (default: 250).
+
+*   **LLM Configuration Examples for `compress`:**
+    *   **Using a named configuration from `llm_models_config.yaml`:**
+        ```bash
+        compact-memory compress input.txt --engine readagent_gist --llm-config my-openai-setup --budget 150
+        ```
+    *   **Directly specifying a local model:**
+        ```bash
+        compact-memory compress input.txt --engine readagent_gist --llm-provider-type local --llm-model-name mistralai/Mistral-7B-Instruct-v0.1 --budget 150
+        ```
+    *   **Directly specifying an OpenAI model (using environment variable for API key):**
+        ```bash
+        # Ensure OPENAI_API_KEY is set in your environment
+        compact-memory compress input.txt -e readagent_gist --llm-provider-type openai --llm-model-name gpt-3.5-turbo --budget 150
+        ```
+    *   **Using ReadAgent flags:**
+        ```bash
+        compact-memory compress query_context.txt -e readagent_gist --llm-provider-type openai --llm-model-name gpt-4 \
+                         --readagent-gist-model-name gpt-3.5-turbo-instruct --readagent-gist-length 200 \
+                         --budget 250
         ```
 
 ### `compact-memory config`

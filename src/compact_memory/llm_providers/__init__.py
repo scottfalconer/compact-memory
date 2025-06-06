@@ -6,10 +6,12 @@ break basic functionality or tests that don't require them.
 
 from .openai_provider import OpenAIProvider
 from .mock_provider import MockLLMProvider # Added MockLLMProvider
+from .factory import create_llm_provider     # Add this line
 
 __all__ = [
     "OpenAIProvider",
     "MockLLMProvider", # Added MockLLMProvider
+    "create_llm_provider", # Add this
 ]
 
 try:  # Gemini provider requires ``google-generativeai``
