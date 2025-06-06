@@ -16,14 +16,16 @@ DEFAULT_CONFIG: Dict[str, Any] = {
 # Configuration file paths
 USER_CONFIG_DIR = pathlib.Path("~/.config/compact_memory").expanduser()
 USER_CONFIG_PATH = USER_CONFIG_DIR / "config.yaml"
-LOCAL_CONFIG_PATH = pathlib.Path(".gmconfig.yaml")
+LOCAL_CONFIG_PATH = pathlib.Path(".gmconfig.yaml") # Project-level general config
+LLM_MODELS_CONFIG_PATH = pathlib.Path("llm_models_config.yaml") # Project-level LLM models config
 
-# Source descriptions - MOVED AFTER PATH DEFINITIONS
+# Source descriptions
 SOURCE_DEFAULT = "application default"
 SOURCE_USER_CONFIG = f"user global config file ({USER_CONFIG_PATH})"
 SOURCE_LOCAL_CONFIG = f"local project config file ({LOCAL_CONFIG_PATH})"
+SOURCE_LLM_MODELS_CONFIG = f"llm models config file ({LLM_MODELS_CONFIG_PATH})"
 SOURCE_ENV_VAR = "environment variable"
-SOURCE_OVERRIDE = "runtime override"  # For values set via CLI options or future `config.set_runtime()`
+SOURCE_OVERRIDE = "runtime override"
 
 # Environment variable prefixes
 ENV_VAR_PREFIX = "COMPACT_MEMORY_"
@@ -33,11 +35,13 @@ class Config:
     def __init__(self):
         self._config: Dict[str, Any] = {}
         self._sources: Dict[str, str] = {}
+        self.llm_configs: Dict[str, Any] = {} # For LLM model configurations
 
         self._load_defaults()
         self._load_user_config()
         self._load_local_config()
         self._load_env_vars()
+        self._load_llm_models_config() # Load LLM specific configs
         # Note: CLI overrides will be handled by the CLI directly by updating self._config and self._sources
 
     def _load_defaults(self):
@@ -54,12 +58,11 @@ class Config:
                         for key, value in user_config.items():
                             if (
                                 key in DEFAULT_CONFIG
-                            ):  # Check against DEFAULT_CONFIG to ensure key is known
+                            ):
                                 self._config[key] = value
                                 self._sources[key] = SOURCE_USER_CONFIG
-                            # else: print(f"Warning: Unknown key '{key}' in user config.")
             except Exception as e:
-                print(f"Error loading user config: {e}", file=sys.stderr)
+                print(f"Error loading user config '{USER_CONFIG_PATH}': {e}", file=sys.stderr)
 
     def _load_local_config(self):
         if LOCAL_CONFIG_PATH.exists():
@@ -68,12 +71,31 @@ class Config:
                     local_config = yaml.safe_load(f)
                     if local_config and isinstance(local_config, dict):
                         for key, value in local_config.items():
-                            if key in DEFAULT_CONFIG:  # Check against DEFAULT_CONFIG
+                            if key in DEFAULT_CONFIG:
                                 self._config[key] = value
                                 self._sources[key] = SOURCE_LOCAL_CONFIG
-                        # else: print(f"Warning: Unknown key '{key}' in local config.")
             except Exception as e:
-                print(f"Error loading local config: {e}", file=sys.stderr)
+                print(f"Error loading local config '{LOCAL_CONFIG_PATH}': {e}", file=sys.stderr)
+
+    def _load_llm_models_config(self):
+        """Loads LLM model configurations from LLM_MODELS_CONFIG_PATH."""
+        if LLM_MODELS_CONFIG_PATH.exists():
+            try:
+                with open(LLM_MODELS_CONFIG_PATH, "r") as f:
+                    loaded_llm_configs = yaml.safe_load(f)
+                    if loaded_llm_configs and isinstance(loaded_llm_configs, dict):
+                        self.llm_configs = loaded_llm_configs
+                        # Optionally, log source for these configs if needed for debugging
+                        # For simplicity, not adding to self._sources for each llm_config key
+                    elif loaded_llm_configs is not None: # File exists but is not a dict (e.g. empty or just a list/value)
+                         print(f"Warning: LLM models config file '{LLM_MODELS_CONFIG_PATH}' does not contain a valid dictionary.", file=sys.stderr)
+            except yaml.YAMLError as e:
+                print(f"Error parsing LLM models config file '{LLM_MODELS_CONFIG_PATH}': {e}", file=sys.stderr)
+            except Exception as e:
+                print(f"Error loading LLM models config file '{LLM_MODELS_CONFIG_PATH}': {e}", file=sys.stderr)
+        # else:
+            # print(f"Info: LLM models config file '{LLM_MODELS_CONFIG_PATH}' not found. No LLM specific configs loaded.", file=sys.stderr)
+
 
     def _load_env_vars(self):
         for key in DEFAULT_CONFIG.keys():
@@ -84,77 +106,61 @@ class Config:
                 try:
                     if isinstance(default_value, bool):
                         actual_value = env_var_value_str.lower() in ("true", "1", "yes")
-                    elif isinstance(default_value, int):  # Added int casting
+                    elif isinstance(default_value, int):
                         actual_value = int(env_var_value_str)
-                    elif isinstance(default_value, float):  # Added float casting
+                    elif isinstance(default_value, float):
                         actual_value = float(env_var_value_str)
-                    else: # String values
+                    else:
                         if key == "compact_memory_path" and env_var_value_str:
-                            # For 'compact_memory_path', expand '~' and resolve to an absolute path.
                             try:
                                 actual_value = str(pathlib.Path(env_var_value_str).expanduser().resolve())
-                            except Exception as e: # Handle potential errors during path resolution (e.g., invalid chars)
+                            except Exception as e:
                                 print(f"Warning: Could not expand/resolve path '{env_var_value_str}' for {env_var_name}. Using raw value. Error: {e}", file=sys.stderr)
-                                actual_value = env_var_value_str # Fallback to the raw string value
+                                actual_value = env_var_value_str
                         else:
                             actual_value = env_var_value_str
 
                     self._config[key] = actual_value
                     self._sources[key] = f"{SOURCE_ENV_VAR} ({env_var_name})"
-                except ValueError: # Catches errors from int(), float()
+                except ValueError:
                     print(
                         f"Warning: Could not cast env var {env_var_name} value '{env_var_value_str}' to type {type(default_value)}. Using string value.", file=sys.stderr
                     )
-                    # For compact_memory_path, if casting failed but it's a string, still try to expand/resolve
                     if key == "compact_memory_path" and isinstance(env_var_value_str, str) and env_var_value_str:
                         try:
                             self._config[key] = str(pathlib.Path(env_var_value_str).expanduser().resolve())
                         except Exception as e:
                             print(f"Warning: Could not expand path '{env_var_value_str}' for {env_var_name} after casting error. Using raw value. Error: {e}", file=sys.stderr)
-                            self._config[key] = env_var_value_str # Fallback to raw value
+                            self._config[key] = env_var_value_str
                     else:
-                        self._config[key] = env_var_value_str # Fallback for other keys or if not string path
+                        self._config[key] = env_var_value_str
                     self._sources[key] = f"{SOURCE_ENV_VAR} ({env_var_name})"
 
 
     def get(self, key: str, default: Any = None) -> Any:
-        # Special handling for compact_memory_path to ensure it's expanded if coming from defaults or files
-        # Env var case is handled during _load_env_vars
         value = self._config.get(key, default)
         if key == "compact_memory_path" and isinstance(value, str):
             source = self._sources.get(key)
-            # If the path is from defaults or config files (not already processed env var or runtime override),
-            # ensure it's expanded and resolved.
             if source and source != SOURCE_ENV_VAR and source != SOURCE_OVERRIDE:
-                # Check if path looks like it needs expansion (contains '~' or isn't absolute).
-                # This avoids re-processing already absolute paths unnecessarily, though resolve() handles it.
-                if "~" in value or (not pathlib.Path(value).is_absolute() and not value.startswith(os.path.sep + os.path.sep)): # Handle UNC paths for Windows correctly
+                if "~" in value or (not pathlib.Path(value).is_absolute() and not value.startswith(os.path.sep + os.path.sep)):
                     try:
-                        # Expand user directory (~) and resolve to an absolute path.
                         return str(pathlib.Path(value).expanduser().resolve())
-                    except Exception as e: # Handle potential errors during path resolution
+                    except Exception as e:
                         print(f"Warning: Could not expand/resolve path '{value}' for {key} from {source}. Using original value. Error: {e}", file=sys.stderr)
-                        return value # Return original value if expansion fails
+                        return value
         return value
 
     def set(self, key: str, value: Any, source: str = SOURCE_OVERRIDE) -> bool:
-        """
-        Sets a configuration value in the runtime config and persists it to the user global config.
-        Source can be specified, defaults to runtime override.
-        Returns True if successful, False otherwise.
-        """
         if key not in DEFAULT_CONFIG:
             print(
                 f"Error: Configuration key '{key}' is not a recognized setting. Allowed keys are: {', '.join(DEFAULT_CONFIG.keys())}",
                 file=sys.stderr,
             )
-            # Or raise ValueError(f"Invalid configuration key: {key}")
             return False
 
         original_type = type(DEFAULT_CONFIG[key])
 
-        # Attempt to cast the input string value to the original type
-        if isinstance(value, str):  # All values from CLI Argument are strings initially
+        if isinstance(value, str):
             try:
                 if original_type is bool:
                     value = value.lower() in ("true", "1", "yes", "on")
@@ -162,28 +168,22 @@ class Config:
                     value = int(value)
                 elif original_type is float:
                     value = float(value)
-                # Add other type conversions if necessary
-                # If original_type is str, no conversion needed for string input
             except ValueError:
                 print(
                     f"Error: Invalid value format for '{key}'. Cannot convert '{value}' to {original_type}.",
                     file=sys.stderr,
                 )
-                return False  # Indicate failure
-        elif not isinstance(
-            value, original_type
-        ):  # If not a string and not the right type
+                return False
+        elif not isinstance(value, original_type):
             print(
                 f"Error: Invalid type for '{key}'. Expected {original_type}, got {type(value)}.",
                 file=sys.stderr,
             )
-            return False  # Indicate failure
-        # Type validation passed or value was already correct type
+            return False
 
         self._config[key] = value
-        self._sources[key] = source  # Runtime source
+        self._sources[key] = source
 
-        # Persist to user global config file
         user_config_data = {}
         if USER_CONFIG_PATH.exists():
             try:
@@ -200,35 +200,27 @@ class Config:
             USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
             with open(USER_CONFIG_PATH, "w") as f:
                 yaml.dump(user_config_data, f)
-            return True  # Indicate success
+            return True
         except Exception as e:
             print(f"Error writing to user config: {e}", file=sys.stderr)
-            return False  # Indicate failure
+            return False
 
     def get_with_source(self, key: str) -> Optional[Tuple[Any, str]]:
         if key in self._config:
             return self._config[key], self._sources.get(key, "Unknown")
-        elif key in DEFAULT_CONFIG:  # Should be caught by _load_defaults
+        elif key in DEFAULT_CONFIG:
             return DEFAULT_CONFIG[key], SOURCE_DEFAULT
         return None
 
     def get_all_with_sources(self) -> Dict[str, Tuple[Any, str]]:
         all_data = {}
-        # Start with all known default keys
         for key in DEFAULT_CONFIG.keys():
             all_data[key] = (
                 self._config.get(key, DEFAULT_CONFIG[key]),
                 self._sources.get(key, SOURCE_DEFAULT),
             )
-        # Add any other keys that might have been set dynamically (e.g. from config files not in defaults)
-        # This part is tricky if we strictly only want known keys.
-        # For now, let's assume _config only contains keys that were either in DEFAULT_CONFIG or added via set()
-        # and set() should ideally only allow known keys or handle them carefully.
-        # The current implementation will show all items in self._config due to the loading logic.
         for key_present in self._config:
-            if (
-                key_present not in all_data
-            ):  # Should not happen if loading logic is strict to DEFAULT_CONFIG
+            if key_present not in all_data:
                 all_data[key_present] = (
                     self._config[key_present],
                     self._sources.get(key_present, SOURCE_OVERRIDE),
@@ -240,7 +232,7 @@ class Config:
             original_type = None
             if key in DEFAULT_CONFIG:
                 original_type = type(DEFAULT_CONFIG[key])
-                if not isinstance(value, original_type):  # CLI values are often strings
+                if not isinstance(value, original_type):
                     try:
                         if original_type is bool:
                             value = str(value).lower() in ("true", "1", "yes")
@@ -254,7 +246,7 @@ class Config:
             self._config[key] = value
             self._sources[key] = "command-line argument"
 
-    def validate(self) -> bool:  # Mostly for type validation after all loads
+    def validate(self) -> bool:
         for key, default_value in DEFAULT_CONFIG.items():
             if key not in self._config:
                 print(f"Validation Error: Missing configuration key: {key}")
@@ -279,7 +271,7 @@ class Config:
                     else:
                         current_value = expected_type(
                             str(current_value)
-                        )  # General attempt
+                        )
 
                     if isinstance(current_value, expected_type):
                         self._config[key] = current_value
@@ -291,3 +283,17 @@ class Config:
                     )
                     return False
         return True
+
+    # --- LLM Model Config Methods ---
+    def get_llm_config(self, name: str) -> Optional[Dict[str, Any]]:
+        """
+        Returns a specific LLM configuration by its name.
+        Name usually corresponds to a model identifier like 'gpt-4-turbo' or 'local_default_summarizer'.
+        """
+        return self.llm_configs.get(name)
+
+    def get_all_llm_configs(self) -> Dict[str, Any]:
+        """
+        Returns the entire dictionary of loaded LLM configurations.
+        """
+        return self.llm_configs

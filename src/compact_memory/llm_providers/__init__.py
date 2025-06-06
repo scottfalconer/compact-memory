@@ -5,8 +5,12 @@ break basic functionality or tests that don't require them.
 """
 
 from .openai_provider import OpenAIProvider
+from .mock_provider import MockLLMProvider # Added MockLLMProvider
 
-__all__ = ["OpenAIProvider"]
+__all__ = [
+    "OpenAIProvider",
+    "MockLLMProvider", # Added MockLLMProvider
+]
 
 try:  # Gemini provider requires ``google-generativeai``
     from .gemini_provider import GeminiProvider
