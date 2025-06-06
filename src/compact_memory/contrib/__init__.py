@@ -11,7 +11,6 @@ __all__ = [
     "ActiveMemoryManager",
     "ConversationTurn",
     "enable_all_experimental_engines",
-    "enable_all_experimental_strategies",
 ]
 
 _lazy_modules = {
@@ -42,7 +41,3 @@ def enable_all_experimental_engines() -> None:
             importlib.import_module(__name__ + module)
         except Exception:
             continue
-
-
-# Backward compatibility
-enable_all_experimental_strategies = enable_all_experimental_engines
