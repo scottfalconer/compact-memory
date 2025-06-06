@@ -18,6 +18,7 @@ set -euo pipefail
 # Install the project and its dependencies as declared in pyproject.toml
 if [ -f pyproject.toml ]; then
     # Editable install so source changes are picked up without reinstalling
+    pip3 install --upgrade setuptools
     pip3 install -e . --no-build-isolation
 fi
 
