@@ -70,7 +70,7 @@ You can set default values for key options to avoid typing them repeatedly. Thes
     ```bash
     compact-memory config set compact_memory_path /path/to/your/main_memory
     ```
-    Once set, commands like `compact-memory ingest ...` or `compact-memory query ...` will use this path automatically unless you override it with the `--memory-path` option for a specific command.
+    Once set, commands like `compact-memory query ...` will use this path automatically unless you override it with the `--memory-path` option for a specific command.
 
 *   `default_model_id`: Your preferred LLM for queries and other LLM-dependent operations.
     ```bash
@@ -111,7 +111,7 @@ You can set default values for key options to avoid typing them repeatedly. Thes
 4.  **Now, you can run commands more simply, relying on your global defaults:**
     ```bash
     # Assuming compact_memory_path is set and the agent is initialized at that path
-    compact-memory ingest my_document.txt
+    compact-memory compress --file my_document.txt
     compact-memory query "What was in my document?"
     ```
 
