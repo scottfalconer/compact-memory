@@ -68,7 +68,7 @@ engine_id: awesome_strat          # Must match the 'id' in your class
 engine_class_name: MyAwesomeEngine # Your actual class name
 engine_module: engine             # The name of the .py file (without extension)
 display_name: "My Awesome Engine"   # A user-friendly name
-version: "1.0.0"                      # Your engine's version
+version: "0.1.0"                      # Your engine's version
 authors:
   - "Your Name <your.email@example.com>"
 description: "An awesome engine that demonstrates packaging."
