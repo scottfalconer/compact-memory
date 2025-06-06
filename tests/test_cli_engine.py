@@ -13,7 +13,7 @@ from compact_memory.engines.registry import available_engines # To check against
 #     id = "dummy_cli_test_eng"
 # register_compression_engine(DummyTestCliEngine.id, DummyTestCliEngine)
 
-runner = CliRunner()
+runner = CliRunner(env={'MIX_STDERR': 'False'})
 
 def _env(tmp_path: Path) -> dict[str, str]:
     # Basic env, mainly to ensure no user-level config interferes unexpectedly
