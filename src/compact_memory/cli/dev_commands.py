@@ -12,7 +12,7 @@ from rich.table import Table
 
 # Imports from compact_memory package
 from compact_memory.validation.registry import (
-    _VALIDATION_METRIC_REGISTRY,  # Assuming this is the intended way to list
+    list_validation_metrics,
     get_validation_metric_class,
 )
 from compact_memory.engines.registry import (
@@ -53,11 +53,12 @@ console = Console()
     help="Lists all available validation metric IDs that can be used in evaluations.",
 )
 def list_metrics_command() -> None:  # Renamed from list_metrics
-    if not _VALIDATION_METRIC_REGISTRY:
+    metric_ids = list_validation_metrics()
+    if not metric_ids:
         typer.echo("No validation metrics found.")
         return
     typer.echo("Available validation metric IDs:")
-    for mid in sorted(_VALIDATION_METRIC_REGISTRY.keys()):  # Use .keys() if it's a dict
+    for mid in metric_ids:
         typer.echo(f"- {mid}")
 
 
@@ -879,7 +880,7 @@ def inspect_trace_command(  # Renamed
 # - Package utils imported.
 # - `BaseCompressionEngine`, `CompressedMemory`, `CompressionTrace` imported for template.
 # - `dev_app` and `console` defined.
-# - `_VALIDATION_METRIC_REGISTRY` usage assumes it's a dict-like structure; `.keys()` added.
+# - `list_validation_metrics` helper used for listing metric IDs.
 # - `inspect_engine_command` logic for loading from path is commented out but provides a good structure if needed later.
 # - `evaluate_compression_command` and `evaluate_llm_response_command` helpers and logic seem fine.
 # - `test_llm_prompt_command` logic for provider selection and API key handling is fine.

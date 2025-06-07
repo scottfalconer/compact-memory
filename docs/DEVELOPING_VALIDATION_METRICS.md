@@ -43,6 +43,8 @@ class RougeMetric(HFValidationMetric):
 ```
 
 Metrics are selected by `metric_id` and optional initialisation parameters.
+Use `list_validation_metrics()` from `compact_memory.validation.registry` to
+programmatically retrieve the available metric IDs.
 
 ## Embedding-based Metrics
 
