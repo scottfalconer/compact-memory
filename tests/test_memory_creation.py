@@ -43,7 +43,9 @@ def test_llm_summary_creator(monkeypatch):
         @staticmethod
         def create(*args, **kwargs):
             return {"choices": [{"message": {"content": "summary"}}]}
+
     import openai
+
     monkeypatch.setattr(openai.ChatCompletion, "create", Dummy.create)
     creator = LLMSummaryCreator(model="dummy")
     assert creator.create("text") == "summary"

@@ -18,7 +18,7 @@ _lazy_modules = {
     "FirstLastEngine": "compact_memory.engines.first_last_engine",
     "ActiveMemoryManager": "compact_memory.active_memory_manager",
     "ConversationTurn": "compact_memory.active_memory_manager",
-    'ReadAgentGistEngine': 'compact_memory.engines.ReadAgent.engine',
+    "ReadAgentGistEngine": "compact_memory.engines.ReadAgent.engine",
 }
 
 

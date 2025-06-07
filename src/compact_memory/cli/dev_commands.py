@@ -20,6 +20,7 @@ from compact_memory.engines.registry import (
     all_engine_metadata as cm_all_engine_metadata,  # Renamed
 )
 from compact_memory.embedding_pipeline import get_embedding_dim
+
 # PrototypeEngine was removed
 # from compact_memory.vector_store import (
 #     InMemoryVectorStore,
