@@ -43,10 +43,10 @@ class OpenAIProvider(LLMProvider):
         if api_key:
             openai.api_key = api_key
         messages = [{"role": "user", "content": prompt}]
-        resp = openai.ChatCompletion.create(
+        resp = openai.chat.completions.create(
             model=model_name,
             messages=messages,
             max_tokens=max_new_tokens,
             **llm_kwargs,
         )
-        return resp.choices[0].message["content"].strip()
+        return resp.choices[0].message.content.strip()
