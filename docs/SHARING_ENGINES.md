@@ -43,8 +43,6 @@ my_custom_engine_package/
 ├── engine_package.yaml            # Manifest file (required)
 ├── README.md                        # Documentation for your engine
 ├── requirements.txt                 # (Optional) Python dependencies
-└── experiments/                     # (Optional) Example experiment configs
-    └── example_experiment.yaml
 ```
 
 ### The `engine_package.yaml` Manifest
@@ -65,7 +63,6 @@ This YAML file is crucial for Compact Memory to understand and load your engine.
 **Optional Fields:**
 
 *   `dependencies` (list of strings): A list of Python package dependencies (can also be in `requirements.txt`).
-*   `default_experiments` (list of dicts): Can define default experiments for `compact-memory dev run-package-experiment`.
 
 **Example (`engine_package.yaml`):**
 
@@ -101,7 +98,6 @@ This command will:
     *   `engine_package.yaml` (pre-filled with `engine_id: YourEngineName`, `engine_class_name: MyEngine`, etc.).
     *   A basic `README.md`.
     *   An empty `requirements.txt`.
-    *   An `experiments/` directory with an `example.yaml`.
 
 You then need to:
 1.  Edit `engine.py` to implement your compression logic and set the correct `id` in the class.

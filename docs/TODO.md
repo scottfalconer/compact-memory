@@ -1,6 +1,6 @@
 # TODO
 
-This file tracks outstanding work based on `PROJECT_VISION.md` and the latest v3 implementation plan.
+This file tracks outstanding work based on the earlier project vision and the latest v3 implementation plan.
 
 ## 1 · Data-Model & Storage Layer
 _Completed in v0.1.1._

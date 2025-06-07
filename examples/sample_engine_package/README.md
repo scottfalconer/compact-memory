@@ -37,9 +37,6 @@ A typical engine package includes the following:
     *   If your engine has specific Python dependencies, list them here.
     *   These can be installed by users of your engine package.
 
-*   **`experiments/` (Optional)**:
-    *   You can include example experiment configuration files (`.yaml`) that demonstrate how to use your engine.
-    *   See `experiments/example.yaml` for a basic structure.
 
 ## Adapting This Example
 
@@ -50,7 +47,6 @@ A typical engine package includes the following:
     *   Implement the `compress` method. This method takes the input text/chunks and a token budget and should return a `CompressedMemory` object and a `CompressionTrace` object.
 3. **Update Metadata (`engine_package.yaml`):** Edit the `engine_package.yaml` file to reflect your engine's details. Critically, ensure `engine_id` matches the `id` attribute in your engine class, and `engine_module` and `engine_class_name` correctly point to your Python file and class.
 4. **List Dependencies (`requirements.txt`):** If your engine relies on external Python libraries, add them to the `requirements.txt` file, one per line (e.g., `numpy>=1.20`).
-5. **Add Examples (`experiments/`):** Optionally, create or modify YAML configuration files in the `experiments/` directory to showcase how to run experiments with your engine.
 
 ## Making Your Packaged Engine Discoverable
 

@@ -10,9 +10,9 @@ embeddings and "snap-assigned" to belief prototypes which act as stable
 centroids. The codebase is organised into a library providing Python APIs and
 a CLI (`compact-memory`).
 
-The design follows the hypotheses documented in `PROJECT_VISION.md`:
-prototypes reduce storage and search cost while providing more robust
-gist-based reasoning. The implementation emphasises pluggability so
+The design follows the core hypotheses of the project: prototypes reduce
+storage and search cost while providing more robust gist-based
+reasoning. The implementation emphasises pluggability so
 alternative memory creation, embedding and storage mechanisms can be
 experimented with.
 
@@ -41,11 +41,11 @@ experimented with.
   chunkers to be plugged in via config.
 - **`memory_creation.py`** – small utilities to create "memory" texts
   from raw documents. Includes identity, extractive, fixed chunk and
-  LLM-driven variants so experiments can measure which produces better
+  LLM-driven variants for exploring which approach produces better
   prototypes.
 - **`cli.py`** – Typer-based command line app supporting `init`,
   `stats`, `validate`, `clear`, `download-model`, `download-chat-model`,
-  `experiment` and `engine inspect`. Persistence is
+  and `engine inspect`. Persistence is
   locked during writes to avoid corruption.
 - Additional vector store implementations can be developed by
   extending the interfaces used by a vector store interface. This keeps
@@ -94,9 +94,9 @@ quickly.
 ## CLI
 
 `compact-memory` is implemented using Typer and exposes subcommands for
-initialising a memory store, inspecting stored prototypes and running
-experiments. The CLI is the primary interface, and a Colab notebook will
-provide a graphical option in the future.
+initialising a memory store and inspecting stored prototypes. The CLI is
+the primary interface, and a Colab notebook will provide a graphical
+option in the future.
 
 ## Testing
 
