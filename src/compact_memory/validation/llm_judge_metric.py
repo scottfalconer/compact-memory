@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 import hashlib
+import os
 
 import openai
 
@@ -35,7 +36,10 @@ class LLMJudgeMetric(ValidationMetric):
     def __init__(self, model_name: str = "gpt-3.5-turbo", **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.model_name = model_name
-        self.client = openai.OpenAI()
+        api_key = kwargs.pop("api_key", None) or os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY environment variable not set")
+        self.client = openai.OpenAI(api_key=api_key)
 
     def _score_pair(self, system_prompt: str, text_a: str, text_b: str) -> float:
         key = hashlib.sha256(

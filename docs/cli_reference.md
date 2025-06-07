@@ -215,7 +215,8 @@ Tests a Language Model (LLM) prompt with specified context and query.
 Evaluates an LLM's response against a reference answer using a specified metric.
 
 The `llm_judge` metric requires an OpenAI API key available in the
-`OPENAI_API_KEY` environment variable.
+`OPENAI_API_KEY` environment variable. If the key is missing, the metric
+raises a clear `RuntimeError`.
 
 *   **`RESPONSE_INPUT`**: (Required) LLM's response text/file/-.
 *   **`REFERENCE_INPUT`**: (Required) Reference answer text/file/-.

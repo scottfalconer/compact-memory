@@ -70,4 +70,4 @@ score = metric.evaluate(llm_response=model_answer, reference_answer=truth)
 ```
 
 Ensure your `OPENAI_API_KEY` environment variable is set before using this
-metric.
+metric. The metric raises a `RuntimeError` if no API key is found.

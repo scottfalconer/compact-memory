@@ -1,5 +1,6 @@
 from compact_memory.validation.llm_judge_metric import LLMJudgeMetric
 import openai
+import pytest
 
 
 class DummyClient:
@@ -21,6 +22,7 @@ class DummyClient:
 
 def test_llm_judge_metric(monkeypatch):
     dummy = DummyClient()
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
     monkeypatch.setattr(openai, "OpenAI", lambda *a, **k: dummy)
     metric = LLMJudgeMetric(model_name="gpt-x")
     res1 = metric.evaluate(llm_response="foo", reference_answer="foo")
@@ -28,3 +30,9 @@ def test_llm_judge_metric(monkeypatch):
     assert res1["llm_judge_score"] == 0.8
     assert dummy.call_count == 1
     assert res2["llm_judge_score"] == 0.8
+
+
+def test_llm_judge_metric_missing_key(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    with pytest.raises(RuntimeError):
+        LLMJudgeMetric(model_name="gpt-x")
