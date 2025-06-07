@@ -408,7 +408,9 @@ For example, to evaluate compression quality:
 ```bash
 compact-memory dev evaluate-compression original.txt compressed_version.txt --metric compression_ratio
 compact-memory dev evaluate-llm-response model_answer.txt reference.txt --metric rouge_hf
+compact-memory dev evaluate-llm-response answer.txt truth.txt --metric llm_judge
 ```
+The `llm_judge` metric requires the `OPENAI_API_KEY` environment variable to be set. See `docs/cli_reference.md` for the full list of available metrics.
 To list available engines (including plugins):
 ```bash
 compact-memory dev list-engines
