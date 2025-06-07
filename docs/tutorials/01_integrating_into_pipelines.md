@@ -29,7 +29,7 @@ from compact_memory.token_utils import get_tokenizer, token_count # For token co
 import os # For API keys, if needed
 
 # Placeholder for your actual LLM calling function
-def my_llm_call(prompt: str, model_name: str = "gpt-3.5-turbo") -> str:
+def my_llm_call(prompt: str, model_name: str = "gpt-4.1-nano") -> str:
     print(f"---- Sending to LLM ({model_name}) ----")
     print(prompt)
     print("---- End of LLM Prompt ----")
@@ -172,7 +172,7 @@ from compact_memory.token_utils import get_tokenizer, token_count
 import os
 
 # Placeholder for your actual LLM calling function
-def my_llm_call(prompt: str, model_name: str = "gpt-3.5-turbo") -> str:
+def my_llm_call(prompt: str, model_name: str = "gpt-4.1-nano") -> str:
     print(f"---- Sending to LLM ({model_name}) ----")
     print(prompt)
     print("---- End of LLM Prompt ----")

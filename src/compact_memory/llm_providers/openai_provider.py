@@ -16,6 +16,7 @@ class OpenAIProvider(LLMProvider):
     MODEL_TOKEN_LIMITS: Dict[str, int] = {
         "gpt-3.5-turbo": 4096,
         "gpt-4-turbo": 128000,
+        "gpt-4.1-nano": 8192,
     }
 
     def get_token_budget(self, model_name: str, **kwargs) -> int:

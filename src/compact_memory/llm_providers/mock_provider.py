@@ -1,6 +1,7 @@
 from typing import Dict, Optional, Callable, Any
 from compact_memory.llm_providers_abc import LLMProvider
 
+
 class MockLLMProvider(LLMProvider):
     """
     A mock LLM provider for testing purposes.
@@ -28,11 +29,25 @@ class MockLLMProvider(LLMProvider):
         self.responses: Dict[str, str] = responses if responses is not None else {}
         self.default_response: str = default_response
 
-        # Default token count function: simple word count
-        self._token_count_fn: Callable[[str, str], int] = token_count_fn if token_count_fn else lambda text, model_name: len(text.split())
+        # Default token count function: counts words and leading/trailing whitespace groups
+        def default_token_count(text: str, model_name: str) -> int:
+            if not text:
+                return 0
+            tokens = text.split()
+            if text.startswith(" ") and text.strip():
+                tokens.append("")
+            if text.endswith(" ") and text.strip():
+                tokens.append("")
+            return len(tokens)
+
+        self._token_count_fn: Callable[[str, str], int] = (
+            token_count_fn if token_count_fn else default_token_count
+        )
 
         # Default token budget function: fixed value
-        self._token_budget_fn: Callable[[str], int] = token_budget_fn if token_budget_fn else lambda model_name: 2048
+        self._token_budget_fn: Callable[[str], int] = (
+            token_budget_fn if token_budget_fn else lambda model_name: 2048
+        )
 
     def get_token_budget(self, model_name: str, **kwargs: Any) -> int:
         """
@@ -51,11 +66,7 @@ class MockLLMProvider(LLMProvider):
         return self._token_count_fn(text, model_name)
 
     def generate_response(
-        self,
-        prompt: str,
-        model_name: str,
-        max_new_tokens: int,
-        **llm_kwargs: Any
+        self, prompt: str, model_name: str, max_new_tokens: int, **llm_kwargs: Any
     ) -> str:
         """
         Generates a response for the given prompt.

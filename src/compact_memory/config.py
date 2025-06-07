@@ -6,18 +6,20 @@ from typing import Any, Dict, Optional, Tuple
 
 # Default configuration values
 DEFAULT_CONFIG: Dict[str, Any] = {
-    "compact_memory_path": "~/.local/share/compact_memory", # Default storage path, tilde will be expanded.
-    "default_model_id": "tiny-gpt2", # Default model for LLM interactions.
-    "default_engine_id": "none", # Default engine for operations like history compression. "none" (NoCompressionEngine) is a safe, valid default.
-    "verbose": False, # Default verbosity.
-    "log_file": None, # Default log file path (None means no file logging by default).
+    "compact_memory_path": "~/.local/share/compact_memory",  # Default storage path, tilde will be expanded.
+    "default_model_id": "gpt-4.1-nano",  # Default model for LLM interactions.
+    "default_engine_id": "none",  # Default engine for operations like history compression. "none" (NoCompressionEngine) is a safe, valid default.
+    "verbose": False,  # Default verbosity.
+    "log_file": None,  # Default log file path (None means no file logging by default).
 }
 
 # Configuration file paths
 USER_CONFIG_DIR = pathlib.Path("~/.config/compact_memory").expanduser()
 USER_CONFIG_PATH = USER_CONFIG_DIR / "config.yaml"
-LOCAL_CONFIG_PATH = pathlib.Path(".gmconfig.yaml") # Project-level general config
-LLM_MODELS_CONFIG_PATH = pathlib.Path("llm_models_config.yaml") # Project-level LLM models config
+LOCAL_CONFIG_PATH = pathlib.Path(".gmconfig.yaml")  # Project-level general config
+LLM_MODELS_CONFIG_PATH = pathlib.Path(
+    "llm_models_config.yaml"
+)  # Project-level LLM models config
 
 # Source descriptions
 SOURCE_DEFAULT = "application default"
@@ -35,13 +37,13 @@ class Config:
     def __init__(self):
         self._config: Dict[str, Any] = {}
         self._sources: Dict[str, str] = {}
-        self.llm_configs: Dict[str, Any] = {} # For LLM model configurations
+        self.llm_configs: Dict[str, Any] = {}  # For LLM model configurations
 
         self._load_defaults()
         self._load_user_config()
         self._load_local_config()
         self._load_env_vars()
-        self._load_llm_models_config() # Load LLM specific configs
+        self._load_llm_models_config()  # Load LLM specific configs
         # Note: CLI overrides will be handled by the CLI directly by updating self._config and self._sources
 
     def _load_defaults(self):
@@ -56,13 +58,14 @@ class Config:
                     user_config = yaml.safe_load(f)
                     if user_config and isinstance(user_config, dict):
                         for key, value in user_config.items():
-                            if (
-                                key in DEFAULT_CONFIG
-                            ):
+                            if key in DEFAULT_CONFIG:
                                 self._config[key] = value
                                 self._sources[key] = SOURCE_USER_CONFIG
             except Exception as e:
-                print(f"Error loading user config '{USER_CONFIG_PATH}': {e}", file=sys.stderr)
+                print(
+                    f"Error loading user config '{USER_CONFIG_PATH}': {e}",
+                    file=sys.stderr,
+                )
 
     def _load_local_config(self):
         if LOCAL_CONFIG_PATH.exists():
@@ -75,7 +78,10 @@ class Config:
                                 self._config[key] = value
                                 self._sources[key] = SOURCE_LOCAL_CONFIG
             except Exception as e:
-                print(f"Error loading local config '{LOCAL_CONFIG_PATH}': {e}", file=sys.stderr)
+                print(
+                    f"Error loading local config '{LOCAL_CONFIG_PATH}': {e}",
+                    file=sys.stderr,
+                )
 
     def _load_llm_models_config(self):
         """Loads LLM model configurations from LLM_MODELS_CONFIG_PATH."""
@@ -83,19 +89,27 @@ class Config:
             try:
                 with open(LLM_MODELS_CONFIG_PATH, "r") as f:
                     loaded_llm_configs = yaml.safe_load(f)
-                    if loaded_llm_configs and isinstance(loaded_llm_configs, dict):
+                    if isinstance(loaded_llm_configs, dict) and loaded_llm_configs:
                         self.llm_configs = loaded_llm_configs
                         # Optionally, log source for these configs if needed for debugging
                         # For simplicity, not adding to self._sources for each llm_config key
-                    elif loaded_llm_configs is not None: # File exists but is not a dict (e.g. empty or just a list/value)
-                         print(f"Warning: LLM models config file '{LLM_MODELS_CONFIG_PATH}' does not contain a valid dictionary.", file=sys.stderr)
+                    else:
+                        print(
+                            f"Warning: LLM models config file '{LLM_MODELS_CONFIG_PATH}' does not contain a valid dictionary.",
+                            file=sys.stderr,
+                        )
             except yaml.YAMLError as e:
-                print(f"Error parsing LLM models config file '{LLM_MODELS_CONFIG_PATH}': {e}", file=sys.stderr)
+                print(
+                    f"Error parsing LLM models config file '{LLM_MODELS_CONFIG_PATH}': {e}",
+                    file=sys.stderr,
+                )
             except Exception as e:
-                print(f"Error loading LLM models config file '{LLM_MODELS_CONFIG_PATH}': {e}", file=sys.stderr)
+                print(
+                    f"Error loading LLM models config file '{LLM_MODELS_CONFIG_PATH}': {e}",
+                    file=sys.stderr,
+                )
         # else:
-            # print(f"Info: LLM models config file '{LLM_MODELS_CONFIG_PATH}' not found. No LLM specific configs loaded.", file=sys.stderr)
-
+        # print(f"Info: LLM models config file '{LLM_MODELS_CONFIG_PATH}' not found. No LLM specific configs loaded.", file=sys.stderr)
 
     def _load_env_vars(self):
         for key in DEFAULT_CONFIG.keys():
@@ -113,9 +127,16 @@ class Config:
                     else:
                         if key == "compact_memory_path" and env_var_value_str:
                             try:
-                                actual_value = str(pathlib.Path(env_var_value_str).expanduser().resolve())
+                                actual_value = str(
+                                    pathlib.Path(env_var_value_str)
+                                    .expanduser()
+                                    .resolve()
+                                )
                             except Exception as e:
-                                print(f"Warning: Could not expand/resolve path '{env_var_value_str}' for {env_var_name}. Using raw value. Error: {e}", file=sys.stderr)
+                                print(
+                                    f"Warning: Could not expand/resolve path '{env_var_value_str}' for {env_var_name}. Using raw value. Error: {e}",
+                                    file=sys.stderr,
+                                )
                                 actual_value = env_var_value_str
                         else:
                             actual_value = env_var_value_str
@@ -124,29 +145,44 @@ class Config:
                     self._sources[key] = f"{SOURCE_ENV_VAR} ({env_var_name})"
                 except ValueError:
                     print(
-                        f"Warning: Could not cast env var {env_var_name} value '{env_var_value_str}' to type {type(default_value)}. Using string value.", file=sys.stderr
+                        f"Warning: Could not cast env var {env_var_name} value '{env_var_value_str}' to type {type(default_value)}. Using string value.",
+                        file=sys.stderr,
                     )
-                    if key == "compact_memory_path" and isinstance(env_var_value_str, str) and env_var_value_str:
+                    if (
+                        key == "compact_memory_path"
+                        and isinstance(env_var_value_str, str)
+                        and env_var_value_str
+                    ):
                         try:
-                            self._config[key] = str(pathlib.Path(env_var_value_str).expanduser().resolve())
+                            self._config[key] = str(
+                                pathlib.Path(env_var_value_str).expanduser().resolve()
+                            )
                         except Exception as e:
-                            print(f"Warning: Could not expand path '{env_var_value_str}' for {env_var_name} after casting error. Using raw value. Error: {e}", file=sys.stderr)
+                            print(
+                                f"Warning: Could not expand path '{env_var_value_str}' for {env_var_name} after casting error. Using raw value. Error: {e}",
+                                file=sys.stderr,
+                            )
                             self._config[key] = env_var_value_str
                     else:
                         self._config[key] = env_var_value_str
                     self._sources[key] = f"{SOURCE_ENV_VAR} ({env_var_name})"
-
 
     def get(self, key: str, default: Any = None) -> Any:
         value = self._config.get(key, default)
         if key == "compact_memory_path" and isinstance(value, str):
             source = self._sources.get(key)
             if source and source != SOURCE_ENV_VAR and source != SOURCE_OVERRIDE:
-                if "~" in value or (not pathlib.Path(value).is_absolute() and not value.startswith(os.path.sep + os.path.sep)):
+                if "~" in value or (
+                    not pathlib.Path(value).is_absolute()
+                    and not value.startswith(os.path.sep + os.path.sep)
+                ):
                     try:
                         return str(pathlib.Path(value).expanduser().resolve())
                     except Exception as e:
-                        print(f"Warning: Could not expand/resolve path '{value}' for {key} from {source}. Using original value. Error: {e}", file=sys.stderr)
+                        print(
+                            f"Warning: Could not expand/resolve path '{value}' for {key} from {source}. Using original value. Error: {e}",
+                            file=sys.stderr,
+                        )
                         return value
         return value
 
@@ -269,9 +305,7 @@ class Config:
                     elif expected_type is float:
                         current_value = float(str(current_value))
                     else:
-                        current_value = expected_type(
-                            str(current_value)
-                        )
+                        current_value = expected_type(str(current_value))
 
                     if isinstance(current_value, expected_type):
                         self._config[key] = current_value

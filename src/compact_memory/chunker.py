@@ -33,7 +33,11 @@ class SentenceWindowChunker(Chunker):
 
     id = "sentence_window"
 
-    def __init__(self, max_tokens: int = 256, overlap_tokens: int = 32):
+    def __init__(self, max_tokens: int = 256, overlap_tokens: int = 32, **kwargs):
+        if "window_size" in kwargs:
+            max_tokens = kwargs.pop("window_size")
+        if "overlap" in kwargs:
+            overlap_tokens = kwargs.pop("overlap")
         self.max_tokens = max_tokens
         self.overlap_tokens = overlap_tokens
         try:
