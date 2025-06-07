@@ -2,19 +2,24 @@ from __future__ import annotations
 
 """Registry utilities for compression engines."""
 
-from typing import Any, Dict, Optional, Type, List
+from typing import Any, Dict, Optional, Type, List, TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - for type checkers only
+    from .base import BaseCompressionEngine
 
 # Import BaseCompressionEngine relatively for type hinting within this module if needed
 # from .base import BaseCompressionEngine
 # It seems BaseCompressionEngine is imported by modules that call register_compression_engine
 
-_ENGINE_REGISTRY: Dict[str, Type["BaseCompressionEngine"]] = {} # Use string literal for forward ref if Base not imported
+_ENGINE_REGISTRY: Dict[str, Type["BaseCompressionEngine"]] = (
+    {}
+)  # Use string literal for forward ref if Base not imported
 _ENGINE_INFO: Dict[str, Dict[str, Optional[str]]] = {}
 
 
 def register_compression_engine(
     id: str,
-    cls: Type["BaseCompressionEngine"], # Use string literal
+    cls: Type["BaseCompressionEngine"],  # Use string literal
     *,
     display_name: str | None = None,
     version: str | None = None,
@@ -38,7 +43,9 @@ def register_compression_engine(
     }
 
 
-def get_compression_engine(id: str) -> Type["BaseCompressionEngine"]: # Use string literal
+def get_compression_engine(
+    id: str,
+) -> Type["BaseCompressionEngine"]:  # Use string literal
     """Return the engine class registered under ``id``."""
     return _ENGINE_REGISTRY[id]
 
@@ -59,7 +66,9 @@ def get_engine_metadata(id: str) -> Dict[str, Optional[str]] | None:
 def all_engine_metadata() -> Dict[str, Dict[str, Optional[str]]]:
     return dict(_ENGINE_INFO)
 
-_BUILTIN_ENGINES_REGISTERED = False # Guard to prevent multiple registrations.
+
+_BUILTIN_ENGINES_REGISTERED = False  # Guard to prevent multiple registrations.
+
 
 def register_builtin_engines():
     """
@@ -78,20 +87,20 @@ def register_builtin_engines():
     # and to encapsulate these imports within the registration logic.
     from compact_memory.engines.no_compression_engine import NoCompressionEngine
     from compact_memory.engines.first_last_engine import FirstLastEngine
-    # PrototypeEngine was removed
 
+    # PrototypeEngine was removed
 
     register_compression_engine(
         NoCompressionEngine.id,
         NoCompressionEngine,
         display_name="No Compression",
-        source="built-in"
+        source="built-in",
     )
     register_compression_engine(
         FirstLastEngine.id,
         FirstLastEngine,
         display_name="First/Last Chunks",
-        source="built-in"
+        source="built-in",
     )
     # PrototypeEngine was removed
     _BUILTIN_ENGINES_REGISTERED = True
@@ -103,5 +112,5 @@ __all__ = [
     "available_engines",
     "get_engine_metadata",
     "all_engine_metadata",
-    "register_builtin_engines", # Expose the new function
+    "register_builtin_engines",  # Expose the new function
 ]
