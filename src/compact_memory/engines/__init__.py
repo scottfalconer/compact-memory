@@ -12,6 +12,9 @@ from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
 # Import registry functions
 from .registry import get_compression_engine, register_builtin_engines
 
+# Import specific engines
+from .neocortex_transfer import NeocortexTransfer
+
 
 # Ensure built-in engines are registered when this package is imported.
 # This call to register_builtin_engines() is the single, centralized point
@@ -52,7 +55,8 @@ __all__ = [
     "CompressedMemory",
     "CompressionTrace",
     "load_engine",
-    # Note: Specific engine classes like NoCompressionEngine, FirstLastEngine, PrototypeEngine
+    "NeocortexTransfer", # Added
+    # Note: Specific engine classes like NoCompressionEngine, FirstLastEngine
     # are not exported here by default. They are accessed via get_compression_engine()
     # or direct import from their modules if needed for type checking outside the engines package.
 ]

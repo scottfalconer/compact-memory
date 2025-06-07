@@ -25,6 +25,7 @@ from compact_memory.engines import (
     CompressedMemory,
     CompressionTrace,
 )  # Dataclasses for return types
+# PrototypeEngine was removed
 
 
 # compress_app = typer.Typer() # Similar to query, can be a single command function for now
@@ -668,7 +669,13 @@ def _compress_text_to_memory(
         text_to_compress, one_shot_engine_id, budget, tokenizer, ctx  # Pass context
     )
 
-    # Ingest the compressed text into the main engine instance.
+    # Ingest into the main engine instance
+    # This part depends on how main_engine_instance expects to ingest pre-compressed content.
+    # Assuming a method like `add_compressed_memory` or adapting `ingest`.
+    # The original code used `main_engine.add_memory` for PrototypeEngine or `main_engine.ingest` for others.
+    # PrototypeEngine was removed, defaulting to standard ingest.
+    # Generic ingest, assuming it can take a string.
+    # If engines need more structured input for pre-compressed text, this needs adjustment.
     main_engine_instance.ingest(compressed_mem.text)
     # Or if there's a specific method for pre-compressed:
     # main_engine_instance.ingest_compressed(compressed_mem, source_id=source_document_id)

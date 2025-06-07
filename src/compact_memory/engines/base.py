@@ -206,7 +206,6 @@ class BaseCompressionEngine:
         self.index = None
         self._ensure_index()
 
-    # Make self.chunker a property to match PrototypeEngine
     @property
     def chunker(self) -> Chunker:
         """Return the current :class:`Chunker`."""
@@ -220,10 +219,6 @@ class BaseCompressionEngine:
         # If self.config exists and is a dict, update chunker_id
         if hasattr(self, 'config') and isinstance(self.config, dict):
             self.config['chunker_id'] = getattr(value, "id", type(value).__name__)
-        # If the engine store has a 'meta' attribute similar to PrototypeEngine, update it
-        # For now, this is specific to how PrototypeEngine uses store.meta
-        # if hasattr(self, 'store') and hasattr(self.store, 'meta') and isinstance(self.store.meta, dict):
-        #     self.store.meta["chunker"] = getattr(value, "id", type(value).__name__)
 
 __all__ = [
     "BaseCompressionEngine",

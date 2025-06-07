@@ -4,13 +4,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Type, List, TYPE_CHECKING
 
-if TYPE_CHECKING:  # pragma: no cover - hints only
+if TYPE_CHECKING:  # pragma: no cover - for type checkers only
     from .base import BaseCompressionEngine
-else:  # pragma: no cover - provide dummy for type checkers
-
-    class BaseCompressionEngine:  # type: ignore
-        pass
-
 
 # Import BaseCompressionEngine relatively for type hinting within this module if needed
 # from .base import BaseCompressionEngine
@@ -93,6 +88,8 @@ def register_builtin_engines():
     from compact_memory.engines.no_compression_engine import NoCompressionEngine
     from compact_memory.engines.first_last_engine import FirstLastEngine
 
+    # PrototypeEngine was removed
+
     register_compression_engine(
         NoCompressionEngine.id,
         NoCompressionEngine,
@@ -105,6 +102,7 @@ def register_builtin_engines():
         display_name="First/Last Chunks",
         source="built-in",
     )
+    # PrototypeEngine was removed
     _BUILTIN_ENGINES_REGISTERED = True
 
 

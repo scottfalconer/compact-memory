@@ -20,6 +20,10 @@ from compact_memory.engines.registry import (
     all_engine_metadata as cm_all_engine_metadata,  # Renamed
 )
 from compact_memory.embedding_pipeline import get_embedding_dim
+# PrototypeEngine was removed
+# from compact_memory.vector_store import (
+#     InMemoryVectorStore,
+# )  # Specific for inspect-engine (assuming it was only for PrototypeEngine)
 from compact_memory import llm_providers  # For test-llm-prompt
 from compact_memory.model_utils import (
     download_embedding_model as util_download_embedding_model,
@@ -109,17 +113,37 @@ def list_registered_engines_command(  # Renamed
 
 @dev_app.command(
     "inspect-engine",
-    help="Inspects aspects of a compression engine, currently focused on 'prototype' engine's beliefs.",
+    help="Inspects aspects of a compression engine. Functionality for 'prototype' engine was removed.",
 )
 def inspect_engine_command(
-    engine_name: str = typer.Argument(..., help="The name of the engine to inspect."),
+    engine_name: str = typer.Argument(
+        ...,
+        help="The name of the engine to inspect.",
+    ),
     *,
     list_prototypes: bool = typer.Option(
-        False, "--list-prototypes", help="No-op placeholder option."
+        False,
+        "--list-prototypes",
+        help="This option was for the removed PrototypeEngine and is no longer functional.",
     ),
+    # memory_path_arg: Optional[Path] = typer.Option(
+    # None, "--memory-path", "-m", help="Path to the engine store directory for inspection.",
+    # resolve_path=True,
+    # )
 ) -> None:
-    """Placeholder command for engine inspection."""
-    typer.echo("Engine inspection is not available.")
+    if engine_name.lower() == "prototype" or list_prototypes:
+        typer.secho(
+            f"Info: Functionality specific to 'PrototypeEngine' (like --list-prototypes) has been removed.",
+            fg=typer.colors.YELLOW,
+        )
+        # Optionally, provide information about inspecting other engines if a generic mechanism exists or is planned.
+        # For now, just indicate removal.
+        raise typer.Exit(code=0)
+
+    typer.secho(
+        f"Generic inspection for engine '{engine_name}' is not yet implemented or functionality for 'prototype' was removed.",
+        fg=typer.colors.BLUE,
+    )
 
 
 @dev_app.command(
@@ -807,6 +831,7 @@ def inspect_trace_command(  # Renamed
 # - tqdm import removed as utils are expected to handle their own progress bars.
 # - Imports are grouped logically.
 # - `compact_memory.engines.registry` aliased to avoid conflict.
+# - `PrototypeEngine` and `InMemoryVectorStore` references removed.
 # - `llm_providers` imported for `test_llm_prompt_command`.
 # - Model download utils imported.
 # - Package utils imported.
