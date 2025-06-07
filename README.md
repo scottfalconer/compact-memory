@@ -212,13 +212,13 @@ Note: The old method of enabling engines via `compact_memory_config.yaml` direct
 
 ### Using Experimental Engines
 
-Experimental engines live under ``BaseCompressionEngine.contrib``.
+Experimental engines live under ``compact_memory.contrib``.
 The CLI registers them automatically, so commands like ``--engine first_last`` work out of the box.
 When using the Python API directly, call ``enable_all_experimental_engines()`` to register them:
 
 ```python
-from BaseCompressionEngine.contrib import (
-    ChainedEngine,
+from compact_memory.contrib import (
+    FirstLastEngine,
     enable_all_experimental_engines,
 )
 
@@ -228,7 +228,7 @@ enable_all_experimental_engines()
 Once registered, these engines behave like any other:
 
 ```bash
-compact-memory compress --file text.txt --engine chained --budget 200
+compact-memory compress --file text.txt --engine first_last --budget 200
 ```
 
 Contrib engines are experimental and may change without notice.
