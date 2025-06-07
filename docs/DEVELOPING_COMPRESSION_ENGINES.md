@@ -165,7 +165,7 @@ class MyConfigurableEngine(BaseCompressionEngine):
     1.  **`self.config` is Pre-populated:** When `load_engine(path)` is used, it first instantiates your engine and passes the `config` from `engine_manifest.json` to your `__init__`. So, `self.config` should already be populated when `load()` is called. Your `__init__` should use this `self.config` to set initial attributes.
     2.  **Call `super().load(path)` (Conditional):**
         *   If your engine relies on `entries.json` and `embeddings.npy` saved by `BaseCompressionEngine.save()`, then call `super().load(path)`.
-        *   If your engine manages all its state independently of these files (like `PrototypeEngine` does), you might not need to call `super().load(path)`.
+        *   If your engine manages all its state independently of these files, you might not need to call `super().load(path)`.
     3.  **Load Custom State:** Load any custom files you saved in your `save` method. Use `self.config` if needed to determine how to load/configure custom state.
         ```python
         custom_data_path = path / "my_custom_data.json"

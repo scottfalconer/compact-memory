@@ -6,7 +6,7 @@ Starting with version 0.2.0, Compact Memory has introduced a new "Engine" framew
 
 ### 1. `MemoryContainer` Removed
 
-The `MemoryContainer` class has been deprecated and its functionality is now primarily handled by engine classes, notably the `PrototypeEngine` for users of the previous default memory system.
+The `MemoryContainer` class has been deprecated and its functionality is now handled by dedicated engine classes.
 
 *   **Old:**
     ```python
@@ -17,30 +17,17 @@ The `MemoryContainer` class has been deprecated and its functionality is now pri
     container.save("my_memory")
     ```
 
-*   **New (using `PrototypeEngine` as an example):**
+*   **New (using a custom engine as an example):**
     ```python
-    from compact_memory.prototype_engine import PrototypeEngine
+    from compact_memory.engines import load_engine
     from compact_memory.vector_store import InMemoryVectorStore
     from compact_memory.embedding_pipeline import get_embedding_dim
 
-    # Initialization
-    dim = get_embedding_dim() # If using default embeddings
+    dim = get_embedding_dim()
     store = InMemoryVectorStore(embedding_dim=dim)
-    engine = PrototypeEngine(store) # Or use load_engine for existing stores
-
-    # Adding memory
-    engine.add_memory("Some text") # PrototypeEngine specific method
-
-    # Generic ingestion (for engines that support it)
-    # engine.ingest("Some other text")
-
-    # Querying
-    results = engine.query("text") # PrototypeEngine specific method
-
-    # Generic recall (for engines that support it)
-    # results_recall = engine.recall("text")
-
-    # Saving
+    engine = load_engine(store)
+    engine.ingest("Some text")
+    results = engine.recall("text")
     engine.save("my_engine_store")
     ```
 
@@ -52,7 +39,7 @@ Engines now have their own `save(path)` and `load(path)` methods for persistence
     ```python
     engine.save("/path/to/my_engine_store")
     ```
-    This creates an `engine_manifest.json` file within the specified directory, along with other data files required by the engine (e.g., `memories.json`, `vectors.npy` for `PrototypeEngine`, or `entries.json`, `embeddings.npy` for `BaseCompressionEngine` based stores).
+    This creates an `engine_manifest.json` file within the specified directory, along with other data files required by the engine (for example, `memories.json` and `vectors.npy` for engines that store embeddings).
 
 *   **Loading an engine:**
     ```python
@@ -84,11 +71,11 @@ Refer to the [CLI Reference](./cli_reference.md) for updated command usage.
 
 ## Migration Steps
 
-1.  **Update Imports:** Change imports from `MemoryContainer` to the appropriate engine class (e.g., `PrototypeEngine`).
-2.  **Adapt Initialization:** If you were using `MemoryContainer`, you'll likely switch to `PrototypeEngine`, which requires a `VectorStore` instance for initialization.
+1.  **Update Imports:** Change imports from `MemoryContainer` to your chosen engine class.
+2.  **Adapt Initialization:** If you were using `MemoryContainer`, update your code to initialize the new engine with an appropriate `VectorStore` instance.
 3.  **Update Method Calls:**
-    *   `container.add_memory(...)` on `MemoryContainer` maps to `engine.add_memory(...)` on `PrototypeEngine`.
-    *   `container.query(...)` maps to `engine.query(...)` on `PrototypeEngine`.
+    *   `container.add_memory(...)` on `MemoryContainer` maps to `engine.add_memory(...)` on your engine.
+    *   `container.query(...)` maps to `engine.query(...)` on your engine.
     *   For more generic interaction, engines might implement `engine.ingest(...)` and `engine.recall(...)`.
 4.  **Update Persistence:**
     *   Replace `container.save(path)` and `MemoryContainer.load(path)` with `engine.save(path)` and `load_engine(path)`.
