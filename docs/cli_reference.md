@@ -157,6 +157,20 @@ Group of commands for compression engine developers and researchers.
 
 Lists all available validation metric IDs that can be used in evaluations.
 
+Example output:
+
+```
+Available validation metric IDs:
+- rouge_hf
+- bleu_hf
+- meteor_hf
+- bertscore_hf
+- exact_match
+- compression_ratio
+- embedding_similarity
+- llm_judge
+```
+
 #### `compact-memory dev list-engines` (also `list-strategies`)
 
 Lists all available compression engine IDs, their versions, and sources (built-in or plugin).
@@ -199,6 +213,9 @@ Tests a Language Model (LLM) prompt with specified context and query.
 #### `compact-memory dev evaluate-llm-response RESPONSE_INPUT REFERENCE_INPUT`
 
 Evaluates an LLM's response against a reference answer using a specified metric.
+
+The `llm_judge` metric requires an OpenAI API key available in the
+`OPENAI_API_KEY` environment variable.
 
 *   **`RESPONSE_INPUT`**: (Required) LLM's response text/file/-.
 *   **`REFERENCE_INPUT`**: (Required) Reference answer text/file/-.
