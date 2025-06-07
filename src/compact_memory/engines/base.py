@@ -46,28 +46,28 @@ class BaseCompressionEngine:
         embedding_fn: Callable[[str | Sequence[str]], np.ndarray] = embed_text,
         preprocess_fn: Callable[[str], str] | None = None,
         config: Optional[Dict[str, Any]] = None,
-        **kwargs, # Allow other config params to be passed
+        **kwargs,  # Allow other config params to be passed
     ) -> None:
         if config is not None:
             self.config = config
         else:
-            self.config = kwargs # Store kwargs if no explicit config dict is given
+            self.config = kwargs  # Store kwargs if no explicit config dict is given
 
         # Prioritize chunker_id from config if it exists.
         # Otherwise, if a chunker instance is passed, derive its ID.
         # Otherwise, set a default chunker_id.
-        if 'chunker_id' not in self.config:
+        if "chunker_id" not in self.config:
             if chunker:
-                self.config['chunker_id'] = type(chunker).__name__
+                self.config["chunker_id"] = type(chunker).__name__
             else:
-                self.config['chunker_id'] = type(SentenceWindowChunker()).__name__
+                self.config["chunker_id"] = type(SentenceWindowChunker()).__name__
         # elif chunker and type(chunker).__name__ != self.config['chunker_id']:
-            # This case could be a warning or error if a chunker instance is passed
-            # that doesn't match a pre-existing chunker_id in the config.
-            # For now, we assume config['chunker_id'] (if present) is the source of truth.
+        # This case could be a warning or error if a chunker instance is passed
+        # that doesn't match a pre-existing chunker_id in the config.
+        # For now, we assume config['chunker_id'] (if present) is the source of truth.
 
-            # Note: embedding_fn and preprocess_fn are not easily serializable by default.
-            # Subclasses would need to handle serialization/deserialization if they are configurable.
+        # Note: embedding_fn and preprocess_fn are not easily serializable by default.
+        # Subclasses would need to handle serialization/deserialization if they are configurable.
 
         self._chunker = chunker or SentenceWindowChunker()
         self.embedding_fn = embedding_fn
@@ -197,8 +197,9 @@ class BaseCompressionEngine:
             raise TypeError("chunker must implement Chunker interface")
         self._chunker = value
         # If self.config exists and is a dict, update chunker_id
-        if hasattr(self, 'config') and isinstance(self.config, dict):
-            self.config['chunker_id'] = getattr(value, "id", type(value).__name__)
+        if hasattr(self, "config") and isinstance(self.config, dict):
+            self.config["chunker_id"] = getattr(value, "id", type(value).__name__)
+
 
 __all__ = [
     "BaseCompressionEngine",

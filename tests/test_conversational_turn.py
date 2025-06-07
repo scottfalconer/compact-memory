@@ -21,5 +21,7 @@ def test_turn_id_is_unique():
 
 def test_turn_embedding_storage_and_retrieval():
     emb = [0.1, 0.2, 0.3]
-    turn = ConversationalTurn(user_message="hi", agent_response="hello", turn_embedding=emb)
+    turn = ConversationalTurn(
+        user_message="hi", agent_response="hello", turn_embedding=emb
+    )
     assert np.allclose(turn.turn_embedding, emb)

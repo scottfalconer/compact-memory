@@ -3,8 +3,8 @@ from __future__ import annotations
 """Compression engine utilities and dataclasses."""
 
 import os
-import importlib # Keep for load_engine
-from pathlib import Path # Keep for load_engine
+import importlib  # Keep for load_engine
+from pathlib import Path  # Keep for load_engine
 
 # Import from the new base.py
 from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
@@ -26,7 +26,8 @@ def load_engine(path: str | os.PathLike) -> BaseCompressionEngine:
     """Load a compression engine from ``path`` using its manifest."""
     p = Path(path)
     with open(p / "engine_manifest.json", "r", encoding="utf-8") as fh:
-        import json # Local import as it's only used here
+        import json  # Local import as it's only used here
+
         manifest = json.load(fh)
     engine_id = manifest.get("engine_id")
     engine_class_path = manifest.get("engine_class")
@@ -42,8 +43,10 @@ def load_engine(path: str | os.PathLike) -> BaseCompressionEngine:
     else:
         raise ValueError("Engine manifest missing engine_id or engine_class")
 
-    if not issubclass(cls, BaseCompressionEngine): # type: ignore # cls could be None then caught by next line, but logic implies it's found
-        raise TypeError(f"Loaded class {engine_class_path or engine_id} is not a BaseCompressionEngine.")
+    if not issubclass(cls, BaseCompressionEngine):  # type: ignore # cls could be None then caught by next line, but logic implies it's found
+        raise TypeError(
+            f"Loaded class {engine_class_path or engine_id} is not a BaseCompressionEngine."
+        )
 
     engine = cls(config=engine_config)
     engine.load(p)
@@ -55,7 +58,7 @@ __all__ = [
     "CompressedMemory",
     "CompressionTrace",
     "load_engine",
-    "NeocortexTransfer", # Added
+    "NeocortexTransfer",  # Added
     # Note: Specific engine classes like NoCompressionEngine, FirstLastEngine
     # are not exported here by default. They are accessed via get_compression_engine()
     # or direct import from their modules if needed for type checking outside the engines package.

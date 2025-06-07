@@ -28,4 +28,3 @@ def test_agentic_chunker_basic():
     chunker = AgenticChunker(max_tokens=2, sim_threshold=0.1)
     chunks = chunker.chunk(text)
     assert len(chunks) >= 2
-

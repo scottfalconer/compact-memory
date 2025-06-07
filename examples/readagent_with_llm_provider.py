@@ -16,7 +16,8 @@ Note:
 
 from compact_memory.engines.ReadAgent.engine import ReadAgentGistEngine
 from compact_memory.llm_providers import LocalTransformersProvider
-from compact_memory.llm_providers_abc import LLMProvider # For type hinting
+from compact_memory.llm_providers_abc import LLMProvider  # For type hinting
+
 
 def run_readagent_example():
     print("Starting ReadAgentGistEngine with LocalTransformersProvider example...")
@@ -31,11 +32,15 @@ def run_readagent_example():
         llm_provider: LLMProvider = LocalTransformersProvider()
         print("LocalTransformersProvider initialized.")
     except ImportError:
-        print("Error: LocalTransformersProvider requires 'transformers' and 'torch' (or 'tensorflow').")
+        print(
+            "Error: LocalTransformersProvider requires 'transformers' and 'torch' (or 'tensorflow')."
+        )
         print("Please install them: pip install transformers torch")
         return
     except Exception as e:
-        print(f"Error initializing LocalTransformersProvider (is a model available?): {e}")
+        print(
+            f"Error initializing LocalTransformersProvider (is a model available?): {e}"
+        )
         print("You might need to download a model like 'distilgpt2' or specify one.")
         return
 
@@ -44,16 +49,15 @@ def run_readagent_example():
     # For LocalTransformersProvider using Hugging Face pipeline, ensure these models are available.
     engine_config = {
         "gist_length": 60,  # Max new tokens for each gist
-        "gist_model_name": "distilgpt2", # Or another model suitable for summarization/gisting
-        "lookup_model_name": "distilgpt2", # Or another model suitable for understanding context
-        "qa_model_name": "distilgpt2",     # Or another model suitable for QA
-        "lookup_max_tokens": 30, # Max new tokens for the lookup response
-        "qa_max_new_tokens": 150, # Max new tokens for the final QA answer
+        "gist_model_name": "distilgpt2",  # Or another model suitable for summarization/gisting
+        "lookup_model_name": "distilgpt2",  # Or another model suitable for understanding context
+        "qa_model_name": "distilgpt2",  # Or another model suitable for QA
+        "lookup_max_tokens": 30,  # Max new tokens for the lookup response
+        "qa_max_new_tokens": 150,  # Max new tokens for the final QA answer
     }
 
     read_agent_engine = ReadAgentGistEngine(
-        llm_provider=llm_provider,
-        config=engine_config
+        llm_provider=llm_provider, config=engine_config
     )
     print("ReadAgentGistEngine initialized with LocalTransformersProvider.")
 
@@ -81,9 +85,7 @@ def run_readagent_example():
     print(f"Performing QA task with question: '{question}'")
     try:
         compressed_answer, trace_qa = read_agent_engine.compress(
-            document_text,
-            llm_token_budget=answer_budget_chars,
-            query=question
+            document_text, llm_token_budget=answer_budget_chars, query=question
         )
         print(f"\n--- QA Result ---")
         print(f"Question: {question}")
@@ -95,17 +97,21 @@ def run_readagent_example():
 
     except Exception as e:
         print(f"\nError during ReadAgent QA processing: {e}")
-        print("This could be due to issues with the local model, resource limits, or unexpected model output.")
-        print("Consider using a smaller model or ensuring your environment is correctly set up.")
-
+        print(
+            "This could be due to issues with the local model, resource limits, or unexpected model output."
+        )
+        print(
+            "Consider using a smaller model or ensuring your environment is correctly set up."
+        )
 
     # 5. Perform a Summarization task (no query)
-    summary_budget_chars = 300 # Character budget for the final summary (used for truncation)
+    summary_budget_chars = (
+        300  # Character budget for the final summary (used for truncation)
+    )
     print(f"\nPerforming Summarization task...")
     try:
         compressed_summary, trace_summary = read_agent_engine.compress(
-            document_text,
-            llm_token_budget=summary_budget_chars
+            document_text, llm_token_budget=summary_budget_chars
         )
         print(f"\n--- Summarization Result ---")
         print(f"Summary: {compressed_summary.text}")
@@ -117,12 +123,15 @@ def run_readagent_example():
     except Exception as e:
         print(f"\nError during ReadAgent Summarization processing: {e}")
 
-
     # Example with llm_provider=None (simulation mode)
-    print("\n--- Example with ReadAgentGistEngine in Simulation Mode (llm_provider=None) ---")
+    print(
+        "\n--- Example with ReadAgentGistEngine in Simulation Mode (llm_provider=None) ---"
+    )
     engine_simulated = ReadAgentGistEngine(llm_provider=None, config=engine_config)
     sim_question = "What is episode 1 about?"
-    sim_answer, _ = engine_simulated.compress(document_text, llm_token_budget=100, query=sim_question)
+    sim_answer, _ = engine_simulated.compress(
+        document_text, llm_token_budget=100, query=sim_question
+    )
     print(f"Simulated Question: {sim_question}")
     print(f"Simulated Answer: {sim_answer.text}")
 
@@ -130,8 +139,8 @@ def run_readagent_example():
     print(f"Simulated Summary: {sim_summary.text}")
     print("--- End Simulation Mode Example ---")
 
-
     print("\nReadAgentGistEngine with LocalTransformersProvider example finished.")
+
 
 if __name__ == "__main__":
     run_readagent_example()

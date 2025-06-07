@@ -25,6 +25,7 @@ from compact_memory.engines import (
     CompressedMemory,
     CompressionTrace,
 )  # Dataclasses for return types
+
 # PrototypeEngine was removed
 
 

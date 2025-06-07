@@ -1,4 +1,5 @@
 """Show ActiveMemoryManager selecting turns in a multi-turn dialogue."""
+
 from compact_memory.active_memory_manager import ActiveMemoryManager, ConversationTurn
 from compact_memory.embedding_pipeline import MockEncoder
 import numpy as np

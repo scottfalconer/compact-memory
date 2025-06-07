@@ -7,8 +7,9 @@ from compact_memory.engines import (
     BaseCompressionEngine,
     CompressedMemory,
     CompressionTrace,
-    load_engine      # Added
+    load_engine,  # Added
 )
+
 # PrototypeEngine was removed
 
 
@@ -39,12 +40,12 @@ def _env(tmp_path: Path) -> dict[str, str]:
     # Ensure this matches the expected env var name used by the application's config loader
     return {
         "COMPACT_MEMORY_PATH": str(tmp_path),
-        "COMPACT_MEMORY_DEFAULT_ENGINE_ID": "none", # Add defaults used by some tests
-        "COMPACT_MEMORY_DEFAULT_MODEL_ID": "tiny-gpt2", # Add defaults used by some tests
+        "COMPACT_MEMORY_DEFAULT_ENGINE_ID": "none",  # Add defaults used by some tests
+        "COMPACT_MEMORY_DEFAULT_MODEL_ID": "tiny-gpt2",  # Add defaults used by some tests
     }
 
 
-runner = CliRunner(env={'MIX_STDERR': 'False'})
+runner = CliRunner(env={"MIX_STDERR": "False"})
 
 
 def test_compress_text_option(tmp_path: Path):
@@ -406,6 +407,7 @@ def test_compress_override_default_strategy(tmp_path: Path):
     )
     assert result.exit_code == 0
     assert result.stdout.strip() == "abcdef"
+
 
 # Tests related to PrototypeEngine were removed:
 # - test_compress_to_memory_with_prototype_engine

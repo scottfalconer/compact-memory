@@ -13,7 +13,10 @@ def test_engine_ingest_and_recall(patch_embedding_model):
 
 
 def test_engine_save_load(tmp_path: Path, patch_embedding_model):
-    engine_config = {'my_custom_param': 'custom_value', 'chunker_id': 'SpecificTestChunker'}
+    engine_config = {
+        "my_custom_param": "custom_value",
+        "chunker_id": "SpecificTestChunker",
+    }
     # Initialize with a specific chunker instance if BaseCompressionEngine's __init__
     # uses the chunker object to set default chunker_id in config.
     # from compact_memory.chunker import SentenceWindowChunker
@@ -28,9 +31,11 @@ def test_engine_save_load(tmp_path: Path, patch_embedding_model):
     engine.save(tmp_path)
 
     # Test loading with the engine's own load method
-    other = BaseCompressionEngine() # Create a new instance
-    other.load(tmp_path) # This doesn't load manifest's config into other.config by current design.
-                         # other.config would be default. load_engine is the one that uses manifest's config.
+    other = BaseCompressionEngine()  # Create a new instance
+    other.load(
+        tmp_path
+    )  # This doesn't load manifest's config into other.config by current design.
+    # other.config would be default. load_engine is the one that uses manifest's config.
     res = other.recall("Hello")
     assert res
 
@@ -46,8 +51,8 @@ def test_engine_save_load(tmp_path: Path, patch_embedding_model):
 
     # Assertions for loaded configuration
     assert loaded.config is not None
-    assert loaded.config.get('my_custom_param') == 'custom_value'
-    assert loaded.config.get('chunker_id') == 'SpecificTestChunker'
+    assert loaded.config.get("my_custom_param") == "custom_value"
+    assert loaded.config.get("chunker_id") == "SpecificTestChunker"
 
     # Verify that the loaded engine's actual chunker type corresponds to what might be
     # expected if chunker_id was used for re-instantiation.
