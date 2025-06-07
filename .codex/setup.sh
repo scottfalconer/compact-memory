@@ -17,9 +17,10 @@ set -euo pipefail
 # packages and model downloads during the 300s setup window.
 # Install the project and its dependencies as declared in pyproject.toml
 if [ -f pyproject.toml ]; then
-    # Editable install so source changes are picked up without reinstalling
+    # Editable install with extras so source changes are picked up without
+    # reinstalling and optional dependencies are available for the CLI.
     pip3 install --upgrade setuptools
-    pip3 install -e . --no-build-isolation
+    pip3 install -e ".[embedding,local]" --no-build-isolation
 fi
 
 # Tools used by CI for linting and testing
