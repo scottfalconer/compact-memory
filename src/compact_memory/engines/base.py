@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set
 import json
 import os
 import uuid
@@ -11,6 +11,7 @@ import faiss
 
 from ..chunker import Chunker, SentenceWindowChunker
 from ..embedding_pipeline import embed_text, get_embedding_dim
+from ..utils import calculate_sha256
 
 
 @dataclass
@@ -76,6 +77,7 @@ class BaseCompressionEngine:
         dim = get_embedding_dim()
         self.embeddings = np.zeros((0, dim), dtype=np.float32)
         self.index: faiss.IndexFlatIP | None = None
+        self.memory_hashes: Set[str] = set()
 
     # --------------------------------------------------
     def _compress_chunk(self, chunk_text: str) -> str:
@@ -113,14 +115,26 @@ class BaseCompressionEngine:
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
         ids: List[str] = []
+        new_embeddings_list = []
         for processed_chunk_text, vec in zip(processed_chunks, vecs):
-            mid = uuid.uuid4().hex
-            self.memories.append({"id": mid, "text": processed_chunk_text})
-            self.embeddings = np.vstack([self.embeddings, vec.astype(np.float32)])
-            ids.append(mid)
-        if self.index is None:
-            self.index = faiss.IndexFlatIP(self.embeddings.shape[1])
-        self.index.add(vecs.astype(np.float32))
+            chunk_hash = calculate_sha256(processed_chunk_text)
+            if chunk_hash not in self.memory_hashes:
+                mid = uuid.uuid4().hex
+                self.memories.append({"id": mid, "text": processed_chunk_text})
+                new_embeddings_list.append(vec.astype(np.float32))
+                ids.append(mid)
+                self.memory_hashes.add(chunk_hash)
+
+        if new_embeddings_list:
+            new_embeddings_array = np.array(new_embeddings_list)
+            if self.embeddings.size == 0:
+                self.embeddings = new_embeddings_array
+            else:
+                self.embeddings = np.vstack([self.embeddings, new_embeddings_array])
+
+            if self.index is None:
+                self.index = faiss.IndexFlatIP(self.embeddings.shape[1])
+            self.index.add(new_embeddings_array)
         return ids
 
     # --------------------------------------------------
@@ -183,6 +197,12 @@ class BaseCompressionEngine:
         with open(os.path.join(path, "entries.json"), "r", encoding="utf-8") as fh:
             self.memories = json.load(fh)
         self.embeddings = np.load(os.path.join(path, "embeddings.npy"))
+
+        # Rebuild memory_hashes
+        self.memory_hashes = set()
+        for mem_entry in self.memories:
+            self.memory_hashes.add(calculate_sha256(mem_entry["text"]))
+
         self.index = None
         self._ensure_index()
 

@@ -28,10 +28,7 @@ def test_compress_text_input_stdout():
 @pytest.mark.parametrize("engine_id", ["none", "first_last"])
 def test_compress_text_input_all_engines(engine_id):
     text = "This is a sample text that should be compressed using various engines to test their basic functionality."
-    # For prototype engine, a memory path might be implicitly needed or created.
-    # Let's provide one via env var to be safe, as some engines might try to load/save.
-    # We'll use a dummy path that doesn't need to exist for "none" or "first_last"
-    # but might be used by "prototype" if it tries to initialize a default store.
+    # Provide a dummy path via env var so engines that rely on a memory path have one.
     # The CLI's main() function has logic for memory_path resolution.
     # Providing a default config or env var helps avoid interactive prompts.
     env_vars = {"COMPACT_MEMORY_PATH": "./dummy_cli_test_path"}
@@ -46,23 +43,21 @@ def test_compress_text_input_all_engines(engine_id):
         result.exit_code == 0
     ), f"Engine {engine_id} failed with exit code {result.exit_code}\nStdout: {result.stdout}\nStderr: {result.stderr}"
     output = result.stdout.strip()
-    if engine_id != "prototype":
-        assert output, f"Engine {engine_id} produced no output."
+    assert output, f"Engine {engine_id} produced no output."
 
     if engine_id == "none":
         # NoCompressionEngine should return input truncated to budget
         assert output.startswith("This is a sample text")
     else:
         # Other engines should generally produce shorter output than input or different.
-        if engine_id != "prototype":
-            if len(text) > 50:  # Only assert length change for reasonably long text
-                assert (
-                    len(output) < len(text) or output != text
-                ), f"Engine {engine_id} output was not different or shorter than input."
-            else:
-                assert (
-                    output != text or engine_id == "first_last"
-                ), f"Engine {engine_id} output was not different for short text."
+        if len(text) > 50:
+            assert (
+                len(output) < len(text) or output != text
+            ), f"Engine {engine_id} output was not different or shorter than input."
+        else:
+            assert (
+                output != text or engine_id == "first_last"
+            ), f"Engine {engine_id} output was not different for short text."
 
 
 def test_compress_file_input_stdout(tmp_path):
