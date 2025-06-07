@@ -1,6 +1,8 @@
+import pytest
 from compact_memory.validation.hf_metrics import (
     BleuHFMetric,
     ExactMatchMetric,
+    evaluate,
 )
 
 
@@ -14,6 +16,7 @@ def test_exact_match_metric():
     )
 
 
+@pytest.mark.skipif(evaluate is None, reason="evaluate package not available")
 def test_bleu_metric_basic():
     metric = BleuHFMetric()
     scores = metric.evaluate(llm_response="hello world", reference_answer="hello world")
