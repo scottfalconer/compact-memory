@@ -15,6 +15,8 @@ def tokenize_text(tokenizer: Any, text: str) -> List[int]:
                 tokens = tokenizer(text, return_tensors=None).get("input_ids", [])
             except Exception:
                 tokens = tokenizer(text)
+    elif hasattr(tokenizer, "encode"):
+        tokens = tokenizer.encode(text)
     else:
         try:
             tokens = tokenizer(text, return_tensors=None).get("input_ids", [])

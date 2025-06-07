@@ -3,12 +3,14 @@ from unittest.mock import patch, ANY
 from typer.testing import CliRunner
 from compact_memory.cli.main import app
 from compact_memory.config import DEFAULT_CONFIG
+
 # from compact_memory.llm_models_config import LLM_MODELS_CONFIG_PATH # Not strictly needed if we assume config exists
 
-from compact_memory.llm_providers import MockLLMProvider # Added
+from compact_memory.llm_providers import MockLLMProvider  # Added
 from compact_memory.engines.ReadAgent.engine import ReadAgentGistEngine
 from compact_memory.chunker import SentenceWindowChunker
 from compact_memory.engines.base import CompressedMemory
+
 
 class TestReadAgentGistEngine(unittest.TestCase):
     def setUp(self):
@@ -16,13 +18,17 @@ class TestReadAgentGistEngine(unittest.TestCase):
 
         # Default config for the engine
         # Using consistent prompt templates for predictable mock setup
-        self.gist_length = 30 # Using a smaller, consistent gist_length for tests
-        self.gist_prompt_template = f"Summarize this text in about {self.gist_length} tokens: {{text}}"
+        self.gist_length = 30  # Using a smaller, consistent gist_length for tests
+        self.gist_prompt_template = (
+            f"Summarize this text in about {self.gist_length} tokens: {{text}}"
+        )
         self.qa_prompt_template = "Context: {context} Question: {question} Answer:"
-        self.lookup_prompt_template = "Question: {question} Summaries: {summaries} Relevant pages:"
+        self.lookup_prompt_template = (
+            "Question: {question} Summaries: {summaries} Relevant pages:"
+        )
 
         self.engine_config = {
-            "llm_provider": self.mock_llm_provider, # Changed from local_llm_pipeline
+            "llm_provider": self.mock_llm_provider,  # Changed from local_llm_pipeline
             "episode_token_limit": 500,
             "gist_length": self.gist_length,
             "gist_prompt_template": self.gist_prompt_template,
@@ -36,7 +42,9 @@ class TestReadAgentGistEngine(unittest.TestCase):
             "qa_max_new_tokens": 50,
         }
         self.engine = ReadAgentGistEngine(**self.engine_config)
-        self.engine.chunker = SentenceWindowChunker(window_size=1, overlap=0) # As in original
+        self.engine.chunker = SentenceWindowChunker(
+            window_size=1, overlap=0
+        )  # As in original
 
     def test_paginate_episodes_double_newline(self):
         text = "Episode 1\n\nEpisode 2\n\nEpisode 3"
@@ -67,7 +75,7 @@ class TestReadAgentGistEngine(unittest.TestCase):
         engine_no_provider = ReadAgentGistEngine(
             llm_provider=None,
             gist_length=self.gist_length,
-            gist_prompt_template=self.gist_prompt_template
+            gist_prompt_template=self.gist_prompt_template,
         )
         episode_text = "Test episode for simulation."
         expected_simulated_gist = f"Simulated gist for episode: {episode_text[:50]}..."
@@ -79,10 +87,14 @@ class TestReadAgentGistEngine(unittest.TestCase):
         episode_gists = [(0, "Paris is the capital."), (1, "London is a city.")]
 
         formatted_summaries = "Page 1: Paris is the capital.\nPage 2: London is a city."
-        prompt = self.lookup_prompt_template.format(question=question, summaries=formatted_summaries)
-        self.mock_llm_provider.add_response(prompt, "Page 1") # LLM selects Page 1
+        prompt = self.lookup_prompt_template.format(
+            question=question, summaries=formatted_summaries
+        )
+        self.mock_llm_provider.add_response(prompt, "Page 1")  # LLM selects Page 1
 
-        selected_indices = self.engine._select_relevant_episodes(question, episode_gists)
+        selected_indices = self.engine._select_relevant_episodes(
+            question, episode_gists
+        )
         self.assertEqual(selected_indices, [0])
 
     def test_select_relevant_episodes_simulation_if_no_provider(self):
@@ -91,7 +103,9 @@ class TestReadAgentGistEngine(unittest.TestCase):
         episode_gists = [(0, "Gist A"), (1, "Gist B")]
         # Simulation selects the first episode if available
         expected_indices = [0] if episode_gists else []
-        selected_indices = engine_no_provider._select_relevant_episodes(question, episode_gists)
+        selected_indices = engine_no_provider._select_relevant_episodes(
+            question, episode_gists
+        )
         self.assertEqual(selected_indices, expected_indices)
 
     def test_compress_chunk_with_provider(self):
@@ -105,7 +119,9 @@ class TestReadAgentGistEngine(unittest.TestCase):
 
     def test_compress_summarization_path_with_provider(self):
         doc_text = "First episode summary here.\n\nSecond episode summary follows."
-        episodes = self.engine._paginate_episodes(doc_text) # ["First episode summary here.", "Second episode summary follows."]
+        episodes = self.engine._paginate_episodes(
+            doc_text
+        )  # ["First episode summary here.", "Second episode summary follows."]
 
         # Setup mock gists for each episode
         gist1_text = "Gist for episode 1"
@@ -117,9 +133,11 @@ class TestReadAgentGistEngine(unittest.TestCase):
         self.mock_llm_provider.add_response(prompt2, gist2_text)
 
         expected_concatenated_gists = f"{gist1_text}\n\n---\n\n{gist2_text}"
-        budget = 200 # Assume this budget is enough
+        budget = 200  # Assume this budget is enough
 
-        compressed_memory, trace = self.engine.compress(doc_text, llm_token_budget=budget)
+        compressed_memory, trace = self.engine.compress(
+            doc_text, llm_token_budget=budget
+        )
         self.assertEqual(compressed_memory.text, expected_concatenated_gists)
         self.assertFalse(trace.output_summary.get("query_processed", True))
 
@@ -127,7 +145,7 @@ class TestReadAgentGistEngine(unittest.TestCase):
         engine_no_provider = ReadAgentGistEngine(
             llm_provider=None,
             gist_length=self.gist_length,
-            gist_prompt_template=self.gist_prompt_template
+            gist_prompt_template=self.gist_prompt_template,
         )
         doc_text = "Sim episode 1.\n\nSim episode 2."
         episodes = engine_no_provider._paginate_episodes(doc_text)
@@ -137,9 +155,10 @@ class TestReadAgentGistEngine(unittest.TestCase):
         expected_text = f"{sim_gist1}\n\n---\n\n{sim_gist2}"
         budget = 200
 
-        compressed_memory, _ = engine_no_provider.compress(doc_text, llm_token_budget=budget)
+        compressed_memory, _ = engine_no_provider.compress(
+            doc_text, llm_token_budget=budget
+        )
         self.assertEqual(compressed_memory.text, expected_text)
-
 
     def test_compress_qa_path_with_provider(self):
         doc_text = "Episode Alpha: Apples are red.\n\nEpisode Beta: Bananas are yellow."
@@ -161,7 +180,9 @@ class TestReadAgentGistEngine(unittest.TestCase):
         # 2. Mock Episode Selection
         # Formatted summaries for the lookup prompt
         formatted_summaries = f"Page 1: {gist_alpha_text}\nPage 2: {gist_beta_text}"
-        prompt_lookup = self.lookup_prompt_template.format(question=query, summaries=formatted_summaries)
+        prompt_lookup = self.lookup_prompt_template.format(
+            question=query, summaries=formatted_summaries
+        )
         # Assume LLM selects the first page (Alpha) as relevant
         self.mock_llm_provider.add_response(prompt_lookup, "Page 1")
 
@@ -172,7 +193,9 @@ class TestReadAgentGistEngine(unittest.TestCase):
         expected_qa_answer = "Apples are indeed red and quite tasty."
         self.mock_llm_provider.add_response(prompt_qa, expected_qa_answer)
 
-        compressed_memory, trace = self.engine.compress(doc_text, llm_token_budget=budget, query=query)
+        compressed_memory, trace = self.engine.compress(
+            doc_text, llm_token_budget=budget, query=query
+        )
 
         self.assertEqual(compressed_memory.text, expected_qa_answer)
         self.assertTrue(trace.output_summary.get("query_processed"))
@@ -183,7 +206,7 @@ class TestReadAgentGistEngine(unittest.TestCase):
             gist_length=self.gist_length,
             gist_prompt_template=self.gist_prompt_template,
             qa_prompt_template=self.qa_prompt_template,
-            lookup_prompt_template=self.lookup_prompt_template
+            lookup_prompt_template=self.lookup_prompt_template,
         )
         doc_text = "Sim QA ep1. Content here.\n\nSim QA ep2. More content."
         query = "What is in ep1?"
@@ -196,7 +219,9 @@ class TestReadAgentGistEngine(unittest.TestCase):
         # 4. Generate a simulated QA answer
         expected_simulated_answer = f"Simulated answer for query: {query[:50]}..."
 
-        compressed_memory, _ = engine_no_provider.compress(doc_text, llm_token_budget=budget, query=query)
+        compressed_memory, _ = engine_no_provider.compress(
+            doc_text, llm_token_budget=budget, query=query
+        )
         self.assertEqual(compressed_memory.text, expected_simulated_answer)
 
     def test_compress_empty_input_text(self):
@@ -206,7 +231,9 @@ class TestReadAgentGistEngine(unittest.TestCase):
         self.assertEqual(trace.input_summary["num_episodes"], 0)
 
     def test_compress_summarization_truncation_with_provider(self):
-        doc_text = "Very long episode one for summary.\n\nVery long episode two for summary."
+        doc_text = (
+            "Very long episode one for summary.\n\nVery long episode two for summary."
+        )
         episodes = self.engine._paginate_episodes(doc_text)
 
         gist1 = "This is the first gist and it is quite long."
@@ -219,16 +246,26 @@ class TestReadAgentGistEngine(unittest.TestCase):
 
         concatenated_gists = f"{gist1}\n\n---\n\n{gist2}"
 
-        budget = 20 # A small budget to force truncation
-        expected_text = concatenated_gists[:budget]
+        budget = 20  # A small budget to force truncation
+        import tiktoken
+        from compact_memory.token_utils import truncate_text
 
-        compressed_memory, trace = self.engine.compress(doc_text, llm_token_budget=budget)
+        tokenizer = tiktoken.get_encoding("gpt2")
+        expected_text = truncate_text(tokenizer, concatenated_gists, budget)
+
+        compressed_memory, trace = self.engine.compress(
+            doc_text, llm_token_budget=budget
+        )
         self.assertEqual(compressed_memory.text, expected_text)
 
-        truncation_logged = any(step['type'] == 'summary_truncation' for step in trace.steps)
+        truncation_logged = any(
+            step["type"] == "summary_truncation" for step in trace.steps
+        )
         self.assertTrue(truncation_logged, "Summary truncation was not logged.")
 
-    @patch("compact_memory.llm_providers.local_provider.LocalTransformersProvider.generate_response")
+    @patch(
+        "compact_memory.llm_providers.local_provider.LocalTransformersProvider.generate_response"
+    )
     def test_readagent_gist_engine_cli_uses_default_llm(self, mock_generate_response):
         runner = CliRunner()
         # This is the text that the ReadAgentGistEngine will output as the compressed result,
@@ -249,16 +286,20 @@ class TestReadAgentGistEngine(unittest.TestCase):
                     "compress",
                     "--text",
                     "Test document for ReadAgentGistEngine CLI.",
-                    "--budget", # CLI budget is for the final output. ReadAgentGistEngine produces one LLM output as its result.
-                    "50",     # If LLM output is >50, it would be truncated by the CLI wrapper normally.
-                              # Here, mock_llm_output is shorter than 50.
+                    "--budget",  # CLI budget is for the final output. ReadAgentGistEngine produces one LLM output as its result.
+                    "50",  # If LLM output is >50, it would be truncated by the CLI wrapper normally.
+                    # Here, mock_llm_output is shorter than 50.
                     "--engine",
                     "readagent_gist",
                     # No --model-id, so it should pick up default_model_id from global config to select the provider.
                 ],
             )
 
-            self.assertEqual(result.exit_code, 0, msg=f"CLI Error: {result.stdout} {result.exception}")
+            self.assertEqual(
+                result.exit_code,
+                0,
+                msg=f"CLI Error: {result.stdout} {result.exception}",
+            )
             # The output of the compress command should be the LLM's response.
             self.assertIn(mock_llm_output, result.stdout)
 
@@ -266,13 +307,14 @@ class TestReadAgentGistEngine(unittest.TestCase):
             # ReadAgentGistEngine, when not configured via its own params (which CLI doesn't do for one-shot),
             # uses its default gist_model_name ('distilgpt2') and gist_length (100).
             mock_generate_response.assert_any_call(
-                prompt=ANY, # The exact prompt depends on the engine's template and input text.
+                prompt=ANY,  # The exact prompt depends on the engine's template and input text.
                 model_name="distilgpt2",
-                max_new_tokens=100
+                max_new_tokens=100,
             )
 
         finally:
             DEFAULT_CONFIG["default_model_id"] = original_model_id
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
