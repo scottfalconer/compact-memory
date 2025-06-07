@@ -171,7 +171,7 @@ For contributors or those looking to build custom solutions on top of Compact Me
 
 ## Features
 
-- Command-line interface for memory container management (`memory init`, `memory stats`, `memory validate`, `memory clear`), data processing (`query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-engines`, `dev evaluate-compression`, etc.).
+- Command-line interface for engine store management (`engine init`, `engine stats`, `engine validate`, `engine clear`), data processing (`query`, `compress`), configuration (`config set`, `config show`), and developer tools (`dev list-engines`, `dev evaluate-compression`, etc.).
 - Global configuration options settable via CLI, environment variables, or config files.
 - Pluggable memory compression engines.
  - Pluggable CompressionEngines.
@@ -344,14 +344,14 @@ export COMPACT_MEMORY_PATH=~/my_compact_memories
 
 ## Quick Start / Core Workflow
 
-The `compact-memory` Command-Line Interface (CLI) is your primary tool for managing memory containers, compressing data, querying, and summarizing.
+The `compact-memory` Command-Line Interface (CLI) is your primary tool for managing engine stores, compressing data, querying, and summarizing.
 
-**1. Initialize a Memory Container:**
-First, create a new memory container. This directory will store the container's data.
+**1. Initialize an Engine Store:**
+First, create a new engine store. This directory will store the engine's data.
 ```bash
-compact-memory memory init ./my_memory --model-name sentence-transformers/all-MiniLM-L6-v2
+compact-memory engine init ./my_memory --engine prototype
 ```
-This creates a memory container at `./my_memory`. The specified embedding model will be downloaded if not already present.
+This initializes an engine store at `./my_memory`.
 
 **2. Configure Memory Path (Optional but Recommended for Convenience):**
 To avoid specifying `--memory-path ./my_memory` for every command that interacts with this container, you can set it globally for your user or for the current terminal session.
@@ -438,7 +438,7 @@ Compact Memory is designed to support a wide variety of `BaseCompressionEngine` 
 -   `docs/COMPRESSION_ENGINES.md`
 -   `docs/ENGINE_DEVELOPMENT.md`
 
-The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during memory initialization (e.g., `compact-memory memory init ./my_memory --chunker agentic`) or programmatically within your custom engine (e.g., `agent.chunker = AgenticChunker()`).
+The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during engine initialization (e.g., `compact-memory engine init ./my_memory --engine prototype --chunker agentic`) or programmatically within your custom engine (e.g., `agent.chunker = AgenticChunker()`).
 
 ## Contributing
 
