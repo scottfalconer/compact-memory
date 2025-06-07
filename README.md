@@ -445,6 +445,10 @@ Compact Memory is designed to support a wide variety of `BaseCompressionEngine` 
 
 The `AgenticChunker` is an example of an advanced chunking mechanism. You can enable it during engine initialization (e.g., `compact-memory engine init ./my_memory --engine prototype --chunker agentic`) or programmatically within your custom engine (e.g., `agent.chunker = AgenticChunker()`).
 
+## Security
+
+If you discover any security vulnerabilities, please report them privately to the project maintainers. Details on how to do this will be provided in a `SECURITY.md` file (to be created).
+
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines on setting up a development environment, coding style, and how to run tests before submitting pull requests.
