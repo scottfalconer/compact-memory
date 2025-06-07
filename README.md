@@ -310,6 +310,8 @@ the Codex environment and is not needed for general users.
     ```bash
     export OPENAI_API_KEY="sk-..."
     export GEMINI_API_KEY="..."
+    # For OpenAI-compatible endpoints (e.g., hosted via liteLLM)
+    export OPENAI_BASE_URL="https://my-endpoint.example.com/v1"
     ```
 
 Run `compact-memory --help` to see available commands and verify installation.
@@ -386,6 +388,8 @@ compact-memory --memory-path ./my_memory query "What was mentioned about project
 
 # You can also override the default model or engine for a specific query:
 compact-memory query "Summarize recent findings on AI ethics" --model-id openai/gpt-4-turbo --engine prototype
+# Use an OpenAI-compatible provider
+compact-memory --provider openai --provider-url https://my-endpoint.example.com/v1 --provider-key $OPENAI_API_KEY query "Tell me about compact memory"
 ```
 
 **5. Compress Text (Standalone Utility):**

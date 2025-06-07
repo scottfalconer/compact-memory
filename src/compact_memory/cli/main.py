@@ -84,6 +84,24 @@ def main_callback(  # Renamed from main to main_callback for clarity
         help="Default compression engine ID (e.g., for history, one-shot compress). Overrides env var/config.",
         show_default=False,
     ),
+    provider: Optional[str] = typer.Option(
+        None,
+        "--provider",
+        help="Override LLM provider for this invocation (e.g., openai).",
+        show_default=False,
+    ),
+    provider_url: Optional[str] = typer.Option(
+        None,
+        "--provider-url",
+        help="Base URL for an OpenAI-compatible provider.",
+        show_default=False,
+    ),
+    provider_key: Optional[str] = typer.Option(
+        None,
+        "--provider-key",
+        help="API key for the OpenAI-compatible provider.",
+        show_default=False,
+    ),
     version: Optional[bool] = typer.Option(  # version_callback handles this
         None,
         "-v",
@@ -148,6 +166,10 @@ def main_callback(  # Renamed from main to main_callback for clarity
         engine_id if engine_id is not None else config.get("default_engine_id")
     )
 
+    resolved_provider = provider if provider is not None else None
+    resolved_provider_url = provider_url if provider_url is not None else None
+    resolved_provider_key = provider_key if provider_key is not None else None
+
     # Store resolved values in context for subcommands
     ctx.obj["config"] = config  # The Config instance itself
     ctx.obj["verbose"] = resolved_verbose
@@ -155,6 +177,9 @@ def main_callback(  # Renamed from main to main_callback for clarity
     ctx.obj["compact_memory_path"] = resolved_memory_path_str
     ctx.obj["default_model_id"] = resolved_model_id
     ctx.obj["default_engine_id"] = resolved_engine_id
+    ctx.obj["provider_override"] = resolved_provider
+    ctx.obj["provider_url"] = resolved_provider_url
+    ctx.obj["provider_key"] = resolved_provider_key
 
     # Load plugins after configuration is sorted out
     try:
