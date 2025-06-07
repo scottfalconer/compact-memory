@@ -6,12 +6,9 @@ from dataclasses import dataclass
 import inspect
 import logging
 import contextlib
-from typing import Optional, TYPE_CHECKING, Iterable, Callable
+from typing import Optional, TYPE_CHECKING, Iterable, Callable, Any
 
 from .llm_providers_abc import LLMProvider
-
-if TYPE_CHECKING:  # pragma: no cover - for type hints only
-    from .prototype_engine import PrototypeEngine
 
 from .token_utils import token_count
 
@@ -266,7 +263,7 @@ class LocalChatModel(LLMProvider):
     # ------------------------------------------------------------------
     def prepare_prompt(
         self,
-        agent: PrototypeEngine,
+        agent: Any,
         prompt: str,
         *,
         recent_tokens: int = 600,

@@ -3,7 +3,7 @@ from typer.testing import CliRunner
 from compact_memory.cli import app  # import the Typer app
 from pathlib import Path  # Make sure Path is imported
 
-runner = CliRunner(env={'MIX_STDERR': 'False'})
+runner = CliRunner(env={"MIX_STDERR": "False"})
 
 
 def test_compress_text_input_stdout():
@@ -25,22 +25,13 @@ def test_compress_text_input_stdout():
     assert output.startswith("Sample input text")  # original content present
 
 
-@pytest.mark.parametrize("engine_id", ["none", "prototype", "first_last"])
+@pytest.mark.parametrize("engine_id", ["none", "first_last"])
 def test_compress_text_input_all_engines(engine_id):
     text = "This is a sample text that should be compressed using various engines to test their basic functionality."
-    # For prototype engine, a memory path might be implicitly needed or created.
-    # Let's provide one via env var to be safe, as some engines might try to load/save.
-    # We'll use a dummy path that doesn't need to exist for "none" or "first_last"
-    # but might be used by "prototype" if it tries to initialize a default store.
+    # Provide a dummy path via env var so engines that rely on a memory path have one.
     # The CLI's main() function has logic for memory_path resolution.
     # Providing a default config or env var helps avoid interactive prompts.
     env_vars = {"COMPACT_MEMORY_PATH": "./dummy_cli_test_path"}
-
-    # For prototype engine, we might also need a default model ID if it tries to load one.
-    if engine_id == "prototype":
-        env_vars["COMPACT_MEMORY_DEFAULT_MODEL_ID"] = (
-            "mock-model"  # Assuming mock-model is handled or doesn't break things
-        )
 
     result = runner.invoke(
         app,
@@ -52,23 +43,21 @@ def test_compress_text_input_all_engines(engine_id):
         result.exit_code == 0
     ), f"Engine {engine_id} failed with exit code {result.exit_code}\nStdout: {result.stdout}\nStderr: {result.stderr}"
     output = result.stdout.strip()
-    if engine_id != "prototype":
-        assert output, f"Engine {engine_id} produced no output."
+    assert output, f"Engine {engine_id} produced no output."
 
     if engine_id == "none":
         # NoCompressionEngine should return input truncated to budget
         assert output.startswith("This is a sample text")
     else:
         # Other engines should generally produce shorter output than input or different.
-        if engine_id != "prototype":
-            if len(text) > 50:  # Only assert length change for reasonably long text
-                assert (
-                    len(output) < len(text) or output != text
-                ), f"Engine {engine_id} output was not different or shorter than input."
-            else:
-                assert (
-                    output != text or engine_id == "first_last"
-                ), f"Engine {engine_id} output was not different for short text."
+        if len(text) > 50:
+            assert (
+                len(output) < len(text) or output != text
+            ), f"Engine {engine_id} output was not different or shorter than input."
+        else:
+            assert (
+                output != text or engine_id == "first_last"
+            ), f"Engine {engine_id} output was not different for short text."
 
 
 def test_compress_file_input_stdout(tmp_path):
@@ -253,7 +242,7 @@ def test_compress_empty_directory(tmp_path):
     assert (
         result.exit_code == 0
     ), f"CLI call failed for empty dir: {result.stderr}\n{result.stdout}"
-    assert "No files matching pattern" in result.stdout # Made more specific
+    assert "No files matching pattern" in result.stdout  # Made more specific
 
 
 def test_compress_directory_no_matching_files(tmp_path):
@@ -278,7 +267,7 @@ def test_compress_directory_no_matching_files(tmp_path):
     assert (
         result.exit_code == 0
     ), f"CLI call failed for dir with no .txt files: {result.stderr}\n{result.stdout}"
-    assert "No files matching pattern" in result.stdout # Made more specific
+    assert "No files matching pattern" in result.stdout  # Made more specific
 
 
 def test_compress_unknown_engine():
@@ -295,7 +284,7 @@ def test_compress_unknown_engine():
         ],
     )  # Capture stderr separately
     assert result.exit_code != 0
-    assert "Unknown one-shot compression engine" in result.stderr # More specific
+    assert "Unknown one-shot compression engine" in result.stderr  # More specific
     assert "does_not_exist_engine" in result.stderr
 
 
@@ -312,7 +301,7 @@ def test_compress_file_not_found(tmp_path):
     # "Invalid value for '--file': File '/tmp/pytest-of-user/pytest-0/test_compress_file_not_found0/no_such_file.txt' does not exist."
     assert "Invalid value for '--file'" in result.stderr
     # assert str(fake_file) in result.stderr # This can be fragile with Rich formatting
-    assert "does not exist" in result.stderr # Typer's message includes this
+    assert "does not exist" in result.stderr  # Typer's message includes this
 
 
 def test_compress_directory_not_found(tmp_path):
@@ -340,7 +329,9 @@ def test_compress_no_input_provided():
         ],
     )
     assert result.exit_code != 0
-    assert "Specify exactly ONE of --text, --file, or --dir" in result.stderr.strip() # Adjusted to match actual
+    assert (
+        "Specify exactly ONE of --text, --file, or --dir" in result.stderr.strip()
+    )  # Adjusted to match actual
 
 
 @pytest.mark.parametrize(
@@ -383,4 +374,6 @@ def test_compress_multiple_inputs_error(tmp_path, input_args):
     assert (
         result.exit_code != 0
     ), f"CLI call with {input_args} did not fail as expected. Stderr: {result.stderr}"
-    assert "Specify exactly ONE of --text, --file, or --dir" in result.stderr.strip() # Adjusted to match actual
+    assert (
+        "Specify exactly ONE of --text, --file, or --dir" in result.stderr.strip()
+    )  # Adjusted to match actual

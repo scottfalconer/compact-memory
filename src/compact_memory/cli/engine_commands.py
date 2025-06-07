@@ -74,7 +74,7 @@ def info_command(engine_id: str) -> None:  # Renamed from engine_info
 
 @engine_app.command(
     "init",
-    help="Initializes a new Compact Memory engine store in a specified directory.\n\nUsage Examples:\n  compact-memory engine init ./my_engine_dir --engine prototype\n  compact-memory engine init /path/to/store --engine prototype --name 'research_mem' --tau 0.75 --chunker SentenceWindowChunker",
+    help="Initializes a new Compact Memory engine store in a specified directory.\n\nUsage Example:\n  compact-memory engine init ./my_engine_dir --engine none --chunker SentenceWindowChunker",
 )
 def init_command(  # Renamed from init
     target_directory: Path = typer.Argument(
@@ -85,17 +85,11 @@ def init_command(  # Renamed from init
     *,
     ctx: typer.Context,
     engine_id_arg: Optional[str] = typer.Option(
-        None,
-        "--engine",
-        "-e",
-        help="The ID of the compression engine to initialize."
+        None, "--engine", "-e", help="The ID of the compression engine to initialize."
     ),
     name: str = typer.Option(
-        "default_store", help="A descriptive name for the engine store or its configuration."
-    ),
-    tau: float = typer.Option(
-        0.8,
-        help="Similarity threshold for 'prototype' engine, between 0.5 and 0.95.",
+        "default_store",
+        help="A descriptive name for the engine store or its configuration.",
     ),
     chunker: str = typer.Option(
         "SentenceWindowChunker",
@@ -111,22 +105,12 @@ def init_command(  # Renamed from init
         )
         raise typer.Exit(code=1)
 
-    final_engine_id = engine_id_arg or ctx.obj.get("default_engine_id") or "prototype"
+    final_engine_id = engine_id_arg or ctx.obj.get("default_engine_id") or "none"
     typer.echo(f"Initializing with engine ID: {final_engine_id}")
 
-    if final_engine_id == "prototype":
-        if not 0.5 <= tau <= 0.95:
-            typer.secho(
-                "Error: --tau must be between 0.5 and 0.95 for the 'prototype' engine.", err=True, fg=typer.colors.RED
-            )
-            raise typer.Exit(code=1)
-
     engine_config = {}
-    engine_config['chunker_id'] = chunker
-    engine_config['name'] = name
-
-    if final_engine_id == 'prototype':
-        engine_config['similarity_threshold'] = tau
+    engine_config["chunker_id"] = chunker
+    engine_config["name"] = name
 
     try:
         EngineCls = get_compression_engine(final_engine_id)
@@ -142,12 +126,20 @@ def init_command(  # Renamed from init
         engine = EngineCls(config=engine_config)
         path.mkdir(parents=True, exist_ok=True)
         engine.save(path)
-        typer.echo(f"Successfully initialized Compact Memory engine store with engine '{final_engine_id}' at {path}")
+        typer.echo(
+            f"Successfully initialized Compact Memory engine store with engine '{final_engine_id}' at {path}"
+        )
     except EmbeddingDimensionMismatchError as exc:
-        typer.secho(f"Error during engine initialization: {exc}", err=True, fg=typer.colors.RED)
+        typer.secho(
+            f"Error during engine initialization: {exc}", err=True, fg=typer.colors.RED
+        )
         raise typer.Exit(code=1)
     except Exception as exc:
-        typer.secho(f"An unexpected error occurred during engine initialization or save: {exc}", err=True, fg=typer.colors.RED)
+        typer.secho(
+            f"An unexpected error occurred during engine initialization or save: {exc}",
+            err=True,
+            fg=typer.colors.RED,
+        )
         logging.exception("Failed to initialize engine store.")
         raise typer.Exit(code=1)
 
@@ -199,7 +191,9 @@ def validate_command(  # Renamed from validate_memory_storage
         help="Path to the engine store directory. Overrides global setting if provided.",
     ),
 ) -> None:
-    final_memory_path_str = memory_path_arg or ctx.obj.get("compact_memory_path") # Ensure path is resolved from context if not provided
+    final_memory_path_str = memory_path_arg or ctx.obj.get(
+        "compact_memory_path"
+    )  # Ensure path is resolved from context if not provided
     if final_memory_path_str is None:
         typer.secho(
             "Critical Error: Memory path could not be resolved for validate. Please provide it with --memory-path or set it globally.",
@@ -231,7 +225,9 @@ def validate_command(  # Renamed from validate_memory_storage
     #         typer.echo(f"Engine type '{type(engine).__name__}' does not support explicit validation via 'validate_storage'. Basic existence check passed.")
     # except Exception as e:
     #     _corrupt_exit(path, e) # Use your _corrupt_exit or similar
-    typer.echo(f"Validation for engine store at '{path}': No specific storage validation implemented for this engine type beyond loading.")
+    typer.echo(
+        f"Validation for engine store at '{path}': No specific storage validation implemented for this engine type beyond loading."
+    )
 
 
 @engine_app.command(
@@ -258,7 +254,9 @@ def clear_command(  # Renamed from clear
         help="Simulate deletion and show what would be deleted without actually removing files.",
     ),
 ) -> None:
-    final_memory_path_str = memory_path_arg or ctx.obj.get("compact_memory_path") # Ensure path is resolved
+    final_memory_path_str = memory_path_arg or ctx.obj.get(
+        "compact_memory_path"
+    )  # Ensure path is resolved
     if final_memory_path_str is None:
         typer.secho(
             "Critical Error: Memory path could not be resolved for clear. Please provide it with --memory-path or set it globally.",
@@ -288,13 +286,15 @@ def clear_command(  # Renamed from clear
             # for item in path.rglob('*'): # List all items recursively
             #     typer.echo(f"  - Would delete {item.relative_to(path)}")
         else:
-            typer.echo(f"Dry run: Directory '{path}' does not exist, nothing to delete.")
+            typer.echo(
+                f"Dry run: Directory '{path}' does not exist, nothing to delete."
+            )
         return
 
     if not force:
         if not typer.confirm(
             f"Are you sure you want to delete all data in engine store at '{path}'? This cannot be undone.",
-            abort=True, # If user says no, exit the command.
+            abort=True,  # If user says no, exit the command.
         ):
             # This part is technically unreachable due to abort=True, but good for clarity.
             typer.echo("Operation cancelled by user.")
@@ -305,7 +305,7 @@ def clear_command(  # Renamed from clear
             if path.is_dir():
                 shutil.rmtree(path)
                 typer.echo(f"Successfully cleared engine store data at {path}")
-            else: # Should not happen if it's an engine store path, but good to check.
+            else:  # Should not happen if it's an engine store path, but good to check.
                 path.unlink()
                 typer.echo(f"Successfully deleted file at {path}")
         except Exception as e:
@@ -315,9 +315,14 @@ def clear_command(  # Renamed from clear
         # This case should ideally be caught by the initial existence check,
         # but good to have as a fallback.
         typer.secho(
-            f"Error: Directory '{path}' not found. Nothing to clear.", err=True, fg=typer.colors.RED
+            f"Error: Directory '{path}' not found. Nothing to clear.",
+            err=True,
+            fg=typer.colors.RED,
         )
-        raise typer.Exit(code=1) # Or just return if a non-error exit is preferred when path doesn't exist.
+        raise typer.Exit(
+            code=1
+        )  # Or just return if a non-error exit is preferred when path doesn't exist.
+
 
 # Note: `load_plugins()` is called in the main CLI callback, so it doesn't need to be repeated here
 # unless these commands are intended to be runnable completely standalone without the main app context,

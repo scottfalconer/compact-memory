@@ -27,15 +27,14 @@ Initializes a new Compact Memory engine store in the specified directory.
 
 *   **`TARGET_DIRECTORY`**: (Required) Directory to initialize the new engine store. Will be created if it doesn't exist.
 *   **Options:**
-    *   `--engine, -e TEXT`: The ID of the compression engine to initialize (e.g., `prototype`, `base`). If not provided, uses the global default engine ID, or falls back to "prototype".
+    *   `--engine, -e TEXT`: The ID of the compression engine to initialize (e.g., `none`, `base`). If not provided, uses the global default engine ID, or falls back to "none".
     *   `--name TEXT`: A descriptive name for the engine store or its configuration (default: "default\_store"). This is stored in the engine's configuration.
-    *   `--tau FLOAT`: Similarity threshold for the 'prototype' engine (default: 0.8). Valid range: 0.5 to 0.95. This is stored as `similarity_threshold` in the prototype engine's configuration.
     *   `--chunker TEXT`: Identifier for the chunker to be used by the engine (default: "SentenceWindowChunker"). This is stored as `chunker_id` in the engine's configuration.
     *   `--help`: Show help message.
 
 *   **Usage Examples:**
     ```bash
-    compact-memory engine init ./my_prototype_store --engine prototype --name "My Research Store" --tau 0.75
+    compact-memory engine init ./my_store --engine none --name "My Research Store"
     compact-memory engine init ./my_base_store --engine base --chunker "MyCustomChunkerID"
     ```
 
@@ -85,7 +84,7 @@ Queries a Compact Memory engine store and returns an AI-generated response. This
 
 *   **Usage Example:**
     ```bash
-    compact-memory query --memory-path ./my_prototype_store "What is the capital of France?"
+    compact-memory query --memory-path ./my_store "What is the capital of France?"
     ```
 
 ### `compact-memory compress`
@@ -117,7 +116,7 @@ Compresses text using a specified compression engine. Can read from a string, fi
         ```
     *   **Compress a file and save to another file:**
         ```bash
-        compact-memory compress --file path/to/document.txt -e prototype_summarizer --budget 200 -o summary.txt
+        compact-memory compress --file path/to/document.txt -e some_summarizer --budget 200 -o summary.txt
         ```
     *   **Compress all `.md` files in a directory and save to an output directory:**
         ```bash
@@ -126,7 +125,7 @@ Compresses text using a specified compression engine. Can read from a string, fi
     *   **Compress text and ingest into an existing engine store:**
         ```bash
         # First, ensure the store exists (e.g., by running 'engine init')
-        compact-memory engine init ./my_main_store --engine prototype
+        compact-memory engine init ./my_main_store --engine none
         # Now, compress some text using 'dummy_trunc' and ingest the result into 'my_main_store'
         compact-memory compress --memory-path ./my_main_store --text "This is a long text to be truncated and then ingested." --engine dummy_trunc --budget 50
         ```
@@ -179,11 +178,11 @@ Lists all available compression engine IDs, their versions, and sources (built-i
 
 #### `compact-memory dev inspect-engine ENGINE_NAME`
 
-Inspects aspects of a compression engine. Currently focused on 'prototype' engine's beliefs.
+Placeholder command for inspecting engine data. Not currently implemented.
 
-*   **`ENGINE_NAME`**: (Required) Name of the engine (currently only "prototype").
+*   **`ENGINE_NAME`**: (Required) Name of the engine.
 *   **Options:**
-    *   `--list-prototypes`: List consolidated prototypes if engine is 'prototype'.
+    *   `--list-prototypes`: Ignored placeholder option.
 
 #### `compact-memory dev evaluate-compression ORIGINAL_INPUT COMPRESSED_INPUT`
 
