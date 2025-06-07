@@ -63,14 +63,14 @@ class LLMSummaryCreator(MemoryCreator):
     def create(self, text: str) -> str:
         import openai
 
-        resp = openai.ChatCompletion.create(
+        resp = openai.chat.completions.create(
             model=self.model,
             messages=[
                 {"role": "system", "content": "Summarise the following text."},
                 {"role": "user", "content": text},
             ],
         )
-        return resp["choices"][0]["message"]["content"].strip()
+        return resp.choices[0].message.content.strip()
 
 
 class AgenticMemoryCreator(MemoryCreator):
