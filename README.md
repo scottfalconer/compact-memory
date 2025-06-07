@@ -274,6 +274,8 @@ This project requires **Python 3.11+**.
    pip install .[local]        # for local Transformers models
    pip install .[gemini]       # Google Gemini provider
    pip install .[metrics]      # Hugging Face evaluation metrics
+   # LLM judge metric uses the OpenAI API which is already a core dependency
+   # Install both extras if you plan to use embedding or LLM-based metrics
    ```
    To run the full test suite with all heavy packages, install additional
    dependencies:
@@ -405,6 +407,7 @@ Compact Memory also includes tools for developers and researchers, such as evalu
 For example, to evaluate compression quality:
 ```bash
 compact-memory dev evaluate-compression original.txt compressed_version.txt --metric compression_ratio
+compact-memory dev evaluate-llm-response model_answer.txt reference.txt --metric rouge_hf
 ```
 To list available engines (including plugins):
 ```bash

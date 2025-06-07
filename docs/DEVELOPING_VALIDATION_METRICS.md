@@ -43,3 +43,31 @@ class RougeMetric(HFValidationMetric):
 ```
 
 Metrics are selected by `metric_id` and optional initialisation parameters.
+
+## Embedding-based Metrics
+
+`EmbeddingSimilarityMetric` computes cosine similarity between sentence
+embeddings. It relies on the optional `sentence-transformers` dependency.
+Install it with `pip install compact-memory[embedding]`.
+
+```python
+from compact_memory.validation.embedding_metrics import EmbeddingSimilarityMetric
+
+metric = EmbeddingSimilarityMetric(model_name="all-MiniLM-L6-v2")
+scores = metric.evaluate(original_text="a", compressed_text="b")
+```
+
+## LLM Judge Metric
+
+`LLMJudgeMetric` queries an OpenAI chat model to score text pairs. The metric
+caches results in memory to avoid repeated API calls.
+
+```python
+from compact_memory.validation.llm_judge_metric import LLMJudgeMetric
+
+metric = LLMJudgeMetric(model_name="gpt-4")
+score = metric.evaluate(llm_response=model_answer, reference_answer=truth)
+```
+
+Ensure your `OPENAI_API_KEY` environment variable is set before using this
+metric.

@@ -25,3 +25,17 @@ else:
         "BertScoreHFMetric",
         "ExactMatchMetric",
     ]
+
+try:  # embedding dependencies may be missing
+    from .embedding_metrics import EmbeddingSimilarityMetric
+except Exception:  # pragma: no cover - optional dependency may be missing
+    EmbeddingSimilarityMetric = None  # type: ignore
+else:
+    __all__ += ["EmbeddingSimilarityMetric"]
+
+try:
+    from .llm_judge_metric import LLMJudgeMetric
+except Exception:  # pragma: no cover - optional dependency may be missing
+    LLMJudgeMetric = None  # type: ignore
+else:
+    __all__ += ["LLMJudgeMetric"]
