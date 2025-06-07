@@ -19,6 +19,10 @@ class OpenAIProvider(LLMProvider):
         "gpt-4.1-nano": 8192,
     }
 
+    def __init__(self, api_key: str | None = None, base_url: str | None = None) -> None:
+        self.api_key = api_key
+        self.base_url = base_url
+
     def get_token_budget(self, model_name: str, **kwargs) -> int:
         default = kwargs.get("default", 4096)
         return self.MODEL_TOKEN_LIMITS.get(model_name, default)
@@ -37,16 +41,30 @@ class OpenAIProvider(LLMProvider):
         max_new_tokens: int,
         **llm_kwargs: Any,
     ) -> str:
-        api_key = llm_kwargs.pop("api_key", None)
-        if api_key is None:
-            api_key = os.getenv("OPENAI_API_KEY")
+        api_key = (
+            llm_kwargs.pop("api_key", None)
+            or self.api_key
+            or os.getenv("OPENAI_API_KEY")
+        )
+        base_url = (
+            llm_kwargs.pop("base_url", None)
+            or self.base_url
+            or os.getenv("OPENAI_BASE_URL")
+        )
+
+        client_kwargs = {}
         if api_key:
-            openai.api_key = api_key
+            client_kwargs["api_key"] = api_key
+        if base_url:
+            client_kwargs["base_url"] = base_url
+
+        client = openai.OpenAI(**client_kwargs)
+
         messages = [{"role": "user", "content": prompt}]
-        resp = openai.ChatCompletion.create(
+        resp = client.chat.completions.create(
             model=model_name,
             messages=messages,
             max_tokens=max_new_tokens,
             **llm_kwargs,
         )
-        return resp.choices[0].message["content"].strip()
+        return resp.choices[0].message.content.strip()
