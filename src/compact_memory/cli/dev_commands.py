@@ -16,13 +16,17 @@ from compact_memory.validation.registry import (
     get_validation_metric_class,
 )
 from compact_memory.engines.registry import (
-    available_engines as cm_available_engines, # Renamed to avoid conflict
-    all_engine_metadata as cm_all_engine_metadata, # Renamed
+    available_engines as cm_available_engines,  # Renamed to avoid conflict
+    all_engine_metadata as cm_all_engine_metadata,  # Renamed
 )
 from compact_memory.embedding_pipeline import get_embedding_dim
-from compact_memory.prototype_engine import PrototypeEngine # Specific for inspect-engine
-from compact_memory.vector_store import InMemoryVectorStore # Specific for inspect-engine
-from compact_memory import llm_providers # For test-llm-prompt
+from compact_memory.prototype_engine import (
+    PrototypeEngine,
+)  # Specific for inspect-engine
+from compact_memory.vector_store import (
+    InMemoryVectorStore,
+)  # Specific for inspect-engine
+from compact_memory import llm_providers  # For test-llm-prompt
 from compact_memory.model_utils import (
     download_embedding_model as util_download_embedding_model,
     download_chat_model as util_download_chat_model,
@@ -31,7 +35,11 @@ from compact_memory.package_utils import (
     validate_package_dir,
     # load_manifest, load_engine_class, check_requirements_installed # Not directly used by CLI commands here
 )
-from compact_memory.engines import BaseCompressionEngine, CompressedMemory, CompressionTrace
+from compact_memory.engines import (
+    BaseCompressionEngine,
+    CompressedMemory,
+    CompressionTrace,
+)
 
 
 dev_app = typer.Typer(
@@ -44,12 +52,12 @@ console = Console()
     "list-metrics",
     help="Lists all available validation metric IDs that can be used in evaluations.",
 )
-def list_metrics_command() -> None: # Renamed from list_metrics
+def list_metrics_command() -> None:  # Renamed from list_metrics
     if not _VALIDATION_METRIC_REGISTRY:
         typer.echo("No validation metrics found.")
         return
     typer.echo("Available validation metric IDs:")
-    for mid in sorted(_VALIDATION_METRIC_REGISTRY.keys()): # Use .keys() if it's a dict
+    for mid in sorted(_VALIDATION_METRIC_REGISTRY.keys()):  # Use .keys() if it's a dict
         typer.echo(f"- {mid}")
 
 
@@ -58,13 +66,15 @@ def list_metrics_command() -> None: # Renamed from list_metrics
     help="Lists all available compression engine IDs, their versions, and sources (built-in or plugin).",
 )
 @dev_app.command(
-    "list-strategies", # Alias
+    "list-strategies",  # Alias
     help="Lists all available compression engine IDs, their versions, and sources (built-in or plugin).",
     hidden=True,
 )
-def list_registered_engines_command( # Renamed
+def list_registered_engines_command(  # Renamed
     include_contrib: bool = typer.Option(
-        False, "--include-contrib", help="Include experimental contrib engines (deprecated, contrib is integrated)."
+        False,
+        "--include-contrib",
+        help="Include experimental contrib engines (deprecated, contrib is integrated).",
     )
 ) -> None:
     # from compact_memory.plugin_loader import load_plugins # Global
@@ -76,8 +86,8 @@ def list_registered_engines_command( # Renamed
         "Display Name",
         "Version",
         "Source",
-        "Status", # Added status for overrides
-        title="Available Compression Engines", # Corrected title casing
+        "Status",  # Added status for overrides
+        title="Available Compression Engines",  # Corrected title casing
     )
     meta = cm_all_engine_metadata()
     ids = cm_available_engines()
@@ -90,7 +100,7 @@ def list_registered_engines_command( # Renamed
         # if not include_contrib and info.get("source") == "contrib":
         # continue
         status = ""
-        if info.get("overrides"): # Check for 'overrides' key if present
+        if info.get("overrides"):  # Check for 'overrides' key if present
             status = f"Overrides '{info['overrides']}'"
         table.add_row(
             sid,
@@ -106,7 +116,7 @@ def list_registered_engines_command( # Renamed
     "inspect-engine",
     help="Inspects aspects of a compression engine, currently focused on 'prototype' engine's beliefs.",
 )
-def inspect_engine_command( # Renamed
+def inspect_engine_command(  # Renamed
     # ctx: typer.Context, # If needed for memory_path from global options
     engine_name: str = typer.Argument(
         ...,
@@ -147,9 +157,11 @@ def inspect_engine_command( # Renamed
         #     typer.secho(f"Error loading engine from {resolved_memory_path}: {e}", fg=typer.colors.RED, err=True)
         #     raise typer.Exit(code=1)
         # else: # For now, using an in-memory instance as per original code:
-        dim = get_embedding_dim() # Assumes default embedding model
+        dim = get_embedding_dim()  # Assumes default embedding model
         store = InMemoryVectorStore(embedding_dim=dim)
-        engine_instance = PrototypeEngine(store=store) # Corrected: pass store to PrototypeEngine
+        engine_instance = PrototypeEngine(
+            store=store
+        )  # Corrected: pass store to PrototypeEngine
 
         protos = engine_instance.get_prototypes_view()
         if not protos:
@@ -162,9 +174,9 @@ def inspect_engine_command( # Renamed
             "Summary",
             title="Prototypes for PrototypeEngine",
         )
-        for p in protos: # Assuming p is a dict as per original code
+        for p in protos:  # Assuming p is a dict as per original code
             table.add_row(
-                str(p.get("id", "N/A")), # Ensure ID is string
+                str(p.get("id", "N/A")),  # Ensure ID is string
                 f"{p.get('strength', 0.0):.2f}",
                 f"{p.get('confidence', 0.0):.2f}",
                 p.get("summary", "")[:80] + "..." if p.get("summary", "") else "",
@@ -180,7 +192,7 @@ def inspect_engine_command( # Renamed
     "evaluate-compression",
     help='Evaluates compressed text against original text using a specified metric.\n\nUsage Examples:\n  compact-memory dev evaluate-compression original.txt summary.txt --metric compression_ratio\n  echo "original text" | compact-memory dev evaluate-compression - summary.txt --metric some_other_metric --metric-params \'{"param": "value"}\'',
 )
-def evaluate_compression_command( # Renamed
+def evaluate_compression_command(  # Renamed
     original_input: str = typer.Argument(
         ...,
         help="Original text content, path to a text file, or '-' to read from stdin.",
@@ -204,7 +216,9 @@ def evaluate_compression_command( # Renamed
         False, "--json", help="Output evaluation scores in JSON format."
     ),
 ) -> None:
-    def read_input_content(value: str, name_for_error: str, allow_stdin: bool) -> str: # Renamed function
+    def read_input_content(
+        value: str, name_for_error: str, allow_stdin: bool
+    ) -> str:  # Renamed function
         if value == "-":
             if not allow_stdin:
                 typer.secho(
@@ -213,10 +227,14 @@ def evaluate_compression_command( # Renamed
                     fg=typer.colors.RED,
                 )
                 raise typer.Exit(code=1)
-            if not sys.stdin.isatty(): # Check if there's something to read
-                 return sys.stdin.read()
+            if not sys.stdin.isatty():  # Check if there's something to read
+                return sys.stdin.read()
             else:
-                typer.secho(f"Error: Expected data from stdin for {name_for_error}, but nothing was piped.", err=True, fg=typer.colors.RED)
+                typer.secho(
+                    f"Error: Expected data from stdin for {name_for_error}, but nothing was piped.",
+                    err=True,
+                    fg=typer.colors.RED,
+                )
                 raise typer.Exit(code=1)
 
         p = Path(value)
@@ -225,7 +243,9 @@ def evaluate_compression_command( # Renamed
                 return p.read_text()
             except Exception as e:
                 typer.secho(
-                    f"Error reading {name_for_error} file '{p}': {e}", err=True, fg=typer.colors.RED
+                    f"Error reading {name_for_error} file '{p}': {e}",
+                    err=True,
+                    fg=typer.colors.RED,
                 )
                 raise typer.Exit(code=1)
         return value
@@ -236,7 +256,7 @@ def evaluate_compression_command( # Renamed
     )
 
     try:
-        MetricCls = get_validation_metric_class(metric_id) # Renamed variable
+        MetricCls = get_validation_metric_class(metric_id)  # Renamed variable
     except KeyError:
         typer.secho(
             f"Error: Unknown metric ID '{metric_id}'. Use 'list-metrics' to see available IDs.",
@@ -256,13 +276,17 @@ def evaluate_compression_command( # Renamed
             )
             raise typer.Exit(code=1)
 
-    metric_instance = MetricCls(**params) # Renamed variable
+    metric_instance = MetricCls(**params)  # Renamed variable
     try:
         # Assuming evaluate method signature is: evaluate(self, original_text: str, compressed_text: str) -> Dict[str, Any]
-        scores = metric_instance.evaluate(original_text=orig_text, compressed_text=comp_text)
+        scores = metric_instance.evaluate(
+            original_text=orig_text, compressed_text=comp_text
+        )
     except Exception as exc:
         typer.secho(
-            f"Error during metric evaluation with '{metric_id}': {exc}", err=True, fg=typer.colors.RED # Added metric_id to error
+            f"Error during metric evaluation with '{metric_id}': {exc}",
+            err=True,
+            fg=typer.colors.RED,  # Added metric_id to error
         )
         raise typer.Exit(code=1)
 
@@ -278,7 +302,7 @@ def evaluate_compression_command( # Renamed
     "test-llm-prompt",
     help='Tests a Language Model (LLM) prompt with specified context and query.\n\nUsage Examples:\n  compact-memory dev test-llm-prompt --context "AI is rapidly evolving." --query "Tell me more." --model-id tiny-gpt2\n  cat context.txt | compact-memory dev test-llm-prompt --context - -q "What are the implications?" --model-id openai/gpt-3.5-turbo --output-response response.txt --llm-config my_llm_config.yaml',
 )
-def test_llm_prompt_command( # Renamed
+def test_llm_prompt_command(  # Renamed
     *,
     context_input: str = typer.Option(
         ...,
@@ -289,9 +313,9 @@ def test_llm_prompt_command( # Renamed
     query: str = typer.Option(
         ..., "--query", "-q", help="User query to append to the context for the LLM."
     ),
-    model_id: str = typer.Option( # Changed from model to model_id for consistency
-        "tiny-gpt2", # Default value
-        "--model-id", # Changed option name
+    model_id: str = typer.Option(  # Changed from model to model_id for consistency
+        "tiny-gpt2",  # Default value
+        "--model-id",  # Changed option name
         help="Model ID to use for the test (must be defined in LLM config).",
     ),
     system_prompt: Optional[str] = typer.Option(
@@ -307,10 +331,10 @@ def test_llm_prompt_command( # Renamed
         None,
         "--output-response",
         help="File path to save the LLM's raw response. If unspecified, prints to console.",
-        resolve_path=True, # Added resolve_path
+        resolve_path=True,  # Added resolve_path
     ),
     llm_config_file: Optional[Path] = typer.Option(
-        Path("llm_models_config.yaml"), # Default value
+        Path("llm_models_config.yaml"),  # Default value
         "--llm-config",
         exists=True,
         dir_okay=False,
@@ -322,15 +346,25 @@ def test_llm_prompt_command( # Renamed
         help="Environment variable name that holds the API key for the LLM provider (e.g., 'OPENAI_API_KEY').",
     ),
 ) -> None:
-    def read_content_value(val: str, input_name: str, allow_stdin: bool) -> str: # Renamed function
+    def read_content_value(
+        val: str, input_name: str, allow_stdin: bool
+    ) -> str:  # Renamed function
         if val == "-":
             if not allow_stdin:
-                 typer.secho(f"Error: Cannot use '-' for stdin for {input_name} when another input is already using it.", err=True, fg=typer.colors.RED)
-                 raise typer.Exit(code=1)
+                typer.secho(
+                    f"Error: Cannot use '-' for stdin for {input_name} when another input is already using it.",
+                    err=True,
+                    fg=typer.colors.RED,
+                )
+                raise typer.Exit(code=1)
             if not sys.stdin.isatty():
                 return sys.stdin.read()
             else:
-                typer.secho(f"Error: Expected data from stdin for {input_name}, but nothing was piped.", err=True, fg=typer.colors.RED)
+                typer.secho(
+                    f"Error: Expected data from stdin for {input_name}, but nothing was piped.",
+                    err=True,
+                    fg=typer.colors.RED,
+                )
                 raise typer.Exit(code=1)
         p = Path(val)
         if p.exists() and p.is_file():
@@ -345,7 +379,9 @@ def test_llm_prompt_command( # Renamed
                 raise typer.Exit(code=1)
         return val
 
-    context_text = read_content_value(context_input, "context", True) # Only context can be stdin for now
+    context_text = read_content_value(
+        context_input, "context", True
+    )  # Only context can be stdin for now
 
     cfg = {}
     if llm_config_file and llm_config_file.exists():
@@ -361,7 +397,9 @@ def test_llm_prompt_command( # Renamed
 
     # model_id is the key in the llm_config_file
     model_config = cfg.get(model_id, {"provider": "local", "model_name": model_id})
-    provider_name = model_config.get("provider", "local") # Default to local if not specified
+    provider_name = model_config.get(
+        "provider", "local"
+    )  # Default to local if not specified
     actual_model_name_for_provider = model_config.get("model_name", model_id)
 
     # Select provider (ensure llm_providers has these attributes)
@@ -369,37 +407,52 @@ def test_llm_prompt_command( # Renamed
         provider_instance = llm_providers.OpenAIProvider()
     elif provider_name == "gemini":
         provider_instance = llm_providers.GeminiProvider()
-    elif provider_name == "local": # Assuming 'local' maps to LocalTransformersProvider
+    elif provider_name == "local":  # Assuming 'local' maps to LocalTransformersProvider
         provider_instance = llm_providers.LocalTransformersProvider()
     else:
-        typer.secho(f"Error: Unknown LLM provider '{provider_name}' in config for model '{model_id}'.", fg=typer.colors.RED, err=True)
+        typer.secho(
+            f"Error: Unknown LLM provider '{provider_name}' in config for model '{model_id}'.",
+            fg=typer.colors.RED,
+            err=True,
+        )
         raise typer.Exit(code=1)
 
-    api_key_value = os.getenv(api_key_env_var) if api_key_env_var else None # Renamed variable
+    api_key_value = (
+        os.getenv(api_key_env_var) if api_key_env_var else None
+    )  # Renamed variable
 
-    prompt_elements = [] # Renamed variable
+    prompt_elements = []  # Renamed variable
     if system_prompt:
         prompt_elements.append(system_prompt)
-    if context_text: # Ensure context_text is not empty
+    if context_text:  # Ensure context_text is not empty
         prompt_elements.append(context_text)
-    prompt_elements.append(query) # Query is mandatory
-    final_prompt = "\n\n".join(filter(None, prompt_elements)) # Filter out empty strings
+    prompt_elements.append(query)  # Query is mandatory
+    final_prompt = "\n\n".join(
+        filter(None, prompt_elements)
+    )  # Filter out empty strings
 
-    typer.echo(f"--- Sending Prompt to LLM ({provider_name} - {actual_model_name_for_provider}) ---")
     typer.echo(
-        final_prompt[:500] + ("..." if len(final_prompt) > 500 else "") # Improved preview
+        f"--- Sending Prompt to LLM ({provider_name} - {actual_model_name_for_provider}) ---"
+    )
+    typer.echo(
+        final_prompt[:500]
+        + ("..." if len(final_prompt) > 500 else "")  # Improved preview
     )
     typer.echo("--- End of Prompt ---")
 
     try:
-        response_text = provider_instance.generate_response( # Renamed variable
+        response_text = provider_instance.generate_response(  # Renamed variable
             final_prompt,
             model_name=actual_model_name_for_provider,
             max_new_tokens=max_new_tokens,
-            api_key=api_key_value, # Pass the fetched API key
+            api_key=api_key_value,  # Pass the fetched API key
         )
     except Exception as exc:
-        typer.secho(f"LLM generation error with model '{actual_model_name_for_provider}': {exc}", err=True, fg=typer.colors.RED)
+        typer.secho(
+            f"LLM generation error with model '{actual_model_name_for_provider}': {exc}",
+            err=True,
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(code=1)
 
     if output_llm_response_file:
@@ -423,13 +476,14 @@ def test_llm_prompt_command( # Renamed
     "evaluate-llm-response",
     help="Evaluates an LLM's response against a reference answer using a specified metric.",
 )
-def evaluate_llm_response_command( # Renamed
+def evaluate_llm_response_command(  # Renamed
     response_input: str = typer.Argument(
         ...,
         help="LLM's generated response text, path to a response file, or '-' to read from stdin.",
     ),
     reference_input: str = typer.Argument(
-        ..., help="Reference (ground truth) answer text, path to a file, or '-' to read from stdin." # Updated help
+        ...,
+        help="Reference (ground truth) answer text, path to a file, or '-' to read from stdin.",  # Updated help
     ),
     metric_id: str = typer.Option(
         ...,
@@ -446,15 +500,25 @@ def evaluate_llm_response_command( # Renamed
         False, "--json", help="Output evaluation scores in JSON format."
     ),
 ) -> None:
-    def read_content_value(val: str, input_name: str, allow_stdin: bool) -> str: # Reusing helper
+    def read_content_value(
+        val: str, input_name: str, allow_stdin: bool
+    ) -> str:  # Reusing helper
         if val == "-":
             if not allow_stdin:
-                 typer.secho(f"Error: Cannot use '-' for stdin for {input_name} when another input is already using it.", err=True, fg=typer.colors.RED)
-                 raise typer.Exit(code=1)
+                typer.secho(
+                    f"Error: Cannot use '-' for stdin for {input_name} when another input is already using it.",
+                    err=True,
+                    fg=typer.colors.RED,
+                )
+                raise typer.Exit(code=1)
             if not sys.stdin.isatty():
                 return sys.stdin.read()
             else:
-                typer.secho(f"Error: Expected data from stdin for {input_name}, but nothing was piped.", err=True, fg=typer.colors.RED)
+                typer.secho(
+                    f"Error: Expected data from stdin for {input_name}, but nothing was piped.",
+                    err=True,
+                    fg=typer.colors.RED,
+                )
                 raise typer.Exit(code=1)
         p = Path(val)
         if p.exists() and p.is_file():
@@ -470,10 +534,12 @@ def evaluate_llm_response_command( # Renamed
         return val
 
     resp_text = read_content_value(response_input, "LLM response", True)
-    ref_text = read_content_value(reference_input, "reference answer", response_input != "-")
+    ref_text = read_content_value(
+        reference_input, "reference answer", response_input != "-"
+    )
 
     try:
-        MetricCls = get_validation_metric_class(metric_id) # Renamed
+        MetricCls = get_validation_metric_class(metric_id)  # Renamed
     except KeyError:
         typer.secho(
             f"Error: Unknown metric ID '{metric_id}'. Use 'list-metrics' to see available IDs.",
@@ -494,13 +560,17 @@ def evaluate_llm_response_command( # Renamed
             )
             raise typer.Exit(code=1)
 
-    metric_instance = MetricCls(**params) # Renamed
+    metric_instance = MetricCls(**params)  # Renamed
     try:
         # Assuming evaluate method signature: evaluate(self, llm_response: str, reference_answer: str) -> Dict[str, Any]
-        scores = metric_instance.evaluate(llm_response=resp_text, reference_answer=ref_text)
+        scores = metric_instance.evaluate(
+            llm_response=resp_text, reference_answer=ref_text
+        )
     except Exception as exc:
         typer.secho(
-            f"Error during metric evaluation with '{metric_id}': {exc}", err=True, fg=typer.colors.RED # Added metric_id
+            f"Error during metric evaluation with '{metric_id}': {exc}",
+            err=True,
+            fg=typer.colors.RED,  # Added metric_id
         )
         raise typer.Exit(code=1)
 
@@ -516,10 +586,10 @@ def evaluate_llm_response_command( # Renamed
     "download-embedding-model",
     help="Downloads a specified SentenceTransformer embedding model from Hugging Face.",
 )
-def download_embedding_model_command( # Renamed
+def download_embedding_model_command(  # Renamed
     model_name: str = typer.Option(
-        "all-MiniLM-L6-v2", # Default value
-        "--model-name", # Explicit option name
+        "all-MiniLM-L6-v2",  # Default value
+        "--model-name",  # Explicit option name
         help="Name of the SentenceTransformer model to download (e.g., 'all-MiniLM-L6-v2').",
     )
 ) -> None:
@@ -528,7 +598,9 @@ def download_embedding_model_command( # Renamed
     # unless the util function is changed to not use tqdm.
     # For now, assume util_download_embedding_model handles its own progress display.
     try:
-        util_download_embedding_model(model_name) # This function should handle its own tqdm
+        util_download_embedding_model(
+            model_name
+        )  # This function should handle its own tqdm
         typer.echo(f"Successfully downloaded embedding model '{model_name}'.")
     except Exception as e:
         typer.secho(
@@ -543,17 +615,17 @@ def download_embedding_model_command( # Renamed
     "download-chat-model",
     help="Downloads a specified causal Language Model (e.g., for chat) from Hugging Face.",
 )
-def download_chat_model_command( # Renamed
+def download_chat_model_command(  # Renamed
     model_name: str = typer.Option(
-        "tiny-gpt2", # Default value
-        "--model-name", # Explicit option name
+        "tiny-gpt2",  # Default value
+        "--model-name",  # Explicit option name
         help="Name of the Hugging Face causal LM to download (e.g., 'gpt2', 'facebook/opt-125m').",
     )
 ) -> None:
     typer.echo(f"Starting download for chat model: {model_name}...")
     # Similar to embedding model, assume util_download_chat_model handles tqdm
     try:
-        util_download_chat_model(model_name) # This function should handle its own tqdm
+        util_download_chat_model(model_name)  # This function should handle its own tqdm
         typer.echo(f"Successfully downloaded chat model '{model_name}'.")
     except Exception as e:
         typer.secho(
@@ -563,17 +635,20 @@ def download_chat_model_command( # Renamed
         )
         raise typer.Exit(code=1)
 
+
 @dev_app.command(
     "create-engine-package",
     help="Creates a new compression engine extension package from a template. This command generates a template directory with all the necessary files to start developing a new, shareable engine package, including a sample engine, manifest file, and README.",
 )
-def create_engine_package_command( # Renamed
+def create_engine_package_command(  # Renamed
     name: str = typer.Option(
-        "compact_memory_example_engine", # Default value
-        "--name", # Explicit option name
+        "compact_memory_example_engine",  # Default value
+        "--name",  # Explicit option name
         help="Name for the new engine package (e.g., 'compact_memory_my_engine'). Used for directory and engine ID.",
     ),
-    path_str: Optional[str] = typer.Option( # Renamed to path_str to avoid conflict with pathlib.Path
+    path_str: Optional[
+        str
+    ] = typer.Option(  # Renamed to path_str to avoid conflict with pathlib.Path
         None,
         "--path",
         help="Directory where the engine package will be created. Defaults to a new directory named after the engine in the current location.",
@@ -647,16 +722,18 @@ class MyEngine(BaseCompressionEngine):
 """
     (target_dir / "engine.py").write_text(engine_py_content)
 
-    manifest_content = { # Using dict then dumping to YAML
+    manifest_content = {  # Using dict then dumping to YAML
         "package_format_version": "1.0",
-        "engine_id": name, # Uses the 'name' parameter
-        "engine_class_name": "MyEngine", # Default class name in template
-        "engine_module": "engine", # Default module name (engine.py)
-        "display_name": name.replace("_", " ").title(), # Generate a nice display name
+        "engine_id": name,  # Uses the 'name' parameter
+        "engine_class_name": "MyEngine",  # Default class name in template
+        "engine_module": "engine",  # Default module name (engine.py)
+        "display_name": name.replace("_", " ").title(),  # Generate a nice display name
         "version": "0.1.0",
-        "authors": [{"name": "Your Name", "email": "your.email@example.com"}], # Placeholder
-        "description": f"A sample compression engine package: {name}.", # Placeholder
-        "requirements": [], # Placeholder for dependencies
+        "authors": [
+            {"name": "Your Name", "email": "your.email@example.com"}
+        ],  # Placeholder
+        "description": f"A sample compression engine package: {name}.",  # Placeholder
+        "requirements": [],  # Placeholder for dependencies
     }
     (target_dir / "engine_package.yaml").write_text(
         yaml.safe_dump(manifest_content, sort_keys=False)
@@ -668,7 +745,6 @@ class MyEngine(BaseCompressionEngine):
         f"# {manifest_content['display_name']}\n\n{manifest_content['description']}\n"
     )
 
-
     typer.echo(f"Successfully created engine package '{name}' at: {target_dir}")
 
 
@@ -676,32 +752,42 @@ class MyEngine(BaseCompressionEngine):
     "validate-engine-package",
     help="Validates the structure and manifest of a compression engine extension package.\n\nUsage Examples:\n  compact-memory dev validate-engine-package path/to/my_engine_pkg",
 )
-def validate_engine_package_command( # Renamed
+def validate_engine_package_command(  # Renamed
     package_path: Path = typer.Argument(
         ...,
         help="Path to the root directory of the engine package.",
         exists=True,
-        file_okay=False, # Must be a directory
+        file_okay=False,  # Must be a directory
         dir_okay=True,
         resolve_path=True,
     )
 ) -> None:
-    errors, warnings = validate_package_dir(package_path) # This util should do the heavy lifting
-    for w_msg in warnings: # Renamed variable
+    errors, warnings = validate_package_dir(
+        package_path
+    )  # This util should do the heavy lifting
+    for w_msg in warnings:  # Renamed variable
         typer.secho(f"Warning: {w_msg}", fg=typer.colors.YELLOW)
     if errors:
-        typer.secho("Engine package validation failed with errors:", fg=typer.colors.RED, err=True)
-        for e_msg in errors: # Renamed variable
-            typer.secho(f"- {e_msg}", fg=typer.colors.RED, err=True) # Ensure errors go to stderr
+        typer.secho(
+            "Engine package validation failed with errors:",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        for e_msg in errors:  # Renamed variable
+            typer.secho(
+                f"- {e_msg}", fg=typer.colors.RED, err=True
+            )  # Ensure errors go to stderr
         raise typer.Exit(code=1)
-    typer.secho(f"Engine package at '{package_path}' appears valid.", fg=typer.colors.GREEN) # Success message
+    typer.secho(
+        f"Engine package at '{package_path}' appears valid.", fg=typer.colors.GREEN
+    )  # Success message
 
 
 @dev_app.command(
     "inspect-trace",
     help="Inspects a CompressionTrace JSON file, optionally filtering by step type.",
 )
-def inspect_trace_command( # Renamed
+def inspect_trace_command(  # Renamed
     trace_file: Path = typer.Argument(
         ...,
         help="Path to the CompressionTrace JSON file.",
@@ -712,7 +798,7 @@ def inspect_trace_command( # Renamed
     ),
     step_type: Optional[str] = typer.Option(
         None,
-        "--type", # Consistent option name
+        "--type",  # Consistent option name
         help="Filter trace steps by this 'type' string (e.g., 'chunking', 'llm_call').",
     ),
 ) -> None:
@@ -721,12 +807,20 @@ def inspect_trace_command( # Renamed
     #     typer.secho(f"Error: Trace file '{trace_file}' not found.", err=True, fg=typer.colors.RED)
     #     raise typer.Exit(code=1)
     try:
-        trace_data = json.loads(trace_file.read_text()) # Renamed variable
+        trace_data = json.loads(trace_file.read_text())  # Renamed variable
     except json.JSONDecodeError as e:
-        typer.secho(f"Error: Invalid JSON in trace file '{trace_file}': {e}", err=True, fg=typer.colors.RED)
+        typer.secho(
+            f"Error: Invalid JSON in trace file '{trace_file}': {e}",
+            err=True,
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(code=1)
     except Exception as e:
-        typer.secho(f"Error reading trace file '{trace_file}': {e}", err=True, fg=typer.colors.RED)
+        typer.secho(
+            f"Error reading trace file '{trace_file}': {e}",
+            err=True,
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(code=1)
 
     steps = trace_data.get("steps", [])
@@ -735,7 +829,7 @@ def inspect_trace_command( # Renamed
     title_parts = [f"Compression Trace: {trace_file.name}"]
     if trace_data.get("engine_name"):
         title_parts.append(f"Engine: {trace_data['engine_name']}")
-    if trace_data.get("original_tokens") is not None: # Check for None explicitly
+    if trace_data.get("original_tokens") is not None:  # Check for None explicitly
         title_parts.append(f"Original Tokens: {trace_data['original_tokens']}")
     if trace_data.get("compressed_tokens") is not None:
         title_parts.append(f"Compressed Tokens: {trace_data['compressed_tokens']}")
@@ -747,19 +841,23 @@ def inspect_trace_command( # Renamed
     table = Table("Index", "Type", "Details Preview", title=full_title)
 
     filtered_steps_count = 0
-    for idx, step_detail in enumerate(steps): # Renamed variables
-        current_step_type = step_detail.get("type", "N/A") # Default if type is missing
+    for idx, step_detail in enumerate(steps):  # Renamed variables
+        current_step_type = step_detail.get("type", "N/A")  # Default if type is missing
         if step_type and current_step_type != step_type:
             continue
 
-        details_preview_obj = step_detail.get("details", {}) # Renamed variable
+        details_preview_obj = step_detail.get("details", {})  # Renamed variable
         try:
-            details_preview_str = json.dumps(details_preview_obj)[:50] + ("..." if len(json.dumps(details_preview_obj)) > 50 else "")
-        except TypeError: # Handle non-serializable details gracefully
-            details_preview_str = str(details_preview_obj)[:50] + ("..." if len(str(details_preview_obj)) > 50 else "")
+            details_preview_str = json.dumps(details_preview_obj)[:50] + (
+                "..." if len(json.dumps(details_preview_obj)) > 50 else ""
+            )
+        except TypeError:  # Handle non-serializable details gracefully
+            details_preview_str = str(details_preview_obj)[:50] + (
+                "..." if len(str(details_preview_obj)) > 50 else ""
+            )
 
         table.add_row(str(idx), current_step_type, details_preview_str)
-        filtered_steps_count +=1
+        filtered_steps_count += 1
 
     if filtered_steps_count == 0:
         if step_type:
@@ -768,6 +866,7 @@ def inspect_trace_command( # Renamed
             typer.echo("No steps found in the trace.")
     else:
         console.print(table)
+
 
 # Final checks:
 # - All command functions renamed (e.g., list_metrics -> list_metrics_command).
