@@ -22,6 +22,7 @@ portable.
 - Format Python code with **Black** and lint with **Flake8**. Run `pre-commit run --files <files>` before committing.
 - Follow **PEP 8** and include type hints for functions and methods.
 - Write clear docstrings in the Google style.
+- Name compression engine `id` strings using lowercase `snake_case` so they can be used with the `--engine` CLI option.
 
 ## Testing
 - Run `pytest` from the repository root after making code changes.
