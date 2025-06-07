@@ -66,7 +66,7 @@ def register_builtin_engines():
     Registers all built-in compression engines.
 
     This function centralizes the registration of core engines like
-    NoCompressionEngine, FirstLastEngine, and PrototypeEngine.
+    NoCompressionEngine and FirstLastEngine.
     It's designed to be called once, typically when the `compact_memory.engines`
     package is imported.
     """
@@ -78,8 +78,7 @@ def register_builtin_engines():
     # and to encapsulate these imports within the registration logic.
     from compact_memory.engines.no_compression_engine import NoCompressionEngine
     from compact_memory.engines.first_last_engine import FirstLastEngine
-    # Attempt to import PrototypeEngine as well
-    from compact_memory.prototype_engine import PrototypeEngine
+    # PrototypeEngine was removed
 
 
     register_compression_engine(
@@ -94,12 +93,7 @@ def register_builtin_engines():
         display_name="First/Last Chunks",
         source="built-in"
     )
-    register_compression_engine(
-        PrototypeEngine.id,
-        PrototypeEngine,
-        display_name="Prototype Engine",
-        source="built-in"
-    )
+    # PrototypeEngine was removed
     _BUILTIN_ENGINES_REGISTERED = True
 
 
