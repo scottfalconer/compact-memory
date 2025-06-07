@@ -290,7 +290,7 @@ class TestReadAgentGistEngine(unittest.TestCase):
                     "50",  # If LLM output is >50, it would be truncated by the CLI wrapper normally.
                     # Here, mock_llm_output is shorter than 50.
                     "--engine",
-                    "readagent_gist",
+                    "read_agent_gist",
                     # No --model-id, so it should pick up default_model_id from global config to select the provider.
                 ],
             )

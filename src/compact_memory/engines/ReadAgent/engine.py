@@ -30,7 +30,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 
 class ReadAgentGistEngine(BaseCompressionEngine):
-    id: str = "readagent_gist"
+    id: str = "read_agent_gist"
 
     def __init__(
         self,
