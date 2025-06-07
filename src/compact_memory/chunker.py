@@ -5,6 +5,11 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Type
 
 import nltk
+
+try:  # Compatibility across NLTK versions
+    DownloadError = nltk.downloader.DownloadError
+except AttributeError:  # pragma: no cover - for newer NLTK
+    DownloadError = LookupError
 import tiktoken
 
 from .spacy_utils import get_nlp
@@ -146,12 +151,13 @@ class NltkSentenceChunker(Chunker):
 
         try:
             nltk.data.find("tokenizers/punkt")
-        except nltk.downloader.DownloadError: # pragma: no cover - offline fallback
+        except DownloadError:  # pragma: no cover - offline fallback
             try:
-                nltk.download('punkt', quiet=True)
-            except Exception as e: # pragma: no cover - offline fallback
-                logging.warning(f"NLTK punkt download failed: {e}. Falling back to basic sentence splitting.")
-
+                nltk.download("punkt", quiet=True)
+            except Exception as e:  # pragma: no cover - offline fallback
+                logging.warning(
+                    f"NLTK punkt download failed: {e}. Falling back to basic sentence splitting."
+                )
 
     def config(self) -> Dict[str, int | str]:
         return {
@@ -162,9 +168,9 @@ class NltkSentenceChunker(Chunker):
     def chunk(self, text: str) -> List[str]:
         try:
             sentences = nltk.sent_tokenize(text)
-        except Exception: # pragma: no cover - punkt not available
+        except Exception:  # pragma: no cover - punkt not available
             # Fallback to basic split if sent_tokenize fails (e.g. punkt not downloaded)
-            sentences = text.split('.')
+            sentences = text.split(".")
 
         if not sentences:
             return []
@@ -196,11 +202,17 @@ class NltkSentenceChunker(Chunker):
                 # Split the long sentence
                 if self.tokenizer is not None:
                     for i in range(0, num_sentence_tokens, self.max_tokens):
-                        chunks.append(self.tokenizer.decode(sentence_tokens[i : i + self.max_tokens]))
+                        chunks.append(
+                            self.tokenizer.decode(
+                                sentence_tokens[i : i + self.max_tokens]
+                            )
+                        )
                 else:
                     # Fallback for splitting if tokenizer is not available
                     for i in range(0, num_sentence_tokens, self.max_tokens):
-                        chunks.append(" ".join(sentence_tokens[i : i + self.max_tokens]))
+                        chunks.append(
+                            " ".join(sentence_tokens[i : i + self.max_tokens])
+                        )
                 continue
 
             if current_chunk_tokens + num_sentence_tokens <= self.max_tokens:

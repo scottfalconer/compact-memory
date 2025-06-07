@@ -1,15 +1,21 @@
 import pytest
 from unittest import mock
-import nltk # Conditional import for type checking if used directly
-import tiktoken # Conditional import for type checking if used directly
+import nltk  # Conditional import for type checking if used directly
+import tiktoken  # Conditional import for type checking if used directly
+
+# NLTK 3.9 removed ``nltk.downloader.DownloadError``. Older versions used this
+# exception, and the tests rely on it for mocking download failures. Create an
+# alias if it does not exist so the tests work consistently across versions.
+if not hasattr(nltk.downloader, "DownloadError"):
+    nltk.downloader.DownloadError = LookupError
 
 from compact_memory.chunker import (
     SentenceWindowChunker,
     AgenticChunker,
     NltkSentenceChunker,
     _CHUNKER_REGISTRY,
-    Chunker, # Added for completeness if we want to register a dummy
-    register_chunker # Added for completeness
+    Chunker,  # Added for completeness if we want to register a dummy
+    register_chunker,  # Added for completeness
 )
 
 
@@ -21,8 +27,10 @@ class DummyTokenizer:
     def decode(self, tokens):
         return " ".join(tokens)
 
+
 # Mock tiktoken instance for NltkSentenceChunker if needed for specific tests
 mock_tiktoken_tokenizer = DummyTokenizer()
+
 
 def test_sentence_window_chunker_overlap():
     s1 = ("alpha " * 220).strip() + "."
@@ -30,13 +38,13 @@ def test_sentence_window_chunker_overlap():
     s3 = ("charlie " * 220).strip() + "."
     text = f"{s1} {s2} {s3}"
     chunker = SentenceWindowChunker(max_tokens=512, overlap_tokens=32)
-    chunker.tokenizer = DummyTokenizer() # Override with dummy for predictability
+    chunker.tokenizer = DummyTokenizer()  # Override with dummy for predictability
     chunks = chunker.chunk(text)
     assert len(chunks) == 2
     # Ensure overlap logic is consistent with DummyTokenizer's behavior
     # This test might need adjustment if DummyTokenizer's tokenization differs significantly from tiktoken
-    tok = chunker.tokenizer.encode(chunks[0])[-32:] # Get last 32 "words"
-    tok2 = chunker.tokenizer.encode(chunks[1])[:32] # Get first 32 "words"
+    tok = chunker.tokenizer.encode(chunks[0])[-32:]  # Get last 32 "words"
+    tok2 = chunker.tokenizer.encode(chunks[1])[:32]  # Get first 32 "words"
     assert tok == tok2
 
 
@@ -46,16 +54,20 @@ def test_agentic_chunker_basic():
     try:
         chunker = AgenticChunker(max_tokens=2, sim_threshold=0.1)
         chunks = chunker.chunk(text)
-        assert len(chunks) >= 2 # Expect multiple chunks from distinct sentences
+        assert len(chunks) >= 2  # Expect multiple chunks from distinct sentences
     except Exception as e:
-        pytest.skip(f"Skipping AgenticChunker test due to model loading or other issue: {e}")
+        pytest.skip(
+            f"Skipping AgenticChunker test due to model loading or other issue: {e}"
+        )
 
 
 # --- Tests for NltkSentenceChunker ---
 
+
 def test_nltk_chunker_registration():
     assert NltkSentenceChunker.id in _CHUNKER_REGISTRY
     assert _CHUNKER_REGISTRY[NltkSentenceChunker.id] == NltkSentenceChunker
+
 
 def test_nltk_chunker_config():
     chunker = NltkSentenceChunker(max_tokens=128)
@@ -63,12 +75,14 @@ def test_nltk_chunker_config():
     assert config["id"] == "nltk_sentence"
     assert config["max_tokens"] == 128
 
+
 @pytest.fixture
 def ensure_nltk_punkt():
     try:
         nltk.data.find("tokenizers/punkt")
     except nltk.downloader.DownloadError:
         nltk.download("punkt", quiet=True)
+
 
 def test_nltk_chunker_simple_splitting(ensure_nltk_punkt):
     chunker = NltkSentenceChunker(max_tokens=10)
@@ -83,10 +97,13 @@ def test_nltk_chunker_simple_splitting(ensure_nltk_punkt):
     assert chunks[0] == "This is sentence one. This is sentence two."
     assert chunks[1] == "This is sentence three."
 
+
 def test_nltk_chunker_max_tokens_constraint(ensure_nltk_punkt):
     chunker = NltkSentenceChunker(max_tokens=7)
     chunker.tokenizer = mock_tiktoken_tokenizer
-    text = "Short sentence one. Another short one. A slightly longer third sentence here."
+    text = (
+        "Short sentence one. Another short one. A slightly longer third sentence here."
+    )
     # Token counts: [3, 3, 6]
     # Chunk 1: "Short sentence one." (3) + "Another short one." (3) = 6 tokens < 7
     # Chunk 2: "A slightly longer third sentence here." (6 tokens)
@@ -95,16 +112,18 @@ def test_nltk_chunker_max_tokens_constraint(ensure_nltk_punkt):
     assert chunks[0] == "Short sentence one. Another short one."
     assert chunks[1] == "A slightly longer third sentence here."
 
+
 def test_nltk_chunker_long_sentence_split(ensure_nltk_punkt):
     chunker = NltkSentenceChunker(max_tokens=5)
     chunker.tokenizer = mock_tiktoken_tokenizer
-    text = "This is a single very long sentence that must be split." # 11 tokens
+    text = "This is a single very long sentence that must be split."  # 11 tokens
     # Expected: "This is a single very", "long sentence that must be", "split."
     chunks = chunker.chunk(text)
     assert len(chunks) == 3
-    assert chunks[0] == "This is a single very" # 5 tokens
-    assert chunks[1] == "long sentence that must be" # 5 tokens
-    assert chunks[2] == "split." # 1 token
+    assert chunks[0] == "This is a single very"  # 5 tokens
+    assert chunks[1] == "long sentence that must be"  # 5 tokens
+    assert chunks[2] == "split."  # 1 token
+
 
 def test_nltk_chunker_empty_and_whitespace_text(ensure_nltk_punkt):
     chunker = NltkSentenceChunker()
@@ -113,6 +132,7 @@ def test_nltk_chunker_empty_and_whitespace_text(ensure_nltk_punkt):
     assert chunker.chunk("     ") == []
     assert chunker.chunk("  \n\t  ") == []
 
+
 @mock.patch("nltk.download")
 def test_nltk_chunker_punkt_download_triggered(mock_nltk_download, caplog):
     # Temporarily remove punkt to trigger download attempt
@@ -120,11 +140,20 @@ def test_nltk_chunker_punkt_download_triggered(mock_nltk_download, caplog):
         NltkSentenceChunker()
         mock_nltk_download.assert_called_once_with("punkt", quiet=True)
 
+
 @mock.patch("nltk.download", side_effect=Exception("Download failed"))
 @mock.patch("nltk.data.find", side_effect=nltk.downloader.DownloadError)
-def test_nltk_chunker_punkt_download_failure_fallback(mock_nltk_find, mock_nltk_download, caplog):
+def test_nltk_chunker_punkt_download_failure_fallback(
+    mock_nltk_find, mock_nltk_download, caplog
+):
+    # Ensure any previously loaded punkt tokenizer is cleared so that the mocked
+    # ``nltk.data.find`` call is triggered during sentence tokenization.
+    nltk.data.clear_cache()
+
     chunker = NltkSentenceChunker(max_tokens=5)
-    chunker.tokenizer = mock_tiktoken_tokenizer # Use dummy for predictable tokenization
+    chunker.tokenizer = (
+        mock_tiktoken_tokenizer  # Use dummy for predictable tokenization
+    )
 
     text = "First. Second sentence here. Third one."
     # If punkt download fails, it should fall back to text.split('.')
@@ -132,7 +161,7 @@ def test_nltk_chunker_punkt_download_failure_fallback(mock_nltk_find, mock_nltk_
     # split('.') would produce: ["First", " Second sentence here", " Third one", ""] (empty string if text ends with '.')
     # The implementation's fallback is `text.split('.')`
 
-    chunks = chunker.chunk(text)
+    _ = chunker.chunk(text)
     # Expected with split('.'):
     # "First" (1 token)
     # " Second sentence here" (3 tokens) -> chunk 1 = "First. Second sentence here" (1+3=4. Whitespace might differ)
@@ -189,12 +218,14 @@ def test_nltk_chunker_punkt_download_failure_fallback(mock_nltk_find, mock_nltk_
     # If sentences are not stripped before join, spaces can accumulate.
     # The actual NltkSentenceChunker doesn't strip sentences from nltk.sent_tokenize either.
     expected_chunks_fallback = ["One  Two  Three "]
-    if not chunks_fallback[0].endswith(" "): # Handle case where "" might be ignored by join or split differently based on python version
+    if not chunks_fallback[0].endswith(
+        " "
+    ):  # Handle case where "" might be ignored by join or split differently based on python version
         expected_chunks_fallback = ["One  Two  Three"]
 
-
     assert chunks_fallback == expected_chunks_fallback
-    assert "NLTK punkt download failed" in caplog.text # Check for warning log
+    assert "NLTK punkt download failed" in caplog.text  # Check for warning log
+
 
 @mock.patch("tiktoken.get_encoding", side_effect=Exception("Tiktoken unavailable"))
 def test_nltk_chunker_tiktoken_failure_fallback(mock_get_encoding, ensure_nltk_punkt):
@@ -215,7 +246,7 @@ def test_nltk_chunker_tiktoken_failure_fallback(mock_get_encoding, ensure_nltk_p
     # Test long sentence splitting with fallback tokenizer
     chunker_long_fallback = NltkSentenceChunker(max_tokens=3)
     assert chunker_long_fallback.tokenizer is None
-    long_text = "A very long sentence here indeed." # 6 words
+    long_text = "A very long sentence here indeed."  # 6 words
     # Expected: "A very long", "sentence here indeed." (or "sentence here", "indeed.")
     # Fallback split logic for long sentence:
     # sentence_tokens = sent.split() -> ["A", "very", "long", "sentence", "here", "indeed."]
@@ -226,4 +257,3 @@ def test_nltk_chunker_tiktoken_failure_fallback(mock_get_encoding, ensure_nltk_p
     assert len(long_chunks) == 2
     assert long_chunks[0] == "A very long"
     assert long_chunks[1] == "sentence here indeed."
-
