@@ -1,10 +1,10 @@
 # Developing Validation Metrics
 
-This document guides developers and researchers on creating custom `ValidationMetric` classes to evaluate the quality and utility of compressed memory produced by different `BaseCompressionEngine` implementations. These metrics are crucial for the Compact Memory experimentation framework.
+This document guides developers and researchers on creating custom `ValidationMetric` classes to evaluate the quality and utility of compressed memory produced by different `BaseCompressionEngine` implementations.
 
 Validation metrics assess how well an LLM performs when using compressed memory.
 All metrics must subclass `ValidationMetric` and register themselves with the
-registry so experiment configurations can reference them.
+registry for easy lookup.
 
 ## ValidationMetric ABC
 
@@ -42,5 +42,4 @@ class RougeMetric(HFValidationMetric):
         super().__init__("rouge", **params)
 ```
 
-When running experiments, metrics are selected by `metric_id` and optional
-initialisation parameters.
+Metrics are selected by `metric_id` and optional initialisation parameters.

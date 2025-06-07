@@ -19,8 +19,6 @@ compact_memory_my_engine/
 ├── engine_package.yaml            # Manifest file
 ├── README.md                        # Basic README for your package
 ├── requirements.txt                 # For dependencies
-└── experiments/                     # For example experiments
-    └── example.yaml
 ```
 ### 2. Add Your Engine Code
 Now, replace the contents of the template \`compact_memory_my_engine/engine.py\` with your actual engine code from \`my_awesome_engine.py\`.

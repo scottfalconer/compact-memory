@@ -590,7 +590,6 @@ def create_engine_package_command( # Renamed
         raise typer.Exit(code=1)
 
     target_dir.mkdir(parents=True, exist_ok=True)
-    (target_dir / "experiments").mkdir(exist_ok=True) # Create experiments subdir
 
     # Using f-string for engine_py_content and manifest for dynamic name insertion
     engine_py_content = f"""from compact_memory.engines import BaseCompressionEngine, CompressedMemory, CompressionTrace
@@ -659,21 +658,15 @@ class MyEngine(BaseCompressionEngine):
         "description": f"A sample compression engine package: {name}.", # Placeholder
         "requirements": [], # Placeholder for dependencies
     }
-    (target_dir / "engine_package.yaml").write_text(yaml.safe_dump(manifest_content, sort_keys=False))
-    (target_dir / "requirements.txt").write_text("# Add Python dependencies here, one per line\n")
-    (target_dir / "README.md").write_text(f"# {manifest_content['display_name']}\n\n{manifest_content['description']}\n")
-    (target_dir / "experiments" / "example.yaml").write_text(
-        f"""# Example experiment configuration for {name}
-dataset: example.txt # Path to a sample dataset file
-param_grid: # Grid of parameters to test for your engine
-  - {{}} # Example: empty params, uses defaults
-  # - {{"param1": 20, "param2": "custom"}} # Example with params
-packaged_engine_config: # Renamed from packaged_strategy_config
-  engine_id: {name} # Should match engine_id in manifest
-  # engine_params: {{}} # Parameters for your engine, if any, matching param_grid
-"""
+    (target_dir / "engine_package.yaml").write_text(
+        yaml.safe_dump(manifest_content, sort_keys=False)
     )
-    (target_dir / "experiments" / "example.txt").write_text("This is some example text for your new engine to compress.")
+    (target_dir / "requirements.txt").write_text(
+        "# Add Python dependencies here, one per line\n"
+    )
+    (target_dir / "README.md").write_text(
+        f"# {manifest_content['display_name']}\n\n{manifest_content['description']}\n"
+    )
 
 
     typer.echo(f"Successfully created engine package '{name}' at: {target_dir}")

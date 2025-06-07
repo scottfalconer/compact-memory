@@ -1,5 +1,0 @@
-dataset: ../../tests/data/response_dialogues.yaml
-param_grid:
-  - {config_prompt_num_forced_recent_turns: 1}
-packaged_strategy_config:
-  strategy_params: {}

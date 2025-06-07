@@ -194,33 +194,12 @@ Compact Memory provides utilities that can be helpful:
 
 ## Testing Your Engine
 
-Rigorous testing is crucial. Compact Memory's experimentation framework helps with this.
+Rigorous testing is crucial when developing new engines.
 
 1.  **Unit Tests:**
     *   Write standard Python unit tests for your engine's core logic. Test edge cases, different input types, and budget handling.
     *   Mock external dependencies like LLM calls if necessary.
 
-2.  **Experimentation Framework:**
-    *   Compact Memory provides tools to run experiments comparing engines. This typically involves:
-        *   A dataset (e.g., a collection of text files).
-        *   One or more compression engines to test.
-        *   Configuration for each engine (parameters, token budgets).
-        *   Validation metrics to evaluate the output.
-    *   **Key components:**
-        *   `ExperimentConfig`, `ResponseExperimentConfig`, `HistoryExperimentConfig`: Dataclasses for defining experiment parameters.
-        *   `run_experiment`, `run_response_experiment`, `run_history_experiment`: Functions to execute these experiments.
-        *   `ValidationMetric`: Base class for metrics that evaluate compression quality or task performance (e.g., ROUGE scores, LLM-based evaluation). See `docs/DEVELOPING_VALIDATION_METRICS.md`.
-    *   **Workflow:**
-        1.  Define an experiment configuration file (often YAML) or create config objects programmatically.
-        2.  Specify your engine's ID and any parameters in the config.
-        3.  Run the experiment using the CLI (`compact-memory experiment run ...`) or Python API.
-        4.  Analyze the output metrics to see how your engine performs.
-
-3.  **`onboarding_demo.py`:**
-    *   The `examples/onboarding_demo.py` script shows a basic example of defining a engine, registering it, and using it in an experiment. Use it as a reference.
-
-4.  **Packaging for Experiments:**
-    *   If you package your engine (see `docs/SHARING_ENGINES.md`), you can include example experiment configurations within your package. The CLI command `compact-memory dev run-package-experiment` can then execute these.
 
 ## Registering Your Engine
 

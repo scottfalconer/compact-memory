@@ -1,6 +1,6 @@
 # Experiment Results
 
-This document summarizes small-scale benchmarks run with the Compact Memory experimentation framework. We evaluated three compression engines on the repository's test dialogue datasets using a dummy local language model (as in the test suite).
+This document summarizes small-scale benchmarks run with Compact Memory. We evaluated three compression engines on the repository's test dialogue datasets using a dummy local language model (as in the test suite).
 
 ## Response Experiment
 Dataset: `tests/data/response_dialogues.yaml`
@@ -22,4 +22,4 @@ Dataset: `tests/data/history_dialogues.yaml`
 ## Compression Example
 Using `tests/data/constitution.txt` with a token budget of 100, the `FirstLastEngine` achieved a compression ratio of approximately 0.05.
 
-These quick experiments illustrate how to measure engine behavior with the provided framework. For larger-scale benchmarks (e.g., long‑context QA or summarization), the same configuration patterns apply.
+These quick measurements illustrate how to evaluate engine behavior. For larger-scale benchmarks (e.g., long‑context QA or summarization), the same configuration patterns apply.
