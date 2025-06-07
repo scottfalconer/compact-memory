@@ -25,9 +25,7 @@ from compact_memory.engines import (
     CompressedMemory,
     CompressionTrace,
 )  # Dataclasses for return types
-from compact_memory.prototype_engine import (
-    PrototypeEngine,
-)  # For type checking if needed for specific ingest
+# PrototypeEngine was removed
 
 
 # compress_app = typer.Typer() # Similar to query, can be a single command function for now
@@ -675,17 +673,12 @@ def _compress_text_to_memory(
     # This part depends on how main_engine_instance expects to ingest pre-compressed content.
     # Assuming a method like `add_compressed_memory` or adapting `ingest`.
     # The original code used `main_engine.add_memory` for PrototypeEngine or `main_engine.ingest` for others.
-    if isinstance(main_engine_instance, PrototypeEngine):
-        # PrototypeEngine specific method if it exists and is preferred for pre-compressed
-        main_engine_instance.add_memory(
-            compressed_mem.text, source_document_id=source_document_id
-        )
-    else:
-        # Generic ingest, assuming it can take a string.
-        # If engines need more structured input for pre-compressed text, this needs adjustment.
-        main_engine_instance.ingest(compressed_mem.text)
-        # Or if there's a specific method for pre-compressed:
-        # main_engine_instance.ingest_compressed(compressed_mem, source_id=source_document_id)
+    # PrototypeEngine was removed, defaulting to standard ingest.
+    # Generic ingest, assuming it can take a string.
+    # If engines need more structured input for pre-compressed text, this needs adjustment.
+    main_engine_instance.ingest(compressed_mem.text)
+    # Or if there's a specific method for pre-compressed:
+    # main_engine_instance.ingest_compressed(compressed_mem, source_id=source_document_id)
 
     if verbose_stats:
         orig_tokens = token_count(tokenizer, text_to_compress)
@@ -777,7 +770,6 @@ def _compress_directory_to_memory(
 # - `compact_memory.token_utils.token_count` is correctly pathed.
 # - `compact_memory.engines.registry` for engine getters.
 # - `compact_memory.engines.BaseCompressionEngine`, `load_engine`, `CompressedMemory`, `CompressionTrace` are pathed.
-# - `compact_memory.prototype_engine.PrototypeEngine` for isinstance check.
 # - Standard library imports are fine.
 # - Typer is fine.
 # - All helper functions are prefixed with `_` to indicate they are internal.

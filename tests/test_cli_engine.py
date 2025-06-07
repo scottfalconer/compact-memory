@@ -4,10 +4,10 @@ from typer.testing import CliRunner
 
 from compact_memory.cli import app
 from compact_memory.engines import load_engine
-from compact_memory.prototype_engine import PrototypeEngine # Corrected import
+# PrototypeEngine was removed
 from compact_memory.engines.registry import available_engines # To check against list output
 
-# DummyTruncEngine might be needed if testing init with it, but current tests focus on prototype or default
+# DummyTruncEngine might be needed if testing init with it, but current tests focus on an existing simple engine or default
 # from compact_memory.engines import BaseCompressionEngine
 # class DummyTestCliEngine(BaseCompressionEngine): # Example if a specific dummy was needed
 #     id = "dummy_cli_test_eng"
@@ -29,7 +29,7 @@ def test_engine_list(tmp_path: Path, patch_embedding_model):
     result = runner.invoke(app, ["engine", "list"], env=_env(tmp_path))
     assert result.exit_code == 0, f"CLI Error: {result.stderr}"
     # Check for some known core engines
-    assert "prototype" in result.stdout
+    # assert "prototype" in result.stdout # PrototypeEngine removed
         # assert "base" in result.stdout # BaseCompressionEngine should not be listed
     assert "none" in result.stdout
     # Check against the registered engines for more dynamic validation
@@ -40,11 +40,11 @@ def test_engine_list(tmp_path: Path, patch_embedding_model):
 
 def test_engine_info(tmp_path: Path, patch_embedding_model):
     """Test the 'engine info' command."""
-    result_prototype = runner.invoke(app, ["engine", "info", "prototype"], env=_env(tmp_path))
-    assert result_prototype.exit_code == 0, f"CLI Error: {result_prototype.stderr}"
-    prototype_info = json.loads(result_prototype.stdout)
-    assert prototype_info["engine_id"] == "prototype"
-    assert "display_name" in prototype_info
+    result_none_engine = runner.invoke(app, ["engine", "info", "none"], env=_env(tmp_path))
+    assert result_none_engine.exit_code == 0, f"CLI Error: {result_none_engine.stderr}"
+    none_engine_info = json.loads(result_none_engine.stdout)
+    assert none_engine_info["engine_id"] == "none"
+    assert "display_name" in none_engine_info
 
     result_non_existent = runner.invoke(app, ["engine", "info", "non_existent_engine"], env=_env(tmp_path))
     assert result_non_existent.exit_code != 0
@@ -57,19 +57,19 @@ def test_engine_init_success(tmp_path: Path, patch_embedding_model):
 
     init_cmd = [
         "engine", "init",
-        "--engine", "prototype",
+        "--engine", "none",  # Changed from prototype to none
         str(store_path),
-        "--tau", str(tau_value),
+        # "--tau", str(tau_value), # tau is specific to PrototypeEngine
         "--chunker", "TestChunkerCLI" # Custom chunker id for testing config
     ]
     result = runner.invoke(app, init_cmd, env=_env(tmp_path))
     assert result.exit_code == 0, f"CLI Error: {result.stderr}"
-    assert f"Successfully initialized Compact Memory engine store with engine 'prototype' at {store_path}" in result.stdout
+    assert f"Successfully initialized Compact Memory engine store with engine 'none' at {store_path}" in result.stdout
 
     assert (store_path / "engine_manifest.json").exists()
     manifest_data = json.loads((store_path / "engine_manifest.json").read_text())
-    assert manifest_data.get("engine_id") == "prototype"
-    assert manifest_data.get("config", {}).get("similarity_threshold") == tau_value
+    assert manifest_data.get("engine_id") == "none"
+    # assert manifest_data.get("config", {}).get("similarity_threshold") == tau_value # Removed tau
     assert manifest_data.get("config", {}).get("chunker_id") == "TestChunkerCLI"
 
 def test_engine_init_dir_not_empty(tmp_path: Path, patch_embedding_model):
@@ -85,29 +85,31 @@ def test_engine_init_dir_not_empty(tmp_path: Path, patch_embedding_model):
 def test_engine_stats(tmp_path: Path, patch_embedding_model):
     """Test the 'engine stats' command."""
     store_path = tmp_path / "stats_store_cli"
-    init_result = runner.invoke(app, ["engine", "init", "--engine", "prototype", str(store_path)], env=_env(tmp_path))
+    init_result = runner.invoke(app, ["engine", "init", "--engine", "none", str(store_path)], env=_env(tmp_path)) # Changed to 'none'
     assert init_result.exit_code == 0, f"CLI Error: {init_result.stderr}"
 
     # Test text output
     stats_result = runner.invoke(app, ["engine", "stats", "--memory-path", str(store_path)], env=_env(tmp_path))
     assert stats_result.exit_code == 0, f"CLI Error: {stats_result.stderr}"
-    assert "prototypes: 0" in stats_result.stdout # For a newly initialized prototype engine
-    assert "memories: 0" in stats_result.stdout
+    # assert "prototypes: 0" in stats_result.stdout # Specific to PrototypeEngine
+    assert "memories: 0" in stats_result.stdout # NoCompressionEngine might report 0 memories or this key might be absent.
+                                               # For now, assume 'memories: 0' is a generic enough stat if engine is empty.
+                                               # If NoCompressionEngine doesn't provide 'memories', this test will need adjustment.
 
     # Test JSON output
     stats_json_result = runner.invoke(app, ["engine", "stats", "--memory-path", str(store_path), "--json"], env=_env(tmp_path))
     assert stats_json_result.exit_code == 0, f"CLI Error: {stats_json_result.stderr}"
     stats_data = json.loads(stats_json_result.stdout)
-    assert "prototypes" in stats_data
-    assert "memories" in stats_data
-    assert stats_data["prototypes"] == 0
-    assert stats_data["memories"] == 0
-    assert stats_data.get("tau") is not None # Prototype engine includes tau in stats
+    # assert "prototypes" in stats_data # Specific to PrototypeEngine
+    assert "memories" in stats_data # Assuming 'memories' is a generic key.
+    # assert stats_data["prototypes"] == 0 # Specific to PrototypeEngine
+    assert stats_data["memories"] == 0 # Assuming 'memories' is 0 for an empty NoCompressionEngine.
+    # assert stats_data.get("tau") is not None # Specific to PrototypeEngine
 
 def test_engine_clear(tmp_path: Path, patch_embedding_model):
     """Test the 'engine clear' command."""
     store_path = tmp_path / "clear_store_cli"
-    init_result = runner.invoke(app, ["engine", "init", "--engine", "prototype", str(store_path)], env=_env(tmp_path))
+    init_result = runner.invoke(app, ["engine", "init", "--engine", "none", str(store_path)], env=_env(tmp_path)) # Changed to 'none'
     assert init_result.exit_code == 0, f"CLI Error: {init_result.stderr}"
     assert (store_path / "engine_manifest.json").exists()
 
@@ -121,15 +123,14 @@ def test_engine_clear(tmp_path: Path, patch_embedding_model):
 def test_engine_validate(tmp_path: Path, patch_embedding_model):
     """Test the 'engine validate' command."""
     store_path = tmp_path / "validate_store_cli"
-    init_result = runner.invoke(app, ["engine", "init", "--engine", "prototype", str(store_path)], env=_env(tmp_path))
+    init_result = runner.invoke(app, ["engine", "init", "--engine", "none", str(store_path)], env=_env(tmp_path)) # Changed to 'none'
     assert init_result.exit_code == 0, f"CLI Error: {init_result.stderr}"
 
     validate_result = runner.invoke(app, ["engine", "validate", "--memory-path", str(store_path)], env=_env(tmp_path))
     assert validate_result.exit_code == 0, f"CLI Error: {validate_result.stderr}"
-    # Current 'validate' command for prototype engine (or generic engine) prints a simple message.
-    # This assertion might change if validate's output becomes more detailed.
-    assert "No specific storage validation implemented" in validate_result.stdout # Updated assertion
-    # If PrototypeEngine had specific validation, this would be different.
+    # Current 'validate' command for a generic engine prints a simple message.
+    # This assertion might change if validate's output becomes more detailed for 'none' or other engines.
+    assert "No specific storage validation implemented" in validate_result.stdout # This should still hold for 'none'
     # For example, if it checked its own files:
     # assert f"Validation for engine at '{store_path}' completed." in validate_result.stdout
     # For now, the generic message is what's expected.

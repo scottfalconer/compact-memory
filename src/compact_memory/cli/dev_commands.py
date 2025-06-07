@@ -20,12 +20,10 @@ from compact_memory.engines.registry import (
     all_engine_metadata as cm_all_engine_metadata,  # Renamed
 )
 from compact_memory.embedding_pipeline import get_embedding_dim
-from compact_memory.prototype_engine import (
-    PrototypeEngine,
-)  # Specific for inspect-engine
-from compact_memory.vector_store import (
-    InMemoryVectorStore,
-)  # Specific for inspect-engine
+# PrototypeEngine was removed
+# from compact_memory.vector_store import (
+#     InMemoryVectorStore,
+# )  # Specific for inspect-engine (assuming it was only for PrototypeEngine)
 from compact_memory import llm_providers  # For test-llm-prompt
 from compact_memory.model_utils import (
     download_embedding_model as util_download_embedding_model,
@@ -115,78 +113,37 @@ def list_registered_engines_command(  # Renamed
 
 @dev_app.command(
     "inspect-engine",
-    help="Inspects aspects of a compression engine, currently focused on 'prototype' engine's beliefs.",
+    help="Inspects aspects of a compression engine. Functionality for 'prototype' engine was removed.",
 )
-def inspect_engine_command(  # Renamed
-    # ctx: typer.Context, # If needed for memory_path from global options
+def inspect_engine_command(
     engine_name: str = typer.Argument(
         ...,
-        help="The name of the engine to inspect. Currently, only 'prototype' is supported.",
+        help="The name of the engine to inspect.",
     ),
     *,
     list_prototypes: bool = typer.Option(
         False,
         "--list-prototypes",
-        help="List consolidated prototypes (beliefs) if the engine is 'prototype'. Requires a valid engine store path if the engine relies on persisted data.",
+        help="This option was for the removed PrototypeEngine and is no longer functional.",
     ),
-    # memory_path_arg: Optional[Path] = typer.Option( # If prototype engine needs to be loaded from a path
+    # memory_path_arg: Optional[Path] = typer.Option(
     # None, "--memory-path", "-m", help="Path to the engine store directory for inspection.",
     # resolve_path=True,
     # )
 ) -> None:
-    if engine_name.lower() != "prototype":
+    if engine_name.lower() == "prototype" or list_prototypes:
         typer.secho(
-            f"Error: Inspection for engine '{engine_name}' is not supported. Only 'prototype' is currently inspectable.",
-            err=True,
-            fg=typer.colors.RED,
+            f"Info: Functionality specific to 'PrototypeEngine' (like --list-prototypes) has been removed.",
+            fg=typer.colors.YELLOW,
         )
-        raise typer.Exit(code=1)
+        # Optionally, provide information about inspecting other engines if a generic mechanism exists or is planned.
+        # For now, just indicate removal.
+        raise typer.Exit(code=0)
 
-    if list_prototypes:
-        # This part assumes an ephemeral PrototypeEngine or one loaded from a path.
-        # If it needs to be loaded from memory_path_arg or ctx.obj.get("compact_memory_path"):
-        # resolved_memory_path = memory_path_arg or ctx.obj.get("compact_memory_path")
-        # if not resolved_memory_path:
-        #     typer.secho("Error: Memory path required to inspect prototype engine beliefs from a store.", fg=typer.colors.RED, err=True)
-        #     raise typer.Exit(code=1)
-        # try:
-        #     engine_instance = load_engine(Path(resolved_memory_path))
-        #     if not isinstance(engine_instance, PrototypeEngine):
-        #         typer.secho(f"Error: Engine at {resolved_memory_path} is not a PrototypeEngine.", fg=typer.colors.RED, err=True)
-        #         raise typer.Exit(code=1)
-        # except Exception as e:
-        #     typer.secho(f"Error loading engine from {resolved_memory_path}: {e}", fg=typer.colors.RED, err=True)
-        #     raise typer.Exit(code=1)
-        # else: # For now, using an in-memory instance as per original code:
-        dim = get_embedding_dim()  # Assumes default embedding model
-        store = InMemoryVectorStore(embedding_dim=dim)
-        engine_instance = PrototypeEngine(
-            store=store
-        )  # Corrected: pass store to PrototypeEngine
-
-        protos = engine_instance.get_prototypes_view()
-        if not protos:
-            typer.echo("No prototypes found in the 'prototype' engine instance.")
-            return
-        table = Table(
-            "ID",
-            "Strength",
-            "Confidence",
-            "Summary",
-            title="Prototypes for PrototypeEngine",
-        )
-        for p in protos:  # Assuming p is a dict as per original code
-            table.add_row(
-                str(p.get("id", "N/A")),  # Ensure ID is string
-                f"{p.get('strength', 0.0):.2f}",
-                f"{p.get('confidence', 0.0):.2f}",
-                p.get("summary", "")[:80] + "..." if p.get("summary", "") else "",
-            )
-        console.print(table)
-    else:
-        typer.echo(
-            f"Engine '{engine_name}' is available. Use --list-prototypes to see its beliefs (currently for in-memory instance)."
-        )
+    typer.secho(
+        f"Generic inspection for engine '{engine_name}' is not yet implemented or functionality for 'prototype' was removed.",
+        fg=typer.colors.BLUE,
+    )
 
 
 @dev_app.command(
@@ -874,7 +831,7 @@ def inspect_trace_command(  # Renamed
 # - tqdm import removed as utils are expected to handle their own progress bars.
 # - Imports are grouped logically.
 # - `compact_memory.engines.registry` aliased to avoid conflict.
-# - `PrototypeEngine` and `InMemoryVectorStore` correctly imported for `inspect_engine_command`.
+# - `PrototypeEngine` and `InMemoryVectorStore` references removed.
 # - `llm_providers` imported for `test_llm_prompt_command`.
 # - Model download utils imported.
 # - Package utils imported.
