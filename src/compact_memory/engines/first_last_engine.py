@@ -47,8 +47,13 @@ class FirstLastEngine(BaseCompressionEngine):
             kept_tokens = tokens[:half] + tokens[-half:]
 
         if hasattr(tokenizer, "decode"):
-            try:
+            try:  # Prefer to drop special tokens if supported
                 kept = tokenizer.decode(kept_tokens, skip_special_tokens=True)
+            except TypeError:  # e.g. tiktoken decode has no skip_special_tokens
+                try:
+                    kept = tokenizer.decode(kept_tokens)
+                except Exception:
+                    kept = " ".join(str(t) for t in kept_tokens)
             except Exception:
                 kept = " ".join(str(t) for t in kept_tokens)
         else:
