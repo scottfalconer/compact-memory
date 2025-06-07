@@ -6,9 +6,6 @@ This file tracks outstanding work based on the earlier project vision and the la
 _Completed in v0.1.1._
 
 ## 2 · Embedding & Chunking
-- Provide `embed_text()` wrapper using the local `all-MiniLM-L6-v2` model.
-- Add a `Chunker` interface with NLTK-based sentence splitting.
-- Detect duplicate memories using SHA-256 hashes.
 
 ## 3 · Ingestion & Prototype Logic
 - Implement `Agent.add_memory()` that chunkes, embeds and searches.
@@ -21,7 +18,6 @@ _Completed in v0.1.1._
 - Show counts and file sizes in `gist stats`.
 
 ## 5 · Testing & CI
-- Add a mock encoder for deterministic vectors in tests.
 - Provide fixtures with small sentences expecting two prototypes.
 - Setup GitHub Actions for linting and running unit tests.
 - Add unit tests for `Agent.query` covering success and "no_match" cases.
