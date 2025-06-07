@@ -301,7 +301,7 @@ the Codex environment and is not needed for general users.
     # Fetch the "all-MiniLM-L6-v2" model for embedding (used by default LTM components)
     compact-memory dev download-embedding-model --model-name all-MiniLM-L6-v2
     # Fetch a default chat model for the 'query' command and LLM-based validation
-    compact-memory dev download-chat-model --model-name tiny-gpt2
+    compact-memory dev download-chat-model --model-name gpt-4.1-nano
     ```
     Note: Specific `BaseCompressionEngine` implementations might have other model dependencies not covered here. Always check the documentation for the engine you intend to use.
 

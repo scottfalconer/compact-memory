@@ -32,7 +32,7 @@ Compact Memory resolves settings from the following sources, in order of highest
     *Example `~/.config/compact_memory/config.yaml` content:*
     ```yaml
     compact_memory_path: ~/my_default_compact_memory
-    default_model_id: openai/gpt-3.5-turbo
+    default_model_id: openai/gpt-4.1-nano
     default_engine_id: prototype
     # You can also set log_file and verbose here
     # log_file: /path/to/compact_memory.log
@@ -96,7 +96,7 @@ You can set default values for key options to avoid typing them repeatedly. Thes
     *(The CLI will expand `~` to your home directory).*
 2.  **Set your default LLM:**
     ```bash
-    compact-memory config set default_model_id "openai/gpt-3.5-turbo"
+    compact-memory config set default_model_id "openai/gpt-4.1-nano"
     ```
 3.  **Initialize an agent (it will now use the default path if not specified):**
     ```bash
