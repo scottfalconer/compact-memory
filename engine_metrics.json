@@ -1,26 +1,22 @@
 {
-  "active_memory_neuro": {
-    "compression_ratio": 0.0,
-    "embedding_similarity": 0.0
-  },
   "first_last": {
-    "compression_ratio": 0.2317617866004963,
-    "embedding_similarity": 0.7314000129699707
+    "compression_ratio": 0.0004246359631274439,
+    "embedding_similarity": 0.8119540214538574
   },
   "neocortex_transfer": {
-    "compression_ratio": 0.009925558312655087,
-    "embedding_similarity": 0.6814477443695068
+    "compression_ratio": 4.482268499678574e-05,
+    "embedding_similarity": 0.7721858620643616
   },
   "none": {
     "compression_ratio": 1.0,
-    "embedding_similarity": 0.9999998807907104
+    "embedding_similarity": 1.0
   },
   "pipeline": {
-    "compression_ratio": 0.2317617866004963,
-    "embedding_similarity": 0.7314000129699707
+    "compression_ratio": 0.0004246359631274439,
+    "embedding_similarity": 0.8119540214538574
   },
   "read_agent_gist": {
-    "compression_ratio": 0.25359801488833744,
-    "embedding_similarity": 0.6386326551437378
+    "compression_ratio": 0.000738394758104944,
+    "embedding_similarity": 0.7977615594863892
   }
 }
