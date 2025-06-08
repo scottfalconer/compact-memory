@@ -8,9 +8,10 @@ import sys
 import uuid
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, TYPE_CHECKING
 
-from compact_memory.engines import BaseCompressionEngine as CompressionEngine
+if TYPE_CHECKING:  # pragma: no cover - for type checkers only
+    from compact_memory.engines.base import BaseCompressionEngine as CompressionEngine
 
 
 REQUIRED_FIELDS = {
@@ -52,6 +53,8 @@ def import_module_from_path(name: str, path: Path) -> ModuleType:
 def load_engine_class_from_module(
     module_file_path: str, class_name: str
 ) -> Type[CompressionEngine]:
+    from compact_memory.engines.base import BaseCompressionEngine as CompressionEngine
+
     """Load and return ``class_name`` from ``module_file_path``."""
 
     module_path = Path(module_file_path)
@@ -82,6 +85,8 @@ def load_engine_class_from_module(
 def load_engine_class(
     package_dir: Path, manifest: Dict[str, Any]
 ) -> type[CompressionEngine]:
+    from compact_memory.engines.base import BaseCompressionEngine as CompressionEngine
+
     module_name = manifest["engine_module"]
     class_name = manifest["engine_class_name"]
     module_path = package_dir / f"{module_name}.py"
