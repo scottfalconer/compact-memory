@@ -37,6 +37,7 @@ except Exception:  # pragma: no cover - optional dependency may be missing
 else:
     __all__ += ["EmbeddingSimilarityMetric", "MultiEmbeddingSimilarityMetric"]
 
+
 try:
     from .llm_judge_metric import LLMJudgeMetric
 except Exception:  # pragma: no cover - optional dependency may be missing
