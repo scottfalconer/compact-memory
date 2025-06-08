@@ -8,9 +8,17 @@ import sys
 import uuid
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Dict, Type
+from typing import Any, Dict, Type, TYPE_CHECKING
 
-from compact_memory.engines import BaseCompressionEngine as CompressionEngine
+if TYPE_CHECKING:  # pragma: no cover - for type checkers only
+    from compact_memory.engines.base import BaseCompressionEngine
+
+# Import directly from the ``base`` module to avoid importing ``engines``,
+# which triggers plugin loading and can cause circular imports during start-up.
+
+# ``BaseCompressionEngine`` is imported only within the helper functions to
+# avoid triggering plugin loading during module import. This prevents circular
+# dependency issues when ``compact_memory.plugin_loader`` imports this module.
 
 
 REQUIRED_FIELDS = {
@@ -51,7 +59,7 @@ def import_module_from_path(name: str, path: Path) -> ModuleType:
 
 def load_engine_class_from_module(
     module_file_path: str, class_name: str
-) -> Type[CompressionEngine]:
+) -> Type["BaseCompressionEngine"]:
     """Load and return ``class_name`` from ``module_file_path``."""
 
     module_path = Path(module_file_path)
@@ -71,6 +79,8 @@ def load_engine_class_from_module(
     finally:
         sys.path = sys_path
 
+    from compact_memory.engines.base import BaseCompressionEngine as CompressionEngine
+
     cls = getattr(module, class_name, None)
     if cls is None:
         raise ImportError(f"Class {class_name} not found in {module_file_path}")
@@ -81,11 +91,13 @@ def load_engine_class_from_module(
 
 def load_engine_class(
     package_dir: Path, manifest: Dict[str, Any]
-) -> type[CompressionEngine]:
+) -> type["BaseCompressionEngine"]:
     module_name = manifest["engine_module"]
     class_name = manifest["engine_class_name"]
     module_path = package_dir / f"{module_name}.py"
     module = import_module_from_path(module_name, module_path)
+    from compact_memory.engines.base import BaseCompressionEngine as CompressionEngine
+
     cls = getattr(module, class_name, None)
     if cls is None:
         raise ImportError(f"Class {class_name} not found in {module_name}")
