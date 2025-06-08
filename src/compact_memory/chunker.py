@@ -170,7 +170,8 @@ class NltkSentenceChunker(Chunker):
             sentences = nltk.sent_tokenize(text)
         except Exception:  # pragma: no cover - punkt not available
             # Fallback to basic split if sent_tokenize fails (e.g. punkt not downloaded)
-            sentences = text.split(".")
+            parts = [s.strip() for s in text.split(".") if s.strip()]
+            sentences = [f"{s}." for s in parts]
 
         if not sentences:
             return []

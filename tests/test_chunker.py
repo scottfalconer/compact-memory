@@ -217,11 +217,7 @@ def test_nltk_chunker_punkt_download_failure_fallback(
     # It's testing the fallback, so precision is important.
     # If sentences are not stripped before join, spaces can accumulate.
     # The actual NltkSentenceChunker doesn't strip sentences from nltk.sent_tokenize either.
-    expected_chunks_fallback = ["One  Two  Three "]
-    if not chunks_fallback[0].endswith(
-        " "
-    ):  # Handle case where "" might be ignored by join or split differently based on python version
-        expected_chunks_fallback = ["One  Two  Three"]
+    expected_chunks_fallback = ["One. Two. Three."]
 
     assert chunks_fallback == expected_chunks_fallback
     assert "NLTK punkt download failed" in caplog.text  # Check for warning log
