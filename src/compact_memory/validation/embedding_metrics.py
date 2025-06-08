@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Embedding-based validation metrics."""
 
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, Optional, Sequence, List
 
 import numpy as np
 import logging
@@ -135,7 +135,10 @@ class MultiModelEmbeddingSimilarityMetric(ValidationMetric):
 
     def __init__(self, model_names: Optional[List[str]] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.model_names = model_names or ["sentence-transformers/all-MiniLM-L6-v2", "sentence-transformers/all-mpnet-base-v2"]
+        self.model_names = model_names or [
+            "sentence-transformers/all-MiniLM-L6-v2",
+            "sentence-transformers/all-mpnet-base-v2",
+        ]
 
     def _get_tokenizer(self, model_name: str):
         if model_name.startswith("openai/"):
@@ -197,8 +200,12 @@ class MultiModelEmbeddingSimilarityMetric(ValidationMetric):
                     )
                     continue
 
-            vecs = ep.embed_text([text_a, text_b], model_name=name)
-            similarity = float(np.dot(vecs[0], vecs[1]))
+            try:
+                vecs = ep.embed_text([text_a, text_b], model_name=name)
+                similarity = float(np.dot(vecs[0], vecs[1]))
+            except Exception as exc:  # pragma: no cover - embedding failure
+                logging.warning("Embedding failed for %s: %s", name, exc)
+                similarity = 0.0
             token_count_b = token_utils.token_count(tokenizer, text_b)
             results[name] = {
                 "token_count": token_count_b,
