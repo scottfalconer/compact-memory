@@ -52,3 +52,60 @@ register_validation_metric(
 )
 
 __all__ = ["EmbeddingSimilarityMetric"]
+
+
+class MultiModelEmbeddingSimilarityMetric(ValidationMetric):
+    """Embedding similarity using multiple models."""
+
+    metric_id = "multi_embedding_similarity"
+
+    def __init__(
+        self,
+        model_names: list[str] | None = None,
+        *,
+        device: str = "cpu",
+        batch_size: int = 32,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        if model_names is None or not model_names:
+            model_names = [ep._MODEL_NAME]  # type: ignore[attr-defined]
+        self.model_names = list(model_names)
+        self.device = device
+        self.batch_size = batch_size
+
+    def evaluate(
+        self,
+        *,
+        original_text: Optional[str] = None,
+        compressed_text: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Dict[str, Dict[str, float]]:
+        if original_text is None or compressed_text is None:
+            raise ValueError(
+                "MultiModelEmbeddingSimilarityMetric requires original_text and compressed_text"
+            )
+
+        results: Dict[str, Dict[str, float]] = {}
+        for name in self.model_names:
+            vecs = ep.embed_text(
+                [original_text, compressed_text],
+                model_name=name,
+                device=self.device,
+                batch_size=self.batch_size,
+            )
+            score = float(np.dot(vecs[0], vecs[1]))
+            token_cnt = len(compressed_text.split())
+            results[name] = {
+                "semantic_similarity": score,
+                "token_count": float(token_cnt),
+            }
+        return results
+
+
+register_validation_metric(
+    MultiModelEmbeddingSimilarityMetric.metric_id,
+    MultiModelEmbeddingSimilarityMetric,
+)
+
+__all__ += ["MultiModelEmbeddingSimilarityMetric"]

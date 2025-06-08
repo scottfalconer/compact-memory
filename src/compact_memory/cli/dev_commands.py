@@ -3,7 +3,7 @@ import yaml
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Any
 from tqdm import tqdm
 
 import typer
@@ -14,6 +14,10 @@ from rich.table import Table
 from compact_memory.validation.registry import (
     list_validation_metrics,
     get_validation_metric_class,
+)
+from compact_memory.validation.embedding_metrics import (
+    MultiModelEmbeddingSimilarityMetric,
+    EmbeddingSimilarityMetric,
 )
 from compact_memory.engines.registry import (
     available_engines as cm_available_engines,  # Renamed to avoid conflict
@@ -172,6 +176,12 @@ def evaluate_compression_command(  # Renamed
         "--metric-params",
         help='Metric parameters as a JSON string (e.g., \'{"model_name": "bert-base-uncased"}\').',
     ),
+    embedding_models: List[str] = typer.Option(
+        [],
+        "--embedding-model",
+        "-M",
+        help="Embedding model name(s) for embedding similarity. May be repeated or provided as a JSON list.",
+    ),
     json_output: bool = typer.Option(
         False, "--json", help="Output evaluation scores in JSON format."
     ),
@@ -236,7 +246,28 @@ def evaluate_compression_command(  # Renamed
             )
             raise typer.Exit(code=1)
 
-    metric_instance = MetricCls(**params)  # Renamed variable
+    models: List[str] = []
+    for item in embedding_models:
+        item = item.strip()
+        if not item:
+            continue
+        if item.startswith("["):
+            try:
+                models.extend(json.loads(item))
+            except json.JSONDecodeError as exc:
+                typer.secho(
+                    f"Error: Invalid JSON in --embedding-model '{item}': {exc}",
+                    err=True,
+                    fg=typer.colors.RED,
+                )
+                raise typer.Exit(code=1)
+        else:
+            models.append(item)
+
+    if MetricCls is EmbeddingSimilarityMetric:
+        metric_instance = MultiModelEmbeddingSimilarityMetric(models, **params)
+    else:
+        metric_instance = MetricCls(**params)
     try:
         # Assuming evaluate method signature is: evaluate(self, original_text: str, compressed_text: str) -> Dict[str, Any]
         scores = metric_instance.evaluate(
@@ -254,8 +285,14 @@ def evaluate_compression_command(  # Renamed
         typer.echo(json.dumps(scores))
     else:
         typer.echo(f"Scores for metric '{metric_id}':")
-        for k, v in scores.items():
-            typer.echo(f"- {k}: {v}")
+        if isinstance(metric_instance, MultiModelEmbeddingSimilarityMetric):
+            for model, vals in scores.items():
+                sim = vals.get("semantic_similarity")
+                tokens = vals.get("token_count")
+                typer.echo(f"- {model}: semantic_similarity={sim}, tokens={tokens}")
+        else:
+            for k, v in scores.items():
+                typer.echo(f"- {k}: {v}")
 
 
 @dev_app.command(
@@ -853,10 +890,24 @@ def evaluate_engines_command(
         "-e",
         help="Engine ID to evaluate. May be provided multiple times.",
     ),
+    embedding_models: List[str] = typer.Option(
+        [],
+        "--embedding-model",
+        "-M",
+        help=(
+            "Embedding model name(s) for embedding similarity. "
+            "May be repeated or provided as a JSON list."
+        ),
+    ),
     budget: int = typer.Option(
         100,
         "--budget",
         help="Token budget for compression.",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output results in JSON format.",
     ),
     output: Optional[Path] = typer.Option(
         None,
@@ -913,9 +964,26 @@ def evaluate_engines_command(
         engine_ids = list(available)
 
     ratio_metric = get_validation_metric_class("compression_ratio")()
-    embed_metric = get_validation_metric_class("embedding_similarity")()
+    models: List[str] = []
+    for item in embedding_models:
+        item = item.strip()
+        if not item:
+            continue
+        if item.startswith("["):
+            try:
+                models.extend(json.loads(item))
+            except json.JSONDecodeError as exc:
+                typer.secho(
+                    f"Error: Invalid JSON in --embedding-model '{item}': {exc}",
+                    err=True,
+                    fg=typer.colors.RED,
+                )
+                raise typer.Exit(code=1)
+        else:
+            models.append(item)
+    embed_metric = MultiModelEmbeddingSimilarityMetric(models)
 
-    results: dict[str, dict[str, float]] = {}
+    results: dict[str, dict[str, Any]] = {}
     for eid in engine_ids:
         EngineCls = get_compression_engine(eid)
         engine_instance = EngineCls()
@@ -935,17 +1003,27 @@ def evaluate_engines_command(
         )["compression_ratio"]
         embed = embed_metric.evaluate(
             original_text=text_input, compressed_text=comp_text
-        )["semantic_similarity"]
+        )
 
         results[eid] = {
             "compression_ratio": ratio,
             "embedding_similarity": embed,
         }
 
-    json_output = json.dumps(results, indent=2)
+    json_str = json.dumps(results, indent=2)
     if output:
-        output.write_text(json_output)
-    typer.echo(json_output)
+        output.write_text(json_str)
+    if json_output:
+        typer.echo(json_str)
+    else:
+        for eid, metrics in results.items():
+            typer.echo(f"Engine: {eid}")
+            typer.echo(f"  compression_ratio: {metrics['compression_ratio']}")
+            for model, vals in metrics["embedding_similarity"].items():
+                sim = vals.get("semantic_similarity")
+                tokens = vals.get("token_count")
+                typer.echo(f"  {model}: semantic_similarity={sim}, tokens={tokens}")
+        typer.echo(json_str)
 
 
 # Final checks:
