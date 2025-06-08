@@ -16,7 +16,7 @@ def test_list_metrics(tmp_path: Path):
     result = runner.invoke(app, ["dev", "list-metrics"], env=_env(tmp_path))
     assert result.exit_code == 0
     assert "compression_ratio" in result.stdout
-    assert "embedding_similarity" in result.stdout
+    assert "embedding_similarity_multi" in result.stdout
 
 
 def test_evaluate_compression_cli(tmp_path: Path, patch_embedding_model):
@@ -28,12 +28,15 @@ def test_evaluate_compression_cli(tmp_path: Path, patch_embedding_model):
             "hello",
             "hello",
             "--metric",
-            "embedding_similarity",
+            "embedding_similarity_multi",
+            "--metric-params",
+            '{"model_names": ["model_a", "model_b"]}',
         ],
         env=_env(tmp_path),
     )
     assert result.exit_code == 0
     assert "semantic_similarity" in result.stdout
+    assert "token_count" in result.stdout
 
 
 def test_evaluate_llm_response_cli(tmp_path: Path):
