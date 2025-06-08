@@ -32,4 +32,8 @@ pip3 install nltk pre-commit
 # CLI dependencies that may not be declared in requirements.txt
 # (rich and typer are already installed above)
 
+# Heavy optional dependencies needed for evaluations and local model examples
+pip3 install torch sentence-transformers transformers spacy \
+    google-generativeai evaluate
+
 
