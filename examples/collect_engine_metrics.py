@@ -54,6 +54,10 @@ def main(output_file: str = "engine_metrics.json") -> None:
             compressed, _ = engine.compress(
                 "What is the text about?", 100, tokenizer=lambda t: t.split()
             )
+        elif eng_id == "none":
+            # Disable truncation for the no-op engine so the metrics reflect
+            # a true no-compression baseline.
+            compressed, _ = engine.compress(text, llm_token_budget=None)
         else:
             compressed, _ = engine.compress(text, llm_token_budget=100)
 

@@ -8,8 +8,8 @@
     "embedding_similarity": 0.7314000129699707
   },
   "none": {
-    "compression_ratio": 0.3037220843672457,
-    "embedding_similarity": 0.8013756275177002
+    "compression_ratio": 1.0,
+    "embedding_similarity": 0.9999998807907104
   },
   "pipeline": {
     "compression_ratio": 0.2317617866004963,
