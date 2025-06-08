@@ -25,7 +25,7 @@ def test_compress_text_input_stdout():
     assert output.startswith("Sample input text")  # original content present
 
 
-@pytest.mark.parametrize("engine_id", ["none", "first_last"])
+@pytest.mark.parametrize("engine_id", ["none", "first_last", "stopword_pruner"])
 def test_compress_text_input_all_engines(engine_id):
     text = "This is a sample text that should be compressed using various engines to test their basic functionality."
     # Provide a dummy path via env var so engines that rely on a memory path have one.
