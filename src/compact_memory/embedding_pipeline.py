@@ -23,6 +23,8 @@ except Exception:  # pragma: no cover - tqdm not installed or different API
     pass
 
 import numpy as np
+import os
+import openai
 
 # Lazy heavy imports will occur in ``_load_model``
 torch = None  # type: ignore
@@ -54,6 +56,11 @@ _MODEL: SentenceTransformer | None = None
 _MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 _DEVICE = "cpu"
 _BATCH_SIZE = 32
+
+# Known dimensions for OpenAI embedding models
+_OPENAI_EMBED_DIMS = {
+    "text-embedding-ada-002": 1536,
+}
 
 
 def _load_model(model_name: str, device: str) -> SentenceTransformer:
@@ -122,6 +129,20 @@ def loaded_embedding_model(
 def _embed_cached(
     text: str, model_name: str, device: str, batch_size: int
 ) -> np.ndarray:
+    if model_name.startswith("openai/"):
+        base = model_name.split("/", 1)[1]
+        client_kwargs: dict[str, str] = {}
+        api_key = os.getenv("OPENAI_API_KEY")
+        base_url = os.getenv("OPENAI_BASE_URL")
+        if api_key:
+            client_kwargs["api_key"] = api_key
+        if base_url:
+            client_kwargs["base_url"] = base_url
+        client = openai.OpenAI(**client_kwargs)
+        resp = client.embeddings.create(input=[text], model=base)
+        vec = np.array(resp.data[0].embedding, dtype=np.float32)
+        vec /= np.linalg.norm(vec) or 1.0
+        return vec
     model = _load_model(model_name, device)
     vec = model.encode(text, batch_size=batch_size, convert_to_numpy=True)
     vec = vec.astype(np.float32)
@@ -146,6 +167,10 @@ def embed_text(
 
     if isinstance(text, str):
         if text == "":
+            if model_name.startswith("openai/"):
+                base = model_name.split("/", 1)[1]
+                dim = _OPENAI_EMBED_DIMS.get(base, 1536)
+                return np.zeros(dim, dtype=np.float32)
             model = _load_model(model_name, device)
             return np.zeros(model.get_sentence_embedding_dimension(), dtype=np.float32)
         if preprocess_fn is not None:
@@ -154,6 +179,10 @@ def embed_text(
 
     texts = list(text)
     if not texts:
+        if model_name.startswith("openai/"):
+            base = model_name.split("/", 1)[1]
+            dim = _OPENAI_EMBED_DIMS.get(base, 1536)
+            return np.zeros((0, dim), dtype=np.float32)
         model = _load_model(model_name, device)
         return np.zeros((0, model.get_sentence_embedding_dimension()), dtype=np.float32)
     if preprocess_fn is not None:
@@ -164,6 +193,10 @@ def embed_text(
 
 def get_embedding_dim(model_name: str = _MODEL_NAME, device: str = _DEVICE) -> int:
     """Return the embedding dimension for ``model_name`` on ``device``."""
+
+    if model_name.startswith("openai/"):
+        base = model_name.split("/", 1)[1]
+        return _OPENAI_EMBED_DIMS.get(base, 1536)
 
     model = _load_model(model_name, device)
     get_dim = getattr(model, "get_sentence_embedding_dimension", None)
