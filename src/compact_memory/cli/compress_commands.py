@@ -68,13 +68,13 @@ def compress_command(  # Renamed from compress
         "-o",
         "--output",
         resolve_path=True,
-        help="File path to write compressed output. If unspecified, prints to console.",
+        help="File path to write compressed output. If unspecified, prints to console. Cannot be used with --dir.",
     ),
     output_dir: Optional[Path] = typer.Option(
         None,
         "--output-dir",
         resolve_path=True,
-        help="Directory to write compressed files when --dir is used.",
+        help="Directory to write compressed output. When --dir is used, this specifies the directory for the combined 'compressed_output.txt'.",
     ),
     json_output: bool = typer.Option(
         False,
@@ -172,28 +172,31 @@ def compress_command(  # Renamed from compress
             )
             raise typer.Exit(code=1)
     elif dir_path:  # --dir is used, not --memory-path
-        if (
-            output_file and not output_dir
-        ):  # individual output file doesn't make sense for dir input unless it's a manifest or similar
+        # Implement Option A: --output-file cannot be used with --dir
+        if output_file:
             typer.secho(
-                "Warning: --output is ignored when --dir is used without --output-dir. Files will be processed individually.",
-                fg=typer.colors.YELLOW,
+                "Error: --output (--output-file) cannot be used with --dir. Use --output-dir to specify a directory for 'compressed_output.txt' or omit for default location.",
+                err=True,
+                fg=typer.colors.RED,
             )
+            raise typer.Exit(code=1)
+
         if json_output:
             typer.secho(
-                "Error: --json output is not supported with --dir. Output is written to files in --output-dir or alongside originals.",
+                "Error: --json output is not supported with --dir. Output is a single compressed file.",
                 err=True,
                 fg=typer.colors.RED,
             )
             raise typer.Exit(code=1)
         if output_trace:
+            # The message is still relevant as we are not generating a trace for the combined output yet.
             typer.secho(
-                "Warning: --output-trace is ignored when --dir is used. Traces are not generated per file in directory mode.",
+                "Warning: --output-trace is ignored when --dir is used. A combined trace for directory mode is not yet supported.",
                 fg=typer.colors.YELLOW,
             )
             # output_trace = None # Disable it
     else:  # Single text or file input, not --memory-path, not --dir
-        if output_dir:
+        if output_dir: # This validation remains correct
             typer.secho(
                 "Error: --output-dir is only valid with --dir.",
                 err=True,
@@ -225,7 +228,7 @@ def compress_command(  # Renamed from compress
             )
         if not output_dir:
             typer.secho(
-                "Info: No --output-dir specified for --dir input. Compressed files will be placed alongside originals with '_compressed' suffix.",
+                "Info: No --output-dir specified for --dir input. 'compressed_output.txt' will be saved in the input directory.",
                 fg=typer.colors.BLUE,
             )
 
@@ -590,66 +593,76 @@ def _compress_directory_to_files(
         typer.echo(f"No files matching pattern '{pattern}' found in '{dir_path_obj}'.")
         return
 
-    processed_count = 0
-    for input_file_path in files_to_process:  # Renamed input_file
-        if not input_file_path.is_file():
-            continue  # Skip subdirectories that might match glob
+    combined_content = []
+    total_files_read = 0
+    total_files_skipped = 0
 
-        typer.echo(f"Processing {input_file_path}...")
+    typer.echo(f"Reading and combining files from '{dir_path_obj}' matching '{pattern}'...")
+    for input_file_path in files_to_process:
+        if not input_file_path.is_file():
+            continue  # Skip subdirectories
+
         try:
+            # typer.echo(f"  Reading {input_file_path}...") # Optional: too verbose if many files
             text_content = input_file_path.read_text()
+            combined_content.append(text_content)
+            total_files_read += 1
         except Exception as e:
             typer.secho(
-                f"  Error reading file {input_file_path}: {e}",
-                err=True,
+                f"  Warning: Error reading file {input_file_path}, skipping: {e}",
                 fg=typer.colors.YELLOW,
-            )  # Yellow for per-file error
+            )
+            total_files_skipped += 1
             continue
 
-        compressed_mem, trace_obj, elapsed_ms = _compress_text_core(
-            text_content, engine_id, budget, tokenizer, ctx  # Pass context
+    if not combined_content:
+        typer.secho(
+            f"No content could be read from files in '{dir_path_obj}' matching '{pattern}'.",
+            fg=typer.colors.RED,
         )
+        return
 
-        # Determine output path for this file
-        current_output_file_path = None  # Renamed current_output_file
-        if output_dir_obj:
-            try:
-                output_dir_obj.mkdir(parents=True, exist_ok=True)
-                rel_path = input_file_path.relative_to(dir_path_obj)
-                current_output_file_path = output_dir_obj / rel_path
-                current_output_file_path.parent.mkdir(
-                    parents=True, exist_ok=True
-                )  # Ensure sub-output-dir exists
-            except Exception as e:
-                typer.secho(
-                    f"  Error creating output directory structure for {input_file_path} in {output_dir_obj}: {e}",
-                    err=True,
-                    fg=typer.colors.YELLOW,
-                )
-                continue  # Skip this file
-        else:  # Output alongside original with suffix
-            current_output_file_path = input_file_path.with_name(
-                f"{input_file_path.stem}_compressed{input_file_path.suffix}"
-            )
+    full_text_content = "\n\n".join(combined_content) # Join with double newline to separate file contents
 
-        # Output this file (trace_file is None for dir mode, json_output is False for dir mode)
-        _output_results(
-            f"file: {input_file_path.name}",
-            compressed_mem,
-            trace_obj,
-            elapsed_ms,
-            current_output_file_path,
-            None,
-            verbose_stats,
-            tokenizer,
-            False,
+    typer.echo(
+        f"Successfully read and combined content from {total_files_read} file(s). Skipped {total_files_skipped} file(s) due to errors."
+    )
+    typer.echo(f"Compressing combined content...")
+
+    compressed_mem, trace_obj, elapsed_ms = _compress_text_core(
+        full_text_content, engine_id, budget, tokenizer, ctx
+    )
+
+    # Determine output path
+    output_file_name = "compressed_output.txt"
+    if output_dir_obj:
+        output_dir_obj.mkdir(parents=True, exist_ok=True)
+        final_output_path = output_dir_obj / output_file_name
+    else:
+        final_output_path = dir_path_obj / output_file_name
+
+    source_name = f"directory: {dir_path_obj} (pattern: {pattern}, {total_files_read} files)"
+
+    # Output the single compressed file
+    # trace_file is None for dir mode as per original logic and requirements.
+    # json_output is False for dir mode as per original logic and requirements.
+    _output_results(
+        full_text_content, # Original text is the combined content
+        compressed_mem,
+        trace_obj, # This will be None if the engine doesn't return it, or the actual trace
+        elapsed_ms,
+        final_output_path,
+        None,  # trace_file is None for directory mode
+        verbose_stats,
+        tokenizer,
+        False, # json_output is False for directory mode
+        source_name=source_name,
+    )
+
+    if verbose_stats or total_files_read > 0:
+        typer.echo(
+            f"Finished processing directory. Combined {total_files_read} file(s) into '{final_output_path}'."
         )
-        processed_count += 1
-
-    if (
-        verbose_stats or processed_count > 0
-    ):  # Print summary if any file was processed or verbose
-        typer.echo(f"Finished processing directory. Processed {processed_count} files.")
 
 
 # --- Helpers for --memory-path ---
