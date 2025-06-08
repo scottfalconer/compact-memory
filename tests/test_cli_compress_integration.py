@@ -3,7 +3,7 @@ from typer.testing import CliRunner
 from compact_memory.cli import app  # import the Typer app
 from pathlib import Path  # Make sure Path is imported
 
-runner = CliRunner(env={"MIX_STDERR": "False"})
+runner = CliRunner(mix_stderr=False)
 
 
 def test_compress_text_input_stdout():
@@ -385,7 +385,7 @@ def test_compress_directory_default_output_new(tmp_path):
             "--dir",
             str(input_dir),
             "--engine",
-            "truncate",
+                "dummy_trunc",
             "--budget",
             str(word_budget), # This budget is for the 'truncate' engine's tokenizer
         ],
@@ -429,7 +429,7 @@ def test_compress_directory_with_output_dir_new(tmp_path):
             "--output-dir",
             str(output_dir),
             "--engine",
-            "truncate",
+                "dummy_trunc",
             "--budget",
             str(word_budget),
         ],
@@ -506,7 +506,7 @@ def test_compress_directory_recursive_pattern_new(tmp_path):
             "--pattern",
             "*.txt", # Explicitly test this
             "--engine",
-            "truncate",
+                "dummy_trunc",
             "--budget",
             str(word_budget),
         ],
