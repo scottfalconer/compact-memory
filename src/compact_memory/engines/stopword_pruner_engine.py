@@ -105,6 +105,7 @@ class StopwordPrunerEngine(BaseCompressionEngine):
             for tok in tokens:
                 token_text = tok.text
                 lower = token_text.lower()
+
                 if getattr(tok, "is_space", False):
                     continue
                 if (
@@ -113,6 +114,7 @@ class StopwordPrunerEngine(BaseCompressionEngine):
                     and not token_text.isalnum()
                 ):
                     continue
+                # Original stopword and filler logic
                 if getattr(tok, "is_stop", False) or lower in stop_words:
                     removed_counts["stopwords"] += 1
                     continue
