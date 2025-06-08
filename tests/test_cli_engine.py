@@ -172,3 +172,56 @@ def test_engine_validate(tmp_path: Path, patch_embedding_model):
 # For `engine init` with `prototype`, it *might* try to get embedding_dim.
 # For `engine stats`, `clear`, `validate`, `list`, `info` it's less likely.
 # For safety, including it.
+
+
+def test_dev_evaluate_engines_pipeline_engine(tmp_path: Path, patch_embedding_model):
+    """Test the 'dev evaluate-engines' command with the pipeline engine."""
+    test_text = "This is a test sentence for pipeline evaluation."
+    # Using the global runner instance
+    result = runner.invoke(
+        app,
+        [
+            "dev",
+            "evaluate-engines",
+            "--text",
+            test_text,
+            "--engine",
+            "pipeline",
+            # No budget specified, should use default.
+            # An empty pipeline (default config) should not depend on embedding models for this test.
+        ],
+        env=_env(tmp_path),
+    )
+
+    assert result.exit_code == 0, f"CLI Error: {result.stderr}\nStdout: {result.stdout}"
+
+    try:
+        output_json = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        assert False, f"Output is not valid JSON: {result.stdout}"
+
+    assert "pipeline" in output_json, f"'pipeline' key missing in output: {output_json}"
+    assert (
+        "compression_ratio" in output_json["pipeline"]
+    ), f"'compression_ratio' key missing in pipeline results: {output_json['pipeline']}"
+
+    # For an empty pipeline, the text should be unchanged, so ratio is 1.0
+    assert abs(output_json["pipeline"]["compression_ratio"] - 1.0) < 1e-9, (
+        f"Compression ratio for pipeline was not 1.0: "
+        f"{output_json['pipeline']['compression_ratio']}"
+    )
+
+    # Check for embedding_similarity as it's part of the output structure
+    assert (
+        "embedding_similarity" in output_json["pipeline"]
+    ), f"'embedding_similarity' key missing in pipeline results: {output_json['pipeline']}"
+    # For an empty pipeline, input and output are identical, so similarity should be perfect (1.0)
+    # Assuming default embedding models are used if not specified,
+    # and that the test environment can handle them (e.g. mocked or tiny models).
+    # This part might need adjustment if default models cause issues or if the structure is different.
+    if output_json["pipeline"]["embedding_similarity"]: # It might be empty if no models run
+        for model_name, scores in output_json["pipeline"]["embedding_similarity"].items():
+            assert "similarity" in scores, f"Similarity score missing for {model_name}"
+            assert abs(scores["similarity"] - 1.0) < 1e-6, ( # Allow slightly larger tolerance for embeddings
+                f"Embedding similarity for {model_name} was not 1.0: {scores['similarity']}"
+            )
