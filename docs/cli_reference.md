@@ -221,6 +221,18 @@ raises a clear `RuntimeError`.
 *   **`REFERENCE_INPUT`**: (Required) Reference answer text/file/-.
 *   **Options:** Similar to `evaluate-compression` (`--metric`, `--metric-params`, `--json`).
 
+#### `compact-memory dev evaluate-engines`
+
+Runs multiple compression engines on the same input text and reports the
+`compression_ratio` and `embedding_similarity` metrics for each one.
+
+*   **Options:**
+    *   `--text TEXT`: Raw text to compress, or `-` to read from stdin.
+    *   `--file FILE_PATH`: Path to a text file to compress.
+    *   `--engine, -e TEXT`: Engine ID to evaluate. Can be repeated; defaults to all engines.
+    *   `--budget INTEGER`: Token budget for compression (default: 100).
+    *   `--output, -o FILE_PATH`: Optional path to write the JSON results.
+
 #### `compact-memory dev download-embedding-model`
 
 Downloads a specified SentenceTransformer embedding model from Hugging Face.

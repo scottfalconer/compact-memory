@@ -3,7 +3,7 @@ import yaml
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 from tqdm import tqdm
 
 import typer
@@ -18,8 +18,10 @@ from compact_memory.validation.registry import (
 from compact_memory.engines.registry import (
     available_engines as cm_available_engines,  # Renamed to avoid conflict
     all_engine_metadata as cm_all_engine_metadata,  # Renamed
+    get_compression_engine,
 )
 from compact_memory.embedding_pipeline import get_embedding_dim
+
 # PrototypeEngine was removed
 # from compact_memory.vector_store import (
 #     InMemoryVectorStore,
@@ -824,6 +826,126 @@ def inspect_trace_command(  # Renamed
             typer.echo("No steps found in the trace.")
     else:
         console.print(table)
+
+
+@dev_app.command(
+    "evaluate-engines",
+    help="Compress text with each specified engine and compute basic metrics.",
+)
+def evaluate_engines_command(
+    *,
+    text: Optional[str] = typer.Option(
+        None,
+        "--text",
+        help="Raw text to compress or '-' to read from stdin.",
+    ),
+    file: Optional[Path] = typer.Option(
+        None,
+        "--file",
+        exists=True,
+        dir_okay=False,
+        resolve_path=True,
+        help="Path to a text file to compress.",
+    ),
+    engines: Optional[List[str]] = typer.Option(
+        None,
+        "--engine",
+        "-e",
+        help="Engine ID to evaluate. May be provided multiple times.",
+    ),
+    budget: int = typer.Option(
+        100,
+        "--budget",
+        help="Token budget for compression.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        resolve_path=True,
+        help="Write metrics JSON to this file.",
+    ),
+) -> None:
+    """Evaluate one or more engines on the provided text."""
+    if (text is None) == (file is None):
+        typer.secho(
+            "Specify exactly one of --text or --file.",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(code=1)
+
+    if text == "-":
+        if not sys.stdin.isatty():
+            text_input = sys.stdin.read()
+        else:
+            typer.secho(
+                "Expected data from stdin for --text '-', but none was provided.",
+                err=True,
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(code=1)
+    elif text is not None:
+        text_input = text
+    else:
+        try:
+            text_input = file.read_text() if file else ""
+        except Exception as exc:
+            typer.secho(
+                f"Error reading file '{file}': {exc}",
+                err=True,
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(code=1)
+
+    available = set(cm_available_engines())
+    if engines:
+        invalid = [e for e in engines if e not in available]
+        if invalid:
+            typer.secho(
+                f"Unknown engine IDs: {', '.join(invalid)}",
+                err=True,
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(code=1)
+        engine_ids = engines
+    else:
+        engine_ids = list(available)
+
+    ratio_metric = get_validation_metric_class("compression_ratio")()
+    embed_metric = get_validation_metric_class("embedding_similarity")()
+
+    results: dict[str, dict[str, float]] = {}
+    for eid in engine_ids:
+        EngineCls = get_compression_engine(eid)
+        engine_instance = EngineCls()
+
+        result = engine_instance.compress(text_input, llm_token_budget=budget)
+        compressed = result[0] if isinstance(result, tuple) else result
+
+        if hasattr(compressed, "text"):
+            comp_text = compressed.text
+        elif isinstance(compressed, dict):
+            comp_text = compressed.get("content", str(compressed))
+        else:
+            comp_text = str(compressed)
+
+        ratio = ratio_metric.evaluate(
+            original_text=text_input, compressed_text=comp_text
+        )["compression_ratio"]
+        embed = embed_metric.evaluate(
+            original_text=text_input, compressed_text=comp_text
+        )["semantic_similarity"]
+
+        results[eid] = {
+            "compression_ratio": ratio,
+            "embedding_similarity": embed,
+        }
+
+    json_output = json.dumps(results, indent=2)
+    if output:
+        output.write_text(json_output)
+    typer.echo(json_output)
 
 
 # Final checks:
