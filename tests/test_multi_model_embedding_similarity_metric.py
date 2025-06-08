@@ -113,7 +113,6 @@ def test_multi_model_embedding_similarity_multiple_hf_models(monkeypatch):
     # The call from source code is token_utils.token_count(tokenizer_object, text_string)
     # tokenizer_object is a DummyTokenizer instance. Log shows these are different for different models.
     def token_count_side_effect(tokenizer_dummy_obj, text_content_str, **kwargs):
-        nonlocal tokenizer_object_to_model_name_map, model_names_in_processing_order
 
         obj_id = id(tokenizer_dummy_obj)
         current_model_name = tokenizer_object_to_model_name_map.get(obj_id)
