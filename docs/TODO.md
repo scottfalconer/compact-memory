@@ -47,7 +47,7 @@ This file tracks outstanding work based on the earlier project vision and the la
 - Leave TODOs for advanced health checks and split/merge logic.
 
 ## 11 · Cognitive-Inspired Enhancements: Active Memory & Encoding (Research / Future)
-- **Refined Active Memory (`ActiveMemoryManager`):**
+- **Refined Active Memory:**
     - Explore configurable capacity limits for active memory.
     - Define clear "refresh" mechanisms for items in active memory based on access/use.
     - Research sophisticated prioritization strategies beyond recency (e.g., salience, estimated utility).
