@@ -17,6 +17,13 @@ _ENGINE_REGISTRY: Dict[str, Type["BaseCompressionEngine"]] = (
 _ENGINE_INFO: Dict[str, Dict[str, Optional[str]]] = {}
 
 
+def _ensure_plugins_loaded() -> None:
+    """Load plugins if they have not been loaded yet."""
+    from compact_memory.plugin_loader import load_plugins
+
+    load_plugins()
+
+
 def register_compression_engine(
     id: str,
     cls: Type["BaseCompressionEngine"],  # Use string literal
@@ -47,14 +54,17 @@ def get_compression_engine(
     id: str,
 ) -> Type["BaseCompressionEngine"]:  # Use string literal
     """Return the engine class registered under ``id``."""
+    _ensure_plugins_loaded()
     return _ENGINE_REGISTRY[id]
 
 
 def available_engines() -> List[str]:
+    _ensure_plugins_loaded()
     return sorted(_ENGINE_REGISTRY)
 
 
 def get_engine_metadata(id: str) -> Dict[str, Optional[str]] | None:
+    _ensure_plugins_loaded()
     info = _ENGINE_INFO.get(id)
     if info:
         info_with_id = info.copy()
@@ -64,6 +74,7 @@ def get_engine_metadata(id: str) -> Dict[str, Optional[str]] | None:
 
 
 def all_engine_metadata() -> Dict[str, Dict[str, Optional[str]]]:
+    _ensure_plugins_loaded()
     return dict(_ENGINE_INFO)
 
 

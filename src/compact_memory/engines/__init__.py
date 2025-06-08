@@ -11,11 +11,9 @@ from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
 
 # Import registry functions
 from .registry import get_compression_engine
-from compact_memory.plugin_loader import load_plugins
 
-
-# Load plugins (including any built-in engines registered via entry points)
-load_plugins()
+# Plugin loading is deferred to avoid circular imports. ``registry`` functions
+# ensure ``load_plugins`` is called before engine classes are requested.
 
 
 def load_engine(path: str | os.PathLike) -> BaseCompressionEngine:
