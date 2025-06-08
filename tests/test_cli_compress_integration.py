@@ -196,39 +196,13 @@ def test_compress_directory_input_to_output_dir(tmp_path):
     # # Check for "Saved compressed output to..." messages for each file
     # assert f"Saved compressed output to {compressed_a}" in stdout # These messages change with new logic
     # assert f"Saved compressed output to {compressed_b}" in stdout
-    pass # Test is superseded by new directory compression logic
+    # This test is superseded by the new directory compression logic which creates a single combined file.
+    # The new tests are test_compress_directory_default_output_new and test_compress_directory_with_output_dir_new.
+    pass
 
 
-def test_compress_directory_input_default_output(tmp_path):
-    # dir_path = tmp_path / "data_default"
-    # dir_path.mkdir()
-    # file_a = dir_path / "file_one.txt"
-    # file_b = dir_path / "file_two.txt"
-    # file_a.write_text("Default output for file one.")
-    # file_b.write_text("Default output for file two.")
-
-    # result = runner.invoke(
-    #     app, ["compress", "--dir", str(dir_path), "--engine", "none", "--budget", "150"]
-    # )
-    # assert result.exit_code == 0, f"CLI call failed: {result.stderr}\n{result.stdout}"
-
-    # # Verify that _compressed.txt files are created alongside originals
-    # compressed_a_expected = dir_path / "file_one_compressed.txt"
-    # compressed_b_expected = dir_path / "file_two_compressed.txt"
-
-    # assert compressed_a_expected.exists(), "file_one_compressed.txt not found."
-    # assert compressed_b_expected.exists(), "file_two_compressed.txt not found."
-
-    # assert compressed_a_expected.read_text() == "Default output for file one."
-    # assert compressed_b_expected.read_text() == "Default output for file two."
-
-    # # Stdout should show processing messages and save confirmations
-    # stdout = result.stdout
-    # assert f"Processing {file_a}" in stdout
-    # assert f"Processing {file_b}" in stdout
-    # assert f"Saved compressed output to {compressed_a_expected}" in stdout
-    # assert f"Saved compressed output to {compressed_b_expected}" in stdout
-    pass # Test is superseded by new directory compression logic
+# def test_compress_directory_input_default_output(tmp_path): # Superseded
+#     pass
 
 
 def test_compress_empty_directory(tmp_path):
@@ -529,11 +503,10 @@ def test_compress_directory_recursive_pattern_new(tmp_path):
 
 # It's important to comment out or remove the old tests for directory compression
 # as they test a different behavior (per-file output).
-
-# def test_compress_directory_input_to_output_dir(tmp_path):
-# ... (old test) ...
-# def test_compress_directory_input_default_output(tmp_path):
-# ... (old test) ...
+# The tests `test_compress_directory_input_to_output_dir` and
+# `test_compress_directory_input_default_output` are effectively replaced by
+# `test_compress_directory_default_output_new` and
+# `test_compress_directory_with_output_dir_new`.
 
 
 @pytest.mark.parametrize(

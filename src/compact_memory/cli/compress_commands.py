@@ -411,25 +411,31 @@ def _compress_text_core(
     """Core logic to compress text, returns compressed memory, trace, and time."""
     engine = _get_one_shot_compression_engine(engine_id, ctx)  # Pass context
     start_time = time.time()
-    result = engine.compress(text_content, budget, tokenizer=tokenizer)
+    # engine.compress now returns a single CompressedMemory object
+    compressed_mem: CompressedMemory = engine.compress(text_content, budget, tokenizer=tokenizer)
     elapsed_ms = (time.time() - start_time) * 1000
 
-    if (
-        isinstance(result, tuple) and len(result) == 2
-    ):  # Expected (CompressedMemory, CompressionTrace)
-        compressed_mem, trace_obj = result
-    elif isinstance(result, CompressedMemory):  # Only CompressedMemory returned
-        compressed_mem, trace_obj = result, None
-    else:  # Unexpected result
+    if not isinstance(compressed_mem, CompressedMemory):
         typer.secho(
-            f"Error: Compression engine '{engine_id}' returned an unexpected result type: {type(result)}",
+            f"Error: Compression engine '{engine_id}' returned an unexpected result type: {type(compressed_mem)}",
             err=True,
             fg=typer.colors.RED,
         )
         raise typer.Exit(code=1)
 
-    if trace_obj and trace_obj.processing_ms is None:  # Populate if engine didn't
+    # Extract trace_obj from compressed_mem
+    trace_obj: Optional[CompressionTrace] = compressed_mem.trace
+
+    # Populate processing_ms in the trace if the engine didn't set it
+    if trace_obj and trace_obj.processing_ms is None:
         trace_obj.processing_ms = elapsed_ms
+    elif compressed_mem.trace is None and elapsed_ms is not None:
+        # If there was no trace object at all, but we have processing time,
+        # we could potentially create a minimal trace here, but the current structure
+        # expects engines to create their own traces. For now, if no trace, then no processing_ms is stored there.
+        # However, elapsed_ms is still available for direct output if verbose_stats is on.
+        pass
+
 
     return compressed_mem, trace_obj, elapsed_ms
 

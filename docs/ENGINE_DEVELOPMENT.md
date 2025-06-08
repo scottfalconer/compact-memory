@@ -21,32 +21,27 @@ class BaseCompressionEngine(ABC):
     @abstractmethod
     def compress(
         self,
-        text_or_chunks: Union[str, List[str]],
-        llm_token_budget: int,
+        text: str, # Standardized to 'text'
+        budget: int, # Standardized to 'budget'
+        previous_compression_result: Optional[CompressedMemory] = None, # Added
         **kwargs: Any,
-    ) -> Tuple[CompressedMemory, CompressionTrace]:
+    ) -> CompressedMemory: # Changed return type
         """
-        Compresses the input text or chunks to meet the token budget.
+        Compresses the input text to meet the token budget.
 
         Args:
-            text_or_chunks: Either a single string of text or a list of pre-chunked strings.
-                            Your engine needs to handle both cases or define its expected input.
-            llm_token_budget: The target maximum number of tokens (or a proxy like characters,
-                            depending on your engine's design) that the compressed output
-                            should ideally have.
-            **kwargs: A dictionary for additional keyword arguments. This commonly includes:
-                - `tokenizer`: An optional tokenizer function (e.g., from `tiktoken` or
-                  `transformers`) that can be used for accurate token counting or
-                  token-aware processing. Engines should be robust to its absence.
-                - `source_document_id` (Optional): An identifier for the source document, useful for context.
-                - Other engine-specific parameters passed during engine instantiation or invocation.
+            text: The input string to compress.
+            budget: The target maximum number of tokens (or a proxy) for the compressed output.
+            previous_compression_result (Optional[CompressedMemory]): Output from a preceding
+                                                                    engine in a pipeline.
+            **kwargs: Additional keyword arguments, commonly including:
+                - `tokenizer`: Optional tokenizer for accurate token counting.
+                - `source_document_id` (Optional): Identifier for the source.
+                - Other engine-specific parameters.
 
         Returns:
-            A tuple containing:
-                - CompressedMemory: An object with a `text` attribute holding the compressed
-                  string, and an optional `metadata` dictionary.
-                - CompressionTrace: An object detailing the steps, decisions, and outcomes
-                  of the compression process. This is vital for debugging and analysis.
+            A CompressedMemory object containing the compressed text and related information
+            (engine_id, engine_config, trace, metadata).
         """
         pass
 
@@ -81,16 +76,20 @@ Your primary task is to implement the `compress` method. Here's what to consider
     *   This is where your novel algorithm resides (e.g., extractive summarization, abstractive summarization, selective pruning, concept extraction, etc.).
 
 4.  **Output (`CompressedMemory`):**
-    *   The `text` attribute should contain the final compressed string.
-    *   The `metadata` attribute can store any useful information about the compression, like the original token count, compression ratio, or parameters used.
+    *   The `text: str` field holds the compressed string.
+    *   The `engine_id: Optional[str]` field should store `self.id`.
+    *   The `engine_config: Optional[Dict[str, Any]]` field should store `self.config` or relevant parameters.
+    *   The `metadata: Optional[Dict[str, Any]]` field can store any other useful information.
 
-5.  **Tracing (`CompressionTrace`):**
-    *   This is essential for transparency and debugging. Record key decisions and transformations.
-    *   Instantiate `CompressionTrace` with `engine_name=self.id`, `engine_params` (any parameters your engine was initialized with or received), `input_summary` (e.g., original length/tokens), and `output_summary` (e.g., final length/tokens).
-    *   Append dictionaries to `trace.steps` for each significant operation (e.g., `{"type": "chunking", "num_chunks": 5}` or `{"type": "summarization_model_call", "model_name": "t5-small"}`).
-    *   Populate `trace.processing_ms` with the time taken.
-    *   A `final_compressed_object_preview` is also useful.
+5.  **Tracing (`CompressionTrace` to `CompressedMemory.trace`):**
+    *   The `CompressionTrace` object, previously returned separately, must now be instantiated and assigned to the `trace` field of the `CompressedMemory` object you return.
+    *   Populate `CompressionTrace` with `engine_name=self.id`, relevant `strategy_params` (like `budget` and other kwargs used), `input_summary`, `output_summary`, `steps`, `processing_ms`, and `final_compressed_object_preview`.
     *   Refer to `docs/EXPLAINABLE_COMPRESSION.md` for standard vocabulary for trace step types.
+
+6.  **Handling `previous_compression_result`:**
+    *   If `previous_compression_result` is provided, your engine can use its `text`, `metadata`, `trace`, `engine_id`, or `engine_config` to inform its own compression process.
+    *   For example, it might operate on `previous_compression_result.text` instead of the `text` argument if chaining is intended this way for your engine.
+    *   If your engine doesn't use it, it can be ignored.
 
 ### Example: A Simple Truncation Engine
 
@@ -101,61 +100,79 @@ from compact_memory.token_utils import get_tokenizer, token_count
 class SimpleTruncateEngine(BaseCompressionEngine):
     id = "simple_truncate"
 
-    def compress(self, text_or_chunks, llm_token_budget, **kwargs):
+    def compress(
+        self,
+        text: str,
+        budget: int,
+        previous_compression_result: Optional[CompressedMemory] = None,
+        **kwargs
+    ) -> CompressedMemory:
+
+        # Determine actual text to process
+        input_text = text
+        if previous_compression_result:
+            # Example: This engine could choose to always process the original text,
+            # or use previous_compression_result.text. For simplicity, let's use 'text'.
+            # For a chaining behavior, one might do:
+            # input_text = previous_compression_result.text
+            pass
+
+
         tokenizer = kwargs.get("tokenizer")
-        if tokenizer is None:
-            # Fallback: treat budget as character count if no tokenizer
-            tokenizer = lambda x: list(x) # Simple char tokenizer for length
-            actual_tokenizer_for_count = lambda x: list(x)
-        else:
-            actual_tokenizer_for_count = tokenizer
+        # Fallback to character-based if no tokenizer
+        actual_tokenizer_for_count = tokenizer if tokenizer else lambda x: list(x)
 
-        if isinstance(text_or_chunks, list):
-            input_text = " ".join(text_or_chunks)
-        else:
-            input_text = str(text_or_chunks)
-
+        original_length_chars = len(input_text)
         original_tokens = token_count(actual_tokenizer_for_count, input_text)
 
-        # Simple truncation logic (very naive)
-        # A real engine would be more sophisticated, using the tokenizer
-        # to truncate based on actual tokens.
-        limit = llm_token_budget
-        if tokenizer is str.split or actual_tokenizer_for_count == list(input_text): # if using fallback tokenizer
+        # Simple truncation logic
+        # A real engine would use the tokenizer to count and truncate tokens.
+        # This example uses character limit as a proxy if no good tokenizer.
+        limit = budget
+        if not tokenizer or tokenizer == list: # If using char-based fallback for token counting
              # Assuming average 4 chars per token if no real tokenizer for budget
-            limit = llm_token_budget * 4
+            limit = budget * 4 # Character limit
 
         compressed_text = input_text[:limit]
 
-        # Refine if over budget with actual tokenizer
-        if tokenizer != list(input_text): # If a real tokenizer was provided
+        # Refine if a real tokenizer was provided and budget is exceeded
+        if tokenizer and tokenizer != list:
             current_tokens = token_count(tokenizer, compressed_text)
-            while current_tokens > llm_token_budget and len(compressed_text) > 0:
+            while current_tokens > budget and len(compressed_text) > 0:
                 # Naively remove characters/words until budget is met
-                # A better approach would remove whole tokens
                 compressed_text = compressed_text[:-10] if len(compressed_text) > 10 else ""
                 current_tokens = token_count(tokenizer, compressed_text)
-            # Final check, hard truncate if still over (e.g. one very long token)
-            if current_tokens > llm_token_budget:
-                 encoded = tokenizer(compressed_text)[:llm_token_budget]
-                 compressed_text = tokenizer.decode(encoded) if hasattr(tokenizer, "decode") else "".join(encoded)
+            if current_tokens > budget: # Final hard truncate by token IDs
+                 encoded_ids = tokenizer(compressed_text)['input_ids'][:budget]
+                 if hasattr(tokenizer, "decode"):
+                     compressed_text = tokenizer.decode(encoded_ids)
+                 else: # Basic fallback if no decode
+                     # This part is tricky without a full tokenizer interface,
+                     # actual tokenizers handle this better.
+                     compressed_text = f"Could not decode {len(encoded_ids)} tokens"
 
 
         final_compressed_tokens = token_count(actual_tokenizer_for_count, compressed_text)
+        final_compressed_chars = len(compressed_text)
 
-        trace = CompressionTrace(
+        current_trace = CompressionTrace(
             engine_name=self.id,
-            engine_params={"llm_token_budget": llm_token_budget},
-            input_summary={"original_text_length": len(input_text), "original_tokens": original_tokens},
+            strategy_params={"budget": budget, "method": "truncation"},
+            input_summary={"original_length_chars": original_length_chars, "original_tokens": original_tokens},
             steps=[
-                {"type": "input_processing", "input_type": type(text_or_chunks).__name__},
-                {"type": "truncation", "budget_type": "chars" if actual_tokenizer_for_count == list(input_text) else "tokens", "limit": llm_token_budget}
+                {"type": "truncation_attempt", "limit_type": "chars" if not tokenizer or tokenizer == list else "tokens", "limit_value": budget}
             ],
-            output_summary={"compressed_text_length": len(compressed_text), "compressed_tokens": final_compressed_tokens},
+            output_summary={"compressed_length_chars": final_compressed_chars, "compressed_tokens": final_compressed_tokens},
             final_compressed_object_preview=compressed_text[:50]
         )
 
-        return CompressedMemory(text=compressed_text), trace
+        return CompressedMemory(
+            text=compressed_text,
+            engine_id=self.id,
+            engine_config=self.config, # Assuming self.config is set in __init__
+            trace=current_trace,
+            metadata={"truncation_details": "simple character or token based"}
+        )
 ```
 
 ## Handling Token Budgets and Tokenizers

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Engine that keeps the first and last chunks of text."""
 
-from typing import List, Union, Any
+from typing import List, Union, Any, Optional
 
 from compact_memory.token_utils import tokenize_text
 
@@ -29,8 +29,9 @@ class FirstLastEngine(BaseCompressionEngine):
         llm_token_budget: int | None,
         *,
         tokenizer: Any = None,
+        previous_compression_result: Optional[CompressedMemory] = None,
         **kwargs: Any,
-    ) -> tuple[CompressedMemory, CompressionTrace]:
+    ) -> CompressedMemory:
         text = (
             text_or_chunks
             if isinstance(text_or_chunks, str)
@@ -77,7 +78,10 @@ class FirstLastEngine(BaseCompressionEngine):
             },
             final_compressed_object_preview=kept[:50],
         )
-        return compressed, trace
+        compressed.trace = trace
+        compressed.engine_id = self.id
+        compressed.engine_config = self.config
+        return compressed
 
 
 # register_compression_engine(FirstLastEngine.id, FirstLastEngine, source="contrib") # Removed, as it's now registered in engines/__init__.py

@@ -21,6 +21,9 @@ class CompressedMemory:
 
     text: str
     metadata: Optional[Dict[str, Any]] = None
+    engine_id: Optional[str] = None
+    engine_config: Optional[Dict[str, Any]] = None
+    trace: Optional[CompressionTrace] = None
 
 
 @dataclass
@@ -173,19 +176,27 @@ class BaseCompressionEngine:
 
     # --------------------------------------------------
     def compress(
-        self, text: str, budget: int
-    ) -> tuple[CompressedMemory, CompressionTrace]:
+        self,
+        text: str,
+        budget: int,
+        previous_compression_result: Optional[CompressedMemory] = None,
+    ) -> CompressedMemory:
         """Naive compression via truncation."""
 
         truncated = text[:budget]
         trace = CompressionTrace(
-            engine_name="base_truncate",
+            engine_name="base_truncate",  # Or perhaps self.id for consistency
             strategy_params={"budget": budget},
             input_summary={"original_length": len(text)},
             steps=[{"type": "truncate", "details": {"budget": budget}}],
             output_summary={"compressed_length": len(truncated)},
         )
-        return CompressedMemory(text=truncated), trace
+        return CompressedMemory(
+            text=truncated,
+            trace=trace,
+            engine_id=getattr(self, "id", self.__class__.__name__),
+            engine_config=self.config,
+        )
 
     # --------------------------------------------------
     def save(self, path: str) -> None:
