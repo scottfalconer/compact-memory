@@ -67,57 +67,10 @@ def all_engine_metadata() -> Dict[str, Dict[str, Optional[str]]]:
     return dict(_ENGINE_INFO)
 
 
-_BUILTIN_ENGINES_REGISTERED = False  # Guard to prevent multiple registrations.
-
-
-def register_builtin_engines():
-    """
-    Registers all built-in compression engines.
-
-    This function centralizes the registration of core engines like
-    NoCompressionEngine and FirstLastEngine.
-    It's designed to be called once, typically when the `compact_memory.engines`
-    package is imported.
-    """
-    global _BUILTIN_ENGINES_REGISTERED
-    if _BUILTIN_ENGINES_REGISTERED:
-        return
-
-    # Import engine classes here to minimize import side-effects at module load time
-    # and to encapsulate these imports within the registration logic.
-    from compact_memory.engines.no_compression_engine import NoCompressionEngine
-    from compact_memory.engines.first_last_engine import FirstLastEngine
-    from compact_memory.engines.stopword_pruner_engine import StopwordPrunerEngine
-
-    # PrototypeEngine was removed
-
-    register_compression_engine(
-        NoCompressionEngine.id,
-        NoCompressionEngine,
-        display_name="No Compression",
-        source="built-in",
-    )
-    register_compression_engine(
-        FirstLastEngine.id,
-        FirstLastEngine,
-        display_name="First/Last Chunks",
-        source="built-in",
-    )
-    register_compression_engine(
-        StopwordPrunerEngine.id,
-        StopwordPrunerEngine,
-        display_name="Stopword Pruner",
-        source="built-in",
-    )
-    # PrototypeEngine was removed
-    _BUILTIN_ENGINES_REGISTERED = True
-
-
 __all__ = [
     "register_compression_engine",
     "get_compression_engine",
     "available_engines",
     "get_engine_metadata",
     "all_engine_metadata",
-    "register_builtin_engines",  # Expose the new function
 ]
