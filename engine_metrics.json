@@ -7,6 +7,10 @@
     "compression_ratio": 0.2317617866004963,
     "embedding_similarity": 0.7314000129699707
   },
+  "neocortex_transfer": {
+    "compression_ratio": 0.009925558312655087,
+    "embedding_similarity": 0.6814477443695068
+  },
   "none": {
     "compression_ratio": 1.0,
     "embedding_similarity": 0.9999998807907104

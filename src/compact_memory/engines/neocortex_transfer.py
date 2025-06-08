@@ -1,6 +1,7 @@
 """Cognitively inspired compression engine."""
 
 from compact_memory.engines.base import BaseCompressionEngine
+from .registry import register_compression_engine
 
 
 class NeocortexTransfer(BaseCompressionEngine):
@@ -377,6 +378,9 @@ class NeocortexTransfer(BaseCompressionEngine):
         return retrieved_candidates
 
     # TODO: Add other necessary methods and attributes as per the design.
+
+
+register_compression_engine(NeocortexTransfer.id, NeocortexTransfer, source="contrib")
 
 
 if __name__ == "__main__":

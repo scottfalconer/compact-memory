@@ -30,7 +30,7 @@ def main(output_file: str = "engine_metrics.json") -> None:
         pipeline_engine.PipelineEngine.id, pipeline_engine.PipelineEngine
     )
 
-    engines = [e for e in available_engines() if e != "neocortex_transfer"]
+    engines = list(available_engines())
 
     text = Path("tests/data/constitution.txt").read_text()
 
@@ -59,9 +59,16 @@ def main(output_file: str = "engine_metrics.json") -> None:
             # a true no-compression baseline.
             compressed, _ = engine.compress(text, llm_token_budget=None)
         else:
-            compressed, _ = engine.compress(text, llm_token_budget=100)
+            result = engine.compress(text, llm_token_budget=100)
+            if isinstance(result, tuple):
+                compressed, _ = result
+            else:
+                compressed = result
 
-        comp_text = compressed.text
+        if hasattr(compressed, "text"):
+            comp_text = compressed.text
+        else:
+            comp_text = compressed.get("content", str(compressed))
         ratio = ratio_metric.evaluate(original_text=text, compressed_text=comp_text)[
             "compression_ratio"
         ]
