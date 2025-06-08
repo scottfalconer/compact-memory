@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Callable
 
+import typer
+
 from compact_memory.contrib import enable_all_experimental_engines
 from compact_memory.engines.registry import (
     available_engines,
@@ -13,11 +15,19 @@ from compact_memory.engines.registry import (
     register_compression_engine,
 )
 from compact_memory.validation.registry import get_validation_metric_class
+from compact_memory import embedding_pipeline as ep
+from compact_memory.model_utils import download_embedding_model
+
+app = typer.Typer(help="Collect metrics for available compression engines.")
 
 
-def main(output_file: str = "engine_metrics.json") -> None:
-    """Run each engine on sample text and record metrics."""
-    # Use deterministic mock embeddings to avoid heavy downloads
+@app.command()
+def main(output_file: str = "engine_metrics.json", use_mock: bool = False) -> None:
+    """Run each engine on sample text and record metrics.
+
+    If ``use_mock`` is True, the embedding pipeline uses a deterministic mock
+    encoder. Otherwise the required models are downloaded if missing.
+    """
 
     enable_all_experimental_engines()
 
@@ -26,6 +36,16 @@ def main(output_file: str = "engine_metrics.json") -> None:
     register_compression_engine(
         pipeline_engine.PipelineEngine.id, pipeline_engine.PipelineEngine
     )
+
+    if use_mock:
+        enc = ep.MockEncoder()
+        ep._load_model = lambda *a, **k: enc
+    else:
+        for model in ["all-MiniLM-L6-v2", "multi-qa-mpnet-base-dot-v1"]:
+            try:  # pragma: no cover - network and disk dependent
+                download_embedding_model(model)
+            except Exception as exc:  # pragma: no cover - best effort
+                print(f"warning: unable to download {model}: {exc}")
 
     engines = list(available_engines())
 
@@ -79,4 +99,4 @@ def main(output_file: str = "engine_metrics.json") -> None:
 
 
 if __name__ == "__main__":
-    main()
+    app()

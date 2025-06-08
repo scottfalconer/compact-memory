@@ -284,7 +284,9 @@ This project requires **Python 3.11+**.
        google-generativeai evaluate
    ```
 Note: The repository also includes `.codex/setup.sh`, which is intended solely for
-the Codex environment and is not needed for general users.
+the Codex environment and is not needed for general users. If you have network
+access and want to preinstall heavy dependencies and models in one step,
+run `scripts/setup_heavy_deps.sh` from the project root.
 
 2.  **Install `compact-memory`:**
     This makes the `compact-memory` CLI tool available. You have two main options:

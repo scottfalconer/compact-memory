@@ -18,5 +18,9 @@
   "read_agent_gist": {
     "compression_ratio": 0.000738394758104944,
     "embedding_similarity": 0.7977615594863892
+  },
+  "stopword_pruner": {
+    "compression_ratio": 0.3741935483870968,
+    "embedding_similarity": 0.667144238948822
   }
 }
