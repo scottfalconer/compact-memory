@@ -1,0 +1,22 @@
+{
+  "active_memory_neuro": {
+    "compression_ratio": 0.0,
+    "embedding_similarity": 0.0
+  },
+  "first_last": {
+    "compression_ratio": 0.2317617866004963,
+    "embedding_similarity": 0.7314000129699707
+  },
+  "none": {
+    "compression_ratio": 0.3037220843672457,
+    "embedding_similarity": 0.8013756275177002
+  },
+  "pipeline": {
+    "compression_ratio": 0.2317617866004963,
+    "embedding_similarity": 0.7314000129699707
+  },
+  "read_agent_gist": {
+    "compression_ratio": 0.25359801488833744,
+    "embedding_similarity": 0.6386326551437378
+  }
+}
