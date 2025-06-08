@@ -20,7 +20,6 @@ from compact_memory.embedding_pipeline import MockEncoder
 def main(output_file: str = "engine_metrics.json") -> None:
     """Run each engine on sample text and record metrics."""
     # Use deterministic mock embeddings to avoid heavy downloads
-    ep._load_model = lambda *a, **k: MockEncoder()  # type: ignore
 
     enable_all_experimental_engines()
 
@@ -32,7 +31,7 @@ def main(output_file: str = "engine_metrics.json") -> None:
 
     engines = list(available_engines())
 
-    text = Path("tests/data/constitution.txt").read_text()
+    text = Path("sample_data/moon_landing/full.txt").read_text()
 
     ratio_metric = get_validation_metric_class("compression_ratio")()
     embed_metric = get_validation_metric_class("embedding_similarity")()
@@ -49,12 +48,7 @@ def main(output_file: str = "engine_metrics.json") -> None:
         else:
             engine = EngineCls()
 
-        if eng_id == "active_memory_neuro":
-            engine.add_turn(text)
-            compressed, _ = engine.compress(
-                "What is the text about?", 100, tokenizer=lambda t: t.split()
-            )
-        elif eng_id == "none":
+        if eng_id == "none":
             # Disable truncation for the no-op engine so the metrics reflect
             # a true no-compression baseline.
             compressed, _ = engine.compress(text, llm_token_budget=None)
