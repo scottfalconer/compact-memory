@@ -1,9 +1,10 @@
+# Attempting to restore original imports
 from compact_memory.active_memory_manager import (
     ActiveMemoryManager,
     ConversationTurn,
 )
 
-
+# This was a placeholder tokenizer from the original file content I saw
 class DummyTokenizer:
     def __call__(
         self,
@@ -66,6 +67,7 @@ def test_handles_single_candidate_turn_exceeding_budget():
     assert result == []
 
 
+# This was a placeholder tokenizer from the original file content I saw
 class TokenizeOnlyTokenizer(DummyTokenizer):
     def __call__(self, *a, **k):
         raise AssertionError("should not call __call__")
