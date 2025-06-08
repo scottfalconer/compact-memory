@@ -29,15 +29,14 @@ else:
 try:  # embedding dependencies may be missing
     from .embedding_metrics import (
         EmbeddingSimilarityMetric,
-        MultiModelEmbeddingSimilarityMetric,
+        MultiEmbeddingSimilarityMetric,
     )
 except Exception:  # pragma: no cover - optional dependency may be missing
-    EmbeddingSimilarityMetric = MultiModelEmbeddingSimilarityMetric = None  # type: ignore
+    EmbeddingSimilarityMetric = None  # type: ignore
+    MultiEmbeddingSimilarityMetric = None  # type: ignore
 else:
-    __all__ += [
-        "EmbeddingSimilarityMetric",
-        "MultiModelEmbeddingSimilarityMetric",
-    ]
+    __all__ += ["EmbeddingSimilarityMetric", "MultiEmbeddingSimilarityMetric"]
+
 
 try:
     from .llm_judge_metric import LLMJudgeMetric
