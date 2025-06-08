@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Set
 import json
 import os
 import uuid
+import inspect
 
 import numpy as np
 import faiss
@@ -47,32 +48,34 @@ class BaseCompressionEngine:
         embedding_fn: Callable[[str | Sequence[str]], np.ndarray] = embed_text,
         preprocess_fn: Callable[[str], str] | None = None,
         config: Optional[Dict[str, Any]] = None,
-        **kwargs, # Allow other config params to be passed
+        **kwargs,  # Allow other config params to be passed
     ) -> None:
         if config is not None:
             self.config = config
         else:
-            self.config = kwargs # Store kwargs if no explicit config dict is given
+            self.config = kwargs  # Store kwargs if no explicit config dict is given
 
         # Prioritize chunker_id from config if it exists.
         # Otherwise, if a chunker instance is passed, derive its ID.
         # Otherwise, set a default chunker_id.
-        if 'chunker_id' not in self.config:
+        if "chunker_id" not in self.config:
             if chunker:
-                self.config['chunker_id'] = type(chunker).__name__
+                self.config["chunker_id"] = type(chunker).__name__
             else:
-                self.config['chunker_id'] = type(SentenceWindowChunker()).__name__
+                self.config["chunker_id"] = type(SentenceWindowChunker()).__name__
         # elif chunker and type(chunker).__name__ != self.config['chunker_id']:
-            # This case could be a warning or error if a chunker instance is passed
-            # that doesn't match a pre-existing chunker_id in the config.
-            # For now, we assume config['chunker_id'] (if present) is the source of truth.
+        # This case could be a warning or error if a chunker instance is passed
+        # that doesn't match a pre-existing chunker_id in the config.
+        # For now, we assume config['chunker_id'] (if present) is the source of truth.
 
-            # Note: embedding_fn and preprocess_fn are not easily serializable by default.
-            # Subclasses would need to handle serialization/deserialization if they are configurable.
+        # Note: embedding_fn and preprocess_fn are not easily serializable by default.
+        # Subclasses would need to handle serialization/deserialization if they are configurable.
 
         self._chunker = chunker or SentenceWindowChunker()
-        self.embedding_fn = embedding_fn
+        self.embedding_fn = embedding_fn or embed_text
         self.preprocess_fn = preprocess_fn
+        sig = inspect.signature(self.embedding_fn)
+        self._embed_accepts_preprocess = "preprocess_fn" in sig.parameters
         self.memories: List[Dict[str, Any]] = []
         dim = get_embedding_dim()
         self.embeddings = np.zeros((0, dim), dtype=np.float32)
@@ -102,6 +105,18 @@ class BaseCompressionEngine:
             self.index.add(self.embeddings.astype(np.float32))
 
     # --------------------------------------------------
+    def _embed(self, text_or_texts: str | Sequence[str]) -> np.ndarray:
+        """Return embeddings for ``text_or_texts``."""
+        if self._embed_accepts_preprocess:
+            return self.embedding_fn(text_or_texts, preprocess_fn=self.preprocess_fn)
+        if self.preprocess_fn is not None:
+            if isinstance(text_or_texts, str):
+                text_or_texts = self.preprocess_fn(text_or_texts)
+            else:
+                text_or_texts = [self.preprocess_fn(t) for t in text_or_texts]
+        return self.embedding_fn(text_or_texts)
+
+    # --------------------------------------------------
     def ingest(self, text: str) -> List[str]:
         """Chunk and store ``text`` in the engine."""
 
@@ -111,7 +126,7 @@ class BaseCompressionEngine:
 
         processed_chunks = [self._compress_chunk(chunk) for chunk in raw_chunks]
 
-        vecs = self.embedding_fn(processed_chunks, preprocess_fn=self.preprocess_fn)
+        vecs = self._embed(processed_chunks)
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
         ids: List[str] = []
@@ -144,7 +159,7 @@ class BaseCompressionEngine:
         if not self.memories:
             return []
         self._ensure_index()
-        qvec = self.embedding_fn(query, preprocess_fn=self.preprocess_fn)
+        qvec = self._embed(query)
         qvec = qvec.reshape(1, -1).astype(np.float32)
         k = min(top_k, len(self.memories))
         dists, idxs = self.index.search(qvec, k)
@@ -217,8 +232,9 @@ class BaseCompressionEngine:
             raise TypeError("chunker must implement Chunker interface")
         self._chunker = value
         # If self.config exists and is a dict, update chunker_id
-        if hasattr(self, 'config') and isinstance(self.config, dict):
-            self.config['chunker_id'] = getattr(value, "id", type(value).__name__)
+        if hasattr(self, "config") and isinstance(self.config, dict):
+            self.config["chunker_id"] = getattr(value, "id", type(value).__name__)
+
 
 __all__ = [
     "BaseCompressionEngine",
