@@ -26,7 +26,7 @@ These quick measurements illustrate how to evaluate engine behavior. For larger-
 
 ## Engine Metrics Script (`examples/collect_engine_metrics.py`)
 
-The `examples/collect_engine_metrics.py` script is a utility to gather `compression_ratio` and `embedding_similarity` metrics for all available (registered) compression engines in the `compact_memory` library.
+The `examples/collect_engine_metrics.py` script is a utility to gather `compression_ratio` and `embedding_similarity_multi` metrics for all available (registered) compression engines in the `compact_memory` library.
 
 By default, the script uses the text found in `tests/data/constitution.txt` as the input data for these evaluations.
 
@@ -36,11 +36,21 @@ The script outputs a JSON file (named `engine_metrics.json` by default) containi
 {
   "none": {
     "compression_ratio": 1.0,
-    "embedding_similarity": 1.0
+    "embedding_similarity_multi": {
+      "semantic_similarity": 1.0,
+      "all-MiniLM-L6-v2": 1.0,
+      "multi-qa-mpnet-base-dot-v1": 1.0,
+      "token_count": 256
+    }
   },
   "first_last": {
     "compression_ratio": 0.05,  // Example value
-    "embedding_similarity": 0.85 // Example value
+    "embedding_similarity_multi": {
+      "semantic_similarity": 0.85,
+      "all-MiniLM-L6-v2": 0.86,
+      "multi-qa-mpnet-base-dot-v1": 0.84,
+      "token_count": 128
+    }
   }
   // ... other engines
 }
@@ -48,7 +58,7 @@ The script outputs a JSON file (named `engine_metrics.json` by default) containi
 
 ### Important Considerations
 
--   The `embedding_similarity` metric produced by this script is intended to use a real sentence transformer model to provide meaningful semantic similarity scores.
+-   The `embedding_similarity_multi` metric produced by this script is intended to use real sentence transformer models to provide meaningful semantic similarity scores.
 -   The script has been updated to facilitate this by removing the `MockEncoder` override.
 -   However, running the script with a real model requires an environment with sufficient disk space and network access to download and install the model and its dependencies (e.g., `sentence-transformers`, `torch`, `nvidia-cudnn-cu12` if using CUDA).
--   If such resources are unavailable (as was the case during a recent review attempt which failed due to disk space limitations), the `embedding_similarity` scores in any generated `engine_metrics.json` might reflect a fallback or previously generated placeholder values (e.g., from `MockEncoder`) and should not be considered indicative of true semantic similarity until the script can be successfully run with a real model.
+-   If such resources are unavailable (as was the case during a recent review attempt which failed due to disk space limitations), the `embedding_similarity_multi` scores in any generated `engine_metrics.json` might reflect a fallback or previously generated placeholder values (e.g., from `MockEncoder`) and should not be considered indicative of true semantic similarity until the script can be successfully run with real models.

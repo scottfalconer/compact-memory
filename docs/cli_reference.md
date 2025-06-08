@@ -167,8 +167,13 @@ Available validation metric IDs:
 - exact_match
 - compression_ratio
 - embedding_similarity
+- embedding_similarity_multi
 - llm_judge
 ```
+
+`embedding_similarity_multi` accepts `model_names` and `max_tokens` in
+`--metric-params`. It reports token counts and per-model similarity scores and
+skips pairs whose token count exceeds the limit.
 
 #### `compact-memory dev list-engines` (also `list-strategies`)
 
@@ -224,7 +229,7 @@ raises a clear `RuntimeError`.
 #### `compact-memory dev evaluate-engines`
 
 Runs multiple compression engines on the same input text and reports the
-`compression_ratio` and `embedding_similarity` metrics for each one.
+`compression_ratio` and `embedding_similarity_multi` metrics for each one.
 
 *   **Options:**
     *   `--text TEXT`: Raw text to compress, or `-` to read from stdin.

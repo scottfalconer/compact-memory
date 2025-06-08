@@ -59,6 +59,30 @@ metric = EmbeddingSimilarityMetric(model_name="all-MiniLM-L6-v2")
 scores = metric.evaluate(original_text="a", compressed_text="b")
 ```
 
+### Multi‑model Similarity
+
+`MultiEmbeddingSimilarityMetric` (metric ID `embedding_similarity_multi`)
+accepts multiple SentenceTransformer model IDs via a `model_names` list. The
+metric reports an averaged `semantic_similarity` score along with individual
+scores for each model and a `token_count` for the evaluated pair. If the token
+count exceeds the configured `max_tokens` limit the pair is skipped.
+
+```python
+from compact_memory.validation.embedding_metrics import MultiEmbeddingSimilarityMetric
+
+metric = MultiEmbeddingSimilarityMetric(
+    model_names=["all-MiniLM-L6-v2", "multi-qa-mpnet-base-dot-v1"],
+    max_tokens=8192,
+)
+scores = metric.evaluate(original_text="hello", compressed_text="hi")
+# {
+#   "semantic_similarity": 0.98,
+#   "all-MiniLM-L6-v2": 0.99,
+#   "multi-qa-mpnet-base-dot-v1": 0.97,
+#   "token_count": 4
+# }
+```
+
 ## LLM Judge Metric
 
 `LLMJudgeMetric` queries an OpenAI chat model to score text pairs. The metric
