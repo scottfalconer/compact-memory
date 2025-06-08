@@ -185,49 +185,50 @@ def test_compress_directory_input_to_output_dir(tmp_path):
 
     # Stdout should show processing messages for each file
     stdout = result.stdout
-    assert (
-        f"Processing {dir_path / 'a.txt'}" in stdout
-        or f"Processing {Path('data/a.txt')}" in stdout
-    )  # Path representation might vary
-    assert (
-        f"Processing {dir_path / 'b.txt'}" in stdout
-        or f"Processing {Path('data/b.txt')}" in stdout
-    )
-
-    # Check for "Saved compressed output to..." messages for each file
-    assert f"Saved compressed output to {compressed_a}" in stdout
-    assert f"Saved compressed output to {compressed_b}" in stdout
+    # assert (
+    #     f"Processing {dir_path / 'a.txt'}" in stdout
+    #     or f"Processing {Path('data/a.txt')}" in stdout
+    # )
+    # assert (
+    #     f"Processing {dir_path / 'b.txt'}" in stdout
+    #     or f"Processing {Path('data/b.txt')}" in stdout
+    # )
+    # # Check for "Saved compressed output to..." messages for each file
+    # assert f"Saved compressed output to {compressed_a}" in stdout # These messages change with new logic
+    # assert f"Saved compressed output to {compressed_b}" in stdout
+    pass # Test is superseded by new directory compression logic
 
 
 def test_compress_directory_input_default_output(tmp_path):
-    dir_path = tmp_path / "data_default"
-    dir_path.mkdir()
-    file_a = dir_path / "file_one.txt"
-    file_b = dir_path / "file_two.txt"
-    file_a.write_text("Default output for file one.")
-    file_b.write_text("Default output for file two.")
+    # dir_path = tmp_path / "data_default"
+    # dir_path.mkdir()
+    # file_a = dir_path / "file_one.txt"
+    # file_b = dir_path / "file_two.txt"
+    # file_a.write_text("Default output for file one.")
+    # file_b.write_text("Default output for file two.")
 
-    result = runner.invoke(
-        app, ["compress", "--dir", str(dir_path), "--engine", "none", "--budget", "150"]
-    )
-    assert result.exit_code == 0, f"CLI call failed: {result.stderr}\n{result.stdout}"
+    # result = runner.invoke(
+    #     app, ["compress", "--dir", str(dir_path), "--engine", "none", "--budget", "150"]
+    # )
+    # assert result.exit_code == 0, f"CLI call failed: {result.stderr}\n{result.stdout}"
 
-    # Verify that _compressed.txt files are created alongside originals
-    compressed_a_expected = dir_path / "file_one_compressed.txt"
-    compressed_b_expected = dir_path / "file_two_compressed.txt"
+    # # Verify that _compressed.txt files are created alongside originals
+    # compressed_a_expected = dir_path / "file_one_compressed.txt"
+    # compressed_b_expected = dir_path / "file_two_compressed.txt"
 
-    assert compressed_a_expected.exists(), "file_one_compressed.txt not found."
-    assert compressed_b_expected.exists(), "file_two_compressed.txt not found."
+    # assert compressed_a_expected.exists(), "file_one_compressed.txt not found."
+    # assert compressed_b_expected.exists(), "file_two_compressed.txt not found."
 
-    assert compressed_a_expected.read_text() == "Default output for file one."
-    assert compressed_b_expected.read_text() == "Default output for file two."
+    # assert compressed_a_expected.read_text() == "Default output for file one."
+    # assert compressed_b_expected.read_text() == "Default output for file two."
 
-    # Stdout should show processing messages and save confirmations
-    stdout = result.stdout
-    assert f"Processing {file_a}" in stdout
-    assert f"Processing {file_b}" in stdout
-    assert f"Saved compressed output to {compressed_a_expected}" in stdout
-    assert f"Saved compressed output to {compressed_b_expected}" in stdout
+    # # Stdout should show processing messages and save confirmations
+    # stdout = result.stdout
+    # assert f"Processing {file_a}" in stdout
+    # assert f"Processing {file_b}" in stdout
+    # assert f"Saved compressed output to {compressed_a_expected}" in stdout
+    # assert f"Saved compressed output to {compressed_b_expected}" in stdout
+    pass # Test is superseded by new directory compression logic
 
 
 def test_compress_empty_directory(tmp_path):
@@ -332,6 +333,207 @@ def test_compress_no_input_provided():
     assert (
         "Specify exactly ONE of --text, --file, or --dir" in result.stderr.strip()
     )  # Adjusted to match actual
+
+
+# --- New tests for consolidated directory compression ---
+
+def _expected_truncate_output(text: str, word_budget: int) -> str:
+    """
+    Helper to simulate simple word-based truncation for test predictions.
+    Note: The actual 'truncate' engine behavior depends on its tokenizer
+    and might differ slightly from this simple word split. This helper
+    is for creating a predictable *expected* output for tests.
+    """
+    words = text.split()
+    return " ".join(words[:word_budget])
+
+def test_compress_directory_default_output_new(tmp_path):
+    input_dir = tmp_path / "test_input_dir"
+    input_dir.mkdir()
+    (input_dir / "file1.txt").write_text("This is the first file content.")
+    (input_dir / "file2.txt").write_text("This is the second file, it has some more words.")
+    (input_dir / "another.md").write_text("This is a markdown file and should be ignored by default pattern.")
+
+    # Expected combined content before compression (default pattern is *.txt)
+    # Files are sorted by Path.glob, so file1.txt then file2.txt
+    combined_content = "This is the first file content.\n\nThis is the second file, it has some more words."
+
+    word_budget = 10 # Example budget in words
+    # Note: The 'truncate' engine uses its own tokenization.
+    # This helper provides a simplified expectation.
+    expected_compressed_text = _expected_truncate_output(combined_content, word_budget)
+    # For "truncate" engine with tiktoken, it will be token based.
+    # For this test, we'll use a budget that's meaningful for the first_last engine,
+    # which is simpler to predict for combined text. Let's switch to first_last.
+    # If first_last takes N tokens from start and M from end:
+    # For combined_content = "This is the first file content.\n\nThis is the second file, it has some more words."
+    # Budget of say, 6 tokens for first_last. Might take 3 from start, 3 from end of combined.
+    # "This is the ... some more words."
+    # Let's use a very simple engine "none" for now to test concatenation primarily.
+    # The "none" engine will effectively truncate based on its internal token budget logic
+    # which is hard to predict without knowing the exact tokenizer behavior in test env.
+    #
+    # Let's stick to 'truncate' but be mindful of its actual behavior.
+    # The key is that *some* reasonably compressed version of the *combined* text appears.
+    # For testing, we can use a very large budget with "none" to get almost all content.
+    # Or a small budget with "truncate" and check for the beginning of combined content.
+
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "--dir",
+            str(input_dir),
+            "--engine",
+            "truncate",
+            "--budget",
+            str(word_budget), # This budget is for the 'truncate' engine's tokenizer
+        ],
+    )
+
+    assert result.exit_code == 0, f"CLI Error: {result.stderr}"
+    output_file = input_dir / "compressed_output.txt"
+    assert output_file.exists(), "compressed_output.txt not found in input directory"
+
+    actual_output_text = output_file.read_text()
+    # For 'truncate', we expect the output to be the beginning of the combined text
+    # and its length to be related to the budget.
+    assert actual_output_text.startswith("This is the first") # Check start of combined content
+    assert len(actual_output_text) > 0
+    # A more precise assertion for truncate would require replicating its tokenization.
+    # For now, ensuring it starts with the combined content and is non-empty is a good step.
+    # And that it's not the full content if truncated.
+    if len(combined_content) > len(actual_output_text) + 5: # check if truncation likely happened
+         assert actual_output_text != combined_content
+
+
+def test_compress_directory_with_output_dir_new(tmp_path):
+    input_dir = tmp_path / "test_input_dir"
+    input_dir.mkdir()
+    output_dir = tmp_path / "test_output_dir"
+    # output_dir.mkdir() # Command should create it
+
+    (input_dir / "fileA.txt").write_text("Alpha content here.")
+    (input_dir / "fileB.txt").write_text("Bravo content follows, adding more text.")
+
+    combined_content = "Alpha content here.\n\nBravo content follows, adding more text."
+    word_budget = 7
+    # expected_compressed_text = _expected_truncate_output(combined_content, word_budget)
+
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "--dir",
+            str(input_dir),
+            "--output-dir",
+            str(output_dir),
+            "--engine",
+            "truncate",
+            "--budget",
+            str(word_budget),
+        ],
+    )
+
+    assert result.exit_code == 0, f"CLI Error: {result.stderr}"
+    assert output_dir.exists(), "Specified output directory was not created"
+    output_file = output_dir / "compressed_output.txt"
+    assert output_file.exists(), "compressed_output.txt not found in specified output directory"
+
+    actual_output_text = output_file.read_text()
+    assert actual_output_text.startswith("Alpha content here.")
+    assert len(actual_output_text) > 0
+    if len(combined_content) > len(actual_output_text) + 5:
+         assert actual_output_text != combined_content
+
+
+def test_compress_directory_recursive_pattern_new(tmp_path):
+    input_dir = tmp_path / "test_input_dir"
+    input_dir.mkdir()
+
+    subdir = input_dir / "subdir"
+    subdir.mkdir()
+
+    (input_dir / "file1.txt").write_text("Text from file1 in root.")
+    (input_dir / "another.md").write_text("Markdown file, should be ignored by *.txt pattern.")
+    (input_dir / "file2.txt").write_text("Text from file2 in root.")
+    (subdir / "file3.txt").write_text("Subdirectory text from file3.")
+    (subdir / "notes.md").write_text("Another markdown in subdir.")
+
+    # Glob order can be tricky. For predictability, let's assume Path.glob gives:
+    # file1.txt, file2.txt, then subdir/file3.txt (or some consistent order)
+    # To ensure order for the test, we can read them and sort them by name for combined_content
+
+    paths = sorted(list(input_dir.glob("*.txt")) + list(subdir.glob("*.txt")))
+    content_parts = [p.read_text() for p in paths]
+    combined_content = "\n\n".join(content_parts)
+    # This should result in:
+    # "Text from file1 in root.\n\nText from file2 in root.\n\nSubdirectory text from file3."
+    # (Order of file1/file2 might swap depending on glob, but file3 is last due to recursive glob)
+    # For more stable test:
+    # combined_content = "Text from file1 in root.\n\nText from file2 in root.\n\nSubdirectory text from file3."
+    # Let's rely on the glob order for now but be aware.
+    # The paths are: input_dir/file1.txt, input_dir/file2.txt, input_dir/subdir/file3.txt
+    # A robust way:
+    # combined_content = (input_dir / "file1.txt").read_text() + "\n\n" + \
+    #                    (input_dir / "file2.txt").read_text() + "\n\n" + \
+    #                    (subdir / "file3.txt").read_text()
+    # This does not reflect the actual globbing and sorting done by the application.
+    # The application uses: list(dir_path_obj.rglob(pattern))
+    # So, the order depends on rglob. Let's simulate that order for `combined_content`.
+
+    # Simulate rglob order for *.txt
+    # Order of rglob is not guaranteed to be sorted alphabetically across directories.
+    # However, within a directory, it's often alphabetical.
+    # Let's assume file1.txt, file2.txt from root, then subdir/file3.txt
+    # For the purpose of this test, let's construct combined_content assuming this order:
+    file1_content = (input_dir / "file1.txt").read_text()
+    file2_content = (input_dir / "file2.txt").read_text()
+    file3_content = (subdir / "file3.txt").read_text()
+    combined_content = f"{file1_content}\n\n{file2_content}\n\n{file3_content}"
+
+
+    word_budget = 12
+    # expected_compressed_text = _expected_truncate_output(combined_content, word_budget)
+
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "--dir",
+            str(input_dir),
+            "--recursive",
+            "--pattern",
+            "*.txt", # Explicitly test this
+            "--engine",
+            "truncate",
+            "--budget",
+            str(word_budget),
+        ],
+    )
+
+    assert result.exit_code == 0, f"CLI Error: {result.stderr}"
+    output_file = input_dir / "compressed_output.txt"
+    assert output_file.exists(), "compressed_output.txt not found for recursive test"
+
+    actual_output_text = output_file.read_text()
+    assert "Text from file1 in root" in actual_output_text
+    assert "Text from file2 in root" in actual_output_text # Check if part of file2 is there
+    assert "Subdirectory text from file3" in actual_output_text # Check if part of file3 is there
+    assert "markdown file" not in actual_output_text # Ensure .md content is not included
+
+    assert len(actual_output_text) > 0
+    if len(combined_content) > len(actual_output_text) + 5: # Check if truncation happened
+         assert actual_output_text != combined_content
+
+
+# It's important to comment out or remove the old tests for directory compression
+# as they test a different behavior (per-file output).
+
+# def test_compress_directory_input_to_output_dir(tmp_path):
+# ... (old test) ...
+# def test_compress_directory_input_default_output(tmp_path):
+# ... (old test) ...
 
 
 @pytest.mark.parametrize(
