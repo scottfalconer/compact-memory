@@ -87,6 +87,7 @@ def register_builtin_engines():
     # and to encapsulate these imports within the registration logic.
     from compact_memory.engines.no_compression_engine import NoCompressionEngine
     from compact_memory.engines.first_last_engine import FirstLastEngine
+    from compact_memory.engines.stopword_pruner_engine import StopwordPrunerEngine
 
     # PrototypeEngine was removed
 
@@ -100,6 +101,12 @@ def register_builtin_engines():
         FirstLastEngine.id,
         FirstLastEngine,
         display_name="First/Last Chunks",
+        source="built-in",
+    )
+    register_compression_engine(
+        StopwordPrunerEngine.id,
+        StopwordPrunerEngine,
+        display_name="Stopword Pruner",
         source="built-in",
     )
     # PrototypeEngine was removed
