@@ -22,11 +22,12 @@ dependencies = [
     "portalocker",
     "rich>=13.6",
     "platformdirs",
+    "nltk",
 ]
 
 [project.optional-dependencies]
 test = ["pytest"]
-dev = ["flake8"]
+dev = ["flake8", "pre-commit"]
 chroma = ["chromadb"]
 spacy = ["spacy"]
 optuna = ["optuna"]
