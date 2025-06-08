@@ -135,7 +135,7 @@ class MultiModelEmbeddingSimilarityMetric(ValidationMetric):
 
     def __init__(self, model_names: Optional[List[str]] = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self.model_names = model_names or ["sentence-transformers/all-MiniLM-L6-v2"]
+        self.model_names = model_names or ["sentence-transformers/all-MiniLM-L6-v2", "sentence-transformers/all-mpnet-base-v2"]
 
     def _get_tokenizer(self, model_name: str):
         if model_name.startswith("openai/"):
