@@ -11,10 +11,6 @@ from compact_memory.engines import (
 from compact_memory import (
     local_llm,
 )
-# Attempting to restore original import for ActiveMemoryManager
-from compact_memory.contrib import (
-    ActiveMemoryManager,
-)
 
 from compact_memory.engines.registry import (
     get_engine_metadata,
@@ -22,9 +18,7 @@ from compact_memory.engines.registry import (
 )
 
 
-query_app = typer.Typer(
-    help="Query the Compact Memory engine store."
-)
+query_app = typer.Typer(help="Query the Compact Memory engine store.")
 
 
 @query_app.command(
@@ -69,9 +63,7 @@ def query_command(
             fg=typer.colors.RED,
             err=True,
         )
-        logging.exception(
-            f"Failed to load engine from {resolved_memory_path}"
-        )
+        logging.exception(f"Failed to load engine from {resolved_memory_path}")
         raise typer.Exit(code=1)
 
     final_model_id = ctx.obj.get("default_model_id")
@@ -114,7 +106,6 @@ def query_command(
             fg=typer.colors.BLUE,
         )
 
-    active_memory_mgr = ActiveMemoryManager()
     history_comp_engine_instance = None
     if (
         final_history_compression_engine_id
@@ -124,19 +115,13 @@ def query_command(
             CompressionEngineCls = get_compression_engine(
                 final_history_compression_engine_id
             )
-            engine_meta_info = get_engine_metadata(
-                final_history_compression_engine_id
-            )
-            if (
-                engine_meta_info and engine_meta_info.get("source") == "contrib"
-            ):
+            engine_meta_info = get_engine_metadata(final_history_compression_engine_id)
+            if engine_meta_info and engine_meta_info.get("source") == "contrib":
                 typer.secho(
                     "\u26a0\ufe0f Using experimental engine for history compression from contrib: not officially supported.",
                     fg=typer.colors.YELLOW,
                 )
-            history_comp_engine_instance = (
-                CompressionEngineCls()
-            )
+            history_comp_engine_instance = CompressionEngineCls()
         except KeyError:
             typer.secho(
                 f"Error: Unknown history compression engine '{final_history_compression_engine_id}' (from global config/option). Available: {', '.join(available_engines())}",
@@ -162,21 +147,20 @@ def query_command(
             query_result = engine_instance.receive_channel_message(
                 "cli",
                 query_text,
-                active_memory_mgr,
                 compression=history_comp_engine_instance,
             )
         except TypeError as e:
             if (
                 "got an unexpected keyword argument 'compression'" in str(e)
-                or "takes at most 3 positional arguments" in str(e)
-                or "takes from 3 to 4 positional arguments but 5 were given" in str(e)
+                or "takes at most 2 positional arguments" in str(e)
+                or "takes from 2 to 3 positional arguments but 4 were given" in str(e)
             ):
                 typer.secho(
                     f"Warning: Engine type '{type(engine_instance).__name__}' does not support 'compression' parameter for history. Retrying without it.",
                     fg=typer.colors.YELLOW,
                 )
                 query_result = engine_instance.receive_channel_message(
-                    "cli", query_text, active_memory_mgr
+                    "cli", query_text
                 )
             else:
                 raise
@@ -198,8 +182,8 @@ def query_command(
     if show_prompt_tokens and query_result.get("prompt_tokens") is not None:
         typer.echo(f"Prompt tokens: {query_result['prompt_tokens']}")
 
+
 # Notes from original file structure for context:
 # - compact_memory.engines.registry for get_engine_metadata, available_engines.
 # - compact_memory.engines.get_compression_engine for history compressor.
-# These comments are just for context, the code should be functional.
-# The main point is to restore the import of ActiveMemoryManager from compact_memory.contrib.
+# These comments are just for context; the code should be functional.
