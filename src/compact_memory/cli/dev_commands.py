@@ -286,10 +286,11 @@ def evaluate_compression_command(  # Renamed
     else:
         typer.echo(f"Scores for metric '{metric_id}':")
         if isinstance(metric_instance, MultiModelEmbeddingSimilarityMetric):
-            for model, vals in scores.items():
-                sim = vals.get("semantic_similarity")
+            data = scores.get("embedding_similarity", {})
+            for model, vals in data.items():
+                sim = vals.get("similarity")
                 tokens = vals.get("token_count")
-                typer.echo(f"- {model}: semantic_similarity={sim}, tokens={tokens}")
+                typer.echo(f"- {model}: similarity={sim}, tokens={tokens}")
         else:
             for k, v in scores.items():
                 typer.echo(f"- {k}: {v}")
@@ -1002,8 +1003,9 @@ def evaluate_engines_command(
             original_text=text_input, compressed_text=comp_text
         )["compression_ratio"]
         embed = embed_metric.evaluate(
-            original_text=text_input, compressed_text=comp_text
-        )
+            original_text=text_input,
+            compressed_text=comp_text,
+        )["embedding_similarity"]
 
         results[eid] = {
             "compression_ratio": ratio,
@@ -1020,9 +1022,9 @@ def evaluate_engines_command(
             typer.echo(f"Engine: {eid}")
             typer.echo(f"  compression_ratio: {metrics['compression_ratio']}")
             for model, vals in metrics["embedding_similarity"].items():
-                sim = vals.get("semantic_similarity")
+                sim = vals.get("similarity")
                 tokens = vals.get("token_count")
-                typer.echo(f"  {model}: semantic_similarity={sim}, tokens={tokens}")
+                typer.echo(f"  {model}: similarity={sim}, tokens={tokens}")
         typer.echo(json_str)
 
 

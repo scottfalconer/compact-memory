@@ -33,7 +33,7 @@ def test_evaluate_compression_cli(tmp_path: Path, patch_embedding_model):
         env=_env(tmp_path),
     )
     assert result.exit_code == 0
-    assert "semantic_similarity" in result.stdout
+    assert "similarity" in result.stdout
 
 
 def test_evaluate_llm_response_cli(tmp_path: Path):
