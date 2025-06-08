@@ -61,4 +61,13 @@ The script outputs a JSON file (named `engine_metrics.json` by default) containi
 -   The `embedding_similarity_multi` metric produced by this script is intended to use real sentence transformer models to provide meaningful semantic similarity scores.
 -   The script has been updated to facilitate this by removing the `MockEncoder` override.
 -   However, running the script with a real model requires an environment with sufficient disk space and network access to download and install the model and its dependencies (e.g., `sentence-transformers`, `torch`, `nvidia-cudnn-cu12` if using CUDA).
--   If such resources are unavailable (as was the case during a recent review attempt which failed due to disk space limitations), the `embedding_similarity_multi` scores in any generated `engine_metrics.json` might reflect a fallback or previously generated placeholder values (e.g., from `MockEncoder`) and should not be considered indicative of true semantic similarity until the script can be successfully run with real models.
+-   If such resources are unavailable (as was the case during a recent review attempt which failed due to disk space limitations), the `embedding_similarity_multi` scores in any generated `engine_metrics.json` might reflect a fallback or previously generated placeholder values (e.g., from `MockEncoder`) and should not be considered indicative of true semantic similarity until the script can be successfully run with real models. The helper script `scripts/setup_heavy_deps.sh` can install the necessary packages and pre-download the models when network access is available.
+
+### Stopword Pruner Evaluation
+
+Using the same `tests/data/constitution.txt` input with a token budget of 100 and the mock embedding model, the `StopwordPrunerEngine` achieved:
+
+| Metric | Value |
+|--------|------:|
+| Compression Ratio | 0.374 |
+| Embedding Similarity | 0.667 |
