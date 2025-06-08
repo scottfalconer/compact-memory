@@ -1,5 +1,15 @@
 from compact_memory.engines.stopword_pruner_engine import StopwordPrunerEngine
 import nltk  # For checking NLTK's list in the test if needed for clarity, though engine handles it.
+import importlib.util
+import pytest
+
+SPACY_AVAILABLE = importlib.util.find_spec("spacy") is not None
+
+try:
+    nltk.corpus.stopwords.words("english")
+    EN_STOPWORDS_AVAILABLE = True
+except Exception:  # pragma: no cover - optional dataset missing
+    EN_STOPWORDS_AVAILABLE = False
 
 
 def test_stopword_pruner_basic():
@@ -118,20 +128,26 @@ def test_stopword_pruner_min_word_length():
 
 
 def test_stopword_pruner_remove_fillers_false():
+    if not EN_STOPWORDS_AVAILABLE:
+        pytest.skip("NLTK stopwords corpus not available")
+
     engine = StopwordPrunerEngine(config={"remove_fillers": False})
     text = "This is, like, a test, um, to see."
     # Fillers to be kept: "like", "um"
-    # Stopwords to be removed: "This", "is", "a", "to", "see" (spaCy marks "see" as stopword) (5)
+    # Stopwords to be removed: "This", "is", "a", "to", "see" (spaCy marks "see" as stopword)
     # Punctuation to be removed: ",", ","
     # Other words to keep: "test"
-    # Expected output: "like test um"
+    # Expected output depends on spaCy availability:
+    #   with spaCy -> "like test um"
+    #   fallback    -> "like test um see" ("see" not in NLTK list)
 
     compressed, trace = engine.compress(text, llm_token_budget=100)
     out = compressed.text.lower()
 
+    expected_out = "like test um" if SPACY_AVAILABLE else "like test um see"
     assert (
-        out == "like test um"
-    ), f"Output string mismatch. Expected 'like test um', got '{out}'"
+        out == expected_out
+    ), f"Output string mismatch. Expected '{expected_out}', got '{out}'"
 
     removed_fillers_count = 0
     removed_stopwords_count = 0
@@ -144,9 +160,10 @@ def test_stopword_pruner_remove_fillers_false():
     assert (
         removed_fillers_count == 0
     ), f"Expected 0 fillers removed, got {removed_fillers_count}. Trace: {trace.steps}"
+    expected_sw_removed = 5 if SPACY_AVAILABLE else 4
     assert (
-        removed_stopwords_count == 5
-    ), f"Expected 5 stopwords removed (This, is, a, to, see), got {removed_stopwords_count}. Trace: {trace.steps}"
+        removed_stopwords_count == expected_sw_removed
+    ), f"Expected {expected_sw_removed} stopwords removed, got {removed_stopwords_count}. Trace: {trace.steps}"
 
 
 def test_stopword_pruner_remove_duplicate_words_true():
@@ -191,23 +208,26 @@ def test_stopword_pruner_remove_duplicate_words_true():
 
 
 def test_stopword_pruner_remove_duplicate_sentences_true():
+    if not EN_STOPWORDS_AVAILABLE:
+        pytest.skip("NLTK stopwords corpus not available")
+
     engine = StopwordPrunerEngine(
         config={"remove_duplicates": True, "min_word_length": 1}
     )
     text = "Sentence one. Sentence two. Sentence one."
     # Expected processing:
     # Sent 1: "Sentence" (keep), "one" (stopword by spaCy, remove). prev_token_lower = "sentence".
-    # Sent 2: "Sentence" (duplicate word of prev "sentence", remove), "two" (stopword by spaCy, remove).
-    # Sent 3: "Sentence one." (duplicate sentence, remove tokens "Sentence", "one").
-    # Punctuation "." removed from all.
-    # Output: "sentence"
+    # Sent 2: "Sentence" (duplicate word of prev "sentence", remove if spaCy removed 'one'), "two" (spaCy stopword).
+    # Sent 3: duplicate sentence -> remove tokens.
+    # Output varies with spaCy availability.
 
     compressed, trace = engine.compress(text, llm_token_budget=100)
     out = compressed.text.lower()
 
+    expected_out = "sentence" if SPACY_AVAILABLE else "sentence one sentence two"
     assert (
-        out == "sentence"
-    ), f"Output string mismatch. Expected 'sentence', got '{out}'"
+        out == expected_out
+    ), f"Output string mismatch. Expected '{expected_out}', got '{out}'"
 
     removed_duplicates_count = 0
     removed_stopwords_count = 0
@@ -217,17 +237,17 @@ def test_stopword_pruner_remove_duplicate_sentences_true():
         elif step["type"] == "remove_stopwords":
             removed_stopwords_count = step["removed"]
 
-    # Duplicates:
-    # 1. Word "Sentence" from "Sentence two." (prev was "Sentence" from "Sentence one.")
-    # 2. Tokens "Sentence", "one", "." from the third sentence ("Sentence one.") being a duplicate sentence, matched by _TOKEN_RE.
-    # Total = 1 (word) + 3 (sentence tokens) = 4
+    # Duplicates removed. With spaCy, the duplicate "Sentence" in the second sentence
+    # is removed as the preceding token is also "Sentence" once "one" is filtered.
+    expected_dup = 4 if SPACY_AVAILABLE else 3
     assert (
-        removed_duplicates_count == 4
-    ), f"Expected 4 duplicate tokens removed (1 word, 3 from sent), got {removed_duplicates_count}. Trace: {trace.steps}"
-    # Stopwords: "one" (from sent 1), "two" (from sent 2) - spaCy marks them as is_stop.
+        removed_duplicates_count == expected_dup
+    ), f"Expected {expected_dup} duplicate tokens removed, got {removed_duplicates_count}. Trace: {trace.steps}"
+    # Stopwords removed depends on spaCy availability
+    expected_stop = 2 if SPACY_AVAILABLE else 0
     assert (
-        removed_stopwords_count == 2
-    ), f"Expected 2 stopwords removed ('one', 'two'), got {removed_stopwords_count}. Trace: {trace.steps}"
+        removed_stopwords_count == expected_stop
+    ), f"Expected {expected_stop} stopwords removed, got {removed_stopwords_count}. Trace: {trace.steps}"
 
 
 def test_stopword_pruner_remove_duplicates_false():
