@@ -13,8 +13,6 @@ from compact_memory.engines.registry import (
     register_compression_engine,
 )
 from compact_memory.validation.registry import get_validation_metric_class
-import compact_memory.embedding_pipeline as ep
-from compact_memory.embedding_pipeline import MockEncoder
 
 
 def main(output_file: str = "engine_metrics.json") -> None:
@@ -34,7 +32,10 @@ def main(output_file: str = "engine_metrics.json") -> None:
     text = Path("sample_data/moon_landing/full.txt").read_text()
 
     ratio_metric = get_validation_metric_class("compression_ratio")()
-    embed_metric = get_validation_metric_class("embedding_similarity")()
+    embed_metric = get_validation_metric_class("embedding_similarity_multi")(
+        model_names=["all-MiniLM-L6-v2", "multi-qa-mpnet-base-dot-v1"],
+        max_tokens=8192,
+    )
 
     results: dict[str, dict[str, float]] = {}
 
@@ -66,12 +67,12 @@ def main(output_file: str = "engine_metrics.json") -> None:
         ratio = ratio_metric.evaluate(original_text=text, compressed_text=comp_text)[
             "compression_ratio"
         ]
-        embed_score = embed_metric.evaluate(
+        embed_scores = embed_metric.evaluate(
             original_text=text, compressed_text=comp_text
-        )["semantic_similarity"]
+        )
         results[eng_id] = {
             "compression_ratio": ratio,
-            "embedding_similarity": embed_score,
+            "embedding_similarity_multi": embed_scores,
         }
 
     Path(output_file).write_text(json.dumps(results, indent=2))
