@@ -26,6 +26,9 @@ fi
 # Tools used by CI for linting and testing
 pip3 install flake8 pytest
 
+# Additional tools and libraries used in tests and linting
+pip3 install nltk pre-commit
+
 # CLI dependencies that may not be declared in requirements.txt
 # (rich and typer are already installed above)
 
