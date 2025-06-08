@@ -23,6 +23,7 @@ from compact_memory.engines.registry import (
     all_engine_metadata as cm_all_engine_metadata,  # Renamed
     get_compression_engine,
 )
+from compact_memory.engines.pipeline_engine import PipelineConfig
 from compact_memory.embedding_pipeline import get_embedding_dim
 
 # PrototypeEngine was removed
@@ -970,7 +971,10 @@ def evaluate_engines_command(
     results: dict[str, dict[str, float]] = {}
     for eid in engine_ids:
         EngineCls = get_compression_engine(eid)
-        engine_instance = EngineCls()
+        if eid == "pipeline":
+            engine_instance = EngineCls(PipelineConfig())
+        else:
+            engine_instance = EngineCls()
 
         result = engine_instance.compress(text_input, llm_token_budget=budget)
         compressed = result[0] if isinstance(result, tuple) else result
