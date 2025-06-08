@@ -9,12 +9,18 @@ import importlib.util
 import logging
 import os
 import uuid
-from typing import Iterable
+from typing import Iterable, TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover - for type checkers only
+    from compact_memory.engines.base import BaseCompressionEngine
 
 from platformdirs import user_data_dir
 
-from compact_memory.engines.registry import register_compression_engine, get_engine_metadata
-from .engines import BaseCompressionEngine
+
+# ``BaseCompressionEngine`` is imported dynamically within helper functions to
+# avoid triggering plugin loading during module import. This prevents circular
+# import issues with ``compact_memory.engines`` which imports this module as
+# part of its initialization.
 from .package_utils import load_manifest
 
 PLUGIN_ENV_VAR = "COMPACT_MEMORY_ENGINES_PATH"
@@ -59,6 +65,12 @@ def _load_entrypoint_plugins() -> None:
     except TypeError:  # pragma: no cover - older Python
         eps = metadata.entry_points().get(ENTRYPOINT_GROUP, [])
 
+    from compact_memory.engines.base import BaseCompressionEngine
+    from compact_memory.engines.registry import (
+        register_compression_engine,
+        get_engine_metadata,
+    )
+
     for ep in eps:
         try:
             cls = ep.load()
@@ -96,6 +108,8 @@ def _load_entrypoint_plugins() -> None:
 def _load_engine_class_from_module(
     module_file: str, class_name: str
 ) -> type[BaseCompressionEngine]:
+    from compact_memory.engines.base import BaseCompressionEngine
+
     path = Path(module_file)
     spec = importlib.util.spec_from_file_location(
         f"compact_memory.engine_pkg.{path.stem}_{uuid.uuid4().hex}", path
@@ -113,6 +127,12 @@ def _load_engine_class_from_module(
 
 
 def _load_local_plugins() -> None:
+    from compact_memory.engines.base import BaseCompressionEngine
+    from compact_memory.engines.registry import (
+        register_compression_engine,
+        get_engine_metadata,
+    )
+
     for pp in _iter_local_plugin_paths():
         if not pp.path.exists():
             continue
