@@ -28,8 +28,7 @@ There are many ways you can contribute to the project:
     ```bash
     python -m venv venv
     source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-    pip install -r requirements.txt
-    pip install -e . # Install Compact Memory in editable mode
+    pip install -e .[dev,test]  # Install with development and test extras
     ```
     If there are development-specific requirements (e.g., for running tests or linting), install them as well (e.g., `pip install -r requirements-dev.txt` if such a file exists).
 

@@ -12,7 +12,10 @@ from compact_memory.validation.compression_metrics import (
     CompressionRatioMetric,
 )  # Corrected path
 
-runner = CliRunner()
+try:
+    runner = CliRunner(mix_stderr=False)
+except TypeError:
+    runner = CliRunner()
 
 
 def _env(tmp_path: Path) -> dict[str, str]:

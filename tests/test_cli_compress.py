@@ -62,7 +62,11 @@ def _env(tmp_path: Path) -> dict[str, str]:
     }
 
 
-runner = CliRunner()
+try:
+    runner = CliRunner(mix_stderr=False)
+except TypeError:
+    runner = CliRunner()
+
 
 
 def test_compress_text_option(tmp_path: Path):

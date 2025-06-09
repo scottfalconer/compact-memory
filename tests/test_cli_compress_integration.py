@@ -14,7 +14,11 @@ from compact_memory.engines.registry import (
 if DummyTruncEngine.id not in available_engines():
     register_compression_engine(DummyTruncEngine.id, DummyTruncEngine)
 
-runner = CliRunner()
+try:
+    runner = CliRunner(mix_stderr=False)
+except TypeError:
+    runner = CliRunner()
+
 
 
 def test_compress_text_input_stdout():
