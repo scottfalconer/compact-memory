@@ -68,6 +68,7 @@ except TypeError:
     runner = CliRunner()
 
 
+
 def test_compress_text_option(tmp_path: Path):
     result = runner.invoke(
         app,

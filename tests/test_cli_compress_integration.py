@@ -20,6 +20,7 @@ except TypeError:
     runner = CliRunner()
 
 
+
 def test_compress_text_input_stdout():
     result = runner.invoke(
         app,
