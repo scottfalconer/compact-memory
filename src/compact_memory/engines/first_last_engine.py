@@ -32,55 +32,37 @@ class FirstLastEngine(BaseCompressionEngine):
         previous_compression_result: Optional[CompressedMemory] = None,
         **kwargs: Any,
     ) -> CompressedMemory:
+        """Compress text while keeping the first and last tokens.
+
+        The ``tokenizer`` argument is used only for decoding the kept tokens
+        back into text. Tokenization uses ``tiktoken`` if available, otherwise a
+        simple whitespace split.
+        """
+
         text = (
             text_or_chunks
             if isinstance(text_or_chunks, str)
             else " ".join(text_or_chunks)
         )
 
-        tokenizer_for_encoding = _DEFAULT_TOKENIZER or (lambda t: t.split())
-        tokens = tokenize_text(tokenizer_for_encoding, text)
+        decode_tokenizer = tokenizer or _DEFAULT_TOKENIZER
+        tokenize_fn = _DEFAULT_TOKENIZER or (lambda t: t.split())
+        tokens = tokenize_text(tokenize_fn, text)
 
-        if llm_token_budget is None or llm_token_budget <= 0:
+        if llm_token_budget is None:
             kept_tokens = tokens
+        elif llm_token_budget <= 0:
+            kept_tokens = []
         else:
             half = max(llm_token_budget // 2, 0)
             kept_tokens = tokens[:half] + tokens[-half:]
 
-        # Determine the decoder:
-        # The 'tokenizer' kwarg, if provided, is preferred for decoding.
-        custom_decoder = tokenizer # 'tokenizer' here is the kwarg passed to compress
-
-        if hasattr(custom_decoder, "decode"):
+        if hasattr(decode_tokenizer, "decode"):
             try:
-                # Attempt to use decode with skip_special_tokens
-                kept = custom_decoder.decode(kept_tokens, skip_special_tokens=True)
-            except TypeError:
-                # If skip_special_tokens is not supported or other TypeError
-                try:
-                    kept = custom_decoder.decode(kept_tokens)
-                except Exception:
-                    # Fallback if custom_decoder.decode fails
-                    kept = " ".join(str(t) for t in kept_tokens)
+                kept = decode_tokenizer.decode(kept_tokens, skip_special_tokens=True)
             except Exception:
-                # Fallback for other exceptions during custom_decoder.decode attempt
-                kept = " ".join(str(t) for t in kept_tokens)
-        elif callable(custom_decoder):
-            # If custom_decoder is a callable (e.g., a lambda or function) but not a full tokenizer object
-            try:
-                kept = custom_decoder(kept_tokens)
-            except Exception:
-                # Fallback if calling custom_decoder fails
-                kept = " ".join(str(t) for t in kept_tokens)
-        elif _DEFAULT_TOKENIZER and hasattr(_DEFAULT_TOKENIZER, "decode"):
-            # If no suitable custom_decoder, try the default tokenizer's decode method
-            try:
-                kept = _DEFAULT_TOKENIZER.decode(kept_tokens)
-            except Exception:
-                # Fallback if _DEFAULT_TOKENIZER.decode fails
-                kept = " ".join(str(t) for t in kept_tokens)
+                kept = decode_tokenizer.decode(kept_tokens)
         else:
-            # Absolute fallback if no other decoding method is available
             kept = " ".join(str(t) for t in kept_tokens)
 
         compressed = CompressedMemory(text=kept)
