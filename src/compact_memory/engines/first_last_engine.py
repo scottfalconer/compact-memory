@@ -3,7 +3,7 @@ from __future__ import annotations
 """Engine that keeps the first and last chunks of text."""
 
 import time
-import logging # Moved import logging to top
+import logging  # Moved import logging to top
 from typing import List, Union, Any, Optional
 
 from compact_memory.token_utils import tokenize_text
@@ -11,6 +11,7 @@ from compact_memory.token_utils import tokenize_text
 
 try:  # pragma: no cover - optional dependency
     import tiktoken
+
     _DEFAULT_TOKENIZER: Optional[tiktoken.Encoding] = tiktoken.get_encoding("gpt2")
 except Exception:  # pragma: no cover - optional dependency
     _DEFAULT_TOKENIZER = None
@@ -28,7 +29,7 @@ class FirstLastEngine(BaseCompressionEngine):
     def compress(
         self,
         text_or_chunks: Union[str, List[str]],
-        budget: Optional[int], # Changed from int | None
+        budget: Optional[int],  # Changed from int | None
         *,
         tokenizer: Any = None,
         previous_compression_result: Optional[CompressedMemory] = None,
@@ -44,7 +45,7 @@ class FirstLastEngine(BaseCompressionEngine):
         """
         logging.debug(f"FirstLastEngine: Compressing text, budget: {budget}")
 
-        input_text = ( # Renamed from text to avoid conflict with text kwarg for Pydantic model
+        input_text = (  # Renamed from text to avoid conflict with text kwarg for Pydantic model
             text_or_chunks
             if isinstance(text_or_chunks, str)
             else " ".join(text_or_chunks)
@@ -59,7 +60,7 @@ class FirstLastEngine(BaseCompressionEngine):
             tokenize_fn = _DEFAULT_TOKENIZER or (lambda t: t.split())
         tokens = tokenize_text(tokenize_fn, input_text)
 
-        start_time = time.monotonic() # Renamed from start
+        start_time = time.monotonic()  # Renamed from start
 
         if budget is None:
             kept_tokens = tokens
@@ -80,20 +81,22 @@ class FirstLastEngine(BaseCompressionEngine):
             # Fallback if no valid decoder, join tokens which might be strings or ints
             kept = " ".join(map(str, kept_tokens))
 
-
         if not self.config.enable_trace:
             return CompressedMemory(
                 text=kept,
                 trace=None,
                 engine_id=self.id,
-                engine_config=self.config.model_dump(mode='json')
+                engine_config=self.config.model_dump(mode="json"),
             )
 
         # Proceed with trace generation
         trace = CompressionTrace(
             engine_name=self.id,
-            strategy_params={"budget": budget}, # Use 'budget'
-            input_summary={"input_length": len(input_text), "input_tokens": len(tokens)},
+            strategy_params={"llm_token_budget": budget},
+            input_summary={
+                "input_length": len(input_text),
+                "input_tokens": len(tokens),
+            },
             output_summary={
                 "final_length": len(kept),
                 "final_tokens": len(kept_tokens),
@@ -107,13 +110,13 @@ class FirstLastEngine(BaseCompressionEngine):
                 "kept_last_tokens": len(kept_tokens[len(kept_tokens) // 2 :]),
             },
         )
-        trace.processing_ms = (time.monotonic() - start_time) * 1000 # Use start_time
+        trace.processing_ms = (time.monotonic() - start_time) * 1000  # Use start_time
 
         return CompressedMemory(
             text=kept,
             trace=trace,
             engine_id=self.id,
-            engine_config=self.config.model_dump(mode='json')
+            engine_config=self.config.model_dump(mode="json"),
         )
 
 

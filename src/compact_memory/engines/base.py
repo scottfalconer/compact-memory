@@ -1,30 +1,49 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Union # Added Tuple and Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)  # Added Tuple and Union
 import json
 import os
 import uuid
 import inspect
 import time
-import sys # For printing warnings
-from pathlib import Path # Added import
+import sys  # For printing warnings
+from pathlib import Path  # Added import
 import importlib
 import warnings
-import logging # Added for logging
+import logging  # Added for logging
 
 import numpy as np
-from pydantic import BaseModel # For isinstance check in load
+from pydantic import BaseModel  # For isinstance check in load
 
 from ..chunker import Chunker, SentenceWindowChunker, FixedSizeChunker
+
 # Ensure EngineConfig is imported for type hinting and instantiation
 from ..engine_config import EngineConfig
-from ..embedding_pipeline import embed_text, get_embedding_dim # get_embedding_dim is imported here
+from ..embedding_pipeline import (
+    embed_text,
+    get_embedding_dim,
+)  # get_embedding_dim is imported here
 from ..utils import calculate_sha256
 from ..models import BeliefPrototype, RawMemory
+
 # Updated imports for exceptions
 from ..exceptions import (
-    EngineLoadError, EngineSaveError, ConfigurationError, EmbeddingDimensionMismatchError, EngineError # Added EngineError
+    EngineLoadError,
+    EngineSaveError,
+    ConfigurationError,
+    EmbeddingDimensionMismatchError,
+    EngineError,  # Added EngineError
 )
 from ..vector_store import (
     VectorStore,
@@ -59,7 +78,7 @@ class CompressionTrace:
 
 
 class BaseCompressionEngine:
-    id = "base"
+    id = "base_truncate"
     # Note: The `embeddings` property, which previously offered direct access to a
     # consolidated numpy array of embeddings, has been removed. Responsibility for
     # storing, managing, and providing access to embeddings (if needed) now lies
@@ -71,9 +90,10 @@ class BaseCompressionEngine:
     _chunker: Chunker
     vector_store: VectorStore
     _embed_accepts_preprocess: bool
-    memories: List[Dict[str, Any]] # Already defined in __init__ but good to declare here
-    memory_hashes: Set[str] # Already defined in __init__ but good to declare here
-
+    memories: List[
+        Dict[str, Any]
+    ]  # Already defined in __init__ but good to declare here
+    memory_hashes: Set[str]  # Already defined in __init__ but good to declare here
 
     def __init__(
         self,
@@ -149,27 +169,41 @@ class BaseCompressionEngine:
 
         processed_config_data.update(kwargs)
 
+        if "vector_store" not in processed_config_data:
+            processed_config_data["vector_store"] = "in_memory"
+
         if isinstance(chunker, Chunker):
             # getattr can return Any, ensure it's a string for the config key
-            chunker_id_val_from_obj: str = str(getattr(chunker, 'id', type(chunker).__name__))
+            chunker_id_val_from_obj: str = str(
+                getattr(chunker, "id", type(chunker).__name__)
+            )
             processed_config_data["chunker_id"] = chunker_id_val_from_obj
-        elif chunker is not None: # chunker here is likely a string if not a Chunker instance
+        elif (
+            chunker is not None
+        ):  # chunker here is likely a string if not a Chunker instance
             chunker_id_str: str = str(chunker)
             processed_config_data["chunker_id"] = chunker_id_str
 
         if isinstance(vector_store, VectorStore):
-            vector_store_id_val_from_obj: str = str(getattr(vector_store, 'id', type(vector_store).__name__))
+            vector_store_id_val_from_obj: str = str(
+                getattr(vector_store, "id", type(vector_store).__name__)
+            )
             processed_config_data["vector_store"] = vector_store_id_val_from_obj
-            if hasattr(vector_store, 'embedding_dim') and vector_store.embedding_dim is not None:
+            if (
+                hasattr(vector_store, "embedding_dim")
+                and vector_store.embedding_dim is not None
+            ):
                 # embedding_dim should be int or None, ensure it is.
                 # Pydantic model EngineConfig will validate this.
                 processed_config_data["embedding_dim"] = vector_store.embedding_dim
-        elif vector_store is not None: # vector_store here is likely a string
+        elif vector_store is not None:  # vector_store here is likely a string
             vector_store_id_str: str = str(vector_store)
             processed_config_data["vector_store"] = vector_store_id_str
 
         self.config: EngineConfig = EngineConfig(**processed_config_data)
-        logging.debug(f"BaseCompressionEngine '{self.id}' initialized with config: {self.config}")
+        logging.debug(
+            f"BaseCompressionEngine '{self.id}' initialized with config: {self.config}"
+        )
 
         # Initialize embedding_fn and preprocess_fn to None or default before attempting to load/set them
         self.embedding_fn: Callable[[str | Sequence[str]], np.ndarray] = embed_text
@@ -178,7 +212,7 @@ class BaseCompressionEngine:
         # Load embedding_fn from path if provided in config
         if self.config.embedding_fn_path:
             try:
-                module_path, func_name = self.config.embedding_fn_path.rsplit('.', 1)
+                module_path, func_name = self.config.embedding_fn_path.rsplit(".", 1)
                 module = importlib.import_module(module_path)
                 self.embedding_fn = getattr(module, func_name)
             except (ImportError, AttributeError, ValueError) as e:
@@ -189,32 +223,41 @@ class BaseCompressionEngine:
                 # Optionally, raise ConfigurationError here if strict loading is required
                 # For now, warning + fallback is kept.
                 # raise ConfigurationError(f"Failed to load embedding_fn: {self.config.embedding_fn_path}") from e
-                self.embedding_fn = embed_text # Fallback to default
-        elif embedding_fn is not None: # Programmatically provided, not from config path
+                self.embedding_fn = embed_text  # Fallback to default
+        elif (
+            embedding_fn is not None
+        ):  # Programmatically provided, not from config path
             self.embedding_fn = embedding_fn
-            if embedding_fn is not embed_text: # Not the default
+            if embedding_fn is not embed_text:  # Not the default
                 try:
-                    module_name = getattr(embedding_fn, '__module__', None)
-                    func_name = getattr(embedding_fn, '__name__', None)
-                    if module_name and func_name and not module_name.startswith('__main__') and not module_name.startswith('__'):
+                    module_name = getattr(embedding_fn, "__module__", None)
+                    func_name = getattr(embedding_fn, "__name__", None)
+                    if (
+                        module_name
+                        and func_name
+                        and not module_name.startswith("__main__")
+                        and not module_name.startswith("__")
+                    ):
                         self.config.embedding_fn_path = f"{module_name}.{func_name}"
                     else:
                         warnings.warn(
                             "Provided embedding_fn is not easily importable (e.g., a lambda or locally defined function) "
                             "and cannot be serialized by path. It will not be saved with the engine.",
-                            UserWarning
+                            UserWarning,
                         )
-                except Exception as e: # Catch any other unexpected errors during inspection
+                except (
+                    Exception
+                ) as e:  # Catch any other unexpected errors during inspection
                     warnings.warn(
                         f"Could not determine import path for the provided embedding_fn: {e}. "
                         "It will not be saved with the engine.",
-                        UserWarning
+                        UserWarning,
                     )
 
         # Load preprocess_fn from path if provided in config
         if self.config.preprocess_fn_path:
             try:
-                module_path, func_name = self.config.preprocess_fn_path.rsplit('.', 1)
+                module_path, func_name = self.config.preprocess_fn_path.rsplit(".", 1)
                 module = importlib.import_module(module_path)
                 self.preprocess_fn = getattr(module, func_name)
             except (ImportError, AttributeError, ValueError) as e:
@@ -224,31 +267,38 @@ class BaseCompressionEngine:
                 )
                 # Optionally, raise ConfigurationError
                 # raise ConfigurationError(f"Failed to load preprocess_fn: {self.config.preprocess_fn_path}") from e
-                self.preprocess_fn = None # Fallback to None
-        elif preprocess_fn is not None: # Programmatically provided
+                self.preprocess_fn = None  # Fallback to None
+        elif preprocess_fn is not None:  # Programmatically provided
             self.preprocess_fn = preprocess_fn
             try:
-                module_name = getattr(preprocess_fn, '__module__', None)
-                func_name = getattr(preprocess_fn, '__name__', None)
-                if module_name and func_name and not module_name.startswith('__main__') and not module_name.startswith('__'):
+                module_name = getattr(preprocess_fn, "__module__", None)
+                func_name = getattr(preprocess_fn, "__name__", None)
+                if (
+                    module_name
+                    and func_name
+                    and not module_name.startswith("__main__")
+                    and not module_name.startswith("__")
+                ):
                     self.config.preprocess_fn_path = f"{module_name}.{func_name}"
                 else:
                     warnings.warn(
                         "Provided preprocess_fn is not easily importable (e.g., a lambda or locally defined function) "
                         "and cannot be serialized by path. It will not be saved with the engine.",
-                        UserWarning
+                        UserWarning,
                     )
-            except Exception as e: # Catch any other unexpected errors during inspection
+            except (
+                Exception
+            ) as e:  # Catch any other unexpected errors during inspection
                 warnings.warn(
                     f"Could not determine import path for the provided preprocess_fn: {e}. "
                     "It will not be saved with the engine.",
-                    UserWarning
+                    UserWarning,
                 )
 
         if self.config.embedding_dim is None:
             # If embedding_fn was loaded from path, it might not be embed_text, so we check its identity.
             # Or if a custom embedding_fn was provided programmatically.
-            if self.embedding_fn is embed_text: # Check for default function identity
+            if self.embedding_fn is embed_text:  # Check for default function identity
                 try:
                     default_dim = get_embedding_dim()
                     if self.config.embedding_dim is None:
@@ -262,13 +312,18 @@ class BaseCompressionEngine:
                         # Or raise EmbeddingDimensionMismatchError if strict adherence to default model is expected when fn is default
                 except Exception as e:
                     logging.error(f"Failed to get default embedding dimension: {e}")
-                    if self.config.embedding_dim is None: # Only raise if not set at all
-                        raise ConfigurationError("Could not determine default embedding dimension.") from e
+                    if (
+                        self.config.embedding_dim is None
+                    ):  # Only raise if not set at all
+                        raise ConfigurationError(
+                            "Could not determine default embedding dimension."
+                        ) from e
             # If a custom embedding function is used, embedding_dim should ideally be set in the config.
             # If not, vector store creation might fail later or use a default.
             elif self.config.embedding_dim is None:
-                logging.warning("Using a custom embedding_fn but embedding_dim is not set in config. This might lead to issues.")
-
+                logging.warning(
+                    "Using a custom embedding_fn but embedding_dim is not set in config. This might lead to issues."
+                )
 
         if chunker:
             self._chunker = chunker
@@ -279,7 +334,10 @@ class BaseCompressionEngine:
             elif chunker_id_to_create == "sentence_window":
                 self._chunker = SentenceWindowChunker()
             else:
-                print(f"Warning: Unknown chunker_id '{chunker_id_to_create}' in config. Defaulting to SentenceWindowChunker.", file=sys.stderr)
+                print(
+                    f"Warning: Unknown chunker_id '{chunker_id_to_create}' in config. Defaulting to SentenceWindowChunker.",
+                    file=sys.stderr,
+                )
                 self._chunker = SentenceWindowChunker()
 
         # self.embedding_fn and self.preprocess_fn are now set above
@@ -293,17 +351,20 @@ class BaseCompressionEngine:
             if self.config.embedding_dim is None:
                 raise ValueError(
                     "embedding_dim could not be resolved for vector store creation."
-                ) # This should ideally be ConfigurationError
+                )  # This should ideally be ConfigurationError
             try:
                 self.vector_store = create_vector_store(
                     store_type=self.config.vector_store,
                     embedding_dim=self.config.embedding_dim,
-                    path=self.config.vector_store_path
+                    path=self.config.vector_store_path,
                 )
-            except Exception as e: # Catch errors from create_vector_store (e.g. invalid type)
-                logging.error(f"Failed to create vector store of type '{self.config.vector_store}': {e}")
+            except (
+                Exception
+            ) as e:  # Catch errors from create_vector_store (e.g. invalid type)
+                logging.error(
+                    f"Failed to create vector store of type '{self.config.vector_store}': {e}"
+                )
                 raise ConfigurationError(f"Failed to create vector store: {e}") from e
-
 
         self.memories: List[Dict[str, Any]] = []
         self.memory_hashes: Set[str] = set()
@@ -316,7 +377,7 @@ class BaseCompressionEngine:
 
     def _embed(self, text_or_texts: str | Sequence[str]) -> np.ndarray:
         if self._embed_accepts_preprocess:
-            return self.embedding_fn(text_or_texts, preprocess_fn=self.preprocess_fn) # type: ignore
+            return self.embedding_fn(text_or_texts, preprocess_fn=self.preprocess_fn)  # type: ignore
         processed_input = text_or_texts
         if self.preprocess_fn is not None:
             if isinstance(text_or_texts, str):
@@ -347,12 +408,14 @@ class BaseCompressionEngine:
         logging.info(f"Ingesting text of {len(text)} chars into engine '{self.id}'.")
         raw_chunks = self.chunker.chunk(text)
         logging.debug(f"Produced {len(raw_chunks)} raw chunks.")
-        if not raw_chunks: return []
+        if not raw_chunks:
+            return []
 
         processed_chunks = [self._compress_chunk(chunk) for chunk in raw_chunks]
 
         vecs = self._embed(processed_chunks)
-        if vecs.ndim == 1: vecs = vecs.reshape(1, -1)
+        if vecs.ndim == 1:
+            vecs = vecs.reshape(1, -1)
 
         ids: List[str] = []
         new_entries_for_vector_store: List[Tuple[str, str, np.ndarray]] = []
@@ -363,22 +426,30 @@ class BaseCompressionEngine:
             if chunk_hash not in self.memory_hashes:
                 mid = uuid.uuid4().hex
                 self.memories.append({"id": mid, "text": processed_chunk_text})
-                new_entries_for_vector_store.append((mid, processed_chunk_text, vec.astype(np.float32)))
+                new_entries_for_vector_store.append(
+                    (mid, processed_chunk_text, vec.astype(np.float32))
+                )
                 ids.append(mid)
                 self.memory_hashes.add(chunk_hash)
             else:
-                skipped_duplicates +=1
+                skipped_duplicates += 1
 
         if new_entries_for_vector_store:
             try:
-                self.vector_store.add_texts_with_ids_and_vectors(new_entries_for_vector_store)
-            except Exception as e: # Catch potential VectorStoreError
+                self.vector_store.add_texts_with_ids_and_vectors(
+                    new_entries_for_vector_store
+                )
+            except Exception as e:  # Catch potential VectorStoreError
                 logging.error(f"VectorStore failed to add texts: {e}")
                 # Decide if this should be a critical error or if engine can continue
                 # For now, let's assume it's critical enough to warrant an EngineError
-                raise EngineError(f"Failed to ingest data into vector store: {e}") from e
+                raise EngineError(
+                    f"Failed to ingest data into vector store: {e}"
+                ) from e
 
-        logging.info(f"Ingested {len(ids)} new memories, skipped {skipped_duplicates} duplicates.")
+        logging.info(
+            f"Ingested {len(ids)} new memories, skipped {skipped_duplicates} duplicates."
+        )
         return ids
 
     def recall(self, query: str, *, top_k: int = 5) -> List[Dict[str, Any]]:
@@ -399,7 +470,9 @@ class BaseCompressionEngine:
         Raises:
             EngineError: If an error occurs during vector store operations (find_nearest, get_texts_by_ids).
         """
-        logging.info(f"Recall query: '{query[:50]}...', top_k: {top_k} from engine '{self.id}'.")
+        logging.info(
+            f"Recall query: '{query[:50]}...', top_k: {top_k} from engine '{self.id}'."
+        )
         vs_count = self.vector_store.count()
 
         if vs_count == 0:
@@ -422,7 +495,7 @@ class BaseCompressionEngine:
 
             recalled_ids = [item_id for item_id, score in nearest_ids_scores]
             recalled_texts_map = self.vector_store.get_texts_by_ids(recalled_ids)
-        except Exception as e: # Catch potential VectorStoreError
+        except Exception as e:  # Catch potential VectorStoreError
             logging.error(f"Error during vector store operation in recall: {e}")
             raise EngineError(f"Failed recall due to vector store error: {e}") from e
 
@@ -435,8 +508,14 @@ class BaseCompressionEngine:
         return results
 
     def compress(
-        self, text_or_chunks: Union[str, List[str]], budget: Optional[int], previous_compression_result: Optional[CompressedMemory] = None, *, tokenizer: Any = None, **kwargs: Any
-    ) -> CompressedMemory: # Added tokenizer and kwargs
+        self,
+        text_or_chunks: Union[str, List[str]],
+        budget: Optional[int],
+        previous_compression_result: Optional[CompressedMemory] = None,
+        *,
+        tokenizer: Any = None,
+        **kwargs: Any,
+    ) -> CompressedMemory:  # Added tokenizer and kwargs
         """
         Compresses the input text (or list of text chunks) to meet the given budget.
 
@@ -463,7 +542,7 @@ class BaseCompressionEngine:
         """
         input_text_str: str
         if isinstance(text_or_chunks, list):
-            input_text_str = " ".join(text_or_chunks) # Join chunks with space
+            input_text_str = " ".join(text_or_chunks)  # Join chunks with space
         else:
             input_text_str = text_or_chunks
 
@@ -472,14 +551,14 @@ class BaseCompressionEngine:
         if budget is not None:
             truncated_text = input_text_str[:budget]
         else:
-            truncated_text = input_text_str # No truncation if budget is None
+            truncated_text = input_text_str  # No truncation if budget is None
 
         if not self.config.enable_trace:
             return CompressedMemory(
                 text=truncated_text,
                 trace=None,
                 engine_id=self.id,
-                engine_config=self.config.model_dump(mode='json')
+                engine_config=self.config.model_dump(mode="json"),
             )
 
         # Proceed with trace generation if enabled
@@ -489,19 +568,20 @@ class BaseCompressionEngine:
         # More sophisticated engines will have more steps here.
         trace = CompressionTrace(
             engine_name=self.id,
-            strategy_params={"budget": budget, "method": "truncation", **kwargs}, # Basic strategy, include kwargs
-            input_summary={"original_length": len(input_text_str)}, # Use length of joined string
-            steps=[], # Base engine does simple truncation, few explicit steps to add here
+            strategy_params={"budget": budget, **kwargs},
+            input_summary={"original_length": len(input_text_str)},
+            steps=[],
             output_summary={"compressed_length": len(truncated_text)},
             final_compressed_object_preview=truncated_text[:50],
         )
+        trace.add_step("truncate", {"final_length": len(truncated_text)})
         trace.processing_ms = (time.monotonic() - start_time) * 1000
 
         return CompressedMemory(
             text=truncated_text,
             trace=trace,
             engine_id=self.id,
-            engine_config=self.config.model_dump(mode='json')
+            engine_config=self.config.model_dump(mode="json"),
         )
 
     def save(self, path: os.PathLike | str) -> None:
@@ -537,7 +617,7 @@ class BaseCompressionEngine:
             manifest = {
                 "engine_id": self.id,
                 "engine_class": f"{self.__class__.__module__}.{self.__class__.__name__}",
-                "config": self.config.model_dump(mode='json'),
+                "config": self.config.model_dump(mode="json"),
                 "metadata": {
                     "num_memories": len(self.memories),
                     "embedding_dim": self.config.embedding_dim,
@@ -548,6 +628,8 @@ class BaseCompressionEngine:
             logging.debug(f"Saved engine_manifest.json to {p / 'engine_manifest.json'}")
 
             self.vector_store.save(str(p / "vector_store_data"))
+            if hasattr(self.vector_store, "proto_vectors"):
+                np.save(p / "embeddings.npy", self.vector_store.proto_vectors)
             logging.info(f"Engine '{self.id}' saved successfully to {p}")
         except Exception as e:
             logging.error(f"Failed to save engine '{self.id}' to {p}: {e}")
@@ -595,53 +677,71 @@ class BaseCompressionEngine:
             logging.debug(f"Loaded engine_manifest.json from {manifest_path}")
 
             loaded_manifest_config_dict = manifest.get("config", {})
-            if not isinstance(loaded_manifest_config_dict, dict): # Basic validation
-                raise EngineLoadError(f"Invalid 'config' format in manifest: {manifest_path}")
+            if not isinstance(loaded_manifest_config_dict, dict):  # Basic validation
+                raise EngineLoadError(
+                    f"Invalid 'config' format in manifest: {manifest_path}"
+                )
 
         except FileNotFoundError as e:
-            logging.error(f"Engine load failed: Manifest or essential file not found at {p}. Error: {e}")
+            logging.error(
+                f"Engine load failed: Manifest or essential file not found at {p}. Error: {e}"
+            )
             raise EngineLoadError(f"Manifest or essential file not found: {e}") from e
         except json.JSONDecodeError as e:
-            logging.error(f"Engine load failed: Could not decode JSON from manifest at {manifest_path}. Error: {e}")
+            logging.error(
+                f"Engine load failed: Could not decode JSON from manifest at {manifest_path}. Error: {e}"
+            )
             raise EngineLoadError(f"Manifest JSON decode error: {e}") from e
-        except Exception as e: # Catch other initial load errors (e.g. permission issues)
-            logging.error(f"Engine load failed during initial manifest read from {p}: {e}")
+        except (
+            Exception
+        ) as e:  # Catch other initial load errors (e.g. permission issues)
+            logging.error(
+                f"Engine load failed during initial manifest read from {p}: {e}"
+            )
             raise EngineLoadError(f"Failed to read manifest: {e}") from e
 
         # Create a new EngineConfig instance from loaded, ensuring defaults for new fields
         # and then update with any existing self.config values that weren't in manifest (e.g. runtime extras)
         # This merge logic might need refinement based on desired precedence.
         # For now, manifest config takes precedence for saved fields.
-        current_config_extras = self.config.model_extra if self.config and self.config.model_extra else {}
+        current_config_extras = (
+            self.config.model_extra if self.config and self.config.model_extra else {}
+        )
         merged_load_config = {**current_config_extras, **loaded_manifest_config_dict}
         self.config = EngineConfig(**merged_load_config)
 
         # --- BEGIN MODIFICATION: Re-initialize functions based on loaded config ---
         # Default assignments, in case paths are not found or lead to errors
-        current_embedding_fn = self.embedding_fn # Preserve current one in case of load failure
-        current_preprocess_fn = self.preprocess_fn
 
         # Load embedding_fn from path if provided in the newly loaded config
         if self.config.embedding_fn_path:
             try:
-                module_path, func_name = self.config.embedding_fn_path.rsplit('.', 1)
+                module_path, func_name = self.config.embedding_fn_path.rsplit(".", 1)
                 module = importlib.import_module(module_path)
                 self.embedding_fn = getattr(module, func_name)
             except (ImportError, AttributeError, ValueError) as e:
-                logging.error(f"Failed to load embedding_fn from path '{self.config.embedding_fn_path}': {e}")
-                raise EngineLoadError(f"Failed to load embedding_fn from path '{self.config.embedding_fn_path}': {e}") from e
+                logging.error(
+                    f"Failed to load embedding_fn from path '{self.config.embedding_fn_path}': {e}"
+                )
+                raise EngineLoadError(
+                    f"Failed to load embedding_fn from path '{self.config.embedding_fn_path}': {e}"
+                ) from e
         # Removed fallback to current_embedding_fn for paths, if path is specified, it must load or fail.
         # else: self.embedding_fn = embed_text # This is already default from __init__
 
         # Load preprocess_fn from path if provided in the newly loaded config
         if self.config.preprocess_fn_path:
             try:
-                module_path, func_name = self.config.preprocess_fn_path.rsplit('.', 1)
+                module_path, func_name = self.config.preprocess_fn_path.rsplit(".", 1)
                 module = importlib.import_module(module_path)
                 self.preprocess_fn = getattr(module, func_name)
             except (ImportError, AttributeError, ValueError) as e:
-                logging.error(f"Failed to load preprocess_fn from path '{self.config.preprocess_fn_path}': {e}")
-                raise EngineLoadError(f"Failed to load preprocess_fn from path '{self.config.preprocess_fn_path}': {e}") from e
+                logging.error(
+                    f"Failed to load preprocess_fn from path '{self.config.preprocess_fn_path}': {e}"
+                )
+                raise EngineLoadError(
+                    f"Failed to load preprocess_fn from path '{self.config.preprocess_fn_path}': {e}"
+                ) from e
         # else: self.preprocess_fn = None # This is already default from __init__
 
         # Re-check signature for the potentially updated embedding_fn
@@ -651,16 +751,20 @@ class BaseCompressionEngine:
 
         try:
             metadata = manifest.get("metadata", {})
-            if not isinstance(metadata, dict): # Basic validation
-                 raise EngineLoadError(f"Invalid 'metadata' format in manifest: {manifest_path}")
+            if not isinstance(metadata, dict):  # Basic validation
+                raise EngineLoadError(
+                    f"Invalid 'metadata' format in manifest: {manifest_path}"
+                )
             metadata_embedding_dim = metadata.get("embedding_dim")
 
             authoritative_embedding_dim = metadata_embedding_dim
-            if authoritative_embedding_dim is None: # Try from current config if not in metadata
+            if (
+                authoritative_embedding_dim is None
+            ):  # Try from current config if not in metadata
                 authoritative_embedding_dim = self.config.embedding_dim
 
             if authoritative_embedding_dim is None:
-                raise ConfigurationError( # Changed from ValueError
+                raise ConfigurationError(  # Changed from ValueError
                     "Cannot determine embedding dimension for loading vector store. "
                     "It must be present in the manifest's metadata or engine config."
                 )
@@ -668,9 +772,13 @@ class BaseCompressionEngine:
             if self.config.embedding_dim is None:
                 self.config.embedding_dim = authoritative_embedding_dim
             elif self.config.embedding_dim != authoritative_embedding_dim:
-                logging.warning(f"EngineConfig embedding_dim ({self.config.embedding_dim}) "
-                    f"mismatches manifest metadata embedding_dim ({authoritative_embedding_dim}). "
-                    "Using manifest metadata's dimension.")
+                warning_msg = (
+                    f"Warning: EngineConfig embedding_dim ({self.config.embedding_dim}) "
+                    f"mismatches effective dimension ({authoritative_embedding_dim}) from manifest/embeddings. "
+                    "Using effective dimension."
+                )
+                logging.warning(warning_msg)
+                print(warning_msg, file=sys.stderr)
                 # Consider raising EmbeddingDimensionMismatchError here if strict consistency is required.
                 # For now, warning and override is kept.
                 # raise EmbeddingDimensionMismatchError(
@@ -681,31 +789,41 @@ class BaseCompressionEngine:
             self.vector_store = create_vector_store(
                 store_type=self.config.vector_store,
                 embedding_dim=self.config.embedding_dim,
-                path=self.config.vector_store_path
+                path=self.config.vector_store_path,
             )
             self.vector_store.load(str(p / "vector_store_data"))
             logging.debug("Vector store loaded.")
 
             entries_path = p / "entries.json"
             if not entries_path.exists():
-                raise FileNotFoundError(f"Engine entries file not found at {entries_path}")
+                raise FileNotFoundError(
+                    f"Engine entries file not found at {entries_path}"
+                )
             with open(entries_path, "r", encoding="utf-8") as fh:
                 self.memories = json.load(fh)
-            self.memory_hashes = {calculate_sha256(mem["text"]) for mem in self.memories}
+            self.memory_hashes = {
+                calculate_sha256(mem["text"]) for mem in self.memories
+            }
             logging.debug(f"Loaded {len(self.memories)} entries from entries.json.")
 
             logging.info(f"Engine '{self.id}' loaded successfully from {p}")
 
-        except FileNotFoundError as e: # Catch issues like missing entries.json
-            logging.error(f"Engine load failed: Essential file not found. Path: {p}. Error: {e}")
+        except FileNotFoundError as e:  # Catch issues like missing entries.json
+            logging.error(
+                f"Engine load failed: Essential file not found. Path: {p}. Error: {e}"
+            )
             raise EngineLoadError(f"Essential file not found during load: {e}") from e
-        except (ConfigurationError, EmbeddingDimensionMismatchError) as e: # Propagate specific config errors
+        except (
+            ConfigurationError,
+            EmbeddingDimensionMismatchError,
+        ) as e:  # Propagate specific config errors
             logging.error(f"Engine load failed due to configuration issue: {e}")
-            raise # Re-raise as these are already specific enough
-        except Exception as e: # Catch other errors during vector_store creation, load, or entries.json processing
+            raise  # Re-raise as these are already specific enough
+        except (
+            Exception
+        ) as e:  # Catch other errors during vector_store creation, load, or entries.json processing
             logging.error(f"Engine load failed during data loading from {p}: {e}")
             raise EngineLoadError(f"Failed to load engine data: {e}") from e
-
 
     def rebuild_index(self) -> None:
         """
@@ -753,11 +871,12 @@ class BaseCompressionEngine:
         elif isinstance(value, SentenceWindowChunker):
             self.config.chunker_id = "sentence_window"
         else:
-            self.config.chunker_id = getattr(value, 'id', type(value).__name__)
+            self.config.chunker_id = getattr(value, "id", type(value).__name__)
+
 
 __all__ = [
     "BaseCompressionEngine",
     "CompressedMemory",
     "CompressionTrace",
-    "EngineConfig"
+    "EngineConfig",
 ]

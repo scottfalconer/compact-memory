@@ -55,46 +55,67 @@ class PipelineEngine(BaseCompressionEngine):
 
     def __init__(
         self,
-        pipeline_definition: Union[PipelineConfig, List[BaseCompressionEngine]],
-        config: Optional[
-            BaseEngineConfig | Dict[str, Any]
-        ] = None,  # Use aliased BaseEngineConfig
-        **kwargs: Any,  # For BaseCompressionEngine's config
+        pipeline_definition: (
+            Union[PipelineConfig, List[BaseCompressionEngine]] | None
+        ) = None,
+        *,
+        config_or_engines: Union[
+            PipelineConfig, List[BaseCompressionEngine], None
+        ] = None,
+        config: Optional[BaseEngineConfig | Dict[str, Any]] = None,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(
-            config=config, **kwargs
-        )  # Pass BaseEngineConfig to BaseCompressionEngine
+        super().__init__(config=config, **kwargs)
+
+        if pipeline_definition is None:
+            pipeline_definition = (
+                config_or_engines if config_or_engines is not None else []
+            )
 
         self.engines = []
         if isinstance(pipeline_definition, PipelineConfig):
-            self.pipeline_structure_config = pipeline_definition
-            self.engines = [
-                step_cfg.create() for step_cfg in self.pipeline_structure_config.engines
-            ]
+            self.pipeline_structure_config = PipelineConfig(engines=[])
+            for step in pipeline_definition.engines:
+                if isinstance(step, PipelineStepConfig):
+                    self.pipeline_structure_config.engines.append(step)
+                    self.engines.append(step.create())
+                elif isinstance(step, BaseEngineConfig):
+                    self.pipeline_structure_config.engines.append(
+                        PipelineStepConfig(step.engine_name, {"config": step})
+                    )
+                    self.engines.append(
+                        get_compression_engine(step.engine_name)(config=step)
+                    )
+                elif isinstance(step, BaseCompressionEngine):
+                    self.pipeline_structure_config.engines.append(
+                        PipelineStepConfig(step.id, {"config": step.config})
+                    )
+                    self.engines.append(step)
+                else:
+                    raise TypeError("Unsupported engine specification in pipeline")
         else:
-            self.engines = list(pipeline_definition)
-            # Reconstruct pipeline_structure_config for tracing if possible
-            engine_configs_for_trace: List[PipelineStepConfig] = []
-            for eng in self.engines:
-                params = {}
-                if hasattr(eng, "config") and isinstance(eng.config, BaseEngineConfig):
-                    # If the engine has a BaseEngineConfig, we can serialize its non-default params
-                    # This is a simplified representation for tracing.
-                    params = eng.config.model_dump(exclude_defaults=True)
-                elif hasattr(eng, "config") and isinstance(
-                    eng.config, PipelineConfig
-                ):  # Nested Pipeline
-                    # If it's a nested pipeline, its config is PipelineConfig.
-                    # We need to serialize this PipelineConfig appropriately.
-                    # For simplicity in trace, just using a dict representation.
-                    params = {"engines": [asdict(ecfg) for ecfg in eng.config.engines]}
-
-                engine_configs_for_trace.append(
-                    PipelineStepConfig(engine_name=eng.id, engine_params=params)
-                )
-            self.pipeline_structure_config = PipelineConfig(
-                engines=engine_configs_for_trace
-            )
+            self.pipeline_structure_config = PipelineConfig(engines=[])
+            for item in pipeline_definition:
+                if isinstance(item, BaseCompressionEngine):
+                    self.engines.append(item)
+                    params = {}
+                    if isinstance(item.config, BaseEngineConfig):
+                        params = item.config.model_dump(exclude_defaults=True)
+                    self.pipeline_structure_config.engines.append(
+                        PipelineStepConfig(item.id, params)
+                    )
+                elif isinstance(item, BaseEngineConfig):
+                    self.pipeline_structure_config.engines.append(
+                        PipelineStepConfig(item.engine_name, {"config": item})
+                    )
+                    self.engines.append(
+                        get_compression_engine(item.engine_name)(config=item)
+                    )
+                elif isinstance(item, PipelineStepConfig):
+                    self.pipeline_structure_config.engines.append(item)
+                    self.engines.append(item.create())
+                else:
+                    raise TypeError("Unsupported engine specification in pipeline list")
 
     def compress(
         self,
@@ -204,9 +225,7 @@ class PipelineEngine(BaseCompressionEngine):
             )
             current_compressed_memory = CompressedMemory(
                 text=final_text_output,
-                metadata={
-                    "notes": "Pipeline resulted in no output or was effectively empty."
-                },
+                metadata={"notes": "Pipeline was empty or no operations performed."},
             )
 
         # Now, check if the PipelineEngine itself should produce a trace
@@ -216,13 +235,17 @@ class PipelineEngine(BaseCompressionEngine):
             logging.debug(
                 f"PipelineEngine '{self.id}': Tracing disabled for the pipeline itself. Skipping overall trace generation."
             )
+            config_dump = self.config.model_dump(mode="json")
+            config_dump.update({"budget": budget})
+            if hasattr(self, "pipeline_structure_config"):
+                config_dump["engines"] = [
+                    asdict(ecfg) for ecfg in self.pipeline_structure_config.engines
+                ]
             return CompressedMemory(
                 text=current_compressed_memory.text,
-                trace=None,  # No trace for the pipeline itself
+                trace=None,
                 engine_id=self.id,
-                engine_config=self.config.model_dump(
-                    mode="json"
-                ),  # PipelineEngine's own config
+                engine_config=config_dump,
                 metadata=current_compressed_memory.metadata,
             )
 
@@ -255,12 +278,15 @@ class PipelineEngine(BaseCompressionEngine):
         )
         pipeline_trace.processing_ms = (time.monotonic() - start_time) * 1000
 
+        config_dump = self.config.model_dump(mode="json")
+        config_dump.update({"budget": budget})
+        config_dump["engines"] = [
+            asdict(e) for e in self.pipeline_structure_config.engines
+        ]
         return CompressedMemory(
             text=current_compressed_memory.text,
             engine_id=self.id,
-            engine_config=self.config.model_dump(
-                mode="json"
-            ),  # PipelineEngine's own EngineConfig
+            engine_config=config_dump,
             trace=pipeline_trace,
             metadata=current_compressed_memory.metadata,
         )

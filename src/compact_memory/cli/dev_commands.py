@@ -1,4 +1,5 @@
 import json
+import logging
 import yaml
 import os
 import sys
@@ -44,7 +45,11 @@ from compact_memory.engines import (
     CompressedMemory,
     CompressionTrace,
 )
-from compact_memory.exceptions import CompactMemoryError, ConfigurationError, EngineError # Added
+from compact_memory.exceptions import (
+    CompactMemoryError,
+    ConfigurationError,
+    EngineError,
+)  # Added
 
 
 dev_app = typer.Typer(
@@ -270,12 +275,22 @@ def evaluate_compression_command(  # Renamed
         scores = metric_instance.evaluate(
             original_text=orig_text, compressed_text=comp_text
         )
-    except CompactMemoryError as exc: # Catch specific library errors from metrics
-        typer.secho(f"Error during metric evaluation with '{metric_id}': {exc}", err=True, fg=typer.colors.RED)
+    except CompactMemoryError as exc:  # Catch specific library errors from metrics
+        typer.secho(
+            f"Error during metric evaluation with '{metric_id}': {exc}",
+            err=True,
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(code=1)
-    except Exception as exc: # General fallback
-        typer.secho(f"An unexpected error occurred during metric evaluation with '{metric_id}': {exc}", err=True, fg=typer.colors.RED)
-        logging.exception(f"Metric evaluation failed for metric {metric_id}") # Added logging
+    except Exception as exc:  # General fallback
+        typer.secho(
+            f"An unexpected error occurred during metric evaluation with '{metric_id}': {exc}",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        logging.exception(
+            f"Metric evaluation failed for metric {metric_id}"
+        )  # Added logging
         raise typer.Exit(code=1)
 
     if json_output:
@@ -442,10 +457,16 @@ def test_llm_prompt_command(  # Renamed
             max_new_tokens=max_new_tokens,
             api_key=api_key_value,  # Pass the fetched API key
         )
-    except CompactMemoryError as exc: # Catch specific library errors from LLM providers
-        typer.secho(f"LLM generation error with model '{actual_model_name_for_provider}': {exc}", err=True, fg=typer.colors.RED)
+    except (
+        CompactMemoryError
+    ) as exc:  # Catch specific library errors from LLM providers
+        typer.secho(
+            f"LLM generation error with model '{actual_model_name_for_provider}': {exc}",
+            err=True,
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(code=1)
-    except Exception as exc: # General fallback
+    except Exception as exc:  # General fallback
         typer.secho(
             f"An unexpected error occurred during LLM generation with model '{actual_model_name_for_provider}': {exc}",
             err=True,
@@ -564,12 +585,22 @@ def evaluate_llm_response_command(  # Renamed
         scores = metric_instance.evaluate(
             llm_response=resp_text, reference_answer=ref_text
         )
-    except CompactMemoryError as exc: # Catch specific library errors from metrics
-        typer.secho(f"Error during metric evaluation with '{metric_id}': {exc}", err=True, fg=typer.colors.RED)
+    except CompactMemoryError as exc:  # Catch specific library errors from metrics
+        typer.secho(
+            f"Error during metric evaluation with '{metric_id}': {exc}",
+            err=True,
+            fg=typer.colors.RED,
+        )
         raise typer.Exit(code=1)
-    except Exception as exc: # General fallback
-        typer.secho(f"An unexpected error occurred during metric evaluation with '{metric_id}': {exc}", err=True, fg=typer.colors.RED)
-        logging.exception(f"Metric evaluation failed for metric {metric_id}") # Added logging
+    except Exception as exc:  # General fallback
+        typer.secho(
+            f"An unexpected error occurred during metric evaluation with '{metric_id}': {exc}",
+            err=True,
+            fg=typer.colors.RED,
+        )
+        logging.exception(
+            f"Metric evaluation failed for metric {metric_id}"
+        )  # Added logging
         raise typer.Exit(code=1)
 
     if json_output:
@@ -598,10 +629,16 @@ def download_embedding_model_command(  # Renamed
     try:
         util_download_embedding_model(model_name)
         typer.echo(f"Successfully downloaded embedding model '{model_name}'.")
-    except CompactMemoryError as e: # Catch specific library errors if download util raises them
-        typer.secho(f"Error downloading embedding model '{model_name}': {e}", fg=typer.colors.RED, err=True)
+    except (
+        CompactMemoryError
+    ) as e:  # Catch specific library errors if download util raises them
+        typer.secho(
+            f"Error downloading embedding model '{model_name}': {e}",
+            fg=typer.colors.RED,
+            err=True,
+        )
         raise typer.Exit(code=1)
-    except Exception as e: # General fallback
+    except Exception as e:  # General fallback
         typer.secho(
             f"An unexpected error occurred downloading embedding model '{model_name}': {e}",
             fg=typer.colors.RED,
@@ -626,10 +663,14 @@ def download_chat_model_command(  # Renamed
     try:
         util_download_chat_model(model_name)
         typer.echo(f"Successfully downloaded chat model '{model_name}'.")
-    except CompactMemoryError as e: # Catch specific library errors
-        typer.secho(f"Error downloading chat model '{model_name}': {e}", fg=typer.colors.RED, err=True)
+    except CompactMemoryError as e:  # Catch specific library errors
+        typer.secho(
+            f"Error downloading chat model '{model_name}': {e}",
+            fg=typer.colors.RED,
+            err=True,
+        )
         raise typer.Exit(code=1)
-    except Exception as e: # General fallback
+    except Exception as e:  # General fallback
         typer.secho(
             f"An unexpected error occurred downloading chat model '{model_name}': {e}",
             fg=typer.colors.RED,
@@ -768,11 +809,19 @@ def validate_engine_package_command(  # Renamed
         errors, warnings = validate_package_dir(package_path)
         for w_msg in warnings:
             typer.secho(f"Warning: {w_msg}", fg=typer.colors.YELLOW)
-    except CompactMemoryError as e: # If validate_package_dir raises specific errors
-        typer.secho(f"Error validating package '{package_path}': {e}", fg=typer.colors.RED, err=True)
+    except CompactMemoryError as e:  # If validate_package_dir raises specific errors
+        typer.secho(
+            f"Error validating package '{package_path}': {e}",
+            fg=typer.colors.RED,
+            err=True,
+        )
         raise typer.Exit(code=1)
-    except Exception as e: # General fallback
-        typer.secho(f"An unexpected error occurred validating package '{package_path}': {e}", fg=typer.colors.RED, err=True)
+    except Exception as e:  # General fallback
+        typer.secho(
+            f"An unexpected error occurred validating package '{package_path}': {e}",
+            fg=typer.colors.RED,
+            err=True,
+        )
         logging.exception(f"Package validation failed for {package_path}")
         raise typer.Exit(code=1)
 
@@ -879,7 +928,7 @@ def inspect_trace_command(  # Renamed
 
 @dev_app.command(
     "evaluate-engines",
-    help="Compresses text with specified engines and evaluates using a predefined set of metrics (compression_ratio and multi_model_embedding_similarity).\n\nThe --embedding-model option configures models for the multi_model_embedding_similarity metric; otherwise, its defaults are used.\nOutput is always JSON, structured as: {engine_id: {\"compression_ratio\": ..., \"embedding_similarity\": {\"model_1\": ..., \"model_2\": ...}}}.\n\nUsage Example:\n  compact-memory dev evaluate-engines --text \"example text to compress\" --engine none --embedding-model \"sentence-transformers/all-MiniLM-L6-v2\"\n\nPerformance Note: Using multiple embedding models via --embedding-model will increase the time taken for each engine's evaluation.",
+    help='Compresses text with specified engines and evaluates using a predefined set of metrics (compression_ratio and multi_model_embedding_similarity).\n\nThe --embedding-model option configures models for the multi_model_embedding_similarity metric; otherwise, its defaults are used.\nOutput is always JSON, structured as: {engine_id: {"compression_ratio": ..., "embedding_similarity": {"model_1": ..., "model_2": ...}}}.\n\nUsage Example:\n  compact-memory dev evaluate-engines --text "example text to compress" --engine none --embedding-model "sentence-transformers/all-MiniLM-L6-v2"\n\nPerformance Note: Using multiple embedding models via --embedding-model will increase the time taken for each engine\'s evaluation.',
 )
 def evaluate_engines_command(
     *,
@@ -984,33 +1033,11 @@ def evaluate_engines_command(
 
     results: dict[str, dict[str, float]] = {}
     for eid in engine_ids:
-        EngineCls = get_compression_engine(eid)
-        if eid == "pipeline":
-            engine_instance = EngineCls(PipelineConfig())
-        else:
-            engine_instance = EngineCls()
-
-        result = engine_instance.compress(text_input, budget)
-        compressed = result[0] if isinstance(result, tuple) else result
-
-        if hasattr(compressed, "text"):
-            comp_text = compressed.text
-        elif isinstance(compressed, dict):
-            comp_text = compressed.get("content", str(compressed))
-        else:
-            comp_text = str(compressed)
-
-        ratio_results = ratio_metric.evaluate(
-            original_text=text_input, compressed_text=comp_text
-        )
-        ratio = ratio_results.get("token_compression_ratio") # Or "char_compression_ratio" if preferred
-        embed_scores = embed_metric.evaluate(
-            original_text=text_input, compressed_text=comp_text
-        )["embedding_similarity"]
-
         try:
             EngineCls = get_compression_engine(eid)
-            if eid == "pipeline": # Special handling for pipeline if it needs specific config
+            if (
+                eid == "pipeline"
+            ):  # Special handling for pipeline if it needs specific config
                 # This example assumes a default/empty pipeline if not configured via params.
                 # Real usage might need a --pipeline-engine-config for this command.
                 engine_instance = EngineCls(PipelineConfig())
@@ -1040,27 +1067,46 @@ def evaluate_engines_command(
                 "embedding_similarity": embed_scores,
             }
         except ConfigurationError as e:
-            typer.secho(f"Configuration error for engine '{eid}': {e}", fg=typer.colors.YELLOW, err=True)
+            typer.secho(
+                f"Configuration error for engine '{eid}': {e}",
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
             results[eid] = {"error": str(e)}
         except EngineError as e:
-            typer.secho(f"Error during compression with engine '{eid}': {e}", fg=typer.colors.YELLOW, err=True)
+            typer.secho(
+                f"Error during compression with engine '{eid}': {e}",
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
             results[eid] = {"error": str(e)}
         except CompactMemoryError as e:
-            typer.secho(f"An error occurred with engine '{eid}': {e}", fg=typer.colors.YELLOW, err=True)
+            typer.secho(
+                f"An error occurred with engine '{eid}': {e}",
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
             results[eid] = {"error": str(e)}
         except Exception as e:
-            typer.secho(f"An unexpected error occurred with engine '{eid}': {e}", fg=typer.colors.YELLOW, err=True)
+            typer.secho(
+                f"An unexpected error occurred with engine '{eid}': {e}",
+                fg=typer.colors.YELLOW,
+                err=True,
+            )
             logging.exception(f"Evaluation failed for engine {eid}")
             results[eid] = {"error": f"Unexpected: {str(e)}"}
 
-
-    json_output_str = json.dumps(results, indent=2) # Renamed variable
+    json_output_str = json.dumps(results, indent=2)  # Renamed variable
     if output:
         try:
             output.write_text(json_output_str)
             typer.echo(f"Results saved to {output}")
         except Exception as e:
-            typer.secho(f"Error writing results to file '{output}': {e}", fg=typer.colors.RED, err=True)
+            typer.secho(
+                f"Error writing results to file '{output}': {e}",
+                fg=typer.colors.RED,
+                err=True,
+            )
             # Still print to console if file write fails
             typer.echo(json_output_str)
             raise typer.Exit(code=1)
