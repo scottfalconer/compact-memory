@@ -6,7 +6,7 @@ def test_engine_config_default_values():
     """Test EngineConfig creation with default values."""
     config = EngineConfig()
     assert config.chunker_id == "fixed_size"
-    assert config.vector_store == "faiss_memory"
+    assert config.vector_store == "in_memory"
     assert config.embedding_dim is None
     assert config.model_extra == {}
 

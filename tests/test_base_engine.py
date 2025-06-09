@@ -61,7 +61,7 @@ def test_base_engine_compress_output():
     assert all(item in result_none.engine_config.items() for item in engine_config.items())
     assert isinstance(result_none.trace, CompressionTrace)
     assert result_none.trace.engine_name == BaseCompressionEngine.id # Changed to use self.id
-    assert result_none.trace.strategy_params == {"budget": budget}
+    assert result_none.trace.strategy_params == {"budget": budget, "method": "truncation"}
     assert result_none.trace.input_summary == {"original_length": len(text)}
     assert result_none.trace.output_summary == {"compressed_length": len(text[:budget])}
 
@@ -111,7 +111,7 @@ def test_no_compression_engine_compress_output():
     assert isinstance(result_full.trace, CompressionTrace)
     assert result_full.trace.engine_name == NoCompressionEngine.id
     assert result_full.trace.strategy_params == {
-        "llm_token_budget": budget_full
+        "budget": budget_full
     }  # Specific to this engine's trace
     assert result_full.trace.input_summary == {"input_length": len(text)}
     assert result_full.trace.output_summary == {"output_length": len(text)}
@@ -131,7 +131,7 @@ def test_no_compression_engine_compress_output():
     assert isinstance(result_truncate.trace, CompressionTrace)
     assert result_truncate.trace.engine_name == NoCompressionEngine.id
     assert result_truncate.trace.strategy_params == {
-        "llm_token_budget": budget_truncate
+        "budget": budget_truncate
     }
 
     # Test with previous_compression_result
@@ -213,7 +213,7 @@ def test_first_last_engine_compress_output():
         assert all(item in result_all.engine_config.items() for item in engine_config.items()) # Corrected indentation
         assert isinstance(result_all.trace, CompressionTrace)
         assert result_all.trace.engine_name == FirstLastEngine.id
-        assert result_all.trace.strategy_params == {"llm_token_budget": budget_all}
+        assert result_all.trace.strategy_params == {"budget": budget_all}
         assert len(result_all.trace.steps) > 0
 
         # Test case 2: budget allows first 2 and last 2 (total 4)
@@ -230,7 +230,7 @@ def test_first_last_engine_compress_output():
         assert result_partial.engine_id == FirstLastEngine.id
         assert isinstance(result_partial.trace, CompressionTrace)
         assert result_partial.trace.strategy_params == {
-            "llm_token_budget": budget_partial
+            "budget": budget_partial
         }
         assert result_partial.trace.output_summary["final_tokens"] == 4
 

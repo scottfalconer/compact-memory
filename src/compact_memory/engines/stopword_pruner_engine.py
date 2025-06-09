@@ -62,7 +62,7 @@ class StopwordPrunerEngine(BaseCompressionEngine):
         If False, `CompressedMemory.trace` will be None.
         """
         import logging # Added
-        logging.debug(f"StopwordPrunerEngine: Compressing text, budget: {budget}")
+        logging.debug(f"StopwordPrunerEngine: Compressing text, budget: {llm_token_budget}")
         start_time = time.monotonic() # Start timing early
 
         input_text_content = ( # Use a distinct variable for the initial text
@@ -71,12 +71,13 @@ class StopwordPrunerEngine(BaseCompressionEngine):
             else " ".join(text_or_chunks)
         )
 
-        cfg = self.config or {}
-        preserve_order = cfg.get("preserve_order", True)
-        min_len = cfg.get("min_word_length", 1)
-        remove_fillers = cfg.get("remove_fillers", True)
-        remove_duplicates = cfg.get("remove_duplicates", False)
-        language = cfg.get("stopwords_language", "english")
+        # cfg = self.config or {} # Old way
+        # Use getattr for Pydantic models, providing defaults
+        preserve_order = getattr(self.config, "preserve_order", True)
+        min_len = getattr(self.config, "min_word_length", 1)
+        remove_fillers = getattr(self.config, "remove_fillers", True)
+        remove_duplicates = getattr(self.config, "remove_duplicates", False)
+        language = getattr(self.config, "stopwords_language", "english")
 
         stop_words = _get_stopwords(language)
 
@@ -160,9 +161,9 @@ class StopwordPrunerEngine(BaseCompressionEngine):
         # Save the text after stopword pruning but before budget truncation
         text_after_pruning = compressed_text
 
-        if budget is not None: # budget was llm_token_budget
+        if llm_token_budget is not None: # budget was llm_token_budget
             compressed_text = truncate_text(
-                active_tokenizer, compressed_text, budget
+                active_tokenizer, compressed_text, llm_token_budget
             )
 
         if not self.config.enable_trace:
@@ -178,7 +179,7 @@ class StopwordPrunerEngine(BaseCompressionEngine):
 
         trace = CompressionTrace(
             engine_name=self.id,
-            strategy_params={"budget": budget, "language": language, "preserve_order": preserve_order,
+            strategy_params={"budget": llm_token_budget, "language": language, "preserve_order": preserve_order,
                              "min_word_length": min_len, "remove_fillers": remove_fillers,
                              "remove_duplicates": remove_duplicates},
             input_summary={"input_length": len(input_text_content), "input_tokens": orig_tokens},
@@ -205,10 +206,10 @@ class StopwordPrunerEngine(BaseCompressionEngine):
             "remove_duplicates", # This step refers to adjacent duplicate tokens
             {"removed": removed_counts["duplicates"]},
         )
-        if budget is not None:
+        if llm_token_budget is not None:
              trace.add_step(
                 "truncate_to_budget",
-                {"budget": budget, "length_before_truncation": len(text_after_pruning), "length_after_truncation": len(compressed_text)}
+                {"budget": llm_token_budget, "length_before_truncation": len(text_after_pruning), "length_after_truncation": len(compressed_text)}
              )
 
         trace.processing_ms = (time.monotonic() - start_time) * 1000

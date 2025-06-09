@@ -209,7 +209,7 @@ class PipelineEngine(BaseCompressionEngine):
         )
 
 
-__all__ = ["EngineConfig", "PipelineConfig", "PipelineEngine"]
+__all__ = ["PipelineConfig", "PipelineEngine"]
 
 # Register this engine when imported so it is discoverable
 

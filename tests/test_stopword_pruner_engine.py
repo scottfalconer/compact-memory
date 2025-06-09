@@ -26,7 +26,7 @@ def test_stopword_pruner_basic():
     result = engine.compress(text, llm_token_budget=budget)
     assert isinstance(result, CompressedMemory)
     assert result.engine_id == StopwordPrunerEngine.id
-    assert result.engine_config == engine.config  # Engine config should match
+    assert result.engine_config == engine.config.model_dump(mode='json')  # Engine config should match
 
     trace = result.trace
     assert isinstance(trace, CompressionTrace)
@@ -69,7 +69,11 @@ def test_stopword_pruner_basic():
     ), f"Output string mismatch. Expected 'simple example know test', got '{out}'"
 
     assert trace.engine_name == StopwordPrunerEngine.id, "Trace engine name mismatch"
-    assert trace.strategy_params == {"llm_token_budget": budget}
+    expected_strategy_params = {
+        "budget": budget, "language": "english", "preserve_order": True,
+        "min_word_length": 1, "remove_fillers": True, "remove_duplicates": False
+    }
+    assert trace.strategy_params == expected_strategy_params
 
     # Verify trace details for removed counts
     removed_stopwords_count = 0
@@ -139,9 +143,13 @@ def test_stopword_pruner_min_word_length():
     out = result.text.lower()
 
     assert result.engine_id == StopwordPrunerEngine.id
-    assert result.engine_config == engine.config
+    assert result.engine_config == engine.config.model_dump(mode='json')
     assert trace.engine_name == StopwordPrunerEngine.id
-    assert trace.strategy_params == {"llm_token_budget": budget}
+    expected_strategy_params_min_len = {
+        "budget": budget, "language": "english", "preserve_order": True,
+        "min_word_length": 4, "remove_fillers": True, "remove_duplicates": False
+    }
+    assert trace.strategy_params == expected_strategy_params_min_len
 
     assert (
         out == "fast tree"
@@ -193,9 +201,13 @@ def test_stopword_pruner_remove_fillers_false():
     ), f"Output string mismatch. Expected '{expected_out}', got '{out}'"
 
     assert result.engine_id == StopwordPrunerEngine.id
-    assert result.engine_config == engine.config
+    assert result.engine_config == engine.config.model_dump(mode='json')
     assert trace.engine_name == StopwordPrunerEngine.id
-    assert trace.strategy_params == {"llm_token_budget": budget}
+    expected_strategy_params_no_fillers = {
+        "budget": budget, "language": "english", "preserve_order": True,
+        "min_word_length": 1, "remove_fillers": False, "remove_duplicates": False
+    }
+    assert trace.strategy_params == expected_strategy_params_no_fillers
 
     removed_fillers_count = 0
     removed_stopwords_count = 0
@@ -244,9 +256,13 @@ def test_stopword_pruner_remove_duplicate_words_true():
     ), f"Output string mismatch. Expected 'yes agree', got '{out}'"
 
     assert result.engine_id == StopwordPrunerEngine.id
-    assert result.engine_config == engine.config
+    assert result.engine_config == engine.config.model_dump(mode='json')
     assert trace.engine_name == StopwordPrunerEngine.id
-    assert trace.strategy_params == {"llm_token_budget": budget}
+    expected_strategy_params_remove_dup_words = {
+        "budget": budget, "language": "english", "preserve_order": True,
+        "min_word_length": 1, "remove_fillers": True, "remove_duplicates": True
+    }
+    assert trace.strategy_params == expected_strategy_params_remove_dup_words
 
     removed_duplicates_count = 0
     removed_stopwords_count = 0
@@ -286,9 +302,13 @@ def test_stopword_pruner_remove_duplicate_sentences_true():
     out = result.text.lower()
 
     assert result.engine_id == StopwordPrunerEngine.id
-    assert result.engine_config == engine.config
+    assert result.engine_config == engine.config.model_dump(mode='json')
     assert trace.engine_name == StopwordPrunerEngine.id
-    assert trace.strategy_params == {"llm_token_budget": budget}
+    expected_strategy_params_remove_dup_sentences = {
+        "budget": budget, "language": "english", "preserve_order": True,
+        "min_word_length": 1, "remove_fillers": True, "remove_duplicates": True
+    }
+    assert trace.strategy_params == expected_strategy_params_remove_dup_sentences
 
     expected_out = "sentence" if SPACY_AVAILABLE else "sentence one sentence two"
     assert (
@@ -339,9 +359,13 @@ def test_stopword_pruner_remove_duplicates_false():
     out = result.text.lower()
 
     assert result.engine_id == StopwordPrunerEngine.id
-    assert result.engine_config == engine.config
+    assert result.engine_config == engine.config.model_dump(mode='json')
     assert trace.engine_name == StopwordPrunerEngine.id
-    assert trace.strategy_params == {"llm_token_budget": budget}
+    expected_strategy_params = {
+        "budget": budget, "language": "english", "preserve_order": True,
+        "min_word_length": 1, "remove_fillers": True, "remove_duplicates": False
+    }
+    assert trace.strategy_params == expected_strategy_params
 
     assert (
         out == "word word sentence sentence"
@@ -385,9 +409,13 @@ def test_stopword_pruner_preserve_order_false():
     out = result.text.lower()
 
     assert result.engine_id == StopwordPrunerEngine.id
-    assert result.engine_config == engine.config
+    assert result.engine_config == engine.config.model_dump(mode='json')
     assert trace.engine_name == StopwordPrunerEngine.id
-    assert trace.strategy_params == {"llm_token_budget": budget}
+    expected_strategy_params = {
+        "budget": budget, "language": "english", "preserve_order": False,
+        "min_word_length": 1, "remove_fillers": True, "remove_duplicates": False
+    }
+    assert trace.strategy_params == expected_strategy_params
 
     assert (
         out == "alpha bravo charlie zebra"
@@ -422,9 +450,13 @@ def test_stopword_pruner_preserve_order_true_maintains_order():
     out = result.text.lower()
 
     assert result.engine_id == StopwordPrunerEngine.id
-    assert result.engine_config == engine.config
+    assert result.engine_config == engine.config.model_dump(mode='json')
     assert trace.engine_name == StopwordPrunerEngine.id
-    assert trace.strategy_params == {"llm_token_budget": budget}
+    expected_strategy_params = {
+        "budget": budget, "language": "english", "preserve_order": True,
+        "min_word_length": 1, "remove_fillers": True, "remove_duplicates": False
+    }
+    assert trace.strategy_params == expected_strategy_params
 
     assert (
         out == "zebra alpha charlie bravo alpha"
@@ -482,9 +514,13 @@ def test_stopword_pruner_language_spanish():
     out = result.text.lower()
 
     assert result.engine_id == StopwordPrunerEngine.id
-    assert result.engine_config == engine.config
+    assert result.engine_config == engine.config.model_dump(mode='json')
     assert trace.engine_name == StopwordPrunerEngine.id
-    assert trace.strategy_params == {"llm_token_budget": budget}
+    expected_strategy_params = {
+        "budget": budget, "language": "spanish", "preserve_order": True,
+        "min_word_length": 1, "remove_fillers": True, "remove_duplicates": False
+    }
+    assert trace.strategy_params == expected_strategy_params
 
     assert (
         out == "perro come manzana"
@@ -522,9 +558,13 @@ def test_stopword_pruner_punctuation_whitespace():
     ), f"Output string mismatch. Expected 'hello world end', got '{out}'"
 
     assert result.engine_id == StopwordPrunerEngine.id
-    assert result.engine_config == engine.config
+    assert result.engine_config == engine.config.model_dump(mode='json')
     assert trace.engine_name == StopwordPrunerEngine.id
-    assert trace.strategy_params == {"llm_token_budget": budget}
+    expected_strategy_params_punct = {
+        "budget": budget, "language": "english", "preserve_order": True,
+        "min_word_length": 1, "remove_fillers": True, "remove_duplicates": False
+    }
+    assert trace.strategy_params == expected_strategy_params_punct
 
     removed_stopwords_count = 0
     removed_fillers_count = 0

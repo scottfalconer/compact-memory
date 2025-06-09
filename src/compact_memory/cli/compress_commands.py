@@ -27,9 +27,10 @@ from compact_memory.engines import (
 )  # Dataclasses for return types
 from compact_memory.engines.pipeline_engine import (  # Added
     PipelineConfig,
-    EngineConfig,
     PipelineEngine,
+    PipelineStepConfig, # Added PipelineStepConfig
 )
+from compact_memory.engine_config import EngineConfig  # Import EngineConfig from its correct location
 
 # PrototypeEngine was removed
 
@@ -428,7 +429,7 @@ def _get_one_shot_compression_engine(
                         err=True,
                     )
                     raise typer.Exit(code=1)
-                engine_configs.append(EngineConfig(**config_dict))
+                engine_configs.append(PipelineStepConfig(**config_dict))
 
             pipeline_config_obj = PipelineConfig(engines=engine_configs)
             return PipelineEngine(

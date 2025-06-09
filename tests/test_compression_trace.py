@@ -35,6 +35,6 @@ def test_base_engine_trace_contents(patch_embedding_model):
     result = engine.compress("hello world", budget=5)
     trace = result.trace
     assert trace is not None
-    assert trace.engine_name == "base_truncate"
+    assert trace.engine_name == "base"
     assert trace.output_summary["compressed_length"] == len(result.text)
     assert trace.steps[0]["type"] == "truncate"

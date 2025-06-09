@@ -62,29 +62,19 @@ class ReadAgentGistEngine(BaseCompressionEngine):
         self.llm_provider = llm_provider  # Updated instance variable
 
         # Retrieve parameters from self.config, allowing them to be overridden by what was passed in 'config' or 'kwargs'
-        self.episode_token_limit = self.config.get(
-            "episode_token_limit", episode_token_limit
-        )
-        self.gist_length = self.config.get(
-            "gist_length", gist_length
-        )  # Used as max_new_tokens for gisting
-        self.gist_prompt_template = self.config.get(
-            "gist_prompt_template", gist_prompt_template
-        )
-        self.qa_prompt_template = self.config.get(
-            "qa_prompt_template", qa_prompt_template
-        )
-        self.lookup_prompt_template = self.config.get(
-            "lookup_prompt_template", lookup_prompt_template
-        )
+        self.episode_token_limit = getattr(self.config, "episode_token_limit", episode_token_limit)
+        self.gist_length = getattr(self.config, "gist_length", gist_length)  # Used as max_new_tokens for gisting
+        self.gist_prompt_template = getattr(self.config, "gist_prompt_template", gist_prompt_template)
+        self.qa_prompt_template = getattr(self.config, "qa_prompt_template", qa_prompt_template)
+        self.lookup_prompt_template = getattr(self.config, "lookup_prompt_template", lookup_prompt_template)
 
         # Configuration for model names and max_new_tokens
-        self.gist_model_name = self.config.get("gist_model_name", "distilgpt2")
-        self.lookup_model_name = self.config.get("lookup_model_name", "distilgpt2")
-        self.qa_model_name = self.config.get("qa_model_name", "distilgpt2")
+        self.gist_model_name = getattr(self.config, "gist_model_name", "distilgpt2")
+        self.lookup_model_name = getattr(self.config, "lookup_model_name", "distilgpt2")
+        self.qa_model_name = getattr(self.config, "qa_model_name", "distilgpt2")
 
-        self.lookup_max_tokens = self.config.get("lookup_max_tokens", 50)
-        self.qa_max_new_tokens = self.config.get("qa_max_new_tokens", 250)
+        self.lookup_max_tokens = getattr(self.config, "lookup_max_tokens", 50)
+        self.qa_max_new_tokens = getattr(self.config, "qa_max_new_tokens", 250)
 
         # Removed warning for local_llm_pipeline
 

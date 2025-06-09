@@ -3,9 +3,10 @@ from dataclasses import asdict
 
 from compact_memory.engines.pipeline_engine import (
     PipelineEngine,
-    EngineConfig,
     PipelineConfig,
+    PipelineStepConfig,
 )
+from compact_memory.engine_config import EngineConfig # Keep this for BaseEngineConfig if needed elsewhere, or remove if not
 from typing import Optional
 from compact_memory.engines.base import (
     BaseCompressionEngine,
@@ -19,12 +20,12 @@ from unittest import mock
 # --- Fixtures ---
 
 @pytest.fixture
-def no_op_engine_config() -> EngineConfig:
-    return EngineConfig(engine_name=NoCompressionEngine.id)
+def no_op_engine_config() -> PipelineStepConfig: # Changed type hint
+    return PipelineStepConfig(engine_name=NoCompressionEngine.id, engine_params={}) # Return PipelineStepConfig
 
 @pytest.fixture
-def first_last_engine_config() -> EngineConfig:
-    return EngineConfig(engine_name=FirstLastEngine.id)
+def first_last_engine_config() -> PipelineStepConfig: # Changed type hint
+    return PipelineStepConfig(engine_name=FirstLastEngine.id, engine_params={}) # Return PipelineStepConfig
 
 @pytest.fixture
 def no_op_engine_instance() -> NoCompressionEngine:
@@ -54,7 +55,7 @@ def test_pipeline_engine_empty_pipeline():
 
     # Test 1: Empty pipeline, no previous_compression_result
     empty_pipeline_config = PipelineConfig(engines=[])
-    empty_engine = PipelineEngine(config_or_engines=empty_pipeline_config)
+    empty_engine = PipelineEngine(pipeline_definition=empty_pipeline_config)
 
     result_empty_no_prev = empty_engine.compress(text, budget)
 
@@ -64,14 +65,14 @@ def test_pipeline_engine_empty_pipeline():
     assert result_empty_no_prev.engine_config is not None
     # Convert PipelineConfig to dict for comparison if engine_config stores it that way
     expected_config_dict = {"budget": budget, "engines": []} # Based on current implementation
-    assert result_empty_no_prev.engine_config.get("budget") == budget # Check some key aspect
+    assert result_empty_no_prev.trace.strategy_params.get("budget") == budget # Check some key aspect
 
     assert isinstance(result_empty_no_prev.trace, CompressionTrace)
     assert result_empty_no_prev.trace.engine_name == PipelineEngine.id
     assert result_empty_no_prev.trace.input_summary == {"original_length": len(text)}
     assert result_empty_no_prev.trace.output_summary == {"compressed_length": len(text)}
     assert len(result_empty_no_prev.trace.steps) == 0
-    assert result_empty_no_prev.metadata == {"notes": "Pipeline was empty or no operations performed."}
+    assert result_empty_no_prev.metadata == {"notes": "Pipeline resulted in no output or was effectively empty."}
 
     # Test 2: Empty pipeline, with previous_compression_result
     prev_text = "previous text"
@@ -96,7 +97,7 @@ def test_pipeline_engine_single_engine(no_op_engine_config: EngineConfig, no_op_
     budget = 20 # NoOpEngine will truncate if text is longer and budget is smaller
 
     pipeline_config = PipelineConfig(engines=[no_op_engine_config])
-    engine = PipelineEngine(config_or_engines=pipeline_config)
+    engine = PipelineEngine(pipeline_definition=pipeline_config)
 
     result = engine.compress(text, budget)
 
@@ -113,7 +114,9 @@ def test_pipeline_engine_single_engine(no_op_engine_config: EngineConfig, no_op_
     # The engine_config in CompressedMemory for pipeline also includes budget and other kwargs passed to compress.
     # So, it's not just asdict(pipeline_config).
     # Let's check a key part.
-    assert result_no_trunc.engine_config.get("engines")[0]["engine_name"] == no_op_engine_config.engine_name
+    #The engine_config on CompressedMemory is the BaseEngineConfig of the PipelineEngine itself.
+    #The pipeline structure is part of the trace's strategy_params.
+    assert result_no_trunc.trace.strategy_params.get("engines")[0]["engine_name"] == no_op_engine_config.engine_name
 
     assert isinstance(result_no_trunc.trace, CompressionTrace)
     assert result_no_trunc.trace.engine_name == PipelineEngine.id
@@ -123,9 +126,9 @@ def test_pipeline_engine_single_engine(no_op_engine_config: EngineConfig, no_op_
 
     sub_trace_dict = result_no_trunc.trace.steps[0]
     assert sub_trace_dict["engine_name"] == NoCompressionEngine.id
-    assert sub_trace_dict["strategy_params"] == {"llm_token_budget": budget_no_truncate} # As set by NoOpEngine's trace
+    assert sub_trace_dict["strategy_params"] == {"budget": budget_no_truncate} # As set by NoOpEngine's trace
 
-def test_pipeline_engine_multiple_engines(no_op_engine_config: EngineConfig, first_last_engine_config: EngineConfig):
+def test_pipeline_engine_multiple_engines(no_op_engine_config: PipelineStepConfig, first_last_engine_config: PipelineStepConfig):
     text = "one two three four five six seven eight nine ten" # 10 words
     budget_fle = 4 # For FirstLastEngine: keep first 2, last 2 words. -> "one two nine ten"
 
@@ -133,7 +136,7 @@ def test_pipeline_engine_multiple_engines(no_op_engine_config: EngineConfig, fir
     # NoOpEngine with large budget won't change the text.
     # FirstLastEngine will then process the original text.
     pipeline_config = PipelineConfig(engines=[no_op_engine_config, first_last_engine_config])
-    engine = PipelineEngine(config_or_engines=pipeline_config)
+    engine = PipelineEngine(pipeline_definition=pipeline_config)
 
     # Mock tokenizer for FirstLastEngine part of the pipeline
     # This is complex because the instance of FirstLastEngine is created inside PipelineEngine.
@@ -168,7 +171,7 @@ def test_pipeline_engine_multiple_engines(no_op_engine_config: EngineConfig, fir
         fle_inst = FirstLastEngine()
 
         # Now create pipeline with instances
-        engine_instances = PipelineEngine(config_or_engines=[no_op_inst, fle_inst])
+        engine_instances = PipelineEngine(pipeline_definition=[no_op_inst, fle_inst])
 
         # The 'tokenizer' argument to engine.compress is for the sub-engines if they accept it.
         # FirstLastEngine's compress accepts 'tokenizer' for its decode step.
@@ -195,12 +198,12 @@ def test_pipeline_engine_multiple_engines(no_op_engine_config: EngineConfig, fir
         # NoOpEngine's output (which is input to FLE) should be the original text
         # This is hard to check directly from trace dicts unless output is part of trace.
         # We can check strategy_params.
-        assert noop_trace_dict["strategy_params"]["llm_token_budget"] == budget_fle # budget is passed along
+        assert noop_trace_dict["strategy_params"]["budget"] == budget_fle # budget is passed along
 
         # Check FirstLastEngine's trace (second step)
         fle_trace_dict = result.trace.steps[1]
         assert fle_trace_dict["engine_name"] == FirstLastEngine.id
-        assert fle_trace_dict["strategy_params"]["llm_token_budget"] == budget_fle
+        assert fle_trace_dict["strategy_params"]["budget"] == budget_fle
         assert fle_trace_dict["input_summary"]["input_tokens"] == 10 # "one two three four five six seven eight nine ten"
         assert fle_trace_dict["output_summary"]["final_tokens"] == 4  # "one two nine ten"
 
@@ -210,7 +213,7 @@ def test_pipeline_engine_with_initial_previous_compression(no_op_engine_config: 
     initial_cm = CompressedMemory(text=initial_text, engine_id="initial", trace=initial_trace)
 
     pipeline_config = PipelineConfig(engines=[no_op_engine_config]) # Simple pipeline with one NoOp
-    engine = PipelineEngine(config_or_engines=pipeline_config)
+    engine = PipelineEngine(pipeline_definition=pipeline_config)
 
     # This text is the "new" text the pipeline is asked to compress, but it should use initial_cm.text for the first engine
     new_text_for_pipeline = "This is new text, but pipeline should use previous_compression_result's text."
@@ -257,7 +260,7 @@ def test_pipeline_engine_passes_previous_result_between_engines():
     engine1 = RecorderEngine(name="eng1")
     engine2 = RecorderEngine(name="eng2")
 
-    pipeline = PipelineEngine(config_or_engines=[engine1, engine2])
+    pipeline = PipelineEngine(pipeline_definition=[engine1, engine2])
 
     original_text = "start"
     budget = 100
