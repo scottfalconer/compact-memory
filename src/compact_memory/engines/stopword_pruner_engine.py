@@ -169,11 +169,4 @@ class StopwordPrunerEngine(BaseCompressionEngine):
         return compressed
 
 
-register_compression_engine(
-    StopwordPrunerEngine.id,
-    StopwordPrunerEngine,
-    display_name="Stopword Pruner",
-    source="built-in",
-)
-
 __all__ = ["StopwordPrunerEngine"]
