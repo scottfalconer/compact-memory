@@ -13,6 +13,7 @@ from compact_memory.chunker import (
     SentenceWindowChunker,
     AgenticChunker,
     NltkSentenceChunker,
+    SemanticChunker,
     _CHUNKER_REGISTRY,
     Chunker,  # Added for completeness if we want to register a dummy
     register_chunker,  # Added for completeness
@@ -253,3 +254,25 @@ def test_nltk_chunker_tiktoken_failure_fallback(mock_get_encoding, ensure_nltk_p
     assert len(long_chunks) == 2
     assert long_chunks[0] == "A very long"
     assert long_chunks[1] == "sentence here indeed."
+
+
+def test_semantic_chunker_paragraph_grouping():
+    text = "Para one first sentence.\n\nPara two second sentence.\n\nPara three."
+
+    chunker = SemanticChunker(max_tokens=4)
+    chunker.tokenizer = DummyTokenizer()
+    chunks = chunker.chunk(text)
+    assert chunks == [
+        "Para one first sentence.",
+        "Para two second sentence.",
+        "Para three.",
+    ]
+
+
+def test_semantic_chunker_merging_short_paragraphs():
+    text = "A.\n\nB.\n\nC."
+    chunker = SemanticChunker(max_tokens=2)
+    chunker.tokenizer = DummyTokenizer()
+    chunks = chunker.chunk(text)
+    # Each paragraph has 1 token, expect two chunks: first two paras merged, then third
+    assert chunks == ["A.\n\nB.", "C."]
