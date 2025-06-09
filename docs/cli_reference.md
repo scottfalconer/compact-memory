@@ -130,6 +130,52 @@ Compresses text using a specified compression engine. Can read from a string, fi
         compact-memory compress --memory-path ./my_main_store --text "This is a long text to be truncated and then ingested." --engine dummy_trunc --budget 50
         ```
 
+#### Using the `PipelineEngine` (`--engine pipeline`)
+
+The `PipelineEngine` allows you to chain multiple compression engines together in a sequence. The output of one engine in the pipeline becomes the input for the next. This is useful for creating sophisticated, multi-stage compression strategies.
+
+To use the `PipelineEngine`, you specify `--engine pipeline` and provide the configuration for the pipeline using the `--pipeline-config` option. This option takes a JSON string that defines the sequence of engines and their parameters.
+
+**JSON Structure for `--pipeline-config`:**
+
+The JSON string should have the following structure:
+
+```json
+{
+  "engines": [
+    {
+      "engine_name": "name_of_engine_1",
+      "engine_params": {"param1": "value1", "param2": "value2"}
+    },
+    {
+      "engine_name": "name_of_engine_2",
+      "engine_params": {"config_a": "x", "config_b": "y"}
+    }
+    // ... more engines
+  ]
+}
+```
+
+*   `engines`: A list of dictionaries, where each dictionary defines a step in the pipeline.
+*   `engine_name`: The registered ID of the compression engine to be used for this step (e.g., `NoCompressionEngine`, `FirstLastEngine`, `StopwordPrunerEngine`).
+*   `engine_params`: A dictionary containing the parameters to be passed to the constructor of the specified `engine_name`. These parameters are specific to each engine. If an engine requires no parameters, an empty dictionary `{}` should be provided.
+
+**CLI Example:**
+
+This example first runs the text through `NoCompressionEngine` (which does nothing) and then processes its output with `FirstLastEngine`, keeping the first 2 and last 2 "units" (e.g., sentences or tokens, depending on the engine's internal logic if not specified, or often based on tokenizer behavior).
+
+```bash
+compact-memory compress --engine pipeline \
+  --pipeline-config '{"engines": [
+    {"engine_name": "NoCompressionEngine", "engine_params": {}},
+    {"engine_name": "FirstLastEngine", "engine_params": {"first_n": 2, "last_n": 2}}
+  ]}' \
+  --text "This is a long text that will be processed by no_compression then first_last. It has several sentences. This is sentence three. This is sentence four. And finally, sentence five." \
+  --budget 100
+```
+
+Remember that the `engine_params` are specific to each engine. You'll need to refer to the documentation for individual engines to know what parameters they accept.
+
 ### `compact-memory config`
 
 Group of commands for managing Compact Memory application configuration settings.
