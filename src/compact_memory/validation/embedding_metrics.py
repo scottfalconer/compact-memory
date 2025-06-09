@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional, Sequence, List
 
 import numpy as np
 import logging
+import warnings # Added import
 
 from .. import token_utils
 
@@ -62,6 +63,12 @@ class MultiEmbeddingSimilarityMetric(ValidationMetric):
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
+        warnings.warn(
+            "MultiEmbeddingSimilarityMetric is deprecated and will be removed in a future version. "
+            "Use MultiModelEmbeddingSimilarityMetric instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         self.model_names = list(model_names) if model_names else [ep._MODEL_NAME]
         self.max_tokens = int(max_tokens)
 
@@ -125,11 +132,56 @@ register_validation_metric(
     MultiEmbeddingSimilarityMetric.metric_id, MultiEmbeddingSimilarityMetric
 )
 
-__all__ = ["EmbeddingSimilarityMetric", "MultiEmbeddingSimilarityMetric"]
+# Forward declaration for __all__
+class MultiModelEmbeddingSimilarityMetric(ValidationMetric):
+    pass
+
+__all__ = [
+    "EmbeddingSimilarityMetric",
+    "MultiEmbeddingSimilarityMetric",
+    "MultiModelEmbeddingSimilarityMetric", # Added
+]
 
 
 class MultiModelEmbeddingSimilarityMetric(ValidationMetric):
-    """Compare text similarity across multiple embedding models."""
+    """
+    Compares text similarity using multiple embedding models.
+
+    This metric calculates the cosine similarity between the embeddings of two texts
+    (e.g., original vs. compressed, or LLM response vs. reference answer)
+    using a list of specified embedding models.
+
+    Instantiation:
+        metric = MultiModelEmbeddingSimilarityMetric(model_names=["model1", "model2", "openai/text-embedding-ada-002"])
+        If `model_names` is None or not provided, a default list of diverse
+        SentenceTransformer models is used:
+        - "sentence-transformers/all-MiniLM-L6-v2"
+        - "sentence-transformers/all-mpnet-base-v2"
+
+    The `evaluate` method returns a dictionary structured as follows:
+    {
+        "embedding_similarity": {
+            "<model_name_1>": {
+                "token_count": <int, token count of the second text using this model's tokenizer>,
+                "similarity": <float, cosine similarity score for this model>
+            },
+            "<model_name_2>": { ... },
+            ...
+        }
+    }
+
+    Note on Text Length:
+        The metric attempts to use each model's specific tokenizer to count tokens.
+        If either input text exceeds a model's configured maximum token limit,
+        that specific model will be skipped for similarity calculation, and a
+        warning will be logged. Tokenizer loading or embedding calculation
+        failures for a model will also result in that model being skipped.
+
+    Performance:
+        Evaluation time increases with the number and size/complexity of the
+        embedding models specified. OpenAI models may also incur API call costs
+        and network latency.
+    """
 
     metric_id = "multi_model_embedding_similarity"
 
@@ -142,16 +194,41 @@ class MultiModelEmbeddingSimilarityMetric(ValidationMetric):
 
     def _get_tokenizer(self, model_name: str):
         if model_name.startswith("openai/"):
+            OPENAI_MAX_TOKENS = {
+                "text-embedding-ada-002": 8191,
+                "gpt-4": 8192,
+                "gpt-3.5-turbo": 4096,
+            }
             base_name = model_name.split("/", 1)[1]
             try:
                 import tiktoken
 
                 tok = tiktoken.encoding_for_model(base_name)
-            except Exception:
+            except Exception:  # Fallback if model-specific encoding fails
                 import tiktoken
 
+                logging.warning(
+                    "tiktoken.encoding_for_model failed for %s. Falling back to gpt2.",
+                    base_name,
+                )
                 tok = tiktoken.get_encoding("gpt2")
-            max_len = getattr(tok, "n_ctx", None)
+
+            max_len = OPENAI_MAX_TOKENS.get(base_name)
+
+            if not isinstance(max_len, int) or max_len <= 0:
+                max_len = getattr(tok, "model_max_length", None)
+
+            if not isinstance(max_len, int) or max_len <= 0:
+                max_len = getattr(tok, "n_ctx", None)
+
+            if not isinstance(max_len, int) or max_len <= 0:
+                max_len = 8191  # Default fallback
+                logging.info(
+                    "Could not determine max_len for %s from properties, defaulting to %d",
+                    model_name,
+                    max_len,
+                )
+
             setattr(tok, "model_max_length", max_len)
             return tok
         try:
@@ -213,3 +290,8 @@ class MultiModelEmbeddingSimilarityMetric(ValidationMetric):
             }
 
         return {"embedding_similarity": results}
+
+
+register_validation_metric( # Added registration
+    MultiModelEmbeddingSimilarityMetric.metric_id, MultiModelEmbeddingSimilarityMetric
+)

@@ -154,7 +154,7 @@ def inspect_engine_command(
 
 @dev_app.command(
     "evaluate-compression",
-    help='Evaluates compressed text against original text using a specified metric.\n\nUsage Examples:\n  compact-memory dev evaluate-compression original.txt summary.txt --metric compression_ratio\n  echo "original text" | compact-memory dev evaluate-compression - summary.txt --metric some_other_metric --metric-params \'{"param": "value"}\'',
+    help='Evaluates compressed text against original text using a specified metric.\n\nUsage Examples:\n  compact-memory dev evaluate-compression original.txt summary.txt --metric compression_ratio\n  echo "original text" | compact-memory dev evaluate-compression - summary.txt --metric some_other_metric --metric-params \'{"param": "value"}\'\n  compact-memory dev evaluate-compression original.txt summary.txt --metric multi_model_embedding_similarity --embedding-model "model1" --embedding-model "model2"\n\nNote: When using \'multi_model_embedding_similarity\', the output will show per-model similarity scores and token counts. If --json is used, the \'embedding_similarity\' key will contain a nested dictionary of these scores. Using multiple embedding models can increase evaluation time.',
 )
 def evaluate_compression_command(  # Renamed
     original_input: str = typer.Argument(
@@ -865,7 +865,7 @@ def inspect_trace_command(  # Renamed
 
 @dev_app.command(
     "evaluate-engines",
-    help="Compress text with each specified engine and compute basic metrics.",
+    help="Compresses text with specified engines and evaluates using a predefined set of metrics (compression_ratio and multi_model_embedding_similarity).\n\nThe --embedding-model option configures models for the multi_model_embedding_similarity metric; otherwise, its defaults are used.\nOutput is always JSON, structured as: {engine_id: {\"compression_ratio\": ..., \"embedding_similarity\": {\"model_1\": ..., \"model_2\": ...}}}.\n\nUsage Example:\n  compact-memory dev evaluate-engines --text \"example text to compress\" --engine none --embedding-model \"sentence-transformers/all-MiniLM-L6-v2\"\n\nPerformance Note: Using multiple embedding models via --embedding-model will increase the time taken for each engine's evaluation.",
 )
 def evaluate_engines_command(
     *,

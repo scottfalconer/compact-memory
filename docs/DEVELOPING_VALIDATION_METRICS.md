@@ -61,27 +61,49 @@ scores = metric.evaluate(original_text="a", compressed_text="b")
 
 ### Multi‑model Similarity
 
-`MultiEmbeddingSimilarityMetric` (metric ID `embedding_similarity_multi`)
-accepts multiple SentenceTransformer model IDs via a `model_names` list. The
-metric reports an averaged `semantic_similarity` score along with individual
-scores for each model and a `token_count` for the evaluated pair. If the token
-count exceeds the configured `max_tokens` limit the pair is skipped.
+`MultiModelEmbeddingSimilarityMetric` (metric ID `multi_model_embedding_similarity`)
+evaluates text similarity using multiple embedding models. It accepts a `model_names`
+list, which can include HuggingFace SentenceTransformer identifiers (e.g.,
+`"sentence-transformers/all-MiniLM-L6-v2"`) or OpenAI model identifiers (e.g.,
+`"openai/text-embedding-ada-002"`).
+
+For each model, it calculates the cosine similarity between the two input texts
+and also determines the token count of the second text (e.g., `compressed_text`
+or `llm_response`) using that specific model's tokenizer.
+
+If `model_names` is not provided during instantiation, a default list of diverse
+SentenceTransformer models is used. The metric will skip evaluation for any model
+if either input text exceeds that model's maximum token limit, logging a warning
+in such cases.
 
 ```python
-from compact_memory.validation.embedding_metrics import MultiEmbeddingSimilarityMetric
+from compact_memory.validation.embedding_metrics import MultiModelEmbeddingSimilarityMetric
 
-metric = MultiEmbeddingSimilarityMetric(
-    model_names=["all-MiniLM-L6-v2", "multi-qa-mpnet-base-dot-v1"],
-    max_tokens=8192,
+metric = MultiModelEmbeddingSimilarityMetric(
+    model_names=["sentence-transformers/all-MiniLM-L6-v2", "openai/text-embedding-ada-002"]
 )
-scores = metric.evaluate(original_text="hello", compressed_text="hi")
+scores = metric.evaluate(original_text="hello world", compressed_text="hello there")
+# Example Output:
 # {
-#   "semantic_similarity": 0.98,
-#   "all-MiniLM-L6-v2": 0.99,
-#   "multi-qa-mpnet-base-dot-v1": 0.97,
-#   "token_count": 4
+#   "embedding_similarity": {
+#     "sentence-transformers/all-MiniLM-L6-v2": {
+#       "similarity": 0.85, # Example value
+#       "token_count": 2    # Example value for "hello there"
+#     },
+#     "openai/text-embedding-ada-002": {
+#       "similarity": 0.88, # Example value
+#       "token_count": 2    # Example value for "hello there"
+#     }
+#   }
 # }
 ```
+
+**Prerequisites:**
+- For HuggingFace SentenceTransformer models: `sentence-transformers` library.
+- For OpenAI models: `tiktoken` library and the `OPENAI_API_KEY` environment variable must be set.
+You can install necessary extras with `pip install compact-memory[embedding]`.
+
+**Performance Note:** Using more, or larger, embedding models will increase evaluation time. OpenAI models also involve API calls which can add latency and costs.
 
 ## LLM Judge Metric
 
