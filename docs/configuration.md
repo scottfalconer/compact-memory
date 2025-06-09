@@ -11,7 +11,7 @@ Compact Memory resolves settings from the following sources, in order of highest
     *Example:* `compact-memory query "Hello" --model-id openai/gpt-4` will use `openai/gpt-4` for this query, regardless of other settings.
 
 2.  **Environment Variables:**
-    You can set specific environment variables to configure Compact Memory globally for your shell session or system.
+    You can set specific environment variables to configure Compact Memory globally for your shell session or system. Any configuration key can be overridden by using the prefix `COMPACT_MEMORY_` followed by the key name in uppercase.
     *   `COMPACT_MEMORY_PATH`: Sets the default path to your memory store.
     *   `COMPACT_MEMORY_DEFAULT_MODEL_ID`: Sets the default model ID for LLM interactions.
     *   `COMPACT_MEMORY_DEFAULT_ENGINE_ID`: Sets the default compression engine ID.
@@ -54,6 +54,8 @@ To see all your current effective configurations and where they are being loaded
 compact-memory config show
 ```
 
+This prints a table of all effective configuration values along with the source of each setting.
+
 To view a specific key:
 
 ```bash
@@ -85,6 +87,8 @@ You can set default values for key options to avoid typing them repeatedly. Thes
     Commands like `compact-memory compress` will use this engine by default if you don't specify one with `--engine`.
 
 *(Note: While `log_file` and `verbose` can be set in config files manually, they are primarily controlled via CLI options for runtime flexibility. The `config set` command currently supports `compact_memory_path`, `default_model_id`, and `default_engine_id` as these are the most common global defaults users might want to persist.)*
+
+Plugins may register additional configuration keys at runtime. Any such keys will automatically appear when running `compact-memory config show` and can be set using `config set`.
 
 
 **Example Workflow:**

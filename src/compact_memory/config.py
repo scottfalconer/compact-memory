@@ -13,6 +13,22 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "log_file": None,  # Default log file path (None means no file logging by default).
 }
 
+
+# Helper registry to allow plugins to extend the default configuration
+def register_defaults(new_defaults: Dict[str, Any]) -> None:
+    """Register additional default configuration values.
+
+    Parameters
+    ----------
+    new_defaults:
+        Mapping of configuration keys to their default values.
+    """
+
+    for key, value in new_defaults.items():
+        if key not in DEFAULT_CONFIG:
+            DEFAULT_CONFIG[key] = value
+
+
 # Configuration file paths
 USER_CONFIG_DIR = pathlib.Path("~/.config/compact_memory").expanduser()
 USER_CONFIG_PATH = USER_CONFIG_DIR / "config.yaml"
@@ -186,10 +202,21 @@ class Config:
                         return value
         return value
 
+    def get_default(self, key: str) -> Optional[Any]:
+        """Return the application default for ``key`` if known."""
+
+        return DEFAULT_CONFIG.get(key)
+
+    def get_all_keys(self) -> Tuple[str, ...]:
+        """Return all known configuration keys."""
+
+        return tuple(DEFAULT_CONFIG.keys())
+
     def set(self, key: str, value: Any, source: str = SOURCE_OVERRIDE) -> bool:
         if key not in DEFAULT_CONFIG:
+            allowed = ", ".join(sorted(self.get_all_keys()))
             print(
-                f"Error: Configuration key '{key}' is not a recognized setting. Allowed keys are: {', '.join(DEFAULT_CONFIG.keys())}",
+                f"Error: Configuration key '{key}' is not a recognized setting. Allowed keys are: {allowed}",
                 file=sys.stderr,
             )
             return False
