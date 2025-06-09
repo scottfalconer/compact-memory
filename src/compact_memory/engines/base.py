@@ -15,7 +15,11 @@ from ..chunker import Chunker, SentenceWindowChunker
 from ..embedding_pipeline import embed_text, get_embedding_dim
 from ..utils import calculate_sha256
 from ..models import BeliefPrototype, RawMemory
-from ..vector_store import InMemoryVectorStore, VectorStore
+from ..vector_store import (
+    InMemoryVectorStore,
+    VectorStore,
+    create_vector_store,
+)
 
 
 @dataclass
@@ -91,7 +95,13 @@ class BaseCompressionEngine:
         self._embed_accepts_preprocess = "preprocess_fn" in sig.parameters
         self.memories: List[Dict[str, Any]] = []
         dim = get_embedding_dim()
-        self.vector_store: VectorStore = vector_store or InMemoryVectorStore(dim)
+        if vector_store is not None:
+            self.vector_store = vector_store
+        else:
+            store_type = self.config.get("vector_store", "in_memory")
+            self.vector_store = create_vector_store(store_type, embedding_dim=dim)
+            # ensure config records chosen store
+            self.config["vector_store"] = store_type
         self.memory_hashes: Set[str] = set()
 
     # --------------------------------------------------
@@ -196,7 +206,7 @@ class BaseCompressionEngine:
             final_compressed_object_preview=truncated[:50],
         )
         trace.add_step(
-            "truncate_content",
+            "truncate",
             {
                 "budget": budget,
                 "original_length": len(text),
@@ -229,6 +239,7 @@ class BaseCompressionEngine:
         with open(os.path.join(path, "entries.json"), "w", encoding="utf-8") as fh:
             json.dump(self.memories, fh)
         np.save(os.path.join(path, "embeddings.npy"), self.embeddings)
+        self.vector_store.save(os.path.join(path, "vector_store"))
 
     # --------------------------------------------------
     def load(self, path: str) -> None:
@@ -238,22 +249,30 @@ class BaseCompressionEngine:
             self.memories = json.load(fh)
         embeddings = np.load(os.path.join(path, "embeddings.npy"))
 
-        self.vector_store = InMemoryVectorStore(embedding_dim=embeddings.shape[1])
+        store_type = self.config.get("vector_store", "in_memory")
+        self.vector_store = create_vector_store(
+            store_type, embedding_dim=embeddings.shape[1]
+        )
+        self.vector_store.load(os.path.join(path, "vector_store"))
 
         # Rebuild memory_hashes and populate vector store
         self.memory_hashes = set()
         for mem_entry, vec in zip(self.memories, embeddings):
             chunk_hash = calculate_sha256(mem_entry["text"])
             self.memory_hashes.add(chunk_hash)
-            proto = BeliefPrototype(prototype_id=mem_entry["id"], vector_row_index=0)
-            self.vector_store.add_prototype(proto, vec.astype(np.float32))
-            memory = RawMemory(
-                memory_id=mem_entry["id"],
-                raw_text_hash=chunk_hash,
-                raw_text=mem_entry["text"],
-                embedding=vec.astype(np.float32).tolist(),
-            )
-            self.vector_store.add_memory(memory)
+            if not getattr(self.vector_store, "prototypes", []):
+                proto = BeliefPrototype(
+                    prototype_id=mem_entry["id"], vector_row_index=0
+                )
+                self.vector_store.add_prototype(proto, vec.astype(np.float32))
+            if not getattr(self.vector_store, "memories", []):
+                memory = RawMemory(
+                    memory_id=mem_entry["id"],
+                    raw_text_hash=chunk_hash,
+                    raw_text=mem_entry["text"],
+                    embedding=vec.astype(np.float32).tolist(),
+                )
+                self.vector_store.add_memory(memory)
 
     @property
     def embeddings(self) -> np.ndarray:
