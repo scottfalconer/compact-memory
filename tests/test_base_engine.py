@@ -6,10 +6,10 @@ from compact_memory.engines import (
     BaseCompressionEngine,
     CompressedMemory,
     CompressionTrace,
-    FirstLastEngine,
-    NoCompressionEngine,
     load_engine,
 )
+from compact_memory.engines.first_last_engine import FirstLastEngine
+from compact_memory.engines.no_compression_engine import NoCompressionEngine
 from compact_memory.utils import calculate_sha256
 # Assuming patch_embedding_model from conftest.py sets up a mock embedding function
 # that BaseCompressionEngine will use, providing deterministic embeddings.

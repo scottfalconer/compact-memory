@@ -16,7 +16,7 @@ from compact_memory.engines.registry import (
 #     id = "dummy_cli_test_eng"
 # register_compression_engine(DummyTestCliEngine.id, DummyTestCliEngine)
 
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 def _env(tmp_path: Path) -> dict[str, str]:

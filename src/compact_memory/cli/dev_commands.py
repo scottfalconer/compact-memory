@@ -976,7 +976,7 @@ def evaluate_engines_command(
         else:
             engine_instance = EngineCls()
 
-        result = engine_instance.compress(text_input, llm_token_budget=budget)
+        result = engine_instance.compress(text_input, budget=budget)
         compressed = result[0] if isinstance(result, tuple) else result
 
         if hasattr(compressed, "text"):

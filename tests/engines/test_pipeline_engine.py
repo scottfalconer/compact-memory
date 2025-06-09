@@ -161,8 +161,7 @@ def test_pipeline_engine_multiple_engines(no_op_engine_config: EngineConfig, fir
 
     # For FirstLastEngine, we need its tokenizer to be mocked for predictable output
     # Patching the _DEFAULT_TOKENIZER in the module FirstLastEngine uses
-    with mock.patch("compact_memory.engines.first_last_engine._DEFAULT_TOKENIZER", None), \
-         mock.patch("compact_memory.token_utils._DEFAULT_TOKENIZER", None): # also for token_utils
+    with mock.patch("compact_memory.engines.first_last_engine._DEFAULT_TOKENIZER", None):
 
         # Create FirstLastEngine instance *after* patching, so it picks up the mocked default
         fle_inst = FirstLastEngine()
