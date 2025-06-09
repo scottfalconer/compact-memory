@@ -1,7 +1,7 @@
 from pathlib import Path
 import yaml
 import os
-import sys # For capturing stderr
+import sys  # For capturing stderr
 
 import pytest
 
@@ -11,12 +11,16 @@ from compact_memory import config as cfg
 def _patch_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     user_dir = tmp_path / "user"
     local_file = tmp_path / ".gmconfig.yaml"
-    llm_models_config_file = tmp_path / "llm_models_config.yaml" # New path for LLM models config
+    llm_models_config_file = (
+        tmp_path / "llm_models_config.yaml"
+    )  # New path for LLM models config
 
     monkeypatch.setattr(cfg, "USER_CONFIG_DIR", user_dir)
     monkeypatch.setattr(cfg, "USER_CONFIG_PATH", user_dir / "config.yaml")
     monkeypatch.setattr(cfg, "LOCAL_CONFIG_PATH", local_file)
-    monkeypatch.setattr(cfg, "LLM_MODELS_CONFIG_PATH", llm_models_config_file) # Patch the new path
+    monkeypatch.setattr(
+        cfg, "LLM_MODELS_CONFIG_PATH", llm_models_config_file
+    )  # Patch the new path
 
     monkeypatch.setattr(
         cfg,
@@ -32,7 +36,7 @@ def _patch_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     )
     monkeypatch.setattr(
         cfg,
-        "SOURCE_LLM_MODELS_CONFIG", # Ensure this source string is also updated if used in asserts
+        "SOURCE_LLM_MODELS_CONFIG",  # Ensure this source string is also updated if used in asserts
         f"llm models config file ({llm_models_config_file})",
         raising=False,
     )
@@ -42,9 +46,11 @@ def _patch_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
 
 @pytest.fixture
-def patched_config_paths(monkeypatch: pytest.MonkeyPatch, tmp_path: Path): # Renamed fixture for clarity
+def patched_config_paths(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):  # Renamed fixture for clarity
     _patch_paths(monkeypatch, tmp_path)
-    return tmp_path # Return tmp_path for creating config files in tests
+    return tmp_path  # Return tmp_path for creating config files in tests
 
 
 def test_defaults(patched_config_paths: Path):
@@ -54,7 +60,9 @@ def test_defaults(patched_config_paths: Path):
     assert src == cfg.SOURCE_DEFAULT
 
 
-def test_user_config_override(monkeypatch: pytest.MonkeyPatch, patched_config_paths: Path):
+def test_user_config_override(
+    monkeypatch: pytest.MonkeyPatch, patched_config_paths: Path
+):
     user_file = cfg.USER_CONFIG_PATH
     user_file.parent.mkdir(parents=True, exist_ok=True)
     user_file.write_text(
@@ -69,7 +77,9 @@ def test_user_config_override(monkeypatch: pytest.MonkeyPatch, patched_config_pa
     assert conf.get_with_source("default_model_id")[1] == cfg.SOURCE_USER_CONFIG
 
 
-def test_local_config_override(monkeypatch: pytest.MonkeyPatch, patched_config_paths: Path):
+def test_local_config_override(
+    monkeypatch: pytest.MonkeyPatch, patched_config_paths: Path
+):
     local_file = cfg.LOCAL_CONFIG_PATH
     local_file.write_text(
         yaml.dump(
@@ -110,7 +120,9 @@ def test_set_and_persist(patched_config_paths: Path):
     assert val == "set/model"
     assert src == cfg.SOURCE_OVERRIDE
     # Create a new Config instance to check persistence
-    _patch_paths(pytest.MonkeyPatch(), patched_config_paths) # Re-patch for new instance
+    _patch_paths(
+        pytest.MonkeyPatch(), patched_config_paths
+    )  # Re-patch for new instance
     reload_conf = cfg.Config()
     val2, src2 = reload_conf.get_with_source("default_model_id")
     assert val2 == "set/model"
@@ -119,19 +131,26 @@ def test_set_and_persist(patched_config_paths: Path):
 
 def test_set_invalid_type(patched_config_paths: Path):
     conf = cfg.Config()
-    assert not conf.set("default_model_id", 12345) # Attempt to set int where str is expected
+    assert not conf.set(
+        "default_model_id", 12345
+    )  # Attempt to set int where str is expected
     val, src = conf.get_with_source("default_model_id")
-    assert val == cfg.DEFAULT_CONFIG["default_model_id"] # Should remain default
+    assert val == cfg.DEFAULT_CONFIG["default_model_id"]  # Should remain default
     assert src == cfg.SOURCE_DEFAULT
 
 
 # --- Tests for LLM Models Config ---
 
+
 def test_load_llm_models_config_success(patched_config_paths: Path):
     llm_config_file = cfg.LLM_MODELS_CONFIG_PATH
     dummy_llm_configs = {
         "gpt-4-turbo": {"provider": "openai", "api_key": "sk-test", "max_tokens": 8000},
-        "local_summarizer": {"provider": "local", "model_path": "/models/summarizer", "device": "cpu"}
+        "local_summarizer": {
+            "provider": "local",
+            "model_path": "/models/summarizer",
+            "device": "cpu",
+        },
     }
     llm_config_file.write_text(yaml.dump(dummy_llm_configs))
 
@@ -139,8 +158,11 @@ def test_load_llm_models_config_success(patched_config_paths: Path):
 
     assert conf.llm_configs == dummy_llm_configs
     assert conf.get_llm_config("gpt-4-turbo") == dummy_llm_configs["gpt-4-turbo"]
-    assert conf.get_llm_config("local_summarizer") == dummy_llm_configs["local_summarizer"]
+    assert (
+        conf.get_llm_config("local_summarizer") == dummy_llm_configs["local_summarizer"]
+    )
     assert conf.get_all_llm_configs() == dummy_llm_configs
+
 
 def test_get_llm_config_non_existent(patched_config_paths: Path):
     llm_config_file = cfg.LLM_MODELS_CONFIG_PATH
@@ -150,15 +172,17 @@ def test_get_llm_config_non_existent(patched_config_paths: Path):
     conf = cfg.Config()
     assert conf.get_llm_config("non_existent_model") is None
 
+
 def test_load_llm_models_config_file_not_found(patched_config_paths: Path):
     # Ensure LLM_MODELS_CONFIG_PATH does not exist (it shouldn't by default in tmp_path)
     conf = cfg.Config()
-    assert conf.llm_configs == {} # Should be empty if file not found
+    assert conf.llm_configs == {}  # Should be empty if file not found
     assert conf.get_all_llm_configs() == {}
+
 
 def test_load_llm_models_config_empty_file(patched_config_paths: Path, capsys):
     llm_config_file = cfg.LLM_MODELS_CONFIG_PATH
-    llm_config_file.write_text("") # Empty file
+    llm_config_file.write_text("")  # Empty file
 
     conf = cfg.Config()
     assert conf.llm_configs == {}
@@ -169,7 +193,7 @@ def test_load_llm_models_config_empty_file(patched_config_paths: Path, capsys):
     # If the file had content like "null" or "- item", then it would warn.
     # For truly empty file, no warning is expected by current code.
 
-    llm_config_file.write_text("null") # content that is not a dict
+    llm_config_file.write_text("null")  # content that is not a dict
     conf_null = cfg.Config()
     assert conf_null.llm_configs == {}
     captured = capsys.readouterr()
@@ -178,11 +202,36 @@ def test_load_llm_models_config_empty_file(patched_config_paths: Path, capsys):
 
 def test_load_llm_models_config_malformed_yaml(patched_config_paths: Path, capsys):
     llm_config_file = cfg.LLM_MODELS_CONFIG_PATH
-    llm_config_file.write_text("gpt-4-turbo: {provider: openai\n  api_key: sk-test") # Malformed YAML
+    llm_config_file.write_text(
+        "gpt-4-turbo: {provider: openai\n  api_key: sk-test"
+    )  # Malformed YAML
 
     conf = cfg.Config()
-    assert conf.llm_configs == {} # Should remain empty on error
+    assert conf.llm_configs == {}  # Should remain empty on error
 
     captured = capsys.readouterr()
     assert "Error parsing LLM models config file" in captured.err
     assert str(llm_config_file) in captured.err
+
+
+def test_config_precedence(monkeypatch: pytest.MonkeyPatch, patched_config_paths: Path):
+    cfg.USER_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    cfg.USER_CONFIG_PATH.write_text(yaml.dump({"default_engine_id": "user"}))
+    cfg.LOCAL_CONFIG_PATH.write_text(yaml.dump({"default_engine_id": "local"}))
+    monkeypatch.setenv(cfg.ENV_VAR_PREFIX + "DEFAULT_ENGINE_ID", "env")
+
+    conf = cfg.Config()
+    assert conf.get("default_engine_id") == "env"
+    assert conf.get_with_source("default_engine_id")[1].startswith(cfg.SOURCE_ENV_VAR)
+
+
+def test_register_defaults_and_env(
+    monkeypatch: pytest.MonkeyPatch, patched_config_paths: Path
+):
+    cfg.register_defaults({"new_test_key": "from_default"})
+    monkeypatch.setenv(cfg.ENV_VAR_PREFIX + "NEW_TEST_KEY", "env_val")
+
+    conf = cfg.Config()
+    assert "new_test_key" in conf.get_all_keys()
+    assert conf.get("new_test_key") == "env_val"
+    assert conf.get_with_source("new_test_key")[1].startswith(cfg.SOURCE_ENV_VAR)
