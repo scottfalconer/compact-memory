@@ -395,25 +395,46 @@ def _get_one_shot_compression_engine(
             )
             raise typer.Exit(code=1)
         try:
-            pipeline_config_json = json.loads(pipeline_config_str)
-            if not isinstance(pipeline_config_json, list):
+            pipeline_config_json = json.loads(pipeline_config_str) # Parsed JSON object
+
+            if not isinstance(pipeline_config_json, dict):
                 typer.secho(
-                    "Error: Pipeline config JSON must be a list of engine configurations.",
+                    "Error: Pipeline config JSON must be a dictionary (object) with an 'engines' key.",
                     fg=typer.colors.RED,
                     err=True,
                 )
                 raise typer.Exit(code=1)
-            engine_configs = [
-                EngineConfig(**config) for config in pipeline_config_json
-            ]
-            pipeline_config_obj = PipelineConfig(engine_configs=engine_configs) # Renamed to avoid conflict
-            # Regarding llm_provider for PipelineEngine:
-            # Assuming PipelineEngine itself does not directly take an llm_provider,
-            # but its constituent engines might. The EngineConfig would need to handle
-            # passing necessary llm parameters to those, or those engines would
-            # fetch providers themselves using context if they are context-aware.
-            # For now, PipelineEngine is instantiated directly with its config.
-            return PipelineEngine(config=pipeline_config_obj)
+
+            if "engines" not in pipeline_config_json:
+                typer.secho(
+                    "Error: Pipeline config JSON dictionary must contain an 'engines' key.",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+
+            engine_configs_list_json = pipeline_config_json["engines"]
+            if not isinstance(engine_configs_list_json, list):
+                typer.secho(
+                    "Error: The 'engines' key in pipeline config JSON must contain a list of engine configurations.",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+
+            engine_configs = []
+            for config_dict in engine_configs_list_json:
+                if not isinstance(config_dict, dict):
+                    typer.secho(
+                        f"Error: Each item in the 'engines' list must be a dictionary, found: {type(config_dict)}",
+                        fg=typer.colors.RED,
+                        err=True,
+                    )
+                    raise typer.Exit(code=1)
+                engine_configs.append(EngineConfig(**config_dict))
+
+            pipeline_config_obj = PipelineConfig(engines=engine_configs)
+            return PipelineEngine(pipeline_config_obj) # Pass PipelineConfig to PipelineEngine
         except json.JSONDecodeError as e:
             typer.secho(
                 f"Error decoding pipeline config JSON: {e}",
@@ -421,14 +442,14 @@ def _get_one_shot_compression_engine(
                 err=True,
             )
             raise typer.Exit(code=1)
-        except TypeError as e: # More specific for EngineConfig(**config) issues
+        except TypeError as e:
             typer.secho(
-                f"Error in pipeline engine configuration structure: {e}. Ensure each engine config has valid parameters.",
+                f"Error in pipeline engine configuration structure (e.g., invalid parameters for EngineConfig): {e}",
                 fg=typer.colors.RED,
                 err=True,
             )
             raise typer.Exit(code=1)
-        except Exception as e: # Catch-all for other instantiation errors
+        except Exception as e:
             typer.secho(
                 f"Error creating pipeline engine from config: {e}",
                 fg=typer.colors.RED,

@@ -6,6 +6,7 @@ from compact_memory.engines.pipeline_engine import (
     EngineConfig,
     PipelineConfig,
 )
+from typing import Optional
 from compact_memory.engines.base import (
     BaseCompressionEngine,
     CompressedMemory,

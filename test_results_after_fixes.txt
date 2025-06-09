@@ -1,0 +1,397 @@
+============================= test session starts ==============================
+platform linux -- Python 3.10.17, pytest-8.3.5, pluggy-1.5.0
+rootdir: /app
+configfile: pyproject.toml
+plugins: anyio-4.9.0, cov-6.1.1, json-report-1.5.0, metadata-3.1.1
+collected 205 items
+
+tests/engines/test_neocortex_transfer.py ........                        [  3%]
+tests/engines/test_pipeline_engine.py ..F..                              [  6%]
+tests/engines/test_readagent_gist_engine.py ...........F..               [ 13%]
+tests/test_base_engine.py ..F......                                      [ 17%]
+tests/test_chunker.py ...........                                        [ 22%]
+tests/test_cli_compress.py .................F...FF                       [ 34%]
+tests/test_cli_compress_integration.py ...................               [ 43%]
+tests/test_cli_engine.py .......F                                        [ 47%]
+tests/test_cli_ingest_query.py s                                         [ 47%]
+tests/test_cli_metrics.py .....F                                         [ 50%]
+tests/test_cli_utils.py ..................                               [ 59%]
+tests/test_compression_metrics.py .                                      [ 60%]
+tests/test_config.py ............                                        [ 65%]
+tests/test_conversational_turn.py ...                                    [ 67%]
+tests/test_embedding_pipeline.py ....                                    [ 69%]
+tests/test_embedding_similarity_metric.py ....                           [ 71%]
+tests/test_engine_registry.py .                                          [ 71%]
+tests/test_hf_metrics_simple.py .s                                       [ 72%]
+tests/test_llm_judge_metric.py ..                                        [ 73%]
+tests/test_llm_providers.py ..........                                   [ 78%]
+tests/test_local_llm.py .s..                                             [ 80%]
+tests/test_main.py ..                                                    [ 81%]
+tests/test_memory_creation.py .......                                    [ 84%]
+tests/test_multi_model_embedding_similarity_metric.py ........           [ 88%]
+tests/test_optional_dependency_errors.py ..                              [ 89%]
+tests/test_plugin_loader.py ...                                          [ 91%]
+tests/test_segmentation.py ..                                            [ 92%]
+tests/test_stopword_pruner_engine.py ...........                         [ 97%]
+tests/test_token_limits.py ..                                            [ 98%]
+tests/test_vector_store.py ...                                           [100%]
+
+=================================== FAILURES ===================================
+____________________ test_pipeline_engine_multiple_engines _____________________
+
+no_op_engine_config = EngineConfig(engine_name='none', engine_params={})
+first_last_engine_config = EngineConfig(engine_name='first_last', engine_params={})
+
+    def test_pipeline_engine_multiple_engines(no_op_engine_config: EngineConfig, first_last_engine_config: EngineConfig):
+        text = "one two three four five six seven eight nine ten" # 10 words
+        budget_fle = 4 # For FirstLastEngine: keep first 2, last 2 words. -> "one two nine ten"
+
+        # Pipeline: NoOpEngine -> FirstLastEngine
+        # NoOpEngine with large budget won't change the text.
+        # FirstLastEngine will then process the original text.
+        pipeline_config = PipelineConfig(engines=[no_op_engine_config, first_last_engine_config])
+        engine = PipelineEngine(config_or_engines=pipeline_config)
+
+        # Mock tokenizer for FirstLastEngine part of the pipeline
+        # This is complex because the instance of FirstLastEngine is created inside PipelineEngine.
+        # We'd have to mock where get_compression_engine / EngineConfig.create instantiates it.
+        # Simpler: Rely on FirstLastEngine's fallback to split() if tiktoken is not available,
+        # or ensure tests for FirstLastEngine itself cover tokenizer variations.
+        # For this pipeline test, focus on data flow.
+        # We'll assume FirstLastEngine is configured/mocked to behave predictably (e.g. uses split())
+
+        # To make FirstLastEngine predictable without complex mocking here,
+        # we can instantiate it manually with a mocked/simple tokenizer and pass list of instances
+        mocked_fle = FirstLastEngine()
+
+        # We need to ensure the FirstLastEngine instance within the pipeline uses a mock tokenizer for decode.
+        # This is tricky. Let's assume it falls back to string split and join for this test for simplicity of setup.
+        # If _DEFAULT_TOKENIZER is None in first_last_engine.py, it uses split() for tokenization part.
+        # The decode part is `tokenizer.decode`. If we pass `tokenizer=str.split` to FLE.compress, it fails.
+        # The `tokenizer` param in FLE.compress is for the *decode* step.
+        # The tokenization part uses `compact_memory.token_utils.tokenize_text`
+
+        # For pipeline, it's easier to test if sub-engines are simple or have globally patched tokenizers.
+        # Let's assume the simple split/join for FLE for this test.
+
+        # Create instances for the pipeline
+        no_op_inst = NoCompressionEngine()
+
+        # For FirstLastEngine, we need its tokenizer to be mocked for predictable output
+        # Patching the _DEFAULT_TOKENIZER in the module FirstLastEngine uses
+        with mock.patch("compact_memory.engines.first_last_engine._DEFAULT_TOKENIZER", None):
+
+            # Create FirstLastEngine instance *after* patching, so it picks up the mocked default
+            fle_inst = FirstLastEngine()
+
+            # Now create pipeline with instances
+            engine_instances = PipelineEngine(config_or_engines=[no_op_inst, fle_inst])
+
+            # The 'tokenizer' argument to engine.compress is for the sub-engines if they accept it.
+            # FirstLastEngine's compress accepts 'tokenizer' for its decode step.
+            # NoOpEngine's compress also accepts 'tokenizer'.
+            # PipelineEngine passes kwargs including 'tokenizer' to its sub-engines.
+
+            # Define a mock decode function to be passed as 'tokenizer' argument
+            def mock_decode_func(tokens): return " ".join(tokens)
+
+            result = engine_instances.compress(text, budget_fle, tokenizer=mock_decode_func)
+
+            assert isinstance(result, CompressedMemory)
+            expected_text_after_fle = "one two nine ten"
+>           assert result.text == expected_text_after_fle
+E           AssertionError: assert 'o n e   t w ...i n e   t e n' == 'one two nine ten'
+E
+E             - one two nine ten
+E             + o n e   t w o   t h r e e   f o u r   f i v e   s i x   s e v e n   e i g h t   n i n e   t e n o n e   t w o   t h r e e   f o u r   f i v e   s i x   s e v e n   e i g h t   n i n e   t e n
+
+tests/engines/test_pipeline_engine.py:185: AssertionError
+___ TestReadAgentGistEngine.test_readagent_gist_engine_cli_uses_default_llm ____
+
+self = <test_readagent_gist_engine.TestReadAgentGistEngine testMethod=test_readagent_gist_engine_cli_uses_default_llm>
+mock_generate_response = <MagicMock name='generate_response' id='140549562627264'>
+
+    @patch(
+        "compact_memory.llm_providers.local_provider.LocalTransformersProvider.generate_response"
+    )
+    def test_readagent_gist_engine_cli_uses_default_llm(self, mock_generate_response):
+        runner = CliRunner()
+        # This is the text that the ReadAgentGistEngine will output as the compressed result,
+        # as it's the return value of the mocked LLM call.
+        mock_llm_output = "Mocked LLM response for tiny-gpt2"
+        mock_generate_response.return_value = mock_llm_output
+
+        original_model_id = DEFAULT_CONFIG["default_model_id"]
+        DEFAULT_CONFIG["default_model_id"] = "tiny-gpt2"
+        # Assumption: 'tiny-gpt2' is in llm_models_config.yaml and configured to use the 'local' provider.
+        # The 'local' provider is LocalTransformersProvider.
+        # ReadAgentGistEngine's default gist_model_name is 'distilgpt2' and default gist_length is 100.
+
+        try:
+            result = runner.invoke(
+                app,
+                [
+                    "compress",
+                    "--text",
+                    "Test document for ReadAgentGistEngine CLI.",
+                    "--budget",  # CLI budget is for the final output. ReadAgentGistEngine produces one LLM output as its result.
+                    "50",  # If LLM output is >50, it would be truncated by the CLI wrapper normally.
+                    # Here, mock_llm_output is shorter than 50.
+                    "--engine",
+                    "read_agent_gist",
+                    # No --model-id, so it should pick up default_model_id from global config to select the provider.
+                ],
+            )
+
+>           self.assertEqual(
+                result.exit_code,
+                0,
+                msg=f"CLI Error: {result.stdout} {result.exception}",
+            )
+E           AssertionError: 1 != 0 : CLI Error: Error: Compression engine 'read_agent_gist' returned an unexpected result type: <class 'tuple'>
+E            1
+
+tests/engines/test_readagent_gist_engine.py:298: AssertionError
+____________________ test_first_last_engine_compress_output ____________________
+
+    @mock.patch("compact_memory.engines.first_last_engine._DEFAULT_TOKENIZER", None) # Ensure tiktoken is not picked up if present
+    def test_first_last_engine_compress_output():
+        engine_config = {"test_cfg": "fle_value"}
+        engine = FirstLastEngine(config=engine_config)
+        text = "one two three four five six seven eight nine ten" # 10 words
+
+        # Mock the tokenizer used by FirstLastEngine for deterministic behavior
+        # The engine uses compact_memory.token_utils.tokenize_text, which takes the tokenizer
+        # and the text. Then it uses tokenizer.decode().
+
+        with mock.patch("compact_memory.token_utils.tokenize_text", side_effect=lambda tok, txt: txt.split()) as mock_tokenize_text, \
+             mock.patch.object(engine._chunker, "tokenizer", create=True) as mock_engine_tokenizer: # if engine has own tokenizer for some reason
+            # This part is tricky as FirstLastEngine gets tokenizer from _DEFAULT_TOKENIZER or kwarg
+            # Let's assume we pass it directly or it falls back to split() if _DEFAULT_TOKENIZER is None (mocked above)
+
+            # Test case 1: budget allows all tokens
+            budget_all = 10
+            result_all = engine.compress(text, budget_all, tokenizer=mock_decode) # Pass mock_decode as tokenizer, it will be used for decode
+                                                                                # tokenize_text will use its default split due to _DEFAULT_TOKENIZER mock
+
+            assert isinstance(result_all, CompressedMemory)
+>           assert result_all.text == text # Should keep all
+E           AssertionError: assert 'o n e   t w ...i n e   t e n' == 'one two thre...ight nine ten'
+E
+E             - one two three four five six seven eight nine ten
+E             + o n e   t w o   t h r e e   f o u r   f i v e   s i x   s e v e n   e i g h t   n i n e   t e n o n e   t w o   t h r e e   f o u r   f i v e   s i x   s e v e n   e i g h t   n i n e   t e n
+
+tests/test_base_engine.py:141: AssertionError
+___________________ test_cli_compress_pipeline_engine_valid ____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-swebot/pytest-1/test_cli_compress_pipeline_eng0')
+
+    def test_cli_compress_pipeline_engine_valid(tmp_path: Path):
+        """Test valid PipelineEngine usage with a simple pipeline."""
+        pipeline_config_json = """
+        {
+          "engines": [
+            {"engine_name": "NoCompressionEngine", "engine_params": {}},
+            {"engine_name": "FirstLastEngine", "engine_params": {"first_n": 2, "last_n": 2, "llm_token_budget": 10}}
+          ]
+        }
+        """
+        text_to_compress = "one two three four five six seven eight nine ten"
+        # FirstLastEngine (first_n=2, last_n=2) on "one two three four five six seven eight nine ten"
+        # Assuming space as delimiter by default if tiktoken not found.
+        # Output: "one two nine ten"
+        expected_output = "one two nine ten"
+
+        result = runner.invoke(app, [
+            "compress",
+            "--engine", "pipeline",
+            "--pipeline-config", pipeline_config_json,
+            "--text", text_to_compress,
+            "--budget", "10",  # Overall budget for the compress command
+        ], env=_env(tmp_path))
+
+>       assert result.exit_code == 0, f"CLI Error: {result.stderr}"
+E       AssertionError: CLI Error: Error: Pipeline config JSON must be a list of engine configurations.
+E         Error creating pipeline engine from config:
+E
+E       assert 1 == 0
+E        +  where 1 = <Result SystemExit(1)>.exit_code
+
+tests/test_cli_compress.py:461: AssertionError
+_____________ test_cli_compress_pipeline_engine_unknown_sub_engine _____________
+
+tmp_path = PosixPath('/tmp/pytest-of-swebot/pytest-1/test_cli_compress_pipeline_eng3')
+
+    def test_cli_compress_pipeline_engine_unknown_sub_engine(tmp_path: Path):
+        """Test PipelineEngine with an unknown engine_name in its config."""
+        pipeline_config_json = """
+        {
+          "engines": [
+            {"engine_name": "ThisEngineDoesNotExist", "engine_params": {}}
+          ]
+        }
+        """
+        result = runner.invoke(app, [
+            "compress",
+            "--engine", "pipeline",
+            "--pipeline-config", pipeline_config_json,
+            "--text", "some text",
+            "--budget", "10",
+        ], env=_env(tmp_path))
+
+        assert result.exit_code != 0
+        # The error message comes from the registry inside _get_one_shot_compression_engine
+>       assert "Unknown one-shot compression engine 'ThisEngineDoesNotExist'" in result.stderr
+E       assert "Unknown one-shot compression engine 'ThisEngineDoesNotExist'" in 'Error: Pipeline config JSON must be a list of engine configurations.\nError creating pipeline engine from config: \n'
+E        +  where 'Error: Pipeline config JSON must be a list of engine configurations.\nError creating pipeline engine from config: \n' = <Result SystemExit(1)>.stderr
+
+tests/test_cli_compress.py:570: AssertionError
+__________ test_cli_compress_pipeline_engine_invalid_config_structure __________
+
+tmp_path = PosixPath('/tmp/pytest-of-swebot/pytest-1/test_cli_compress_pipeline_eng4')
+
+    def test_cli_compress_pipeline_engine_invalid_config_structure(tmp_path: Path):
+        """Test PipelineEngine with a structurally invalid (but valid JSON) config."""
+        # Valid JSON, but not the expected structure (e.g., 'engines' key missing)
+        invalid_structure_json = '{"not_engines_key": []}'
+        result = runner.invoke(app, [
+            "compress",
+            "--engine", "pipeline",
+            "--pipeline-config", invalid_structure_json,
+            "--text", "some text",
+            "--budget", "10",
+        ], env=_env(tmp_path))
+        assert result.exit_code != 0
+        assert "Error creating pipeline engine from config" in result.stderr # General error
+
+        # Valid JSON, 'engines' is not a list
+        invalid_structure_json_2 = '{"engines": {"engine_name": "NoCompressionEngine"}}'
+        result_2 = runner.invoke(app, [
+            "compress",
+            "--engine", "pipeline",
+            "--pipeline-config", invalid_structure_json_2,
+            "--text", "some text",
+            "--budget", "10",
+        ], env=_env(tmp_path))
+        assert result_2.exit_code != 0
+>       assert "Pipeline config JSON must be a list" in result_2.stderr.lower() # Specific error from validation
+E       AssertionError: assert 'Pipeline config JSON must be a list' in 'error: pipeline config json must be a list of engine configurations.\nerror creating pipeline engine from config: \n'
+E        +  where 'error: pipeline config json must be a list of engine configurations.\nerror creating pipeline engine from config: \n' = <built-in method lower of str object at 0x7fd43ecd07c0>()
+E        +    where <built-in method lower of str object at 0x7fd43ecd07c0> = 'Error: Pipeline config JSON must be a list of engine configurations.\nError creating pipeline engine from config: \n'.lower
+E        +      where 'Error: Pipeline config JSON must be a list of engine configurations.\nError creating pipeline engine from config: \n' = <Result SystemExit(1)>.stderr
+
+tests/test_cli_compress.py:597: AssertionError
+__________________ test_dev_evaluate_engines_pipeline_engine ___________________
+
+tmp_path = PosixPath('/tmp/pytest-of-swebot/pytest-1/test_dev_evaluate_engines_pipe0')
+patch_embedding_model = <function _load_model at 0x7fd451e03010>
+
+    def test_dev_evaluate_engines_pipeline_engine(tmp_path: Path, patch_embedding_model):
+        """Test the 'dev evaluate-engines' command with the pipeline engine."""
+        test_text = "This is a test sentence for pipeline evaluation."
+        # Using the global runner instance
+        result = runner.invoke(
+            app,
+            [
+                "dev",
+                "evaluate-engines",
+                "--text",
+                test_text,
+                "--engine",
+                "pipeline",
+                # No budget specified, should use default.
+                # An empty pipeline (default config) should not depend on embedding models for this test.
+            ],
+            env=_env(tmp_path),
+        )
+
+>       assert result.exit_code == 0, f"CLI Error: {result.stderr}\nStdout: {result.stdout}"
+E       AssertionError: CLI Error:
+E         Stdout:
+E       assert 1 == 0
+E        +  where 1 = <Result KeyError('compression_ratio')>.exit_code
+
+tests/test_cli_engine.py:196: AssertionError
+____________________ test_evaluate_engines_multi_model_cli _____________________
+
+tmp_path = PosixPath('/tmp/pytest-of-swebot/pytest-1/test_evaluate_engines_multi_mo0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7fd43e31cee0>
+
+    def test_evaluate_engines_multi_model_cli(tmp_path: Path, monkeypatch):
+        test_text = "This is example text for engine evaluation."
+        engine_id = "none"
+        # The evaluate-engines command runs a fixed set of metrics, including
+        # MultiModelEmbeddingSimilarityMetric (results under "embedding_similarity" key)
+        # and CompressionRatioMetric (results under "compression_ratio" key).
+
+        # Mock for MultiModelEmbeddingSimilarityMetric.evaluate
+        mms_evaluate_path = "compact_memory.validation.embedding_metrics.MultiModelEmbeddingSimilarityMetric.evaluate"
+        mock_mms_evaluate_method = MagicMock()
+        monkeypatch.setattr(mms_evaluate_path, mock_mms_evaluate_method)
+
+        # Mock for CompressionRatioMetric.evaluate - to prevent it from actually calculating
+        # and to control its output value.
+        cr_evaluate_path = "compact_memory.validation.compression_metrics.CompressionRatioMetric.evaluate" # Corrected path
+        mock_cr_evaluate_method = MagicMock(return_value={"compression_ratio": 0.5})
+        monkeypatch.setattr(cr_evaluate_path, mock_cr_evaluate_method)
+
+        # Scenario 1 (was default run, now explicit): Multiple --embedding-model flags
+        mock_mms_data_scen1 = {
+            "embedding_similarity": { # This is the structure MultiModelEmbeddingSimilarityMetric.evaluate returns
+                "mock-model-1": {"similarity": 0.81, "token_count": 11},
+                "mock-model-2": {"similarity": 0.91, "token_count": 21}
+            }
+        }
+        mock_mms_evaluate_method.return_value = mock_mms_data_scen1
+
+        result_scen1 = runner.invoke(
+            app,
+            [
+                "dev", "evaluate-engines", "--text", test_text,
+                "--engine", engine_id,
+                # No --metrics flag, it runs default metrics including MultiModel...
+                "--embedding-model", "mock-model-1",
+                "--embedding-model", "mock-model-2"
+            ],
+            env=_env(tmp_path)
+        )
+        if result_scen1.exit_code != 0:
+            print(f"Scenario 1 STDOUT: {result_scen1.stdout}")
+            print(f"Scenario 1 STDERR: {result_scen1.stderr}")
+>       assert result_scen1.exit_code == 0
+E       assert 1 == 0
+E        +  where 1 = <Result TypeError("NoCompressionEngine.compress() missing 1 required positional argument: 'llm_token_budget'")>.exit_code
+
+tests/test_cli_metrics.py:178: AssertionError
+----------------------------- Captured stdout call -----------------------------
+Scenario 1 STDOUT:
+Scenario 1 STDERR:
+=============================== warnings summary ===============================
+../home/swebot/.local/lib/python3.10/site-packages/faiss/loader.py:49
+  /home/swebot/.local/lib/python3.10/site-packages/faiss/loader.py:49: DeprecationWarning: numpy.core._multiarray_umath is deprecated and has been renamed to numpy._core._multiarray_umath. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core._multiarray_umath.__cpu_features__.
+    from numpy.core._multiarray_umath import __cpu_features__
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+tests/test_cli_metrics.py::test_evaluate_compression_cli
+  /home/swebot/.local/lib/python3.10/site-packages/compact_memory/cli/dev_commands.py:267: DeprecationWarning: MultiEmbeddingSimilarityMetric is deprecated and will be removed in a future version. Use MultiModelEmbeddingSimilarityMetric instead.
+    metric_instance = MetricCls(**params)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/engines/test_pipeline_engine.py::test_pipeline_engine_multiple_engines
+FAILED tests/engines/test_readagent_gist_engine.py::TestReadAgentGistEngine::test_readagent_gist_engine_cli_uses_default_llm
+FAILED tests/test_base_engine.py::test_first_last_engine_compress_output - As...
+FAILED tests/test_cli_compress.py::test_cli_compress_pipeline_engine_valid - ...
+FAILED tests/test_cli_compress.py::test_cli_compress_pipeline_engine_unknown_sub_engine
+FAILED tests/test_cli_compress.py::test_cli_compress_pipeline_engine_invalid_config_structure
+FAILED tests/test_cli_engine.py::test_dev_evaluate_engines_pipeline_engine - ...
+FAILED tests/test_cli_metrics.py::test_evaluate_engines_multi_model_cli - ass...
+============= 8 failed, 194 passed, 3 skipped, 5 warnings in 7.93s =============

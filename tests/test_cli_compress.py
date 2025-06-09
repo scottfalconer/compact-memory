@@ -142,10 +142,10 @@ def test_compress_directory_recursive(tmp_path: Path):
     assert result.exit_code == 0
     expected_output_file = out_dir / "compressed_output.txt"
     assert expected_output_file.exists()
-    # The 'none' engine with budget 5 on "aaa\n\nbbb" will likely truncate.
-    # Assuming simple character truncation for 'none' engine for this test's purpose.
-    # "aaa" is 3 chars, "\n\n" is 2 chars. Total 5.
-    assert expected_output_file.read_text() == "aaa\n\nb"
+    # The 'none' engine with budget 5 on "aaa\n\nbbb".
+    # 'none' engine uses token-based truncation. "aaa\n\nbbb" is 2 tokens via str.split()
+    # or a small number of tokens via tiktoken, both <= budget 5. So, no truncation is expected.
+    assert expected_output_file.read_text() == "aaa\n\nbbb"
 
 
 def test_compress_invalid_combo(tmp_path: Path):

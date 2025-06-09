@@ -165,7 +165,7 @@ class ReadAgentGistEngine(BaseCompressionEngine):
         text_or_chunks: Union[str, List[str]],
         llm_token_budget: int,
         **kwargs: Any,
-    ) -> Tuple[CompressedMemory, CompressionTrace]:
+    ) -> CompressedMemory:
         start_time = time.monotonic()
         trace_steps = []
         query: Optional[str] = kwargs.get("query", None)
@@ -208,7 +208,11 @@ class ReadAgentGistEngine(BaseCompressionEngine):
                 output_summary={"compressed_length": 0, "text": ""},
                 processing_ms=processing_time_ms,
             )
-            return CompressedMemory(text=""), trace
+            cm = CompressedMemory(text="")
+            cm.trace = trace
+            cm.engine_id = self.id
+            cm.engine_config = self.config
+            return cm
 
         episode_gists_texts: List[str] = []
         for i, episode_text in enumerate(episodes):
@@ -428,18 +432,19 @@ class ReadAgentGistEngine(BaseCompressionEngine):
             processing_ms=processing_time_ms,
             final_compressed_object_preview=final_text[:100],
         )
-        return (
-            CompressedMemory(
-                text=final_text,
-                metadata={
-                    "num_episodes": len(episodes),
-                    "num_gists": len(episode_gists_texts),
-                    "query_processed": bool(query),
-                    "final_answer_preview_if_qa": final_text[:100] if query else None,
-                },
-            ),
-            trace,
+        cm = CompressedMemory(
+            text=final_text,
+            metadata={
+                "num_episodes": len(episodes),
+                "num_gists": len(episode_gists_texts),
+                "query_processed": bool(query),
+                "final_answer_preview_if_qa": final_text[:100] if query else None,
+            },
         )
+        cm.trace = trace
+        cm.engine_id = self.id # Ensure engine_id is set
+        cm.engine_config = self.config # Ensure engine_config is set
+        return cm
 
     def _compress_chunk(self, chunk_text: str) -> str:
         if not chunk_text.strip():
