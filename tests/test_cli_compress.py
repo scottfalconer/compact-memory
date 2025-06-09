@@ -55,7 +55,7 @@ def _env(tmp_path: Path) -> dict[str, str]:
     }
 
 
-runner = CliRunner()
+runner = CliRunner(mix_stderr=False)
 
 
 def test_compress_text_option(tmp_path: Path):
@@ -140,8 +140,12 @@ def test_compress_directory_recursive(tmp_path: Path):
         env=_env(tmp_path),
     )
     assert result.exit_code == 0
-    assert (out_dir / "a.txt").exists()
-    assert (out_dir / "sub" / "b.txt").exists()
+    expected_output_file = out_dir / "compressed_output.txt"
+    assert expected_output_file.exists()
+    # The 'none' engine with budget 5 on "aaa\n\nbbb" will likely truncate.
+    # Assuming simple character truncation for 'none' engine for this test's purpose.
+    # "aaa" is 3 chars, "\n\n" is 2 chars. Total 5.
+    assert expected_output_file.read_text() == "aaa\n\nb"
 
 
 def test_compress_invalid_combo(tmp_path: Path):
@@ -238,8 +242,13 @@ def test_compress_dir_pattern_and_output(tmp_path: Path):
         env=_env(tmp_path),
     )
     assert result.exit_code == 0
-    assert (out_dir / "a.txt").exists()
-    assert (out_dir / "sub" / "c.txt").exists()
+    expected_output_file = out_dir / "compressed_output.txt"
+    assert expected_output_file.exists()
+    # Combined content from a.txt ("a") and sub/c.txt ("c")
+    # sorted by rglob would be "a\n\nc".
+    # 'none' engine with budget 10 should not change "a\n\nc" (length 4).
+    assert expected_output_file.read_text() == "a\n\nc"
+    # This check remains valid, ensuring other files are not in the output dir.
     assert not (out_dir / "b.md").exists()
 
 

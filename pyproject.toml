@@ -14,7 +14,7 @@ dependencies = [
     "tiktoken",
     "numpy",
     "faiss-cpu",
-    "click",
+    "click>=8.1.7",
     "tqdm",
     "pydantic>=2.0",
     "pyyaml",

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import warnings
+
 """Embedding-based validation metrics."""
 
 from typing import Any, Dict, Optional, Sequence, List
