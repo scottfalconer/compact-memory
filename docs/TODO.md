@@ -84,3 +84,9 @@ This file tracks outstanding work based on the earlier project vision and the la
 - **Standardized Rich Metadata for Memory Items:**
     - Define a more structured representation for individual memory items in the base system (e.g., a `BaseMemoryEntry` dataclass).
     - This could include fields like: `creation_timestamp`, `last_accessed_timestamp`, `access_count`, `strength_score` (generic, engine-defined meaning), `status_tags` (extensible list for states like 'new', 'archived'), and potentially `linked_item_ids`. This would provide a richer substrate for engines and system-level processes like maintenance or advanced retrieval.
+
+## CLI Documentation & Usability
+- Document global `--provider`, `--provider-url`, and `--provider-key` options in `docs/cli_reference.md` and `docs/USAGE.md`.
+- Mention these options in the README quick-start section.
+- Refactor CLI startup to delay loading heavy optional dependencies so `--help` runs quickly.
+- Add cross-links to `docs/configuration.md` for environment variables used by CLI.
