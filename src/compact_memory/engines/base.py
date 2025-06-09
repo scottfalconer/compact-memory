@@ -6,6 +6,7 @@ import json
 import os
 import uuid
 import inspect
+import time
 
 import numpy as np
 
@@ -39,6 +40,12 @@ class CompressionTrace:
     output_summary: Dict[str, Any] = field(default_factory=dict)
     processing_ms: float | None = None
     final_compressed_object_preview: Optional[str] = None
+    original_tokens: int | None = None
+    compressed_tokens: int | None = None
+
+    def add_step(self, step_type: str, details: Dict[str, Any]) -> None:
+        """Append a step entry to the trace."""
+        self.steps.append({"type": step_type, "details": details})
 
 
 class BaseCompressionEngine:
@@ -178,15 +185,26 @@ class BaseCompressionEngine:
         previous_compression_result: Optional[CompressedMemory] = None,
     ) -> CompressedMemory:
         """Naive compression via truncation."""
-
+        start = time.monotonic()
         truncated = text[:budget]
+
         trace = CompressionTrace(
-            engine_name="base_truncate",  # Or perhaps self.id for consistency
+            engine_name="base_truncate",
             strategy_params={"budget": budget},
             input_summary={"original_length": len(text)},
-            steps=[{"type": "truncate", "details": {"budget": budget}}],
             output_summary={"compressed_length": len(truncated)},
+            final_compressed_object_preview=truncated[:50],
         )
+        trace.add_step(
+            "truncate_content",
+            {
+                "budget": budget,
+                "original_length": len(text),
+                "compressed_length": len(truncated),
+            },
+        )
+        trace.processing_ms = (time.monotonic() - start) * 1000
+
         return CompressedMemory(
             text=truncated,
             trace=trace,

@@ -4,6 +4,7 @@ from typing import Any, List, Union, Optional
 import re
 
 from compact_memory.token_utils import tokenize_text, truncate_text
+import time
 from compact_memory.spacy_utils import get_nlp, simple_sentences
 
 from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
@@ -138,6 +139,7 @@ class StopwordPrunerEngine(BaseCompressionEngine):
 
         tokenizer = tokenizer or (lambda t: t.split())
         orig_tokens = len(tokenize_text(tokenizer, text))
+        start = time.monotonic()
 
         if llm_token_budget is not None:
             compressed_text = truncate_text(
@@ -151,18 +153,29 @@ class StopwordPrunerEngine(BaseCompressionEngine):
             engine_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
             input_summary={"input_length": len(text), "input_tokens": orig_tokens},
-            steps=[
-                {"type": "remove_stopwords", "removed": removed_counts["stopwords"]},
-                {"type": "remove_fillers", "removed": removed_counts["fillers"]},
-                {"type": "remove_short", "removed": removed_counts["short"]},
-                {"type": "remove_duplicates", "removed": removed_counts["duplicates"]},
-            ],
             output_summary={
                 "final_length": len(compressed_text),
                 "final_tokens": compressed_tokens,
             },
             final_compressed_object_preview=compressed_text[:50],
         )
+        trace.add_step(
+            "remove_stopwords",
+            {"removed": removed_counts["stopwords"]},
+        )
+        trace.add_step(
+            "remove_fillers",
+            {"removed": removed_counts["fillers"]},
+        )
+        trace.add_step(
+            "remove_short",
+            {"removed": removed_counts["short"]},
+        )
+        trace.add_step(
+            "remove_duplicates",
+            {"removed": removed_counts["duplicates"]},
+        )
+        trace.processing_ms = (time.monotonic() - start) * 1000
         compressed.trace = trace
         compressed.engine_id = self.id
         compressed.engine_config = self.config

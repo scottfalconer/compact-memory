@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
 from typing import List, Union, Any, Optional
+import time
 
 # Import base classes directly to avoid package-level registration
 from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
@@ -65,6 +66,7 @@ class PipelineEngine(BaseCompressionEngine):
             previous_compression_result
         )
         accumulated_traces: List[CompressionTrace] = []
+        start = time.monotonic()
 
         # Determine the very original text for the pipeline's input summary
         original_input_text = text_or_chunks
@@ -162,6 +164,7 @@ class PipelineEngine(BaseCompressionEngine):
             output_summary={"compressed_length": len(current_compressed_memory.text)},
             final_compressed_object_preview=current_compressed_memory.text[:50],
         )
+        pipeline_trace.processing_ms = (time.monotonic() - start) * 1000
 
         # Create the final CompressedMemory object for the pipeline
         final_compressed_output = CompressedMemory(

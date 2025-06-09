@@ -1,6 +1,6 @@
 from compact_memory.engines.stopword_pruner_engine import StopwordPrunerEngine
-from compact_memory.engines.base import CompressedMemory, CompressionTrace # Added
-from typing import Optional # Added
+from compact_memory.engines.base import CompressedMemory, CompressionTrace  # Added
+from typing import Optional  # Added
 
 import nltk  # For checking NLTK's list in the test if needed for clarity, though engine handles it.
 import importlib.util
@@ -26,7 +26,7 @@ def test_stopword_pruner_basic():
     result = engine.compress(text, llm_token_budget=budget)
     assert isinstance(result, CompressedMemory)
     assert result.engine_id == StopwordPrunerEngine.id
-    assert result.engine_config == engine.config # Engine config should match
+    assert result.engine_config == engine.config  # Engine config should match
 
     trace = result.trace
     assert isinstance(trace, CompressionTrace)
@@ -76,9 +76,9 @@ def test_stopword_pruner_basic():
     removed_fillers_count = 0
     for step in trace.steps:
         if step["type"] == "remove_stopwords":
-            removed_stopwords_count = step["removed"]
+            removed_stopwords_count = step["details"]["removed"]
         elif step["type"] == "remove_fillers":
-            removed_fillers_count = step["removed"]
+            removed_fillers_count = step["details"]["removed"]
 
     # Expected counts for "This is actually a very simple example, you know, just a test."
     # using spaCy 'en_core_web_sm' AND NLTK's English stopwords:
@@ -109,8 +109,15 @@ def test_stopword_pruner_budget_respected():
         assert token == "word", f"Expected token 'word', got '{token}'"
 
     # Test with previous_compression_result
-    dummy_previous = CompressedMemory(text="prev", trace=CompressionTrace(engine_name="dummy", strategy_params={}, input_summary={}, output_summary={}))
-    result_with_prev = engine.compress(text, llm_token_budget=budget, previous_compression_result=dummy_previous)
+    dummy_previous = CompressedMemory(
+        text="prev",
+        trace=CompressionTrace(
+            engine_name="dummy", strategy_params={}, input_summary={}, output_summary={}
+        ),
+    )
+    result_with_prev = engine.compress(
+        text, llm_token_budget=budget, previous_compression_result=dummy_previous
+    )
     assert isinstance(result_with_prev, CompressedMemory)
     # Ensure the main logic is not affected by previous_compression_result for this engine
     assert len(result_with_prev.text.split()) <= budget
@@ -136,7 +143,6 @@ def test_stopword_pruner_min_word_length():
     assert trace.engine_name == StopwordPrunerEngine.id
     assert trace.strategy_params == {"llm_token_budget": budget}
 
-
     assert (
         out == "fast tree"
     ), f"Output string mismatch. Expected 'fast tree', got '{out}'"
@@ -145,9 +151,9 @@ def test_stopword_pruner_min_word_length():
     removed_stopwords_count = 0
     for step in trace.steps:
         if step["type"] == "remove_short":
-            removed_short_count = step["removed"]
+            removed_short_count = step["details"]["removed"]
         elif step["type"] == "remove_stopwords":
-            removed_stopwords_count = step["removed"]
+            removed_stopwords_count = step["details"]["removed"]
 
     assert (
         removed_short_count == 3
@@ -195,9 +201,9 @@ def test_stopword_pruner_remove_fillers_false():
     removed_stopwords_count = 0
     for step in trace.steps:
         if step["type"] == "remove_fillers":
-            removed_fillers_count = step["removed"]
+            removed_fillers_count = step["details"]["removed"]
         elif step["type"] == "remove_stopwords":
-            removed_stopwords_count = step["removed"]
+            removed_stopwords_count = step["details"]["removed"]
 
     assert (
         removed_fillers_count == 0
@@ -246,9 +252,9 @@ def test_stopword_pruner_remove_duplicate_words_true():
     removed_stopwords_count = 0
     for step in trace.steps:
         if step["type"] == "remove_duplicates":
-            removed_duplicates_count = step["removed"]
+            removed_duplicates_count = step["details"]["removed"]
         elif step["type"] == "remove_stopwords":
-            removed_stopwords_count = step["removed"]
+            removed_stopwords_count = step["details"]["removed"]
 
     assert (
         removed_duplicates_count == 2
@@ -293,9 +299,9 @@ def test_stopword_pruner_remove_duplicate_sentences_true():
     removed_stopwords_count = 0
     for step in trace.steps:
         if step["type"] == "remove_duplicates":
-            removed_duplicates_count = step["removed"]
+            removed_duplicates_count = step["details"]["removed"]
         elif step["type"] == "remove_stopwords":
-            removed_stopwords_count = step["removed"]
+            removed_stopwords_count = step["details"]["removed"]
 
     # Duplicates removed. With spaCy, the duplicate "Sentence" in the second sentence
     # is removed as the preceding token is also "Sentence" once "one" is filtered.
@@ -345,9 +351,9 @@ def test_stopword_pruner_remove_duplicates_false():
     removed_stopwords_count = 0
     for step in trace.steps:
         if step["type"] == "remove_duplicates":
-            removed_duplicates_count = step["removed"]
+            removed_duplicates_count = step["details"]["removed"]
         elif step["type"] == "remove_stopwords":
-            removed_stopwords_count = step["removed"]
+            removed_stopwords_count = step["details"]["removed"]
 
     assert (
         removed_duplicates_count == 0
@@ -391,7 +397,7 @@ def test_stopword_pruner_preserve_order_false():
         removed_count = 0
         for step in trace.steps:
             if step["type"] == f"remove_{step_type}":
-                removed_count = step["removed"]
+                removed_count = step["details"]["removed"]
         assert (
             removed_count == 0
         ), f"Expected 0 {step_type} removed, got {removed_count} for '{text}'. Trace: {trace.steps}"
@@ -433,7 +439,7 @@ def test_stopword_pruner_preserve_order_true_maintains_order():
         removed_count = 0
         for step in trace.steps:
             if step["type"] == f"remove_{step_type}":
-                removed_count = step["removed"]
+                removed_count = step["details"]["removed"]
         assert (
             removed_count == 0
         ), f"Expected 0 {step_type} removed, got {removed_count} for '{text}'. Trace: {trace.steps}"
@@ -487,7 +493,7 @@ def test_stopword_pruner_language_spanish():
     removed_stopwords_count = 0
     for step in trace.steps:
         if step["type"] == "remove_stopwords":
-            removed_stopwords_count = step["removed"]
+            removed_stopwords_count = step["details"]["removed"]
 
     assert (
         removed_stopwords_count == 2
@@ -527,13 +533,13 @@ def test_stopword_pruner_punctuation_whitespace():
 
     for step in trace.steps:
         if step["type"] == "remove_stopwords":
-            removed_stopwords_count = step["removed"]
+            removed_stopwords_count = step["details"]["removed"]
         elif step["type"] == "remove_fillers":
-            removed_fillers_count = step["removed"]
+            removed_fillers_count = step["details"]["removed"]
         elif step["type"] == "remove_short":
-            removed_short_count = step["removed"]
+            removed_short_count = step["details"]["removed"]
         elif step["type"] == "remove_duplicates":
-            removed_duplicates_count = step["removed"]
+            removed_duplicates_count = step["details"]["removed"]
 
     assert (
         removed_stopwords_count == 3

@@ -1,7 +1,12 @@
 """Cognitively inspired compression engine."""
 
 from typing import Optional
-from compact_memory.engines.base import BaseCompressionEngine, CompressedMemory, CompressionTrace
+import time
+from compact_memory.engines.base import (
+    BaseCompressionEngine,
+    CompressedMemory,
+    CompressionTrace,
+)
 from .registry import register_compression_engine
 
 
@@ -32,7 +37,7 @@ class NeocortexTransfer(BaseCompressionEngine):
     def compress(
         self,
         text: str,
-        budget: int = 0, # Assuming budget might be 0 if not applicable or passed via kwargs
+        budget: int = 0,  # Assuming budget might be 0 if not applicable or passed via kwargs
         previous_compression_result: Optional[CompressedMemory] = None,
         **kwargs,
     ) -> CompressedMemory:
@@ -41,9 +46,12 @@ class NeocortexTransfer(BaseCompressionEngine):
         This will orchestrate the stages from comprehension to encoding.
         """
         # Stage 1: Semantic Comprehension
+        start = time.monotonic()
         comprehended_info = self._semantic_comprehension(text)
         tokens = text.split()
-        five_word_gist = " ".join(tokens[:5]).rstrip(".,!?") # This is the "compressed_text"
+        five_word_gist = " ".join(tokens[:5]).rstrip(
+            ".,!?"
+        )  # This is the "compressed_text"
 
         # Stage 2: Short-Term Retention and Working Memory Management
         retained_info = self._short_term_retention(comprehended_info)
@@ -53,27 +61,45 @@ class NeocortexTransfer(BaseCompressionEngine):
 
         # Original dictionary that was returned
         original_output_dict = {
-            "message": f"Encoded: {encoded_info.get('content')}", # content here is different from five_word_gist
+            "message": f"Encoded: {encoded_info.get('content')}",  # content here is different from five_word_gist
             "trace_status": encoded_info.get("status"),
             "trace_strength": encoded_info.get("encoding_strength"),
-            "content": five_word_gist, # This is the actual compressed text for CompressedMemory.text
+            "content": five_word_gist,  # This is the actual compressed text for CompressedMemory.text
         }
 
         compressed_text = original_output_dict["content"]
 
         trace = CompressionTrace(
             engine_name=self.id,
-            strategy_params={"budget": budget, **kwargs}, # Include other kwargs if relevant
+            strategy_params={"budget": budget, **kwargs},
             input_summary={"original_length": len(text)},
             output_summary={"compressed_length": len(compressed_text)},
-            # steps can be added here if more detailed tracing of internal stages is needed
+            final_compressed_object_preview=compressed_text[:50],
         )
+        trace.add_step(
+            "semantic_comprehension",
+            {
+                "gist_preview": comprehended_info.get("main_idea", "")[:50],
+            },
+        )
+        trace.add_step(
+            "short_term_retention",
+            {"chunk_preview": retained_info.get("chunk_content", "")[:50]},
+        )
+        trace.add_step(
+            "ltm_encoding",
+            {
+                "trace_id": encoded_info.get("id"),
+                "content_preview": encoded_info.get("content", "")[:50],
+            },
+        )
+        trace.processing_ms = (time.monotonic() - start) * 1000
 
         return CompressedMemory(
             text=compressed_text,
             metadata=original_output_dict,
             engine_id=self.id,
-            engine_config=self.config, # Assuming self.config from BaseCompressionEngine is relevant
+            engine_config=self.config,  # Assuming self.config from BaseCompressionEngine is relevant
             trace=trace,
         )
 

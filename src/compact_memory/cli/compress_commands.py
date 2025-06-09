@@ -212,13 +212,8 @@ def compress_command(  # Renamed from compress
                 fg=typer.colors.RED,
             )
             raise typer.Exit(code=1)
-        if output_trace:
-            # The message is still relevant as we are not generating a trace for the combined output yet.
-            typer.secho(
-                "Warning: --output-trace is ignored when --dir is used. A combined trace for directory mode is not yet supported.",
-                fg=typer.colors.YELLOW,
-            )
-            # output_trace = None # Disable it
+        # When outputting a directory we now allow a single trace file describing the combined compression.
+        # output_trace will be passed through to the helper that writes results.
     else:  # Single text or file input, not --memory-path, not --dir
         if output_dir:  # This validation remains correct
             typer.secho(
@@ -366,6 +361,7 @@ def compress_command(  # Renamed from compress
                 final_engine_id,
                 budget,
                 output_dir,
+                output_trace,
                 recursive,
                 pattern,
                 verbose_stats,
@@ -711,6 +707,7 @@ def _compress_directory_to_files(
     engine_id: str,
     budget: int,  # Renamed dir_path to dir_path_obj
     output_dir_obj: Optional[Path],
+    trace_file_obj: Optional[Path],
     recursive: bool,
     pattern: str,  # Renamed output_dir to output_dir_obj
     verbose_stats: bool,
@@ -795,7 +792,7 @@ def _compress_directory_to_files(
         trace_obj,  # This will be None if the engine doesn't return it, or the actual trace
         elapsed_ms,
         final_output_path,
-        None,  # trace_file is None for directory mode
+        trace_file_obj,
         verbose_stats,
         tokenizer,
         False,  # json_output is False for directory mode
