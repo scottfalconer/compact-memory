@@ -19,13 +19,13 @@ The `MemoryContainer` class has been deprecated and its functionality is now han
 
 *   **New (using a custom engine as an example):**
     ```python
-    from compact_memory.engines import load_engine
+    from compact_memory.engines import BaseCompressionEngine
     from compact_memory.vector_store import InMemoryVectorStore
     from compact_memory.embedding_pipeline import get_embedding_dim
 
     dim = get_embedding_dim()
     store = InMemoryVectorStore(embedding_dim=dim)
-    engine = load_engine(store)
+    engine = BaseCompressionEngine(vector_store=store)
     engine.ingest("Some text")
     results = engine.recall("text")
     engine.save("my_engine_store")
