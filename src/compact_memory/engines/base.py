@@ -8,11 +8,13 @@ import uuid
 import inspect
 
 import numpy as np
-import faiss
+
 
 from ..chunker import Chunker, SentenceWindowChunker
 from ..embedding_pipeline import embed_text, get_embedding_dim
 from ..utils import calculate_sha256
+from ..models import BeliefPrototype, RawMemory
+from ..vector_store import InMemoryVectorStore, VectorStore
 
 
 @dataclass
@@ -50,6 +52,7 @@ class BaseCompressionEngine:
         chunker: Chunker | None = None,
         embedding_fn: Callable[[str | Sequence[str]], np.ndarray] = embed_text,
         preprocess_fn: Callable[[str], str] | None = None,
+        vector_store: VectorStore | None = None,
         config: Optional[Dict[str, Any]] = None,
         **kwargs,  # Allow other config params to be passed
     ) -> None:
@@ -81,8 +84,7 @@ class BaseCompressionEngine:
         self._embed_accepts_preprocess = "preprocess_fn" in sig.parameters
         self.memories: List[Dict[str, Any]] = []
         dim = get_embedding_dim()
-        self.embeddings = np.zeros((0, dim), dtype=np.float32)
-        self.index: faiss.IndexFlatIP | None = None
+        self.vector_store: VectorStore = vector_store or InMemoryVectorStore(dim)
         self.memory_hashes: Set[str] = set()
 
     # --------------------------------------------------
@@ -103,9 +105,9 @@ class BaseCompressionEngine:
 
     # --------------------------------------------------
     def _ensure_index(self) -> None:
-        if self.index is None and self.embeddings.size:
-            self.index = faiss.IndexFlatIP(self.embeddings.shape[1])
-            self.index.add(self.embeddings.astype(np.float32))
+        """Placeholder for backward compatibility."""
+        # VectorStore implementations handle indexing internally.
+        pass
 
     # --------------------------------------------------
     def _embed(self, text_or_texts: str | Sequence[str]) -> np.ndarray:
@@ -133,26 +135,22 @@ class BaseCompressionEngine:
         if vecs.ndim == 1:
             vecs = vecs.reshape(1, -1)
         ids: List[str] = []
-        new_embeddings_list = []
         for processed_chunk_text, vec in zip(processed_chunks, vecs):
             chunk_hash = calculate_sha256(processed_chunk_text)
             if chunk_hash not in self.memory_hashes:
                 mid = uuid.uuid4().hex
                 self.memories.append({"id": mid, "text": processed_chunk_text})
-                new_embeddings_list.append(vec.astype(np.float32))
+                proto = BeliefPrototype(prototype_id=mid, vector_row_index=0)
+                self.vector_store.add_prototype(proto, vec.astype(np.float32))
+                memory = RawMemory(
+                    memory_id=mid,
+                    raw_text_hash=chunk_hash,
+                    raw_text=processed_chunk_text,
+                    embedding=vec.astype(np.float32).tolist(),
+                )
+                self.vector_store.add_memory(memory)
                 ids.append(mid)
                 self.memory_hashes.add(chunk_hash)
-
-        if new_embeddings_list:
-            new_embeddings_array = np.array(new_embeddings_list)
-            if self.embeddings.size == 0:
-                self.embeddings = new_embeddings_array
-            else:
-                self.embeddings = np.vstack([self.embeddings, new_embeddings_array])
-
-            if self.index is None:
-                self.index = faiss.IndexFlatIP(self.embeddings.shape[1])
-            self.index.add(new_embeddings_array)
         return ids
 
     # --------------------------------------------------
@@ -161,17 +159,15 @@ class BaseCompressionEngine:
 
         if not self.memories:
             return []
-        self._ensure_index()
         qvec = self._embed(query)
         qvec = qvec.reshape(1, -1).astype(np.float32)
         k = min(top_k, len(self.memories))
-        dists, idxs = self.index.search(qvec, k)
+        nearest = self.vector_store.find_nearest(qvec[0], k)
+        mem_lookup = {m["id"]: m["text"] for m in self.memories}
         results: List[Dict[str, Any]] = []
-        for idx, dist in zip(idxs[0], dists[0]):
-            if idx < 0:
-                continue
-            mem = self.memories[int(idx)]
-            results.append({"id": mem["id"], "text": mem["text"], "score": float(dist)})
+        for pid, score in nearest:
+            text = mem_lookup.get(pid, "")
+            results.append({"id": pid, "text": text, "score": float(score)})
         return results
 
     # --------------------------------------------------
@@ -222,15 +218,32 @@ class BaseCompressionEngine:
 
         with open(os.path.join(path, "entries.json"), "r", encoding="utf-8") as fh:
             self.memories = json.load(fh)
-        self.embeddings = np.load(os.path.join(path, "embeddings.npy"))
+        embeddings = np.load(os.path.join(path, "embeddings.npy"))
 
-        # Rebuild memory_hashes
+        self.vector_store = InMemoryVectorStore(embedding_dim=embeddings.shape[1])
+
+        # Rebuild memory_hashes and populate vector store
         self.memory_hashes = set()
-        for mem_entry in self.memories:
-            self.memory_hashes.add(calculate_sha256(mem_entry["text"]))
+        for mem_entry, vec in zip(self.memories, embeddings):
+            chunk_hash = calculate_sha256(mem_entry["text"])
+            self.memory_hashes.add(chunk_hash)
+            proto = BeliefPrototype(prototype_id=mem_entry["id"], vector_row_index=0)
+            self.vector_store.add_prototype(proto, vec.astype(np.float32))
+            memory = RawMemory(
+                memory_id=mem_entry["id"],
+                raw_text_hash=chunk_hash,
+                raw_text=mem_entry["text"],
+                embedding=vec.astype(np.float32).tolist(),
+            )
+            self.vector_store.add_memory(memory)
 
-        self.index = None
-        self._ensure_index()
+    @property
+    def embeddings(self) -> np.ndarray:
+        """Return stored embedding vectors."""
+        store_vectors = getattr(self.vector_store, "proto_vectors", None)
+        if store_vectors is None:
+            return np.zeros((0, get_embedding_dim()), dtype=np.float32)
+        return store_vectors
 
     @property
     def chunker(self) -> Chunker:

@@ -36,6 +36,9 @@ experimented with.
   tests. Embeddings are cached and normalised.
 - **`compression/pipeline_engine.py`** – implements `PipelineBaseCompressionEngine`
   allowing multiple compression steps to be chained.
+- **Compression engines** focus on text chunking and summarization but rely on
+  a pluggable `VectorStore` for storing and searching embeddings. This separation
+  lets new storage backends be introduced without altering compression logic.
 - **`chunker.py`** – implements sentence-window based chunking with token
   overlap and a fixed-size fallback. The registry allows different
   chunkers to be plugged in via config.
