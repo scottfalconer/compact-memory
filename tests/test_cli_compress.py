@@ -457,12 +457,8 @@ def test_cli_compress_pipeline_engine_valid(tmp_path: Path):
     }
     """
     text_to_compress = "one two three four five six seven eight nine ten"
-    # FirstLastEngine (first_n=2, last_n=2) on "one two three four five six seven eight nine ten"
-    # Assuming space as delimiter by default if tiktoken not found.
-    # Output: "one two nine ten"
-    # With current CLI tokenization, FirstLastEngine output is based on token ids
-    # if no decode function is provided. We simply ensure the command succeeds
-    # and produces some output.
+    # FirstLastEngine receives a budget equal to the token count,
+    # so it keeps the entire text unchanged.
 
     result = runner.invoke(
         app,
@@ -481,7 +477,7 @@ def test_cli_compress_pipeline_engine_valid(tmp_path: Path):
     )
 
     assert result.exit_code == 0, f"CLI Error: {result.stderr}"
-    assert result.stdout.strip() != ""
+    assert result.stdout.strip() == text_to_compress
 
     # Another valid case: StopwordPruner -> FirstLast
     pipeline_config_json_2 = """
@@ -522,9 +518,9 @@ def test_cli_compress_pipeline_engine_valid(tmp_path: Path):
     )
 
     assert result_2.exit_code == 0, f"CLI Error: {result_2.stderr}"
-    # Output will be token ids when no decode function is provided.
-    # Ensure some output is produced.
-    assert result_2.stdout.strip() != ""
+    # Expect key words from the pruned text to remain.
+    assert "example" in result_2.stdout
+    assert "words" in result_2.stdout
 
 
 def test_cli_compress_pipeline_engine_invalid_json(tmp_path: Path):

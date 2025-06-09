@@ -11,7 +11,7 @@ from typer import Context  # Explicit import for type hint clarity
 
 from compact_memory.config import Config  # Added
 from compact_memory.llm_providers import get_llm_provider  # Added
-from compact_memory.token_utils import token_count
+from compact_memory.token_utils import token_count, SimpleTokenizer
 from compact_memory.engines.registry import (
     get_compression_engine,
     available_engines,
@@ -30,6 +30,7 @@ from compact_memory.engines.pipeline_engine import (  # Added
     EngineConfig,
     PipelineEngine,
 )
+
 # PrototypeEngine was removed
 
 
@@ -161,22 +162,19 @@ def compress_command(  # Renamed from compress
     try:
         import tiktoken
 
-        enc = tiktoken.get_encoding("gpt2")  # Default to gpt2 encoding
-        tokenizer_func = lambda text, **k: {
-            "input_ids": enc.encode(text)
-        }  # Adapt to expected structure
+        tokenizer_obj = tiktoken.get_encoding("gpt2")
     except ImportError:
         typer.secho(
-            "Warning: tiktoken not found. Falling back to basic whitespace tokenization for stats.",
+            "Warning: tiktoken not found. Falling back to basic whitespace tokenizer.",
             fg=typer.colors.YELLOW,
         )
-        tokenizer_func = lambda text, **k: {"input_ids": text.split()}  # Basic fallback
+        tokenizer_obj = SimpleTokenizer()
     except Exception as e:
         typer.secho(
-            f"Warning: Error initializing tiktoken: {e}. Falling back to basic whitespace tokenization.",
+            f"Warning: Error initializing tiktoken: {e}. Falling back to basic whitespace tokenizer.",
             fg=typer.colors.YELLOW,
         )
-        tokenizer_func = lambda text, **k: {"input_ids": text.split()}
+        tokenizer_obj = SimpleTokenizer()
 
     # Validate input source
     input_sources = sum(x is not None for x in (text, file, dir_path))
@@ -222,7 +220,7 @@ def compress_command(  # Renamed from compress
             )
             # output_trace = None # Disable it
     else:  # Single text or file input, not --memory-path, not --dir
-        if output_dir: # This validation remains correct
+        if output_dir:  # This validation remains correct
             typer.secho(
                 "Error: --output-dir is only valid with --dir.",
                 err=True,
@@ -290,7 +288,7 @@ def compress_command(  # Renamed from compress
                 final_engine_id,
                 budget,
                 verbose_stats,
-                tokenizer_func,
+                tokenizer_obj,
                 ctx,  # Pass context
                 pipeline_config_str=pipeline_config_str,  # Added
             )
@@ -301,7 +299,7 @@ def compress_command(  # Renamed from compress
                 final_engine_id,
                 budget,
                 verbose_stats,
-                tokenizer_func,
+                tokenizer_obj,
                 ctx,  # Pass context
                 pipeline_config_str=pipeline_config_str,  # Added
             )
@@ -314,7 +312,7 @@ def compress_command(  # Renamed from compress
                 recursive,
                 pattern,
                 verbose_stats,
-                tokenizer_func,
+                tokenizer_obj,
                 ctx,  # Pass context
                 pipeline_config_str=pipeline_config_str,  # Added
             )
@@ -344,7 +342,7 @@ def compress_command(  # Renamed from compress
                 output_file,
                 output_trace,
                 verbose_stats,
-                tokenizer_func,
+                tokenizer_obj,
                 json_output,
                 ctx,  # Pass context
                 pipeline_config_str=pipeline_config_str,  # Added
@@ -357,7 +355,7 @@ def compress_command(  # Renamed from compress
                 output_file,
                 output_trace,
                 verbose_stats,
-                tokenizer_func,
+                tokenizer_obj,
                 json_output,
                 ctx,  # Pass context
                 pipeline_config_str=pipeline_config_str,  # Added
@@ -371,7 +369,7 @@ def compress_command(  # Renamed from compress
                 recursive,
                 pattern,
                 verbose_stats,
-                tokenizer_func,
+                tokenizer_obj,
                 ctx,  # Pass context
                 pipeline_config_str=pipeline_config_str,  # Added
             )
@@ -395,7 +393,7 @@ def _get_one_shot_compression_engine(
             )
             raise typer.Exit(code=1)
         try:
-            pipeline_config_json = json.loads(pipeline_config_str) # Parsed JSON object
+            pipeline_config_json = json.loads(pipeline_config_str)  # Parsed JSON object
 
             if not isinstance(pipeline_config_json, dict):
                 typer.secho(
@@ -434,7 +432,9 @@ def _get_one_shot_compression_engine(
                 engine_configs.append(EngineConfig(**config_dict))
 
             pipeline_config_obj = PipelineConfig(engines=engine_configs)
-            return PipelineEngine(pipeline_config_obj) # Pass PipelineConfig to PipelineEngine
+            return PipelineEngine(
+                pipeline_config_obj
+            )  # Pass PipelineConfig to PipelineEngine
         except json.JSONDecodeError as e:
             typer.secho(
                 f"Error decoding pipeline config JSON: {e}",
@@ -524,7 +524,9 @@ def _compress_text_core(
     )  # Pass pipeline_config_str
     start_time = time.time()
     # engine.compress now returns a single CompressedMemory object
-    compressed_mem: CompressedMemory = engine.compress(text_content, budget, tokenizer=tokenizer)
+    compressed_mem: CompressedMemory = engine.compress(
+        text_content, budget, tokenizer=tokenizer
+    )
     elapsed_ms = (time.time() - start_time) * 1000
 
     if not isinstance(compressed_mem, CompressedMemory):
@@ -547,7 +549,6 @@ def _compress_text_core(
         # expects engines to create their own traces. For now, if no trace, then no processing_ms is stored there.
         # However, elapsed_ms is still available for direct output if verbose_stats is on.
         pass
-
 
     return compressed_mem, trace_obj, elapsed_ms
 
@@ -639,7 +640,12 @@ def _compress_text_to_file_or_stdout(
     pipeline_config_str: Optional[str] = None,  # Added
 ) -> None:
     compressed_mem, trace_obj, elapsed_ms = _compress_text_core(
-        text_content, engine_id, budget, tokenizer, ctx, pipeline_config_str  # Pass pipeline_config_str
+        text_content,
+        engine_id,
+        budget,
+        tokenizer,
+        ctx,
+        pipeline_config_str,  # Pass pipeline_config_str
     )
     _output_results(
         "stdin/text arg",
@@ -680,7 +686,12 @@ def _compress_file_to_file_or_stdout(
     # For this refactor, if no -o, it goes to stdout unless json_output.
 
     compressed_mem, trace_obj, elapsed_ms = _compress_text_core(
-        text_content, engine_id, budget, tokenizer, ctx, pipeline_config_str  # Pass pipeline_config_str
+        text_content,
+        engine_id,
+        budget,
+        tokenizer,
+        ctx,
+        pipeline_config_str,  # Pass pipeline_config_str
     )
     _output_results(
         f"file: {file_path.name}",
@@ -707,9 +718,9 @@ def _compress_directory_to_files(
     ctx: typer.Context,  # Added context
     pipeline_config_str: Optional[str] = None,  # Added
 ) -> None:
-    files_to_process = sorted(list(
-        dir_path_obj.rglob(pattern) if recursive else dir_path_obj.glob(pattern)
-    ))
+    files_to_process = sorted(
+        list(dir_path_obj.rglob(pattern) if recursive else dir_path_obj.glob(pattern))
+    )
     if not files_to_process:
         typer.echo(f"No files matching pattern '{pattern}' found in '{dir_path_obj}'.")
         return
@@ -718,7 +729,9 @@ def _compress_directory_to_files(
     total_files_read = 0
     total_files_skipped = 0
 
-    typer.echo(f"Reading and combining files from '{dir_path_obj}' matching '{pattern}'...")
+    typer.echo(
+        f"Reading and combining files from '{dir_path_obj}' matching '{pattern}'..."
+    )
     for input_file_path in files_to_process:
         if not input_file_path.is_file():
             continue  # Skip subdirectories
@@ -743,7 +756,9 @@ def _compress_directory_to_files(
         )
         return
 
-    full_text_content = "\n\n".join(combined_content) # Join with double newline to separate file contents
+    full_text_content = "\n\n".join(
+        combined_content
+    )  # Join with double newline to separate file contents
 
     typer.echo(
         f"Successfully read and combined content from {total_files_read} file(s). Skipped {total_files_skipped} file(s) due to errors."
@@ -751,7 +766,12 @@ def _compress_directory_to_files(
     typer.echo(f"Compressing combined content...")
 
     compressed_mem, trace_obj, elapsed_ms = _compress_text_core(
-        full_text_content, engine_id, budget, tokenizer, ctx, pipeline_config_str  # Pass pipeline_config_str
+        full_text_content,
+        engine_id,
+        budget,
+        tokenizer,
+        ctx,
+        pipeline_config_str,  # Pass pipeline_config_str
     )
 
     # Determine output path
@@ -762,21 +782,23 @@ def _compress_directory_to_files(
     else:
         final_output_path = dir_path_obj / output_file_name
 
-    source_name = f"directory: {dir_path_obj} (pattern: {pattern}, {total_files_read} files)"
+    source_name = (
+        f"directory: {dir_path_obj} (pattern: {pattern}, {total_files_read} files)"
+    )
 
     # Output the single compressed file
     # trace_file is None for dir mode as per original logic and requirements.
     # json_output is False for dir mode as per original logic and requirements.
     _output_results(
-        full_text_content, # Original text is the combined content
+        full_text_content,  # Original text is the combined content
         compressed_mem,
-        trace_obj, # This will be None if the engine doesn't return it, or the actual trace
+        trace_obj,  # This will be None if the engine doesn't return it, or the actual trace
         elapsed_ms,
         final_output_path,
         None,  # trace_file is None for directory mode
         verbose_stats,
         tokenizer,
-        False, # json_output is False for directory mode
+        False,  # json_output is False for directory mode
         source_name=source_name,
     )
 
