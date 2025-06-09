@@ -63,6 +63,17 @@ Validates the integrity of an engine store's storage. (Currently provides a basi
 *   **Options:**
     *   `--memory-path TEXT, -m TEXT`: Path to the engine store directory. Overrides global setting.
 
+#### `compact-memory engine rebuild-index`
+
+Forces the vector store of an engine to rebuild its search index and persist it. This is useful if the index is suspected to be stale or corrupted, or after certain manual data manipulations (if any were performed outside standard engine operations). For persistent vector stores, the rebuilt index is also saved.
+
+*   **Options:**
+    *   `--memory-path TEXT, -m TEXT`: Path to the engine store directory. (Required if not set globally).
+*   **Usage Example:**
+    ```bash
+    compact-memory engine rebuild-index --memory-path ./my_store
+    ```
+
 #### `compact-memory engine clear`
 
 Deletes all data from an engine store. This action is irreversible.

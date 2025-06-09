@@ -57,6 +57,29 @@ class BaseCompressionEngine(ABC):
         pass
 ```
 
+### Key Interactions and Data Flow (Post-Refactor)
+
+When developing or customizing a `BaseCompressionEngine`, it's important to understand how it now interacts with the `VectorStore` and manages its data, following recent refactoring:
+
+*   **Ingestion (`ingest` method):**
+    *   The engine is responsible for chunking, embedding, and deduplicating input text.
+    *   For new, unique items, the engine prepares a list of tuples, where each tuple is `(item_id, processed_text, vector_embedding)`.
+    *   This entire list is then passed to the vector store using a single call to `self.vector_store.add_texts_with_ids_and_vectors(data)`.
+    *   The engine also maintains its own list of `{"id": ..., "text": ...}` dictionaries in `self.memories`, which is saved as `entries.json`. This file helps the engine manage its state (like hashes for deduplication).
+*   **Recall (`recall` method):**
+    *   To determine the number of items in the vector store, the engine now calls `self.vector_store.count()`.
+    *   After retrieving nearest neighbor IDs and scores using `self.vector_store.find_nearest()`, the engine fetches the corresponding texts by calling `self.vector_store.get_texts_by_ids(ids)`. The `VectorStore` is now the source of truth for texts associated with vectors.
+*   **Persistence (`save` and `load` methods):**
+    *   The `BaseCompressionEngine` saves its configuration (`engine_manifest.json`) and its list of processed item texts/IDs (`entries.json`).
+    *   Crucially, the engine no longer saves/loads `embeddings.npy` directly. The `VectorStore` instance (e.g., `self.vector_store`) is now entirely responsible for managing its own persistence via its `save(path_to_vs_data)` and `load(path_to_vs_data)` methods. This includes embeddings, texts, and any indexing structures.
+*   **`engine.embeddings` Property Removed:**
+    *   The direct property `engine.embeddings` on `BaseCompressionEngine` has been removed. Engines no longer provide a consolidated view of all embeddings.
+    *   If you need to access embedding data, you should do so through the `self.vector_store` instance, provided its specific implementation offers methods for such access. This change reinforces that the `VectorStore` is the owner and manager of the embedding data.
+*   **Index Rebuilding (`rebuild_index` method):**
+    *   A new method `engine.rebuild_index()` is available. This method delegates to `self.vector_store.rebuild_index()`, instructing the vector store to reconstruct its search index. For persistent vector stores, this also includes saving the newly rebuilt index. This is useful for ensuring index consistency or recovering from potential staleness.
+
+These changes ensure a cleaner separation of concerns, making `VectorStore` implementations more self-contained and responsible for their data.
+
 ### Implementing `compress()`
 
 Your primary task is to implement the `compress` method. Here's what to consider:
@@ -205,9 +228,46 @@ Compact Memory provides utilities that can be helpful:
 
 *   **Modularity:** Keep your compression logic well-organized. Helper methods for distinct steps (e.g., preprocessing, core compression, postprocessing) can improve readability.
 *   **Configuration:** If your engine has tunable parameters (e.g., summarization model, number of sentences to keep), make them arguments to `__init__` with sensible defaults. These parameters should be recorded in the `CompressionTrace`.
+    *   The engine's configuration is managed by the `EngineConfig` object, typically available as `self.config`.
+    *   If your engine uses custom embedding functions (`embedding_fn`) or preprocessing functions (`preprocess_fn`), these can now be made persistent if they are importable.
+    *   When you pass an importable function (e.g., defined in a Python module) to the engine's constructor (or set it via an `EngineConfig` with `embedding_fn_path` or `preprocess_fn_path`), the engine will store its path (e.g., `my_module.my_function`) in `self.config`.
+    *   This allows the engine to be saved and loaded, automatically re-importing these custom functions. If a function is not importable (like a lambda or an inner function), a warning will be issued, and it won't be serialized. Refer to `docs/configuration.md` under "Engine Configuration (`EngineConfig`)" for more details on how these paths are specified and used.
 *   **State:**
     *   Most engines should aim to be stateless within the `compress` call for a given input.
     *   If your engine has *learnable components* (e.g., a fine-tuned model), implement `save_learnable_components` and `load_learnable_components` to manage its state across sessions.
+
+## Developing Vector Stores
+
+While `BaseCompressionEngine` handles the "what" and "how" of text processing and embedding, the `VectorStore` (defined in `compact_memory.vector_store.VectorStore`) is responsible for the storage, indexing, and retrieval of vector embeddings and their associated text data. If you need to integrate a new vector database or create a custom storage mechanism, you'll need to implement this interface.
+
+### Abstract Base Class: `compact_memory.vector_store.VectorStore`
+
+Key abstract methods you must implement include:
+
+*   `add_prototype(self, proto: BeliefPrototype, vec: np.ndarray) -> None`: (Legacy method, consider if it's still primary or if `add_texts_with_ids_and_vectors` is preferred for new stores). Adds a single prototype and its vector.
+*   `update_prototype(...)`: Updates an existing prototype.
+*   `find_nearest(self, vec: np.ndarray, k: int) -> List[Tuple[str, float]]`: Finds the k-nearest prototypes to a given vector.
+*   `add_memory(self, memory: RawMemory) -> None`: (Legacy method, similar to `add_prototype`). Adds a raw memory entry.
+*   **`count(self) -> int` (New):** Should return the total number of indexed items (e.g., prototypes or vectors) in the store.
+*   **`get_texts_by_ids(self, ids: List[str]) -> Dict[str, str]` (New):** Given a list of item IDs, this method should return a dictionary mapping each ID to its associated raw text.
+*   **`add_texts_with_ids_and_vectors(self, data: List[Tuple[str, str, np.ndarray]]) -> None` (New):** This is the primary method engines will now use to add data. Each tuple in the `data` list contains an item's ID, its text content, and its vector. The store must persist the text for retrieval by `get_texts_by_ids` and index the vector for `find_nearest`.
+*   **`rebuild_index(self) -> None` (New):** This method should force a full rebuild of the search index from the current underlying data in the store. For persistent stores, the rebuilt index should also be saved to disk.
+
+### Persistence (`save` and `load`)
+
+A crucial responsibility of a `VectorStore` implementation is managing its own persistence.
+
+*   **`save(self, path: str) -> None`:** This method will be called by the `BaseCompressionEngine`, providing a directory path (e.g., `your_engine_save_path/vector_store_data/`). Your implementation must save all necessary data (vectors, texts, metadata, indices) into this directory. For example, `InMemoryVectorStore` now saves `embeddings.npy`, `text_entries.json`, and `prototypes_meta.json` within this path. `PersistentFaissVectorStore` saves its Faiss index and other metadata here.
+*   **`load(self, path: str) -> None`:** This method is called to load the store's state from the specified directory. Your implementation must be able to fully restore itself from the files it saved in its `save` method.
+
+The `BaseCompressionEngine` no longer saves a global `embeddings.npy` file. Each `VectorStore` is now fully encapsulated in terms of its data storage and persistence.
+
+### Key Considerations for Vector Store Developers:
+
+*   **Text Storage:** Ensure that the text provided via `add_texts_with_ids_and_vectors` is stored and can be efficiently retrieved by `get_texts_by_ids`.
+*   **Indexing:** Choose and implement an appropriate indexing strategy within `add_texts_with_ids_and_vectors` (or `add_prototype`) and `find_nearest` for your specific backend.
+*   **Self-Contained Persistence:** Your `save` and `load` methods must handle all aspects of your store's state.
+*   **Error Handling:** If your vector store encounters issues (e.g., during file I/O for persistence, index corruption, configuration problems), it should raise appropriate exceptions. Consider using or subclassing exceptions from `compact_memory.exceptions` (like `VectorStoreError`, `IndexRebuildError`, `ConfigurationError`) to provide clear, structured error information. Refer to `docs/TROUBLESHOOTING.md` for more details on these exceptions.
 
 ## Testing Your Engine
 
@@ -243,5 +303,10 @@ For Compact Memory to find and use your engine, it needs to be registered.
     *   Add detailed docstrings to your engine class and methods.
     *   If your engine has unique dependencies or setup requirements, document them in a `README.md` if you package it.
 *   **Distribution:** When publishing on PyPI or GitHub, use the package naming pattern `compact_memory_<name>_engine`.
+*   **Error Handling:**
+    *   When developing custom engines, if you encounter situations that prevent normal operation (e.g., invalid configuration, failure in a critical component like an LLM call if your engine uses one, issues during `save_learnable_components`), raise specific exceptions.
+    *   It's good practice to use or inherit from the custom exceptions defined in `compact_memory.exceptions` (e.g., `EngineError`, `ConfigurationError`). This helps provide consistent error reporting to users and CLI tools. See `docs/TROUBLESHOOTING.md` for an overview of these exceptions.
+    *   Provide clear error messages that can help users diagnose the problem.
+    *   Utilize logging (`import logging; logging.error(...)` or `logging.debug(...)`) within your engine for detailed internal state reporting, which can be invaluable for debugging. Standard logging practices apply.
 
 By following this guide, you can effectively contribute new and innovative compression engines to the Compact Memory ecosystem.

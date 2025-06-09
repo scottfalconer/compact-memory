@@ -4,13 +4,17 @@ from pydantic import BaseModel, Field
 class EngineConfig(BaseModel):
     """
     Configuration for a BaseCompressionEngine, including chunker, vector store,
-    and embedding settings. In Pydantic V2, extra fields are automatically
+    embedding settings, and paths for serializable custom functions.
+    In Pydantic V2, extra fields are automatically
     stored in `model_extra` when `Config.extra = 'allow'`.
     """
     chunker_id: str = Field(default="fixed_size", description="Identifier for the chunker to use.")
     vector_store: str = Field(default="in_memory", description="Identifier for the vector store to use.") # Changed default
     embedding_dim: Optional[int] = Field(default=None, description="Dimension of embeddings. If None, it might be inferred.")
     vector_store_path: Optional[str] = Field(default=None, description="Path for persistent vector stores.")
+    embedding_fn_path: Optional[str] = Field(default=None, description="Path to the embedding function, e.g., 'module.submodule.function_name'.")
+    preprocess_fn_path: Optional[str] = Field(default=None, description="Path to the preprocessing function, e.g., 'module.submodule.function_name'.")
+    enable_trace: bool = Field(default=True, description="Whether to generate a compression trace during the compress operation.")
 
     # No explicit model_extra field or validator needed for Pydantic V2.
     # Extras are handled by `model.model_extra` property if `Config.extra = 'allow'`.
