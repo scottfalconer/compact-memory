@@ -52,7 +52,20 @@ class StopwordPrunerEngine(BaseCompressionEngine):
         previous_compression_result: Optional[CompressedMemory] = None,
         **kwargs: Any,
     ) -> CompressedMemory:
-        text = (
+        """
+        Compresses text by removing stopwords, filler words, and optionally duplicates.
+
+        The text is processed to remove common words based on the configured language
+        and other settings. If a `budget` is provided, the pruned text is further
+        truncated to fit.
+        Trace generation is controlled by `self.config.enable_trace`.
+        If False, `CompressedMemory.trace` will be None.
+        """
+        import logging # Added
+        logging.debug(f"StopwordPrunerEngine: Compressing text, budget: {budget}")
+        start_time = time.monotonic() # Start timing early
+
+        input_text_content = ( # Use a distinct variable for the initial text
             text_or_chunks
             if isinstance(text_or_chunks, str)
             else " ".join(text_or_chunks)
@@ -70,6 +83,7 @@ class StopwordPrunerEngine(BaseCompressionEngine):
         nlp = get_nlp()
         use_spacy = hasattr(nlp, "tokenizer")
 
+        # Initialize removed_counts here so it's available for trace even if logic changes
         removed_counts = {
             "stopwords": 0,
             "fillers": 0,
@@ -82,11 +96,11 @@ class StopwordPrunerEngine(BaseCompressionEngine):
         prev_token_lower: str | None = None
 
         if use_spacy:
-            doc = nlp(text)
+            doc = nlp(input_text_content) # Use input_text_content
             sentences = doc.sents
         else:
             sentences = [
-                type("Span", (), {"text": s})() for s in simple_sentences(text)
+                type("Span", (), {"text": s})() for s in simple_sentences(input_text_content) # Use input_text_content
             ]
 
         for sent in sentences:
@@ -137,25 +151,41 @@ class StopwordPrunerEngine(BaseCompressionEngine):
 
         compressed_text = " ".join(output_tokens)
 
-        tokenizer = tokenizer or (lambda t: t.split())
-        orig_tokens = len(tokenize_text(tokenizer, text))
-        start = time.monotonic()
+        # Determine original token count before any truncation for accurate reporting
+        # Use the provided tokenizer or a default split if none.
+        # This tokenizer is also used for truncation and final token count.
+        active_tokenizer = tokenizer or (lambda t: t.split())
+        orig_tokens = len(tokenize_text(active_tokenizer, input_text_content))
 
-        if llm_token_budget is not None:
+        # Save the text after stopword pruning but before budget truncation
+        text_after_pruning = compressed_text
+
+        if budget is not None: # budget was llm_token_budget
             compressed_text = truncate_text(
-                tokenizer, compressed_text, llm_token_budget
+                active_tokenizer, compressed_text, budget
             )
 
-        compressed_tokens = len(tokenize_text(tokenizer, compressed_text))
+        if not self.config.enable_trace:
+            return CompressedMemory(
+                text=compressed_text,
+                trace=None,
+                engine_id=self.id,
+                engine_config=self.config.model_dump(mode='json') # Use model_dump for config
+            )
 
-        compressed = CompressedMemory(text=compressed_text)
+        # Proceed with trace generation
+        final_tokens = len(tokenize_text(active_tokenizer, compressed_text))
+
         trace = CompressionTrace(
             engine_name=self.id,
-            strategy_params={"llm_token_budget": llm_token_budget},
-            input_summary={"input_length": len(text), "input_tokens": orig_tokens},
+            strategy_params={"budget": budget, "language": language, "preserve_order": preserve_order,
+                             "min_word_length": min_len, "remove_fillers": remove_fillers,
+                             "remove_duplicates": remove_duplicates},
+            input_summary={"input_length": len(input_text_content), "input_tokens": orig_tokens},
             output_summary={
                 "final_length": len(compressed_text),
-                "final_tokens": compressed_tokens,
+                "final_tokens": final_tokens,
+                "length_after_pruning": len(text_after_pruning)
             },
             final_compressed_object_preview=compressed_text[:50],
         )
@@ -172,14 +202,23 @@ class StopwordPrunerEngine(BaseCompressionEngine):
             {"removed": removed_counts["short"]},
         )
         trace.add_step(
-            "remove_duplicates",
+            "remove_duplicates", # This step refers to adjacent duplicate tokens
             {"removed": removed_counts["duplicates"]},
         )
-        trace.processing_ms = (time.monotonic() - start) * 1000
-        compressed.trace = trace
-        compressed.engine_id = self.id
-        compressed.engine_config = self.config
-        return compressed
+        if budget is not None:
+             trace.add_step(
+                "truncate_to_budget",
+                {"budget": budget, "length_before_truncation": len(text_after_pruning), "length_after_truncation": len(compressed_text)}
+             )
+
+        trace.processing_ms = (time.monotonic() - start_time) * 1000
+
+        return CompressedMemory(
+            text=compressed_text,
+            trace=trace,
+            engine_id=self.id,
+            engine_config=self.config.model_dump(mode='json') # Use model_dump for config
+        )
 
 
 __all__ = ["StopwordPrunerEngine"]

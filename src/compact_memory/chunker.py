@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Type
+from typing import Dict, List, Type, Any, Optional # Added Any, Optional
 
 import nltk
 
@@ -30,7 +30,7 @@ class Chunker(ABC):
     @abstractmethod
     def chunk(self, text: str) -> List[str]: ...  # noqa: E704
 
-    def config(self) -> Dict[str, int | str]:
+    def config(self) -> Dict[str, Any]: # Changed to Dict[str, Any]
         return {}
 
 
@@ -39,19 +39,19 @@ class SentenceWindowChunker(Chunker):
 
     id = "sentence_window"
 
-    def __init__(self, max_tokens: int = 256, overlap_tokens: int = 32, **kwargs):
+    def __init__(self, max_tokens: int = 256, overlap_tokens: int = 32, **kwargs): # Add type hints for kwargs if possible, or leave as Any
         if "window_size" in kwargs:
             max_tokens = kwargs.pop("window_size")
         if "overlap" in kwargs:
             overlap_tokens = kwargs.pop("overlap")
-        self.max_tokens = max_tokens
-        self.overlap_tokens = overlap_tokens
+        self.max_tokens: int = max_tokens
+        self.overlap_tokens: int = overlap_tokens
         try:
-            self.tokenizer = tiktoken.get_encoding("gpt2")
+            self.tokenizer: Optional[tiktoken.Encoding] = tiktoken.get_encoding("gpt2")
         except Exception:  # pragma: no cover - offline fallback
             self.tokenizer = None
 
-    def config(self) -> Dict[str, int | str]:
+    def config(self) -> Dict[str, Any]: # Changed to Dict[str, Any]
         return {
             "id": self.id,
             "max_tokens": self.max_tokens,
@@ -93,7 +93,24 @@ class SentenceWindowChunker(Chunker):
         if self.tokenizer is not None:
             return [self.tokenizer.decode(c) for c in chunks]
         else:
-            return [" ".join(c) for c in chunks]
+            # c is List[int] if tokenizer was None and tokens were List[int] from sent.split()
+            # However, if tokenizer is None, tokens = sent.split() makes tokens List[str].
+            # The error occurs if self.tokenizer is None, and tokens are List[int] which is not the case.
+            # Let's re-check the logic for when self.tokenizer is None.
+            # tokens = sent.split() makes List[str]. So c is List[str].
+            # The error `Argument 1 to "join" of "str" has incompatible type "list[int]"; expected "Iterable[str]"`
+            # implies that `c` CAN be `List[int]`.
+            # This happens if `tokens = self.tokenizer.encode(sent)` was used, but then `self.tokenizer` would not be `None`.
+            # The current code:
+            # if self.tokenizer is not None:
+            #     tokens = self.tokenizer.encode(sent) -> List[int]
+            # else:
+            #     tokens = sent.split() -> List[str]
+            # So `current` can be List[int] or List[str]. And `chunks` can be List[List[int]] or List[List[str]].
+            # The final return needs to handle this.
+            # If chunks contains List[int], then map(str,c) is needed.
+            # If chunks contains List[str], then map(str,c) is harmless.
+            return [" ".join(map(str, c)) for c in chunks]
 
 
 class FixedSizeChunker(Chunker):
@@ -102,9 +119,9 @@ class FixedSizeChunker(Chunker):
     id = "fixed_size"
 
     def __init__(self, size: int = 1024):
-        self.size = size
+        self.size: int = size
 
-    def config(self) -> Dict[str, int | str]:
+    def config(self) -> Dict[str, Any]: # Changed to Dict[str, Any]
         return {"id": self.id, "size": self.size}
 
     def chunk(self, text: str) -> List[str]:
@@ -119,14 +136,14 @@ class AgenticChunker(Chunker):
     id = "agentic"
 
     def __init__(self, max_tokens: int = 120, sim_threshold: float = 0.3) -> None:
-        self.max_tokens = max_tokens
-        self.sim_threshold = sim_threshold
+        self.max_tokens: int = max_tokens
+        self.sim_threshold: float = sim_threshold
 
-    def config(self) -> Dict[str, int | str]:
+    def config(self) -> Dict[str, Any]: # Changed to Dict[str, Any]
         return {
             "id": self.id,
             "max_tokens": self.max_tokens,
-            "sim_threshold": self.sim_threshold,
+            "sim_threshold": self.sim_threshold, # This makes the value float
         }
 
     def chunk(self, text: str) -> List[str]:
@@ -142,10 +159,10 @@ class NltkSentenceChunker(Chunker):
 
     id = "nltk_sentence"
 
-    def __init__(self, max_tokens: int = 256, **kwargs):
-        self.max_tokens = max_tokens
+    def __init__(self, max_tokens: int = 256, **kwargs): # Add type hints for kwargs if possible
+        self.max_tokens: int = max_tokens
         try:
-            self.tokenizer = tiktoken.get_encoding("gpt2")
+            self.tokenizer: Optional[tiktoken.Encoding] = tiktoken.get_encoding("gpt2")
         except Exception:  # pragma: no cover - offline fallback
             self.tokenizer = None
 
@@ -159,7 +176,7 @@ class NltkSentenceChunker(Chunker):
                     f"NLTK punkt download failed: {e}. Falling back to basic sentence splitting."
                 )
 
-    def config(self) -> Dict[str, int | str]:
+    def config(self) -> Dict[str, Any]: # Changed to Dict[str, Any]
         return {
             "id": self.id,
             "max_tokens": self.max_tokens,
@@ -241,13 +258,13 @@ class SemanticChunker(Chunker):
     id = "semantic"
 
     def __init__(self, max_tokens: int = 512) -> None:
-        self.max_tokens = max_tokens
+        self.max_tokens: int = max_tokens
         try:
-            self.tokenizer = tiktoken.get_encoding("gpt2")
+            self.tokenizer: Optional[tiktoken.Encoding] = tiktoken.get_encoding("gpt2")
         except Exception:  # pragma: no cover - offline fallback
             self.tokenizer = None
 
-    def config(self) -> Dict[str, int | str]:
+    def config(self) -> Dict[str, Any]: # Changed to Dict[str, Any]
         return {"id": self.id, "max_tokens": self.max_tokens}
 
     def _paragraphs(self, text: str) -> List[str]:

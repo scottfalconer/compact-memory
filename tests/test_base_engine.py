@@ -337,7 +337,7 @@ def test_sha256_basic_duplicate_ingestion(patch_embedding_model):
     assert len(ids_a1) == 1  # Assuming text_a results in one chunk
     assert len(engine.memories) == 1
     assert len(engine.memory_hashes) == 1
-    assert engine.embeddings.shape[0] == 1
+    assert engine.vector_store.count() == 1 # Changed from engine.embeddings.shape[0]
     expected_hash_a = calculate_sha256(
         text_a
     )  # Assuming _compress_chunk returns text as is
@@ -348,7 +348,7 @@ def test_sha256_basic_duplicate_ingestion(patch_embedding_model):
     assert len(ids_a2) == 0  # No new IDs should be returned for duplicates
     assert len(engine.memories) == 1  # Should still be 1
     assert len(engine.memory_hashes) == 1  # Should still be 1
-    assert engine.embeddings.shape[0] == 1  # Should still be 1
+    assert engine.vector_store.count() == 1  # Changed from engine.embeddings.shape[0]
 
 
 def test_sha256_different_texts_ingestion(patch_embedding_model):
@@ -360,14 +360,14 @@ def test_sha256_different_texts_ingestion(patch_embedding_model):
     engine.ingest(text_a)
     assert len(engine.memories) == 1
     assert len(engine.memory_hashes) == 1
-    assert engine.embeddings.shape[0] == 1
+    assert engine.vector_store.count() == 1 # Changed
 
     # Ingest text_b
     ids_b = engine.ingest(text_b)
     assert len(ids_b) == 1  # text_b should be new
     assert len(engine.memories) == 2
     assert len(engine.memory_hashes) == 2
-    assert engine.embeddings.shape[0] == 2
+    assert engine.vector_store.count() == 2 # Changed
 
     hash_a = calculate_sha256(text_a)
     hash_b = calculate_sha256(text_b)
@@ -394,21 +394,21 @@ def test_sha256_duplicate_detection_after_load(tmp_path: Path, patch_embedding_m
     expected_hash_a = calculate_sha256(text_a)  # Assuming _compress_chunk is identity
     assert expected_hash_a in engine_v2.memory_hashes
     assert len(engine_v2.memories) == 1  # Ensure memories are loaded
-    assert engine_v2.embeddings.shape[0] == 1  # Ensure embeddings are loaded
+    assert engine_v2.vector_store.count() == 1  # Changed
 
     # Ingest text_a again (should be a duplicate)
     ids_a_again = engine_v2.ingest(text_a)
     assert len(ids_a_again) == 0
     assert len(engine_v2.memories) == 1
     assert len(engine_v2.memory_hashes) == 1
-    assert engine_v2.embeddings.shape[0] == 1
+    assert engine_v2.vector_store.count() == 1 # Changed
 
     # Ingest different text_b (should be new)
     ids_b = engine_v2.ingest(text_b)
     assert len(ids_b) == 1
     assert len(engine_v2.memories) == 2
     assert len(engine_v2.memory_hashes) == 2
-    assert engine_v2.embeddings.shape[0] == 2
+    assert engine_v2.vector_store.count() == 2 # Changed
     expected_hash_b = calculate_sha256(text_b)
     assert expected_hash_b in engine_v2.memory_hashes
 
@@ -478,6 +478,78 @@ def test_engine_recall_no_memories():
     engine = BaseCompressionEngine()
     results = engine.recall("anything")
     assert results == []
+
+
+def test_deduplication_multiple_chunks_same_text(patch_embedding_model):
+    """Test deduplication when a single text results in multiple chunks and is ingested twice."""
+    chunker_instance = FixedSizeChunker(size=5) # Small chunk size to ensure multiple chunks
+    engine = BaseCompressionEngine(chunker=chunker_instance, config=EngineConfig(embedding_dim=MOCK_EMBED_TEXT_DIM)) # Ensure embedding_dim
+
+    text = "abcdefghij" # Should produce "abcde" and "fghij"
+
+    # First ingestion
+    ids1 = engine.ingest(text)
+    assert len(ids1) == 2
+    assert len(engine.memories) == 2
+    assert len(engine.memory_hashes) == 2
+    assert engine.vector_store.count() == 2
+
+    hash1 = calculate_sha256("abcde")
+    hash2 = calculate_sha256("fghij")
+    assert hash1 in engine.memory_hashes
+    assert hash2 in engine.memory_hashes
+
+    # Second ingestion of the same text
+    ids2 = engine.ingest(text)
+    assert len(ids2) == 0
+    assert len(engine.memories) == 2
+    assert len(engine.memory_hashes) == 2
+    assert engine.vector_store.count() == 2
+
+
+def test_deduplication_mixed_new_and_duplicate_chunks(patch_embedding_model):
+    """Test deduplication with a mix of new and already seen chunks from different ingest calls."""
+    chunker_instance = FixedSizeChunker(size=5)
+    engine = BaseCompressionEngine(chunker=chunker_instance, config=EngineConfig(embedding_dim=MOCK_EMBED_TEXT_DIM))
+
+    text_a = "abcde" # Chunk A1: "abcde"
+    text_b = "fghij" # Chunk B1: "fghij"
+    text_c = "abcdeklmno" # Chunk A1: "abcde", Chunk C1: "klmno"
+
+    # Ingest text_a
+    ids_a = engine.ingest(text_a)
+    assert len(ids_a) == 1
+    id_a1 = ids_a[0]
+    assert len(engine.memories) == 1
+    assert engine.vector_store.count() == 1
+    hash_a1 = calculate_sha256("abcde")
+    assert hash_a1 in engine.memory_hashes
+
+    # Ingest text_b
+    ids_b = engine.ingest(text_b)
+    assert len(ids_b) == 1
+    # id_b1 = ids_b[0] # Not used but good for clarity
+    assert len(engine.memories) == 2
+    assert engine.vector_store.count() == 2
+    hash_b1 = calculate_sha256("fghij")
+    assert hash_b1 in engine.memory_hashes
+
+    # Ingest text_c (contains duplicate of A1 and new C1)
+    ids_c = engine.ingest(text_c)
+    assert len(ids_c) == 1 # Only C1 ("klmno") should be new
+    id_c1 = ids_c[0]
+
+    assert id_c1 != id_a1 # Ensure the new ID is different
+
+    assert len(engine.memories) == 3
+    assert len(engine.memory_hashes) == 3
+    assert engine.vector_store.count() == 3
+
+    hash_c1 = calculate_sha256("klmno")
+    assert hash_c1 in engine.memory_hashes
+    assert engine.memories[0]["text"] == "abcde"
+    assert engine.memories[1]["text"] == "fghij"
+    assert engine.memories[2]["text"] == "klmno"
 
 
 # --- Tests for EngineConfig Integration ---

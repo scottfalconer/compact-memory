@@ -88,6 +88,34 @@ $(cat compressed_output.txt)
 Assistant:
 ```
 
+## Basic CLI Usage
+
+... (existing content of Basic CLI Usage) ...
+
+### Managing Engine Stores
+
+Beyond compressing text, the CLI provides commands to manage the engine stores themselves under the `compact-memory engine` subcommand group:
+
+*   **Initialize a new store:**
+    ```bash
+    compact-memory engine init ./my_new_store --engine none
+    ```
+    This creates the necessary directory structure and manifest for a new engine store.
+
+*   **View store statistics:**
+    ```bash
+    compact-memory engine stats --memory-path ./my_new_store
+    ```
+
+*   **Rebuild search index (Advanced):**
+    If you suspect the search index within your vector store might be stale or corrupted, you can force a rebuild:
+    ```bash
+    compact-memory engine rebuild-index --memory-path ./my_new_store
+    ```
+    This command instructs the vector store to reconstruct its index from its current data and, for persistent stores, saves the rebuilt index. This is typically an advanced troubleshooting step.
+
+Refer to the [CLI Reference](cli_reference.md) for a complete list of `engine` subcommands like `list`, `info`, `validate`, and `clear`.
+
 ## Python API Example
 
 You can also call compression engines programmatically:

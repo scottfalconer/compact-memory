@@ -8,9 +8,8 @@ from compact_memory.engines import (
     load_engine,
     get_compression_engine,
 )
-from compact_memory import (
-    local_llm,
-)
+from compact_memory import local_llm
+from compact_memory.exceptions import CompactMemoryError, EngineLoadError # Import custom exceptions
 
 from compact_memory.engines.registry import (
     get_engine_metadata,
@@ -50,16 +49,15 @@ def query_command(
 
     try:
         engine_instance = load_engine(resolved_memory_path)
-    except FileNotFoundError:
-        typer.secho(
-            f"Error: Engine store not found at '{resolved_memory_path}'. Please initialize it first using 'compact-memory engine init'.",
-            fg=typer.colors.RED,
-            err=True,
-        )
+    except EngineLoadError as e:
+        typer.secho(f"Error loading engine from '{resolved_memory_path}': {e}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
-    except Exception as e:
+    except CompactMemoryError as e: # Catch other specific library errors
+        typer.secho(f"A Compact Memory error occurred while loading the engine from '{resolved_memory_path}': {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    except Exception as e: # General fallback for unexpected errors
         typer.secho(
-            f"Error loading engine from '{resolved_memory_path}': {e}",
+            f"An unexpected error occurred loading engine from '{resolved_memory_path}': {e}",
             fg=typer.colors.RED,
             err=True,
         )
@@ -164,7 +162,10 @@ def query_command(
                 )
             else:
                 raise
-    except Exception as e:
+    except CompactMemoryError as e: # Catch library-specific errors during query processing
+        typer.secho(f"An error occurred during query processing: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    except Exception as e: # General fallback
         typer.secho(
             f"An unexpected error occurred during query: {e}",
             fg=typer.colors.RED,

@@ -15,7 +15,10 @@ from compact_memory.engines.registry import (
     all_engine_metadata,
     get_compression_engine,
 )
-from compact_memory.embedding_pipeline import EmbeddingDimensionMismatchError
+from compact_memory.exceptions import ( # Grouped imports
+    EmbeddingDimensionMismatchError, CompactMemoryError, EngineLoadError,
+    EngineSaveError, ConfigurationError
+)
 
 
 console = Console()
@@ -25,14 +28,7 @@ engine_app = typer.Typer(
 )
 
 
-def _corrupt_exit(path: Path, exc: Exception) -> None:
-    typer.echo(f"Error: Brain data is corrupted. {exc}", err=True)
-    typer.echo(
-        f"Try running compact-memory validate {path} for more details or restore from a backup.",
-        err=True,
-    )
-    raise typer.Exit(code=1)
-
+# _corrupt_exit function removed as specific exceptions are now handled.
 
 @engine_app.command("list", help="Lists all available compression engine IDs.")
 def list_command() -> None:  # Renamed from list_engines
@@ -131,16 +127,31 @@ def init_command(  # Renamed from init
         )
     except EmbeddingDimensionMismatchError as exc:
         typer.secho(
+            f"Configuration Error: {exc}", err=True, fg=typer.colors.RED
+        )
+        raise typer.Exit(code=1)
+    except ConfigurationError as exc:
+        typer.secho(
+            f"Configuration Error: {exc}", err=True, fg=typer.colors.RED
+        )
+        raise typer.Exit(code=1)
+    except EngineSaveError as exc:
+        typer.secho(
+            f"Engine Save Error: {exc}", err=True, fg=typer.colors.RED
+        )
+        raise typer.Exit(code=1)
+    except CompactMemoryError as exc: # Catch other library errors
+        typer.secho(
             f"Error during engine initialization: {exc}", err=True, fg=typer.colors.RED
         )
         raise typer.Exit(code=1)
-    except Exception as exc:
+    except Exception as exc: # General fallback
         typer.secho(
-            f"An unexpected error occurred during engine initialization or save: {exc}",
+            f"An unexpected error occurred during engine initialization: {exc}",
             err=True,
             fg=typer.colors.RED,
         )
-        logging.exception("Failed to initialize engine store.")
+        logging.exception(f"Failed to initialize engine store at {path}.") # Log with path
         raise typer.Exit(code=1)
 
 
@@ -163,20 +174,116 @@ def stats_command(  # Renamed from stats
     final_memory_path_str = memory_path_arg or ctx.obj.get("compact_memory_path")
     if final_memory_path_str is None:
         typer.secho(
-            "Critical Error: Memory path could not be resolved for stats.",
+            "Critical Error: Memory path could not be resolved for stats. "
+            "Please provide it with --memory-path or set it globally.",
             fg=typer.colors.RED,
             err=True,
         )
         raise typer.Exit(code=1)
 
-    container = load_engine(Path(final_memory_path_str))
-    data = container.get_statistics()
-    logging.debug("Collected statistics: %s", data)
-    if json_output:
-        typer.echo(json.dumps(data))
-    else:
-        for k, v in data.items():
-            typer.echo(f"{k}: {v}")
+    engine_path = Path(final_memory_path_str)
+    if not engine_path.exists() or not engine_path.is_dir():
+        typer.secho(
+            f"Error: Engine path '{engine_path}' not found or is not a directory.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        engine = load_engine(engine_path)
+        data = engine.get_statistics() # Assuming get_statistics is a method on the engine
+        logging.debug("Collected statistics: %s", data)
+        if json_output:
+            typer.echo(json.dumps(data))
+        else:
+            for k, v in data.items():
+                typer.echo(f"{k}: {v}")
+    except EngineLoadError as exc:
+        typer.secho(f"Error loading engine from '{engine_path}': {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    except CompactMemoryError as exc: # Catch other library-specific errors
+        typer.secho(f"Error generating statistics for engine at '{engine_path}': {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    except Exception as exc: # General fallback
+        typer.secho(f"An unexpected error occurred while generating stats for '{engine_path}': {exc}", fg=typer.colors.RED, err=True)
+        logging.exception(f"Failed to generate stats for engine at {engine_path}.")
+        raise typer.Exit(code=1)
+
+
+@engine_app.command(
+    "rebuild-index",
+    help="Forces the vector store of an engine to rebuild its search index and persist it.",
+)
+def rebuild_index_command(
+    ctx: typer.Context,
+    memory_path_arg: Optional[str] = typer.Option(
+        None,
+        "--memory-path",
+        "-m",
+        help="Path to the engine store directory. Overrides global setting if provided.",
+    ),
+) -> None:
+    """
+    Forces the vector store associated with a Compact Memory engine to rebuild
+    its search index. This can be useful if the index is suspected to be stale
+    or corrupted. For persistent vector stores, the rebuilt index is also saved.
+    """
+    final_memory_path_str = memory_path_arg or ctx.obj.get("compact_memory_path")
+    if final_memory_path_str is None:
+        typer.secho(
+            "Critical Error: Memory path could not be resolved for rebuild-index. "
+            "Please provide it with --memory-path or set it globally.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    engine_path = Path(final_memory_path_str)
+    if not engine_path.exists() or not engine_path.is_dir():
+        typer.secho(
+            f"Error: Engine path '{engine_path}' not found or is not a directory.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        typer.echo(f"Loading engine from: {engine_path}...")
+        engine = load_engine(engine_path)
+        typer.echo(f"Engine '{engine.id}' loaded successfully.")
+
+        typer.echo("Requesting index rebuild for the vector store...")
+        engine.rebuild_index() # This calls vector_store.rebuild_index()
+        typer.secho("Index rebuilding process completed by the vector store.", fg=typer.colors.GREEN)
+
+        typer.echo("Saving engine to persist any changes (e.g., rebuilt index for persistent stores)...")
+        engine.save(engine_path)
+        typer.secho(f"Engine state saved successfully to {engine_path}.", fg=typer.colors.GREEN)
+
+        typer.secho(
+            f"Successfully rebuilt index for engine at '{engine_path}'.",
+            fg=typer.colors.GREEN,
+        )
+    except EngineLoadError as e:
+        typer.secho(f"Error loading engine from '{engine_path}': {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    except EngineSaveError as e:
+        typer.secho(f"Error saving engine to '{engine_path}' after index rebuild: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    except CompactMemoryError as e: # Catch other specific library errors, e.g., IndexRebuildError
+        typer.secho(f"An error occurred during index rebuilding for engine at '{engine_path}': {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    except Exception as e: # General fallback
+        typer.secho(
+            f"An unexpected error occurred during index rebuilding for '{engine_path}': {e}",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        logging.exception(f"Failed to rebuild index for engine at {engine_path}.")
+        # Consider if _corrupt_exit is appropriate or too strong here.
+        # For now, a generic error exit.
+        raise typer.Exit(code=1)
 
 
 @engine_app.command(

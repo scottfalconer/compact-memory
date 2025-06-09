@@ -5,6 +5,8 @@ Compact Memory aims to make compression engines transparent and debuggable. A
 experiments can be analysed after the fact. The following guidelines describe how
 to produce informative traces and inspect them.
 
+**Note on Trace Generation:** By default, compression engines will generate these detailed traces. However, for performance-sensitive applications where trace details are not required, trace generation can be disabled. This is controlled by the `enable_trace: bool` field in the `EngineConfig` (see `docs/configuration.md` for details). If `enable_trace` is set to `False`, the `compress` method will not produce a `CompressionTrace` object, and the `trace` field in the returned `CompressedMemory` will be `None`.
+
 ## Trace Step Vocabulary
 
 Each step in ``CompressionTrace.steps`` should include a ``type`` string and a

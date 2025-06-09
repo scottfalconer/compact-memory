@@ -257,19 +257,16 @@ def compress_command(  # Renamed from compress
         try:
             # config_obj is ctx.obj["config"], default_model_id is ctx.obj["default_model_id"]
             # These are now passed down through ctx.
-            main_engine_instance = load_engine(
-                resolved_memory_path
-            )  # load_engine might also need config for LLM if it initializes one. For now, assume not.
-        except FileNotFoundError:
-            typer.secho(
-                f"Error: Engine store at '{resolved_memory_path}' not found. Initialize with 'engine init'.",
-                fg=typer.colors.RED,
-                err=True,
-            )
+            main_engine_instance = load_engine(resolved_memory_path)
+        except EngineLoadError as e:
+            typer.secho(f"Error loading engine store from '{resolved_memory_path}': {e}", fg=typer.colors.RED, err=True)
             raise typer.Exit(code=1)
-        except Exception as e:
+        except CompactMemoryError as e: # Other library errors during load
+            typer.secho(f"Error related to engine store at '{resolved_memory_path}': {e}", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
+        except Exception as e: # General fallback for load_engine
             typer.secho(
-                f"Error loading engine from '{resolved_memory_path}': {e}",
+                f"An unexpected error occurred loading engine from '{resolved_memory_path}': {e}",
                 fg=typer.colors.RED,
                 err=True,
             )
@@ -316,12 +313,18 @@ def compress_command(  # Renamed from compress
         try:
             main_engine_instance.save(resolved_memory_path)
             typer.secho(
-                f"Content compressed and saved to engine store at '{resolved_memory_path}'.",
+                f"Content compressed and ingested. Engine store at '{resolved_memory_path}' saved.",
                 fg=typer.colors.GREEN,
             )
-        except Exception as e:
+        except EngineSaveError as e:
+            typer.secho(f"Error saving engine store at '{resolved_memory_path}': {e}", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
+        except CompactMemoryError as e: # Other library errors during save
+            typer.secho(f"Error related to saving engine store at '{resolved_memory_path}': {e}", fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=1)
+        except Exception as e: # General fallback for save
             typer.secho(
-                f"Error saving engine store at '{resolved_memory_path}' after compression: {e}",
+                f"An unexpected error occurred saving engine store at '{resolved_memory_path}': {e}",
                 fg=typer.colors.RED,
                 err=True,
             )
@@ -515,15 +518,43 @@ def _compress_text_core(
     pipeline_config_str: Optional[str] = None,  # Added
 ) -> tuple[CompressedMemory, Optional[CompressionTrace], float]:
     """Core logic to compress text, returns compressed memory, trace, and time."""
-    engine = _get_one_shot_compression_engine(
-        engine_id, ctx, pipeline_config_str
-    )  # Pass pipeline_config_str
-    start_time = time.time()
-    # engine.compress now returns a single CompressedMemory object
-    compressed_mem: CompressedMemory = engine.compress(
-        text_content, budget, tokenizer=tokenizer
-    )
-    elapsed_ms = (time.time() - start_time) * 1000
+    try:
+        engine = _get_one_shot_compression_engine(
+            engine_id, ctx, pipeline_config_str
+        )
+        start_time = time.time()
+        compressed_mem: CompressedMemory = engine.compress(
+            text_content, budget, tokenizer=tokenizer
+        )
+        elapsed_ms = (time.time() - start_time) * 1000
+
+        if not isinstance(compressed_mem, CompressedMemory):
+            # This case should ideally be caught by type checkers if engines adhere to the interface.
+            # However, as a runtime check for safety:
+            logging.error(f"Compression engine '{engine_id}' returned an unexpected result type: {type(compressed_mem)}")
+            typer.secho(
+                f"Internal Error: Compression engine '{engine_id}' returned an unexpected result type.",
+                err=True,
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(code=1)
+
+    except ConfigurationError as e:
+        typer.secho(f"Configuration error for engine '{engine_id}': {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    except EngineError as e: # Catch other engine-specific errors during compress
+        typer.secho(f"Error during compression with engine '{engine_id}': {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    except CompactMemoryError as e: # Broader library errors
+        typer.secho(f"An error occurred during compression: {e}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1)
+    except Exception as e: # General fallback
+        typer.secho(f"An unexpected error occurred during compression with engine '{engine_id}': {e}", fg=typer.colors.RED, err=True)
+        logging.exception(f"Compression failed with engine {engine_id}")
+        raise typer.Exit(code=1)
+
+    # Extract trace_obj from compressed_mem (this part remains the same)
+    trace_obj: Optional[CompressionTrace] = compressed_mem.trace
 
     if not isinstance(compressed_mem, CompressedMemory):
         typer.secho(
