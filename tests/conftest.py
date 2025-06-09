@@ -54,3 +54,25 @@ def patch_embedding_model(monkeypatch: pytest.MonkeyPatch) -> Any:
     enc = MockEncoder()
     monkeypatch.setattr(ep, "_load_model", lambda *a, **k: enc)
     yield original
+
+
+@pytest.fixture
+def sample_vector_store() -> Any:
+    """Return a vector store populated with a single known prototype."""
+    from compact_memory.vector_store import InMemoryVectorStore
+    from compact_memory.models import BeliefPrototype, RawMemory
+
+    enc = MockEncoder()
+    store = InMemoryVectorStore(embedding_dim=enc.dim)
+    proto = BeliefPrototype(prototype_id="p1", vector_row_index=0, summary_text="hello")
+    vec = enc.encode("hello")
+    store.add_prototype(proto, vec)
+    store.add_memory(
+        RawMemory(
+            memory_id="m1",
+            raw_text_hash="hash",
+            raw_text="hello",
+            embedding=vec.tolist(),
+        )
+    )
+    return store
