@@ -127,17 +127,41 @@ class MyConfigurableEngine(BaseCompressionEngine):
     *   If your engine's recall concept is different (e.g., querying a knowledge graph).
 *   **Returns:** A list of dictionaries, where each dictionary represents a retrieved item and should typically include "id", "text", and "score".
 
-### 7. `compress(self, text_or_chunks: str | List[str], llm_token_budget: int, **kwargs) -> tuple[CompressedMemory, CompressionTrace]` (Typically Required)
+### 7. `compress(self, text: str, budget: int, previous_compression_result: Optional[CompressedMemory] = None, **kwargs) -> CompressedMemory` (Typically Required)
 
-*   **Purpose:** This is the primary method for performing one-shot compression of a given text or list of chunks to meet a specified token budget. This method is used by the `compact-memory compress` CLI command.
+*   **Purpose:** This is the primary method for performing one-shot compression of a given text to meet a specified token budget. This method is used by the `compact-memory compress` CLI command and by pipeline engines.
 *   **Parameters:**
-    *   `text_or_chunks`: The input text (string) or list of text chunks to compress.
-    *   `llm_token_budget`: The target token budget for the compressed output.
-    *   `**kwargs`: Often includes `tokenizer` (a callable that behaves like a Hugging Face tokenizer, returning a dict with `input_ids`) which can be used to count tokens and truncate accurately.
+    *   `text`: The input string to compress. While some engines might internally handle or accept a list of chunks (often named `text_or_chunks`), the standardized signature favors a single string input for simplicity at the interface level.
+    *   `budget`: The target token budget for the compressed output (e.g., `llm_token_budget`).
+    *   `previous_compression_result: Optional[CompressedMemory] = None`: An optional parameter that provides the output of a preceding compression engine in a chain or pipeline. This allows an engine to base its processing on a previously compressed version of the text. For standalone calls, this is typically `None`.
+    *   `**kwargs`: Often includes `tokenizer` (a callable that behaves like a Hugging Face tokenizer, returning a dict with `input_ids`) which can be used to count tokens and truncate accurately. Other engine-specific parameters can also be passed via `kwargs`.
 *   **Implementation:** This is where your core compression algorithm resides.
-*   **Returns:** A tuple containing:
-    *   `CompressedMemory`: An object (usually a dataclass) with at least a `text` attribute holding the compressed string, and an optional `metadata` dict.
-    *   `CompressionTrace`: An object detailing the engine used, parameters, input/output summaries, and steps taken during compression. This is important for debugging and analysis.
+*   **Returns:** A single `CompressedMemory` object. This object now encapsulates all information about the compression result:
+    *   `text: str`: The actual compressed text string.
+    *   `engine_id: Optional[str]`: The ID of the engine that produced this result (e.g., `self.id`). This should be populated by your engine.
+    *   `engine_config: Optional[Dict[str, Any]]`: The configuration of the engine instance that performed the compression (e.g., `self.config` or a relevant subset). This should be populated by your engine.
+    *   `trace: Optional[CompressionTrace]`: A `CompressionTrace` object detailing the engine used, parameters, input/output summaries, and steps taken during compression. This object, previously returned as the second element of a tuple, should now be created by your engine and assigned to this field.
+    *   `metadata: Optional[Dict[str, Any]]`: A dictionary for any other arbitrary metadata your engine might want to associate with the compressed output.
+
+#### Using `previous_compression_result`
+
+The `previous_compression_result` parameter allows engines to be chained effectively. An engine can inspect this object to:
+*   Access the `text` field: `previous_compression_result.text` provides the already compressed text from the prior stage.
+*   Examine `metadata`: `previous_compression_result.metadata` might contain useful context.
+*   Review the `trace`: `previous_compression_result.trace` can inform decisions.
+*   Check `engine_id` or `engine_config`: To understand what kind of compression was previously applied.
+
+For example, an engine could decide to further summarize `previous_compression_result.text`, or it might use some metadata to guide its own parameters. If an engine does not use the previous result, it can simply ignore this parameter.
+
+```python
+# Example snippet within a compress method:
+if previous_compression_result:
+    input_text_for_this_engine = previous_compression_result.text
+    # Optionally, adjust behavior based on previous_compression_result.engine_id or metadata
+else:
+    input_text_for_this_engine = original_text_passed_to_compress
+# ... proceed to compress input_text_for_this_engine ...
+```
 
 ### 8. `save(self, path: str | Path)` (Override for Custom State)
 
@@ -226,14 +250,19 @@ class SimpleTruncEngine(BaseCompressionEngine):
     # No need to override _compress_chunk if not using base ingest's pre-embedding step
 
     def compress(
-        self, text_or_chunks: str | List[str], llm_token_budget: int, **kwargs
-    ) -> Tuple[CompressedMemory, CompressionTrace]:
+        self,
+        text: str, # Changed from text_or_chunks for typical signature
+        budget: int, # Changed from llm_token_budget
+        previous_compression_result: Optional[CompressedMemory] = None, # Added
+        **kwargs
+    ) -> CompressedMemory: # Changed return type
 
-        text_to_compress = (
-            str(text_or_chunks)
-            if isinstance(text_or_chunks, str)
-            else " ".join(text_or_chunks)
-        )
+        text_to_compress = text # Assuming text is already a string
+
+        # Example of how previous_compression_result might be used (optional)
+        # if previous_compression_result:
+        #     text_to_compress = previous_compression_result.text
+            # Or, combine/modify based on previous_compression_result.metadata, etc.
 
         tokenizer = kwargs.get("tokenizer")
         original_length_chars = len(text_to_compress)
@@ -246,8 +275,8 @@ class SimpleTruncEngine(BaseCompressionEngine):
 
         # Simple character-based truncation for this example
         # A real engine would use the tokenizer for token-based truncation
-        estimated_chars_per_token = 4
-        char_budget = llm_token_budget * estimated_chars_per_token
+        estimated_chars_per_token = 4 # Example value
+        char_budget = budget * estimated_chars_per_token # Use 'budget'
         compressed_text = text_to_compress[:char_budget]
 
         compressed_length_chars = len(compressed_text)
@@ -258,9 +287,9 @@ class SimpleTruncEngine(BaseCompressionEngine):
             except Exception:
                 pass
 
-        trace = CompressionTrace(
+        current_trace = CompressionTrace( # Renamed 'trace' to 'current_trace' to avoid conflict if 'trace' is a field
             engine_name=self.id,
-            strategy_params={"llm_token_budget": llm_token_budget, "method": "character_truncation"},
+            strategy_params={"budget": budget, "method": "character_truncation"}, # Use 'budget'
             input_summary={
                 "original_length_chars": original_length_chars,
                 "original_length_tokens": original_length_tokens,
@@ -282,7 +311,13 @@ class SimpleTruncEngine(BaseCompressionEngine):
             final_compressed_object_preview=compressed_text[:100], # Preview of the result
         )
 
-        return CompressedMemory(text=compressed_text), trace
+        return CompressedMemory(
+            text=compressed_text,
+            engine_id=self.id,
+            engine_config=self.config, # Populate with engine's config
+            trace=current_trace,      # Embed the trace object
+            metadata={"notes": "Simple truncation example"} # Optional metadata
+        )
 
     # No custom save/load needed if only relying on config persistence via superclass
     # and not storing additional state.

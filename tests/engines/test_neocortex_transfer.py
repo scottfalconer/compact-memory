@@ -1,5 +1,6 @@
 import pytest
 from compact_memory.engines.neocortex_transfer import NeocortexTransfer
+from compact_memory.engines.base import CompressedMemory, CompressionTrace # Added
 
 
 @pytest.fixture
@@ -173,13 +174,23 @@ def test_retrieval_us5(neocortex_engine: NeocortexTransfer):
 def test_full_flow_compress_consolidate_decompress(neocortex_engine: NeocortexTransfer):
     """Test the full flow: compress -> consolidate -> decompress."""
     text_to_learn = "The diligent student studies cognitive psychology."
+    budget = 100 # NeocortexTransfer.compress takes a budget param now
 
     # Compress (includes US1, US2, US3)
-    compression_result = neocortex_engine.compress(text_to_learn)
-    assert compression_result["trace_status"] == "encoded_hippocampal"
-    assert (
-        compression_result["content"] == "The diligent student studies cognitive"
-    )  # First 5 words
+    # compress now returns a CompressedMemory object
+    compression_result_cm = neocortex_engine.compress(text_to_learn, budget=budget)
+
+    # Check the CompressedMemory object itself
+    assert isinstance(compression_result_cm, CompressedMemory)
+    assert compression_result_cm.engine_id == NeocortexTransfer.id
+    assert isinstance(compression_result_cm.trace, CompressionTrace)
+    assert compression_result_cm.trace.engine_name == NeocortexTransfer.id
+    assert compression_result_cm.text == "The diligent student studies cognitive" # First 5 words
+
+    # Assertions on metadata (the old dictionary structure)
+    assert compression_result_cm.metadata["trace_status"] == "encoded_hippocampal"
+    assert compression_result_cm.metadata["content"] == "The diligent student studies cognitive"
+
 
     initial_trace_id = neocortex_engine.long_term_memory_store[0]["id"]
 
@@ -199,7 +210,55 @@ def test_full_flow_compress_consolidate_decompress(neocortex_engine: NeocortexTr
     retrieval_cue = "cognitive psychology"
     decompression_result = neocortex_engine.decompress(retrieval_cue)
 
-    assert f"Content: '{compression_result['content']}'" in decompression_result
+    assert f"Content: '{compression_result_cm.text}'" in decompression_result # Use .text from CM
     assert f"ID: {initial_trace_id}" in decompression_result
     assert "Confidence:" in decompression_result
-    assert compression_result["content"] in neocortex_engine.working_memory_context
+    assert compression_result_cm.text in neocortex_engine.working_memory_context # Use .text
+
+
+# New dedicated test for compress output structure
+def test_neocortex_engine_compress_output_structure(neocortex_engine: NeocortexTransfer):
+    text = "This is a test for NeocortexTransfer compress method output."
+    budget = 50 # Example budget
+    engine_config = neocortex_engine.config # Or a specific test config if needed
+
+    # Test with previous_compression_result = None
+    result_none = neocortex_engine.compress(text, budget=budget, previous_compression_result=None)
+
+    assert isinstance(result_none, CompressedMemory)
+    expected_text = " ".join(text.split()[:5]).rstrip(".,!?") # five_word_gist logic
+    assert result_none.text == expected_text
+    assert result_none.engine_id == NeocortexTransfer.id
+    assert result_none.engine_config == engine_config # BaseCompressor's config
+
+    assert isinstance(result_none.trace, CompressionTrace)
+    assert result_none.trace.engine_name == NeocortexTransfer.id
+    assert result_none.trace.strategy_params.get("budget") == budget
+    assert result_none.trace.input_summary == {"original_length": len(text)}
+    assert result_none.trace.output_summary == {"compressed_length": len(expected_text)}
+
+    assert isinstance(result_none.metadata, dict)
+    assert result_none.metadata["content"] == expected_text
+    assert "message" in result_none.metadata
+    assert "trace_status" in result_none.metadata
+    assert "trace_strength" in result_none.metadata
+
+
+    # Test with a dummy previous_compression_result
+    dummy_previous_text = "previous compressed text"
+    dummy_previous_trace = CompressionTrace(engine_name="prev_eng", strategy_params={}, input_summary={}, output_summary={})
+    previous_result_cm = CompressedMemory(
+        text=dummy_previous_text,
+        engine_id="prev_eng",
+        engine_config={"prev_config": "val"},
+        trace=dummy_previous_trace
+    )
+    result_with_prev = neocortex_engine.compress(text, budget=budget, previous_compression_result=previous_result_cm)
+
+    assert isinstance(result_with_prev, CompressedMemory)
+    assert result_with_prev.text == expected_text # NeocortexTransfer might not use previous_compression_result in its current logic
+    assert result_with_prev.engine_id == NeocortexTransfer.id
+    assert isinstance(result_with_prev.trace, CompressionTrace)
+    assert result_with_prev.trace.engine_name == NeocortexTransfer.id
+    # Metadata should still reflect the current compression operation
+    assert result_with_prev.metadata["content"] == expected_text

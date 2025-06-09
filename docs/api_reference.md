@@ -5,11 +5,11 @@ This section provides a reference for the core public APIs of Compact Memory, pa
 The following classes and modules are fundamental when developing new compression engines.
 ### `compact_memory.engines.BaseCompressionEngine`
 The abstract base class for all compression engines. Developers must subclass this to create new engines.
-*   `Key methods: \`compress(self, text_or_chunks, llm_token_budget, **kwargs)\``
+*   `Key methods: \`compress(self, text: str, budget: int, previous_compression_result: Optional[CompressedMemory] = None, **kwargs) -> CompressedMemory\``
 *   `Key attributes: \`id\` (string identifier for the engine)`
 ### `compact_memory.engines.CompressedMemory`
 A data class that holds the output of a compression operation.
-*   `Key attributes: \`text\` (string, the compressed content), \`metadata\` (optional dictionary)`
+*   `Key attributes: \`text: str\`, \`engine_id: Optional[str]\`, \`engine_config: Optional[Dict[str, Any]]\`, \`trace: Optional[CompressionTrace]\`, \`metadata: Optional[Dict[str, Any]]\``
 ### `compact_memory.engines.CompressionTrace`
 A data class used to record the steps and metadata of a compression process. Essential for debugging and explainability.
 *   `Key attributes: \`engine_name\`, \`engine_params\`, \`input_summary\`, \`steps\` (list of dicts), \`output_summary\`, \`processing_ms\`, \`final_compressed_object_preview\``

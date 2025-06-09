@@ -1,4 +1,7 @@
 from compact_memory.engines.stopword_pruner_engine import StopwordPrunerEngine
+from compact_memory.engines.base import CompressedMemory, CompressionTrace # Added
+from typing import Optional # Added
+
 import nltk  # For checking NLTK's list in the test if needed for clarity, though engine handles it.
 import importlib.util
 import pytest
@@ -19,8 +22,15 @@ def test_stopword_pruner_basic():
     # This command should be run in the environment setup if not already:
     # import nltk; nltk.download('stopwords', quiet=True)
 
-    compressed, trace = engine.compress(text, llm_token_budget=100)
-    out = compressed.text.lower()
+    budget = 100
+    result = engine.compress(text, llm_token_budget=budget)
+    assert isinstance(result, CompressedMemory)
+    assert result.engine_id == StopwordPrunerEngine.id
+    assert result.engine_config == engine.config # Engine config should match
+
+    trace = result.trace
+    assert isinstance(trace, CompressionTrace)
+    out = result.text.lower()
 
     # Check specific words are removed or kept, accounting for NLTK's list
     assert (
@@ -58,7 +68,8 @@ def test_stopword_pruner_basic():
         out == "simple example know test"
     ), f"Output string mismatch. Expected 'simple example know test', got '{out}'"
 
-    assert trace.engine_name == "stopword_pruner", "Trace engine name mismatch"
+    assert trace.engine_name == StopwordPrunerEngine.id, "Trace engine name mismatch"
+    assert trace.strategy_params == {"llm_token_budget": budget}
 
     # Verify trace details for removed counts
     removed_stopwords_count = 0
@@ -84,13 +95,25 @@ def test_stopword_pruner_basic():
 def test_stopword_pruner_budget_respected():
     engine = StopwordPrunerEngine()
     text = "word " * 30
-    compressed, _ = engine.compress(text, llm_token_budget=5)
-    output_tokens = compressed.text.split()
+    budget = 5
+    result = engine.compress(text, llm_token_budget=budget)
+    assert isinstance(result, CompressedMemory)
+    trace = result.trace
+    assert isinstance(trace, CompressionTrace)
+
+    output_tokens = result.text.split()
     assert (
-        len(output_tokens) <= 5
-    ), f"Expected <= 5 tokens, got {len(output_tokens)}: '{compressed.text}'"
+        len(output_tokens) <= budget
+    ), f"Expected <= {budget} tokens, got {len(output_tokens)}: '{result.text}'"
     for token in output_tokens:
         assert token == "word", f"Expected token 'word', got '{token}'"
+
+    # Test with previous_compression_result
+    dummy_previous = CompressedMemory(text="prev", trace=CompressionTrace(engine_name="dummy", strategy_params={}, input_summary={}, output_summary={}))
+    result_with_prev = engine.compress(text, llm_token_budget=budget, previous_compression_result=dummy_previous)
+    assert isinstance(result_with_prev, CompressedMemory)
+    # Ensure the main logic is not affected by previous_compression_result for this engine
+    assert len(result_with_prev.text.split()) <= budget
 
 
 def test_stopword_pruner_min_word_length():
@@ -101,8 +124,18 @@ def test_stopword_pruner_min_word_length():
     # Kept words: "fast" (4), "tree" (4)
     # Expected output: "fast tree"
 
-    compressed, trace = engine.compress(text, llm_token_budget=100)
-    out = compressed.text.lower()
+    budget = 100
+    result = engine.compress(text, llm_token_budget=budget)
+    assert isinstance(result, CompressedMemory)
+    trace = result.trace
+    assert isinstance(trace, CompressionTrace)
+    out = result.text.lower()
+
+    assert result.engine_id == StopwordPrunerEngine.id
+    assert result.engine_config == engine.config
+    assert trace.engine_name == StopwordPrunerEngine.id
+    assert trace.strategy_params == {"llm_token_budget": budget}
+
 
     assert (
         out == "fast tree"
@@ -141,13 +174,22 @@ def test_stopword_pruner_remove_fillers_false():
     #   with spaCy -> "like test um"
     #   fallback    -> "like test um see" ("see" not in NLTK list)
 
-    compressed, trace = engine.compress(text, llm_token_budget=100)
-    out = compressed.text.lower()
+    budget = 100
+    result = engine.compress(text, llm_token_budget=budget)
+    assert isinstance(result, CompressedMemory)
+    trace = result.trace
+    assert isinstance(trace, CompressionTrace)
+    out = result.text.lower()
 
     expected_out = "like test um" if SPACY_AVAILABLE else "like test um see"
     assert (
         out == expected_out
     ), f"Output string mismatch. Expected '{expected_out}', got '{out}'"
+
+    assert result.engine_id == StopwordPrunerEngine.id
+    assert result.engine_config == engine.config
+    assert trace.engine_name == StopwordPrunerEngine.id
+    assert trace.strategy_params == {"llm_token_budget": budget}
 
     removed_fillers_count = 0
     removed_stopwords_count = 0
@@ -184,12 +226,21 @@ def test_stopword_pruner_remove_duplicate_words_true():
     # "." (punctuation, remove)
     # Output: "Yes agree"
 
-    compressed, trace = engine.compress(text, llm_token_budget=100)
-    out = compressed.text.lower()
+    budget = 100
+    result = engine.compress(text, llm_token_budget=budget)
+    assert isinstance(result, CompressedMemory)
+    trace = result.trace
+    assert isinstance(trace, CompressionTrace)
+    out = result.text.lower()
 
     assert (
         out == "yes agree"
     ), f"Output string mismatch. Expected 'yes agree', got '{out}'"
+
+    assert result.engine_id == StopwordPrunerEngine.id
+    assert result.engine_config == engine.config
+    assert trace.engine_name == StopwordPrunerEngine.id
+    assert trace.strategy_params == {"llm_token_budget": budget}
 
     removed_duplicates_count = 0
     removed_stopwords_count = 0
@@ -221,8 +272,17 @@ def test_stopword_pruner_remove_duplicate_sentences_true():
     # Sent 3: duplicate sentence -> remove tokens.
     # Output varies with spaCy availability.
 
-    compressed, trace = engine.compress(text, llm_token_budget=100)
-    out = compressed.text.lower()
+    budget = 100
+    result = engine.compress(text, llm_token_budget=budget)
+    assert isinstance(result, CompressedMemory)
+    trace = result.trace
+    assert isinstance(trace, CompressionTrace)
+    out = result.text.lower()
+
+    assert result.engine_id == StopwordPrunerEngine.id
+    assert result.engine_config == engine.config
+    assert trace.engine_name == StopwordPrunerEngine.id
+    assert trace.strategy_params == {"llm_token_budget": budget}
 
     expected_out = "sentence" if SPACY_AVAILABLE else "sentence one sentence two"
     assert (
@@ -265,8 +325,17 @@ def test_stopword_pruner_remove_duplicates_false():
     # Punctuation "." removed.
     # Output: "word word sentence sentence"
 
-    compressed, trace = engine.compress(text, llm_token_budget=100)
-    out = compressed.text.lower()
+    budget = 100
+    result = engine.compress(text, llm_token_budget=budget)
+    assert isinstance(result, CompressedMemory)
+    trace = result.trace
+    assert isinstance(trace, CompressionTrace)
+    out = result.text.lower()
+
+    assert result.engine_id == StopwordPrunerEngine.id
+    assert result.engine_config == engine.config
+    assert trace.engine_name == StopwordPrunerEngine.id
+    assert trace.strategy_params == {"llm_token_budget": budget}
 
     assert (
         out == "word word sentence sentence"
@@ -302,8 +371,17 @@ def test_stopword_pruner_preserve_order_false():
     # Then, sorted(set(output_tokens)) = sorted({"zebra", "alpha", "charlie", "bravo"})
     # = ["alpha", "bravo", "charlie", "zebra"]
 
-    compressed, trace = engine.compress(text, llm_token_budget=100)
-    out = compressed.text.lower()
+    budget = 100
+    result = engine.compress(text, llm_token_budget=budget)
+    assert isinstance(result, CompressedMemory)
+    trace = result.trace
+    assert isinstance(trace, CompressionTrace)
+    out = result.text.lower()
+
+    assert result.engine_id == StopwordPrunerEngine.id
+    assert result.engine_config == engine.config
+    assert trace.engine_name == StopwordPrunerEngine.id
+    assert trace.strategy_params == {"llm_token_budget": budget}
 
     assert (
         out == "alpha bravo charlie zebra"
@@ -330,8 +408,17 @@ def test_stopword_pruner_preserve_order_true_maintains_order():
     text = "zebra alpha charlie bravo alpha"
     # Expected: all tokens kept in original order.
 
-    compressed, trace = engine.compress(text, llm_token_budget=100)
-    out = compressed.text.lower()
+    budget = 100
+    result = engine.compress(text, llm_token_budget=budget)
+    assert isinstance(result, CompressedMemory)
+    trace = result.trace
+    assert isinstance(trace, CompressionTrace)
+    out = result.text.lower()
+
+    assert result.engine_id == StopwordPrunerEngine.id
+    assert result.engine_config == engine.config
+    assert trace.engine_name == StopwordPrunerEngine.id
+    assert trace.strategy_params == {"llm_token_budget": budget}
 
     assert (
         out == "zebra alpha charlie bravo alpha"
@@ -381,8 +468,17 @@ def test_stopword_pruner_language_spanish():
     # en_core_web_sm (default spaCy) won't mark "el", "una" as is_stop.
     # So removal depends on NLTK's Spanish list via _get_stopwords("spanish").
 
-    compressed, trace = engine.compress(text, llm_token_budget=100)
-    out = compressed.text.lower()
+    budget = 100
+    result = engine.compress(text, llm_token_budget=budget)
+    assert isinstance(result, CompressedMemory)
+    trace = result.trace
+    assert isinstance(trace, CompressionTrace)
+    out = result.text.lower()
+
+    assert result.engine_id == StopwordPrunerEngine.id
+    assert result.engine_config == engine.config
+    assert trace.engine_name == StopwordPrunerEngine.id
+    assert trace.strategy_params == {"llm_token_budget": budget}
 
     assert (
         out == "perro come manzana"
@@ -408,12 +504,21 @@ def test_stopword_pruner_punctuation_whitespace():
     # Kept: "Hello", "world", "End".
     # Output: "hello world end" (after test's lowercasing)
 
-    compressed, trace = engine.compress(text, llm_token_budget=100)
-    out = compressed.text.lower()
+    budget = 100
+    result = engine.compress(text, llm_token_budget=budget)
+    assert isinstance(result, CompressedMemory)
+    trace = result.trace
+    assert isinstance(trace, CompressionTrace)
+    out = result.text.lower()
 
     assert (
         out == "hello world end"
     ), f"Output string mismatch. Expected 'hello world end', got '{out}'"
+
+    assert result.engine_id == StopwordPrunerEngine.id
+    assert result.engine_config == engine.config
+    assert trace.engine_name == StopwordPrunerEngine.id
+    assert trace.strategy_params == {"llm_token_budget": budget}
 
     removed_stopwords_count = 0
     removed_fillers_count = 0

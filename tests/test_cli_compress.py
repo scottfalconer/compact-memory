@@ -15,20 +15,31 @@ from compact_memory.engines import (
 class DummyTruncEngine(BaseCompressionEngine):
     id = "dummy_trunc"
 
-    def compress(self, text_or_chunks, llm_token_budget, **kwargs):
+    def compress(self, text_or_chunks, llm_token_budget, previous_compression_result=None, **kwargs): # Added previous_compression_result and matched full signature
         text = (
             text_or_chunks
             if isinstance(text_or_chunks, str)
             else " ".join(text_or_chunks)
         )
         truncated = text[:llm_token_budget]
-        return CompressedMemory(text=truncated), CompressionTrace(
+
+        trace = CompressionTrace(
             engine_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
             input_summary={"input_length": len(text)},
             steps=[{"type": "truncate"}],
             output_summary={"final_length": len(truncated)},
             final_compressed_object_preview=truncated,
+        )
+        # BaseCompressionEngine's compress method populates engine_id and engine_config.
+        # This dummy engine overrides compress, so it needs to do it itself if those fields are important for tests using it.
+        # For CLI tests, engine_id from the trace is usually what's checked.
+        # For now, let's assume self.config is None or not critical for this dummy's CompressedMemory object.
+        return CompressedMemory(
+            text=truncated,
+            trace=trace,
+            engine_id=self.id,
+            engine_config=getattr(self, 'config', None) # Mimic base engine
         )
 
 

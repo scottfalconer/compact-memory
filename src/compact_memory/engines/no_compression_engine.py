@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Simple no-op compression engine."""
 
-from typing import Any, List
+from typing import Any, List, Optional
 
 from compact_memory.token_utils import truncate_text
 
@@ -28,8 +28,9 @@ class NoCompressionEngine(BaseCompressionEngine):
         llm_token_budget: int | None,
         *,
         tokenizer: Any = None,
+        previous_compression_result: Optional[CompressedMemory] = None,
         **kwargs: Any,
-    ) -> tuple[CompressedMemory, CompressionTrace]:
+    ) -> CompressedMemory:
         tokenizer = tokenizer or _DEFAULT_TOKENIZER or (lambda t, **_: t.split())
         if isinstance(text_or_chunks, list):
             text = "\n".join(text_or_chunks)
@@ -44,7 +45,10 @@ class NoCompressionEngine(BaseCompressionEngine):
             input_summary={"input_length": len(text)},
             output_summary={"output_length": len(text)},
         )
-        return compressed, trace
+        compressed.trace = trace
+        compressed.engine_id = self.id
+        compressed.engine_config = self.config
+        return compressed
 
 
 __all__ = ["NoCompressionEngine"]

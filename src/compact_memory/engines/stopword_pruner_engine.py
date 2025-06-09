@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, List, Union
+from typing import Any, List, Union, Optional
 import re
 
 from compact_memory.token_utils import tokenize_text, truncate_text
@@ -48,8 +48,9 @@ class StopwordPrunerEngine(BaseCompressionEngine):
         llm_token_budget: int | None,
         *,
         tokenizer: Any = None,
+        previous_compression_result: Optional[CompressedMemory] = None,
         **kwargs: Any,
-    ) -> tuple[CompressedMemory, CompressionTrace]:
+    ) -> CompressedMemory:
         text = (
             text_or_chunks
             if isinstance(text_or_chunks, str)
@@ -162,7 +163,10 @@ class StopwordPrunerEngine(BaseCompressionEngine):
             },
             final_compressed_object_preview=compressed_text[:50],
         )
-        return compressed, trace
+        compressed.trace = trace
+        compressed.engine_id = self.id
+        compressed.engine_config = self.config
+        return compressed
 
 
 register_compression_engine(
