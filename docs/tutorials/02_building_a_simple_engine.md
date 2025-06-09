@@ -1,5 +1,5 @@
 # Tutorial 2: Step-by-Step - Building a Simple compression engine
-This tutorial walks you through creating a basic compression engine for Compact Memory. It complements the main \`ENGINE_DEVELOPMENT.md\` guide by providing a hands-on example. We'll build a engine that keeps only the first N sentences of a text.
+This tutorial walks you through creating a basic compression engine for Compact Memory. It complements the main \`ENGINE_DEVELOPMENT.md\` guide by providing a hands-on example. We'll build an engine that keeps only the first N sentences of a text.
 ## Prerequisites
 *   `Compact Memory installed (\`pip install compact-memory\`).`
 *   `Familiarity with Python.`

@@ -2,13 +2,13 @@
 This tutorial guides you through the process of packaging a custom compression engine you've developed for Compact Memory. Packaging makes your engine easily shareable, discoverable, and installable by others. We'll use the \`dev create-engine-package\` CLI command and prepare the engine for distribution.
 ## Prerequisites
 *   `Compact Memory installed (\`pip install compact-memory\`).`
-*   `You have already developed a custom compression engine (e.g., as a \`.py\` file). For this tutorial, we'll assume you have a engine in \`my_awesome_engine.py\` containing a class \`MyAwesomeEngine\` which inherits from \`BaseCompressionEngine\`.`
+*   `You have already developed a custom compression engine (e.g., as a \`.py\` file). For this tutorial, we'll assume you have an engine in \`my_awesome_engine.py\` containing a class \`MyAwesomeEngine\` which inherits from \`BaseCompressionEngine\`.`
 *   `Your \`MyAwesomeEngine\` class has a unique string attribute \`id = "awesome_strat"\`.`
 ## Goal
 By the end of this tutorial, you will have a well-structured engine package directory ready for sharing, either directly or as part of a larger Python package.
 ## Steps
 ### 1. Generate the Package Template
-Compact Memory's CLI provides a handy tool to bootstrap a engine package. Open your terminal and navigate to where you want to create your package directory.
+Compact Memory's CLI provides a handy tool to bootstrap an engine package. Open your terminal and navigate to where you want to create your package directory.
 ```bash
 compact-memory dev create-engine-package --name compact_memory_my_engine
 ```
@@ -112,4 +112,4 @@ my_strat_instance = MyEngineClass(custom_param=10)
 # ... use my_strat_instance.compress(...) ...
 ```
 ## Conclusion
-You've successfully taken a engine idea, used \`dev create-engine-package\` to structure it, configured its manifest, and prepared it for sharing. This process helps build a robust ecosystem of compression engines for Compact Memory. For more details on plugin mechanisms and distribution, always refer to \`docs/SHARING_ENGINES.md\`.
+You've successfully taken an engine idea, used \`dev create-engine-package\` to structure it, configured its manifest, and prepared it for sharing. This process helps build a robust ecosystem of compression engines for Compact Memory. For more details on plugin mechanisms and distribution, always refer to \`docs/SHARING_ENGINES.md\`.

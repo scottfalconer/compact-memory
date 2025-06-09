@@ -49,7 +49,7 @@ def my_llm_call(prompt: str, model_name: str = "gpt-4.1-nano") -> str:
 Compact Memory comes with built-in engines, and you might have installed others as plugins. You can list available engines using the CLI (`compact-memory dev list-engines`). For this example, we\'ll use the `first_last` engine, which simply takes the beginning and end of the text.
 
 ```python
-# Choose a engine ID
+# Choose an engine ID
 # For this example, \'first_last\' is simple. Other options could be \'truncate\',
 # or more advanced ones if available (e.g., \'prototype\' if you have an agent store).
 engine_id = "first_last"
@@ -247,4 +247,4 @@ if __name__ == "__main__":
 
 ## Conclusion
 
-This tutorial showed how to integrate Compact Memory into a Python-based LLM pipeline. By loading a engine, compressing text to a specified budget, and then using that compressed text as context for an LLM, you can effectively manage longer inputs and optimize your LLM interactions. You can adapt this workflow with different engines and integrate it into more complex applications.
+This tutorial showed how to integrate Compact Memory into a Python-based LLM pipeline. By loading an engine, compressing text to a specified budget, and then using that compressed text as context for an LLM, you can effectively manage longer inputs and optimize your LLM interactions. You can adapt this workflow with different engines and integrate it into more complex applications.
