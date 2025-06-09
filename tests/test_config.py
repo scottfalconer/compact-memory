@@ -214,6 +214,21 @@ def test_load_llm_models_config_malformed_yaml(patched_config_paths: Path, capsy
     assert str(llm_config_file) in captured.err
 
 
+
+def test_config_validate_and_get_all(patched_config_paths: Path):
+    conf = cfg.Config()
+    assert conf.validate()
+    all_data = conf.get_all_with_sources()
+    for key in cfg.DEFAULT_CONFIG:
+        assert key in all_data
+        assert all_data[key][1] in (
+            cfg.SOURCE_DEFAULT,
+            cfg.SOURCE_USER_CONFIG,
+            cfg.SOURCE_LOCAL_CONFIG,
+            cfg.SOURCE_ENV_VAR + f" ({cfg.ENV_VAR_PREFIX + key.upper()})",
+            cfg.SOURCE_OVERRIDE,
+        )
+
 def test_config_precedence(monkeypatch: pytest.MonkeyPatch, patched_config_paths: Path):
     cfg.USER_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     cfg.USER_CONFIG_PATH.write_text(yaml.dump({"default_engine_id": "user"}))
@@ -235,3 +250,4 @@ def test_register_defaults_and_env(
     assert "new_test_key" in conf.get_all_keys()
     assert conf.get("new_test_key") == "env_val"
     assert conf.get_with_source("new_test_key")[1].startswith(cfg.SOURCE_ENV_VAR)
+

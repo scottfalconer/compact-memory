@@ -442,3 +442,9 @@ def test_sha256_duplicate_with_modifying_engine(patch_embedding_model):
         assert len(engine_custom_compress.memories) == 2
         hash_input3 = calculate_sha256("Input3")
         assert hash_input3 in engine_custom_compress.memory_hashes
+
+
+def test_engine_recall_no_memories():
+    engine = BaseCompressionEngine()
+    results = engine.recall("anything")
+    assert results == []

@@ -55,3 +55,21 @@ def test_update_prototype_changes_vector_and_magnitude():
     assert np.allclose(updated, expected_norm, atol=1e-6)
     assert store.prototypes[0].strength == 2.0
     assert store.prototypes[0].constituent_memory_ids == ["m1"]
+
+
+def test_find_nearest_empty_store_returns_empty_list():
+    store = InMemoryVectorStore(embedding_dim=2)
+    result = store.find_nearest(np.array([1.0, 0.0], dtype=np.float32), k=1)
+    assert result == []
+    assert store.faiss_index is None
+
+
+def test_add_memory_records_entry():
+    store = InMemoryVectorStore(embedding_dim=2)
+    from compact_memory.models import RawMemory
+
+    memory = RawMemory(
+        memory_id="m1", raw_text_hash="h", raw_text="t", embedding=[0.0, 1.0]
+    )
+    store.add_memory(memory)
+    assert store.memories == [memory]
