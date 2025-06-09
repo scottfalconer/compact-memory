@@ -592,9 +592,9 @@ def _compress_directory_to_files(
     tokenizer: Any,
     ctx: typer.Context,  # Added context
 ) -> None:
-    files_to_process = list(
+    files_to_process = sorted(list(
         dir_path_obj.rglob(pattern) if recursive else dir_path_obj.glob(pattern)
-    )
+    ))
     if not files_to_process:
         typer.echo(f"No files matching pattern '{pattern}' found in '{dir_path_obj}'.")
         return
