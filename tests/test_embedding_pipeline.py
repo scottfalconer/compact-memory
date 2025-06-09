@@ -54,3 +54,26 @@ def test_embed_text_optional_preprocess(monkeypatch):
     vec = ep.embed_text(long_text, preprocess_fn=pre)
     assert vec.shape == (enc.dim,)
     assert "x" in captured["text"]
+
+
+def test_embed_text_empty_list_returns_zero_vectors():
+    vecs = ep.embed_text([], model_name="openai/text-embedding-ada-002")
+    assert vecs.shape == (0, 1536)
+
+
+def test_embed_text_openai_model(monkeypatch):
+    class DummyClient:
+        def __init__(self, **kwargs):
+            pass
+
+        class embeddings:
+            @staticmethod
+            def create(input, model):
+                return type(
+                    "Resp", (), {"data": [type("Obj", (), {"embedding": [0.0] * 1536})]}
+                )()
+
+    monkeypatch.setattr(ep.openai, "OpenAI", lambda **kw: DummyClient())
+    vec = ep.embed_text("hi", model_name="openai/text-embedding-ada-002")
+    assert vec.shape == (1536,)
+    assert float(vec[0]) == 0.0
