@@ -8,6 +8,7 @@ from compact_memory.token_utils import truncate_text
 
 # Import directly from base to avoid triggering package-level side effects
 from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
+from .registry import register_compression_engine
 
 try:  # pragma: no cover - optional dependency
     import tiktoken
@@ -52,3 +53,12 @@ class NoCompressionEngine(BaseCompressionEngine):
 
 
 __all__ = ["NoCompressionEngine"]
+
+# Self-register on import so the engine is available without
+# explicit registration elsewhere.
+register_compression_engine(
+    NoCompressionEngine.id,
+    NoCompressionEngine,
+    display_name="No Compression",
+    source="built-in",
+)

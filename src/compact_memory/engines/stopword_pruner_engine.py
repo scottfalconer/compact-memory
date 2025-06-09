@@ -170,3 +170,12 @@ class StopwordPrunerEngine(BaseCompressionEngine):
 
 
 __all__ = ["StopwordPrunerEngine"]
+
+# Register engine on import to avoid hardcoded registration elsewhere
+
+register_compression_engine(
+    StopwordPrunerEngine.id,
+    StopwordPrunerEngine,
+    display_name="Stopword Pruner",
+    source="built-in",
+)

@@ -94,6 +94,13 @@ class FirstLastEngine(BaseCompressionEngine):
         return compressed
 
 
-# register_compression_engine(FirstLastEngine.id, FirstLastEngine, source="contrib") # Removed, as it's now registered in engines/__init__.py
+# Register engine on import
+
+register_compression_engine(
+    FirstLastEngine.id,
+    FirstLastEngine,
+    display_name="First/Last",
+    source="built-in",
+)
 
 __all__ = ["FirstLastEngine"]

@@ -7,7 +7,7 @@ from typing import List, Union, Any, Optional
 
 # Import base classes directly to avoid package-level registration
 from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
-from .registry import get_compression_engine
+from .registry import get_compression_engine, register_compression_engine
 
 
 @dataclass
@@ -54,12 +54,16 @@ class PipelineEngine(BaseCompressionEngine):
 
     def compress(
         self,
-        text_or_chunks: Union[str, List[str]], # This is the original text for the first engine if no previous_compression_result
-        budget: int, # Renamed from llm_token_budget for consistency
+        text_or_chunks: Union[
+            str, List[str]
+        ],  # This is the original text for the first engine if no previous_compression_result
+        budget: int,  # Renamed from llm_token_budget for consistency
         previous_compression_result: Optional[CompressedMemory] = None,
         **kwargs: Any,
     ) -> CompressedMemory:
-        current_compressed_memory: Optional[CompressedMemory] = previous_compression_result
+        current_compressed_memory: Optional[CompressedMemory] = (
+            previous_compression_result
+        )
         accumulated_traces: List[CompressionTrace] = []
 
         # Determine the very original text for the pipeline's input summary
@@ -67,19 +71,20 @@ class PipelineEngine(BaseCompressionEngine):
         if isinstance(text_or_chunks, List):
             original_input_text = " ".join(text_or_chunks)
 
-
         for i, engine in enumerate(self.engines):
             input_text_for_engine: str
             prev_comp_result_for_engine: Optional[CompressedMemory] = None
 
-            if i == 0: # First engine
-                if current_compressed_memory is None: # No initial result provided to the pipeline
+            if i == 0:  # First engine
+                if (
+                    current_compressed_memory is None
+                ):  # No initial result provided to the pipeline
                     input_text_for_engine = original_input_text
-                    prev_comp_result_for_engine = None # Explicitly
-                else: # Initial result WAS provided to the pipeline
+                    prev_comp_result_for_engine = None  # Explicitly
+                else:  # Initial result WAS provided to the pipeline
                     input_text_for_engine = current_compressed_memory.text
                     prev_comp_result_for_engine = current_compressed_memory
-            else: # Subsequent engines
+            else:  # Subsequent engines
                 if current_compressed_memory is None:
                     # This case should ideally not happen if engines always return CompressedMemory
                     # Or handle as an error/empty input
@@ -91,7 +96,7 @@ class PipelineEngine(BaseCompressionEngine):
                     # This is a contract violation based on our new return types.
                     # However, to be safe, let's consider if we should raise an error or skip.
                     # For now, let's assume valid CompressedMemory objects are always passed.
-                    pass # Should not be reached if contracts are followed
+                    pass  # Should not be reached if contracts are followed
 
                 input_text_for_engine = current_compressed_memory.text
                 prev_comp_result_for_engine = current_compressed_memory
@@ -99,9 +104,9 @@ class PipelineEngine(BaseCompressionEngine):
             # Call the current engine's compress method
             current_compressed_memory = engine.compress(
                 input_text_for_engine,
-                budget, # Pass the budget along
+                budget,  # Pass the budget along
                 previous_compression_result=prev_comp_result_for_engine,
-                **kwargs, # Pass other kwargs along
+                **kwargs,  # Pass other kwargs along
             )
 
             if current_compressed_memory and current_compressed_memory.trace:
@@ -115,29 +120,45 @@ class PipelineEngine(BaseCompressionEngine):
             # For now, let's assume self.engines is not empty and all engines return valid CompressedMemory.
             # If it could be empty, we'd need to define behavior.
             # If the loop didn't run (empty self.engines), current_compressed_memory would be the initial previous_compression_result
-            if previous_compression_result: # Pipeline was empty, but initial result provided
-                 current_compressed_memory = previous_compression_result
-            else: # Pipeline was empty AND no initial result
+            if (
+                previous_compression_result
+            ):  # Pipeline was empty, but initial result provided
+                current_compressed_memory = previous_compression_result
+            else:  # Pipeline was empty AND no initial result
                 current_compressed_memory = CompressedMemory(
-                    text=original_input_text if isinstance(original_input_text, str) else "",
-                    metadata={"notes": "Pipeline was empty or no operations performed."}
+                    text=(
+                        original_input_text
+                        if isinstance(original_input_text, str)
+                        else ""
+                    ),
+                    metadata={
+                        "notes": "Pipeline was empty or no operations performed."
+                    },
                 )
-
 
         # Prepare strategy_params for the pipeline's trace
         pipeline_strategy_params = {"budget": budget, **kwargs}
-        if isinstance(self.config, PipelineConfig): # self.config is PipelineConfig
-            pipeline_strategy_params["engines"] = [asdict(engine_conf) for engine_conf in self.config.engines]
-        elif isinstance(self.config, dict): # self.config could be a dict if BaseCompressionEngine.__init__ was used
-             pipeline_strategy_params.update(self.config)
-
+        if isinstance(self.config, PipelineConfig):  # self.config is PipelineConfig
+            pipeline_strategy_params["engines"] = [
+                asdict(engine_conf) for engine_conf in self.config.engines
+            ]
+        elif isinstance(
+            self.config, dict
+        ):  # self.config could be a dict if BaseCompressionEngine.__init__ was used
+            pipeline_strategy_params.update(self.config)
 
         # Create the pipeline's overall trace
         pipeline_trace = CompressionTrace(
             engine_name=self.id,
             strategy_params=pipeline_strategy_params,
-            input_summary={"original_length": len(original_input_text if isinstance(original_input_text, str) else "")},
-            steps=[asdict(trace) for trace in accumulated_traces], # Store sub-traces as dicts
+            input_summary={
+                "original_length": len(
+                    original_input_text if isinstance(original_input_text, str) else ""
+                )
+            },
+            steps=[
+                asdict(trace) for trace in accumulated_traces
+            ],  # Store sub-traces as dicts
             output_summary={"compressed_length": len(current_compressed_memory.text)},
             final_compressed_object_preview=current_compressed_memory.text[:50],
         )
@@ -146,12 +167,21 @@ class PipelineEngine(BaseCompressionEngine):
         final_compressed_output = CompressedMemory(
             text=current_compressed_memory.text,
             engine_id=self.id,
-            engine_config=pipeline_strategy_params, # Or a cleaned version of self.config if preferred
+            engine_config=pipeline_strategy_params,  # Or a cleaned version of self.config if preferred
             trace=pipeline_trace,
-            metadata=current_compressed_memory.metadata, # Preserve metadata from the last engine
+            metadata=current_compressed_memory.metadata,  # Preserve metadata from the last engine
         )
 
         return final_compressed_output
 
 
 __all__ = ["EngineConfig", "PipelineConfig", "PipelineEngine"]
+
+# Register this engine when imported so it is discoverable
+
+register_compression_engine(
+    PipelineEngine.id,
+    PipelineEngine,
+    display_name="Pipeline",
+    source="built-in",
+)
