@@ -1,4 +1,5 @@
 import numpy as np
+import pytest # Added import
 from compact_memory.validation.embedding_metrics import (
     EmbeddingSimilarityMetric,
     MultiEmbeddingSimilarityMetric,
@@ -27,7 +28,8 @@ def test_multi_similarity_returns_per_model_scores(patch_embedding_model, monkey
         return {"model_a": enc_a, "model_b": enc_b}[name]
 
     monkeypatch.setattr(ep, "_load_model", fake_load)
-    metric = MultiEmbeddingSimilarityMetric(model_names=["model_a", "model_b"])
+    with pytest.warns(DeprecationWarning, match="MultiEmbeddingSimilarityMetric is deprecated"):
+        metric = MultiEmbeddingSimilarityMetric(model_names=["model_a", "model_b"])
     scores = metric.evaluate(original_text="hello", compressed_text="hello")
     assert set(scores) == {
         "semantic_similarity",
@@ -46,7 +48,8 @@ def test_multi_similarity_skips_when_too_long(patch_embedding_model, monkeypatch
         model_max_length = 2
 
     monkeypatch.setattr(ep, "_load_model", lambda *a, **k: SmallEncoder())
-    metric = MultiEmbeddingSimilarityMetric(model_names=["small"], max_tokens=10)
+    with pytest.warns(DeprecationWarning, match="MultiEmbeddingSimilarityMetric is deprecated"):
+        metric = MultiEmbeddingSimilarityMetric(model_names=["small"], max_tokens=10)
     text = "one two three four"
     scores = metric.evaluate(original_text=text, compressed_text=text)
     assert list(scores) == ["token_count"]
