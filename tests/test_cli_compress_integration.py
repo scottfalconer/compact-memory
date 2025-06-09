@@ -2,14 +2,19 @@ import pytest
 from typer.testing import CliRunner
 from compact_memory.cli import app  # import the Typer app
 from pathlib import Path  # Make sure Path is imported
-from tests.test_cli_compress import DummyTruncEngine # Try importing now that tests is a package
-from compact_memory.engines.registry import register_compression_engine, available_engines
+from tests.test_cli_compress import (
+    DummyTruncEngine,
+)  # Try importing now that tests is a package
+from compact_memory.engines.registry import (
+    register_compression_engine,
+    available_engines,
+)
 
 # Ensure DummyTruncEngine is registered for these integration tests
 if DummyTruncEngine.id not in available_engines():
     register_compression_engine(DummyTruncEngine.id, DummyTruncEngine)
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 def test_compress_text_input_stdout():
@@ -146,8 +151,6 @@ def test_compress_file_to_output_file(tmp_path):
         ), "Output content was not truncated."
 
 
-
-
 def test_compress_empty_directory(tmp_path):
     empty_dir = tmp_path / "empty_data"
     empty_dir.mkdir()
@@ -264,12 +267,17 @@ def test_compress_no_input_provided():
 #     words = text.split()
 #     return " ".join(words[:word_budget])
 
+
 def test_compress_directory_default_output_new(tmp_path):
     input_dir = tmp_path / "test_input_dir"
     input_dir.mkdir()
     (input_dir / "file1.txt").write_text("This is the first file content.")
-    (input_dir / "file2.txt").write_text("This is the second file, it has some more words.")
-    (input_dir / "another.md").write_text("This is a markdown file and should be ignored by default pattern.")
+    (input_dir / "file2.txt").write_text(
+        "This is the second file, it has some more words."
+    )
+    (input_dir / "another.md").write_text(
+        "This is a markdown file and should be ignored by default pattern."
+    )
 
     # Expected combined content before compression (default pattern is *.txt)
     # Files are sorted by Path.glob, so file1.txt then file2.txt
@@ -282,7 +290,7 @@ def test_compress_directory_default_output_new(tmp_path):
     # Files are sorted by Path.glob, so file1.txt then file2.txt
     combined_content = "This is the first file content.\n\nThis is the second file, it has some more words."
 
-    char_budget = 10 # Example budget in characters for dummy_trunc
+    char_budget = 10  # Example budget in characters for dummy_trunc
 
     result = runner.invoke(
         app,
@@ -291,7 +299,7 @@ def test_compress_directory_default_output_new(tmp_path):
             "--dir",
             str(input_dir),
             "--engine",
-            "dummy_trunc", # Use "dummy_trunc" (engine ID directly)
+            "dummy_trunc",  # Use "dummy_trunc" (engine ID directly)
             "--budget",
             str(char_budget),
         ],
@@ -307,7 +315,7 @@ def test_compress_directory_default_output_new(tmp_path):
 
     # Sanity check for truncation
     if len(combined_content) > len(actual_output_text) + 5:
-         assert actual_output_text != combined_content
+        assert actual_output_text != combined_content
 
 
 def test_compress_directory_with_output_dir_new(tmp_path):
@@ -331,7 +339,7 @@ def test_compress_directory_with_output_dir_new(tmp_path):
             "--output-dir",
             str(output_dir),
             "--engine",
-            "dummy_trunc", # Use "dummy_trunc" (engine ID directly)
+            "dummy_trunc",  # Use "dummy_trunc" (engine ID directly)
             "--budget",
             str(char_budget),
         ],
@@ -340,14 +348,16 @@ def test_compress_directory_with_output_dir_new(tmp_path):
     assert result.exit_code == 0, f"CLI Error: {result.stderr}"
     assert output_dir.exists(), "Specified output directory was not created"
     output_file = output_dir / "compressed_output.txt"
-    assert output_file.exists(), "compressed_output.txt not found in specified output directory"
+    assert (
+        output_file.exists()
+    ), "compressed_output.txt not found in specified output directory"
 
     actual_output_text = output_file.read_text()
     expected_output = combined_content[:char_budget]
     assert actual_output_text == expected_output
 
     if len(combined_content) > len(actual_output_text) + 5:
-         assert actual_output_text != combined_content
+        assert actual_output_text != combined_content
 
 
 def test_compress_directory_recursive_pattern_new(tmp_path):
@@ -358,7 +368,9 @@ def test_compress_directory_recursive_pattern_new(tmp_path):
     subdir.mkdir()
 
     (input_dir / "file1.txt").write_text("Text from file1 in root.")
-    (input_dir / "another.md").write_text("Markdown file, should be ignored by *.txt pattern.")
+    (input_dir / "another.md").write_text(
+        "Markdown file, should be ignored by *.txt pattern."
+    )
     (input_dir / "file2.txt").write_text("Text from file2 in root.")
     (subdir / "file3.txt").write_text("Subdirectory text from file3.")
     (subdir / "notes.md").write_text("Another markdown in subdir.")
@@ -391,9 +403,9 @@ def test_compress_directory_recursive_pattern_new(tmp_path):
     # Let's assume file1.txt, file2.txt from root, then subdir/file3.txt
     # For the purpose of this test, let's construct combined_content assuming this order:
     # Root files first (sorted alphabetically), then subdirectory files (sorted alphabetically).
-    file1_content = (input_dir / "file1.txt").read_text() # Text from file1 in root.
-    file2_content = (input_dir / "file2.txt").read_text() # Text from file2 in root.
-    file3_content = (subdir / "file3.txt").read_text()   # Subdirectory text from file3.
+    file1_content = (input_dir / "file1.txt").read_text()  # Text from file1 in root.
+    file2_content = (input_dir / "file2.txt").read_text()  # Text from file2 in root.
+    file3_content = (subdir / "file3.txt").read_text()  # Subdirectory text from file3.
     # Based on rglob behavior, files in root are usually processed, then subdirectories.
     # Within each directory, it's often alphabetical.
     combined_content = f"{file1_content}\n\n{file2_content}\n\n{file3_content}"
@@ -410,9 +422,9 @@ def test_compress_directory_recursive_pattern_new(tmp_path):
             str(input_dir),
             "--recursive",
             "--pattern",
-            "*.txt", # Explicitly test this
+            "*.txt",  # Explicitly test this
             "--engine",
-            "dummy_trunc", # Use "dummy_trunc" (engine ID directly)
+            "dummy_trunc",  # Use "dummy_trunc" (engine ID directly)
             "--budget",
             str(char_budget),
         ],
@@ -429,9 +441,11 @@ def test_compress_directory_recursive_pattern_new(tmp_path):
     # This specific check for "markdown file" is covered by the exact match if expected_output is correct.
     # assert "markdown file" not in actual_output_text
 
-    assert len(actual_output_text) > 0 # Should be true if char_budget > 0
-    if len(combined_content) > len(actual_output_text) + 5: # Check if truncation happened
-         assert actual_output_text != combined_content
+    assert len(actual_output_text) > 0  # Should be true if char_budget > 0
+    if (
+        len(combined_content) > len(actual_output_text) + 5
+    ):  # Check if truncation happened
+        assert actual_output_text != combined_content
 
 
 # It's important to comment out or remove the old tests for directory compression
