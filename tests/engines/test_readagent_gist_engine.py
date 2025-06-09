@@ -135,11 +135,11 @@ class TestReadAgentGistEngine(unittest.TestCase):
         expected_concatenated_gists = f"{gist1_text}\n\n---\n\n{gist2_text}"
         budget = 200  # Assume this budget is enough
 
-        compressed_memory, trace = self.engine.compress(
-            doc_text, llm_token_budget=budget
-        )
+        compressed_memory = self.engine.compress(doc_text, llm_token_budget=budget)
         self.assertEqual(compressed_memory.text, expected_concatenated_gists)
-        self.assertFalse(trace.output_summary.get("query_processed", True))
+        self.assertFalse(
+            compressed_memory.trace.output_summary.get("query_processed", True)
+        )
 
     def test_compress_summarization_path_simulation_no_provider(self):
         engine_no_provider = ReadAgentGistEngine(
@@ -155,7 +155,7 @@ class TestReadAgentGistEngine(unittest.TestCase):
         expected_text = f"{sim_gist1}\n\n---\n\n{sim_gist2}"
         budget = 200
 
-        compressed_memory, _ = engine_no_provider.compress(
+        compressed_memory = engine_no_provider.compress(
             doc_text, llm_token_budget=budget
         )
         self.assertEqual(compressed_memory.text, expected_text)
@@ -193,12 +193,12 @@ class TestReadAgentGistEngine(unittest.TestCase):
         expected_qa_answer = "Apples are indeed red and quite tasty."
         self.mock_llm_provider.add_response(prompt_qa, expected_qa_answer)
 
-        compressed_memory, trace = self.engine.compress(
+        compressed_memory = self.engine.compress(
             doc_text, llm_token_budget=budget, query=query
         )
 
         self.assertEqual(compressed_memory.text, expected_qa_answer)
-        self.assertTrue(trace.output_summary.get("query_processed"))
+        self.assertTrue(compressed_memory.trace.output_summary.get("query_processed"))
 
     def test_compress_qa_path_simulation_no_provider(self):
         engine_no_provider = ReadAgentGistEngine(
@@ -219,16 +219,16 @@ class TestReadAgentGistEngine(unittest.TestCase):
         # 4. Generate a simulated QA answer
         expected_simulated_answer = f"Simulated answer for query: {query[:50]}..."
 
-        compressed_memory, _ = engine_no_provider.compress(
+        compressed_memory = engine_no_provider.compress(
             doc_text, llm_token_budget=budget, query=query
         )
         self.assertEqual(compressed_memory.text, expected_simulated_answer)
 
     def test_compress_empty_input_text(self):
-        compressed_memory, trace = self.engine.compress("", llm_token_budget=100)
+        compressed_memory = self.engine.compress("", llm_token_budget=100)
         self.assertEqual(compressed_memory.text, "")
-        self.assertEqual(trace.output_summary["compressed_length"], 0)
-        self.assertEqual(trace.input_summary["num_episodes"], 0)
+        self.assertEqual(compressed_memory.trace.output_summary["compressed_length"], 0)
+        self.assertEqual(compressed_memory.trace.input_summary["num_episodes"], 0)
 
     def test_compress_summarization_truncation_with_provider(self):
         doc_text = (
@@ -253,13 +253,12 @@ class TestReadAgentGistEngine(unittest.TestCase):
         tokenizer = tiktoken.get_encoding("gpt2")
         expected_text = truncate_text(tokenizer, concatenated_gists, budget)
 
-        compressed_memory, trace = self.engine.compress(
-            doc_text, llm_token_budget=budget
-        )
+        compressed_memory = self.engine.compress(doc_text, llm_token_budget=budget)
         self.assertEqual(compressed_memory.text, expected_text)
 
         truncation_logged = any(
-            step["type"] == "summary_truncation" for step in trace.steps
+            step["type"] == "summary_truncation"
+            for step in compressed_memory.trace.steps
         )
         self.assertTrue(truncation_logged, "Summary truncation was not logged.")
 

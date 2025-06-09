@@ -263,7 +263,7 @@ def test_evaluate_engines_multi_model_cli(tmp_path: Path, monkeypatch):
     # Mock for CompressionRatioMetric.evaluate - to prevent it from actually calculating
     # and to control its output value.
     cr_evaluate_path = "compact_memory.validation.compression_metrics.CompressionRatioMetric.evaluate"  # Corrected path
-    mock_cr_evaluate_method = MagicMock(return_value={"compression_ratio": 0.5})
+    mock_cr_evaluate_method = MagicMock(return_value={"token_compression_ratio": 0.5})
     monkeypatch.setattr(cr_evaluate_path, mock_cr_evaluate_method)
 
     # Scenario 1 (was default run, now explicit): Multiple --embedding-model flags
