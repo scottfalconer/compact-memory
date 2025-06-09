@@ -136,12 +136,14 @@ class MyConfigurableEngine(BaseCompressionEngine):
     *   `previous_compression_result: Optional[CompressedMemory] = None`: An optional parameter that provides the output of a preceding compression engine in a chain or pipeline. This allows an engine to base its processing on a previously compressed version of the text. For standalone calls, this is typically `None`.
     *   `**kwargs`: Often includes `tokenizer` (a callable that behaves like a Hugging Face tokenizer, returning a dict with `input_ids`) which can be used to count tokens and truncate accurately. Other engine-specific parameters can also be passed via `kwargs`.
 *   **Implementation:** This is where your core compression algorithm resides.
-*   **Returns:** A single `CompressedMemory` object. This object now encapsulates all information about the compression result:
+*   **Returns:** A single `CompressedMemory` object. All compression engines are expected to adhere to this standardized output format. This object encapsulates all information about the compression result:
     *   `text: str`: The actual compressed text string.
     *   `engine_id: Optional[str]`: The ID of the engine that produced this result (e.g., `self.id`). This should be populated by your engine.
     *   `engine_config: Optional[Dict[str, Any]]`: The configuration of the engine instance that performed the compression (e.g., `self.config` or a relevant subset). This should be populated by your engine.
-    *   `trace: Optional[CompressionTrace]`: A `CompressionTrace` object detailing the engine used, parameters, input/output summaries, and steps taken during compression. This object, previously returned as the second element of a tuple, should now be created by your engine and assigned to this field.
+    *   `trace: Optional[CompressionTrace]`: A `CompressionTrace` object detailing the engine used, parameters, input/output summaries, and steps taken during compression. Populating this trace object consistently provides valuable insight into the engine's operation. This object, previously returned as the second element of a tuple in some older engine versions, should now always be created by your engine and assigned to this field.
     *   `metadata: Optional[Dict[str, Any]]`: A dictionary for any other arbitrary metadata your engine might want to associate with the compressed output.
+
+The consistent use of the `CompressedMemory` object, with all its fields properly populated, ensures that downstream consumers of compressed content (like evaluation scripts or LLM integration layers) can reliably access comprehensive information about the compression process and its outcome.
 
 #### Using `previous_compression_result`
 

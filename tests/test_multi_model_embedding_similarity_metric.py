@@ -72,7 +72,9 @@ def test_multi_model_embedding_similarity_multiple_hf_models(monkeypatch, caplog
     mock_embed_text_hf = MagicMock()
     monkeypatch.setattr(ep, "embed_text", mock_embed_text_hf)
 
-    mock_token_count = MagicMock(side_effect=[ 10, 10, 10, 20, 20, 20 ])
+    # text_a (model1), text_b (model1) for length check, text_b (model1) for result
+    # text_a (model2), text_b (model2) for length check, text_b (model2) for result
+    mock_token_count = MagicMock(side_effect=[7, 8, 8, 15, 16, 16])
     monkeypatch.setattr('compact_memory.validation.embedding_metrics.token_utils.token_count', mock_token_count)
 
     def embed_text_side_effect_multi(texts, model_name, **kwargs):
@@ -87,10 +89,10 @@ def test_multi_model_embedding_similarity_multiple_hf_models(monkeypatch, caplog
     assert "embedding_similarity" in result; es_results = result["embedding_similarity"]
     assert "hf_model_1" in es_results
     assert np.isclose(es_results["hf_model_1"]["similarity"], np.dot([0.1, 0.2], [0.3, 0.4]))
-    assert es_results["hf_model_1"]["token_count"] == 10
+    assert es_results["hf_model_1"]["token_count"] == 8 # Specifically text_b's token count for model1
     assert "hf_model_2" in es_results
     assert np.isclose(es_results["hf_model_2"]["similarity"], np.dot([0.5, 0.6], [0.7, 0.8]))
-    assert es_results["hf_model_2"]["token_count"] == 20
+    assert es_results["hf_model_2"]["token_count"] == 16 # Specifically text_b's token count for model2
 
 
 def test_multi_model_openai_embedding_failure(monkeypatch, caplog):

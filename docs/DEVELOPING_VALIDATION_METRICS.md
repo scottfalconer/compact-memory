@@ -46,6 +46,34 @@ Metrics are selected by `metric_id` and optional initialisation parameters.
 Use `list_validation_metrics()` from `compact_memory.validation.registry` to
 programmatically retrieve the available metric IDs.
 
+## Compression Ratio Metric
+
+`CompressionRatioMetric` (metric ID `compression_ratio`) calculates the ratio of
+the compressed text's length to the original text's length. It provides this
+ratio at two levels of granularity: character-level and token-level.
+
+The token-level ratio uses a default tokenizer (currently GPT-2 based via
+`transformers.AutoTokenizer`) to count tokens in both original and compressed
+texts. This provides a more semantically aware measure of compression than
+character counts alone.
+
+**Output Format:**
+```json
+{
+  "char_compression_ratio": 0.5,  // Example: compressed is half the chars of original
+  "token_compression_ratio": 0.6 // Example: compressed is 60% of tokens of original
+}
+```
+
+To use it:
+```python
+from compact_memory.validation.compression_metrics import CompressionRatioMetric
+
+metric = CompressionRatioMetric()
+scores = metric.evaluate(original_text="This is the original long text.", compressed_text="Short text.")
+# scores will be like: {'char_compression_ratio': 0.25, 'token_compression_ratio': 0.3} (example values)
+```
+
 ## Embedding-based Metrics
 
 `EmbeddingSimilarityMetric` computes cosine similarity between sentence
@@ -68,8 +96,9 @@ list, which can include HuggingFace SentenceTransformer identifiers (e.g.,
 `"openai/text-embedding-ada-002"`).
 
 For each model, it calculates the cosine similarity between the two input texts
-and also determines the token count of the second text (e.g., `compressed_text`
-or `llm_response`) using that specific model's tokenizer.
+(e.g. `original_text` vs `compressed_text`, or `reference_answer` vs `llm_response`)
+and also determines the token count of the *second* text provided (i.e., `compressed_text`
+or `llm_response`) using that specific model's native tokenizer.
 
 If `model_names` is not provided during instantiation, a default list of diverse
 SentenceTransformer models is used. The metric will skip evaluation for any model
@@ -87,12 +116,12 @@ scores = metric.evaluate(original_text="hello world", compressed_text="hello the
 # {
 #   "embedding_similarity": {
 #     "sentence-transformers/all-MiniLM-L6-v2": {
-#       "similarity": 0.85, # Example value
-#       "token_count": 2    # Example value for "hello there"
+#       "similarity": 0.85,  # Example value
+#       "token_count": 2     # Example token count for "hello there" using all-MiniLM-L6-v2's tokenizer
 #     },
 #     "openai/text-embedding-ada-002": {
-#       "similarity": 0.88, # Example value
-#       "token_count": 2    # Example value for "hello there"
+#       "similarity": 0.88,  # Example value
+#       "token_count": 2     # Example token count for "hello there" using text-embedding-ada-002's tokenizer
 #     }
 #   }
 # }
