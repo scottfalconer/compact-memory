@@ -976,7 +976,7 @@ def evaluate_engines_command(
         else:
             engine_instance = EngineCls()
 
-        result = engine_instance.compress(text_input, budget=budget)
+        result = engine_instance.compress(text_input, budget)
         compressed = result[0] if isinstance(result, tuple) else result
 
         if hasattr(compressed, "text"):
@@ -986,9 +986,10 @@ def evaluate_engines_command(
         else:
             comp_text = str(compressed)
 
-        ratio = ratio_metric.evaluate(
+        ratio_results = ratio_metric.evaluate(
             original_text=text_input, compressed_text=comp_text
-        )["compression_ratio"]
+        )
+        ratio = ratio_results.get("token_compression_ratio") # Or "char_compression_ratio" if preferred
         embed_scores = embed_metric.evaluate(
             original_text=text_input, compressed_text=comp_text
         )["embedding_similarity"]
