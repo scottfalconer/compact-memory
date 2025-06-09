@@ -3,39 +3,46 @@ from __future__ import annotations
 """Pipeline compression engine for chaining multiple engines."""
 
 from dataclasses import dataclass, field, asdict
-from typing import List, Union, Any, Optional
+from typing import Any, Dict, List, Optional, Union
+import logging
 import time
-import logging # Added
-from typing import List, Union, Any, Optional, Dict # Added Dict
 
-# Import base classes directly to avoid package-level registration
-from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace # BaseCompressionEngine uses the main EngineConfig
-from compact_memory.engine_config import EngineConfig as BaseEngineConfig # Alias import
+from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
+from compact_memory.engine_config import EngineConfig as BaseEngineConfig
 from .registry import get_compression_engine, register_compression_engine
+
+# Re-export EngineConfig from this module for backward compatibility
+EngineConfig = BaseEngineConfig
 
 
 @dataclass
-class PipelineStepConfig: # Renamed local EngineConfig to avoid collision
+class PipelineStepConfig:  # Renamed local EngineConfig to avoid collision
     """Configuration for creating a :class:`BaseCompressionEngine` for a pipeline step."""
 
     engine_name: str
-    engine_params: Dict[str, Any] = field(default_factory=dict) # Changed dict to Dict
+    engine_params: Dict[str, Any] = field(default_factory=dict)  # Changed dict to Dict
 
-    def create(self) -> BaseCompressionEngine: # Ensure BaseCompressionEngine is the correct return type
+    def create(
+        self,
+    ) -> (
+        BaseCompressionEngine
+    ):  # Ensure BaseCompressionEngine is the correct return type
         cls = get_compression_engine(self.engine_name)
         # Correctly pass 'config' if it's part of engine_params and is BaseEngineConfig
-        engine_config_params = self.engine_params.get('config')
-        other_params = {k: v for k, v in self.engine_params.items() if k != 'config'}
+        engine_config_params = self.engine_params.get("config")
+        other_params = {k: v for k, v in self.engine_params.items() if k != "config"}
         return cls(config=engine_config_params, **other_params)
 
 
 @dataclass
-class PipelineConfig: # This is the config for the PipelineEngine's structure
+class PipelineConfig:  # This is the config for the PipelineEngine's structure
     """Configuration for :class:`PipelineEngine`."""
 
-    engines: List[PipelineStepConfig] = field(default_factory=list) # Uses renamed PipelineStepConfig
+    engines: List[PipelineStepConfig] = field(
+        default_factory=list
+    )  # Uses renamed PipelineStepConfig
 
-    def create(self) -> "PipelineEngine": # Forward reference to PipelineEngine
+    def create(self) -> "PipelineEngine":  # Forward reference to PipelineEngine
         return PipelineEngine(self)
 
 
@@ -43,17 +50,20 @@ class PipelineEngine(BaseCompressionEngine):
     """Execute a sequence of other compression engines."""
 
     id = "pipeline"
-    pipeline_structure_config: PipelineConfig # Class attribute hint
-    engines: List[BaseCompressionEngine] # Class attribute hint
-
+    pipeline_structure_config: PipelineConfig  # Class attribute hint
+    engines: List[BaseCompressionEngine]  # Class attribute hint
 
     def __init__(
         self,
         pipeline_definition: Union[PipelineConfig, List[BaseCompressionEngine]],
-        config: Optional[BaseEngineConfig | Dict[str, Any]] = None, # Use aliased BaseEngineConfig
-        **kwargs: Any, # For BaseCompressionEngine's config
+        config: Optional[
+            BaseEngineConfig | Dict[str, Any]
+        ] = None,  # Use aliased BaseEngineConfig
+        **kwargs: Any,  # For BaseCompressionEngine's config
     ) -> None:
-        super().__init__(config=config, **kwargs) # Pass BaseEngineConfig to BaseCompressionEngine
+        super().__init__(
+            config=config, **kwargs
+        )  # Pass BaseEngineConfig to BaseCompressionEngine
 
         self.engines = []
         if isinstance(pipeline_definition, PipelineConfig):
@@ -67,19 +77,24 @@ class PipelineEngine(BaseCompressionEngine):
             engine_configs_for_trace: List[PipelineStepConfig] = []
             for eng in self.engines:
                 params = {}
-                if hasattr(eng, 'config') and isinstance(eng.config, BaseEngineConfig):
+                if hasattr(eng, "config") and isinstance(eng.config, BaseEngineConfig):
                     # If the engine has a BaseEngineConfig, we can serialize its non-default params
                     # This is a simplified representation for tracing.
                     params = eng.config.model_dump(exclude_defaults=True)
-                elif hasattr(eng, 'config') and isinstance(eng.config, PipelineConfig): # Nested Pipeline
-                     # If it's a nested pipeline, its config is PipelineConfig.
-                     # We need to serialize this PipelineConfig appropriately.
-                     # For simplicity in trace, just using a dict representation.
+                elif hasattr(eng, "config") and isinstance(
+                    eng.config, PipelineConfig
+                ):  # Nested Pipeline
+                    # If it's a nested pipeline, its config is PipelineConfig.
+                    # We need to serialize this PipelineConfig appropriately.
+                    # For simplicity in trace, just using a dict representation.
                     params = {"engines": [asdict(ecfg) for ecfg in eng.config.engines]}
 
-                engine_configs_for_trace.append(PipelineStepConfig(engine_name=eng.id, engine_params=params))
-            self.pipeline_structure_config = PipelineConfig(engines=engine_configs_for_trace)
-
+                engine_configs_for_trace.append(
+                    PipelineStepConfig(engine_name=eng.id, engine_params=params)
+                )
+            self.pipeline_structure_config = PipelineConfig(
+                engines=engine_configs_for_trace
+            )
 
     def compress(
         self,
@@ -107,31 +122,43 @@ class PipelineEngine(BaseCompressionEngine):
         # Ensure self.config (the EngineConfig from BaseCompressionEngine) is used for enable_trace.
         # The __init__ was refactored to ensure super().__init__(config=config, **kwargs) sets this up.
 
-        logging.debug(f"PipelineEngine '{self.id}': Starting compression pipeline, budget: {budget}, enable_trace for pipeline: {self.config.enable_trace}")
+        logging.debug(
+            f"PipelineEngine '{self.id}': Starting compression pipeline, budget: {budget}, enable_trace for pipeline: {self.config.enable_trace}"
+        )
         start_time = time.monotonic()
 
-        current_compressed_memory: Optional[CompressedMemory] = previous_compression_result
+        current_compressed_memory: Optional[CompressedMemory] = (
+            previous_compression_result
+        )
         accumulated_traces: List[CompressionTrace] = []
 
         original_input_text = text_or_chunks
-        if isinstance(original_input_text, List): # Ensure original_input_text is a string for len()
+        if isinstance(
+            original_input_text, List
+        ):  # Ensure original_input_text is a string for len()
             original_input_text_str = " ".join(original_input_text)
         else:
             original_input_text_str = original_input_text
 
         for i, engine_instance in enumerate(self.engines):
             input_text_for_engine: str
-            prev_comp_result_for_engine: Optional[CompressedMemory] = current_compressed_memory
+            prev_comp_result_for_engine: Optional[CompressedMemory] = (
+                current_compressed_memory
+            )
 
             if i == 0 and current_compressed_memory is None:
                 input_text_for_engine = original_input_text_str
             elif current_compressed_memory is not None:
                 input_text_for_engine = current_compressed_memory.text
             else:
-                logging.warning(f"PipelineEngine '{self.id}': No current compressed memory to process for engine {engine_instance.id}, stopping pipeline.")
+                logging.warning(
+                    f"PipelineEngine '{self.id}': No current compressed memory to process for engine {engine_instance.id}, stopping pipeline."
+                )
                 break
 
-            logging.debug(f"PipelineEngine '{self.id}': Running sub-engine '{engine_instance.id}'. Input text length: {len(input_text_for_engine)}")
+            logging.debug(
+                f"PipelineEngine '{self.id}': Running sub-engine '{engine_instance.id}'. Input text length: {len(input_text_for_engine)}"
+            )
             current_compressed_memory = engine_instance.compress(
                 input_text_for_engine,
                 budget,
@@ -142,14 +169,24 @@ class PipelineEngine(BaseCompressionEngine):
             if current_compressed_memory and current_compressed_memory.trace:
                 # Sub-engine's trace is only added if the sub-engine itself had tracing enabled.
                 accumulated_traces.append(current_compressed_memory.trace)
-            elif not current_compressed_memory: # Engine returned None, critical failure
-                 # Create a minimal CompressedMemory to signify failure at this stage
+            elif (
+                not current_compressed_memory
+            ):  # Engine returned None, critical failure
+                # Create a minimal CompressedMemory to signify failure at this stage
                 current_compressed_memory = CompressedMemory(
-                    text=prev_comp_result_for_engine.text if prev_comp_result_for_engine else "",
+                    text=(
+                        prev_comp_result_for_engine.text
+                        if prev_comp_result_for_engine
+                        else ""
+                    ),
                     engine_id=self.id,
-                    engine_config=self.config.model_dump(mode='json'), # This PipelineEngine's config
-                    trace=None, # No pipeline trace if a sub-engine fails critically
-                    metadata={"error": f"Engine {engine_instance.id} failed to return CompressedMemory."}
+                    engine_config=self.config.model_dump(
+                        mode="json"
+                    ),  # This PipelineEngine's config
+                    trace=None,  # No pipeline trace if a sub-engine fails critically
+                    metadata={
+                        "error": f"Engine {engine_instance.id} failed to return CompressedMemory."
+                    },
                 )
                 # If we want to stop the pipeline on such failure:
                 # warnings.warn(f"Engine {engine_instance.id} in pipeline failed. Stopping pipeline.", RuntimeWarning)
@@ -158,43 +195,61 @@ class PipelineEngine(BaseCompressionEngine):
                 # Or, more simply, the pipeline's trace will just be shorter.
                 # The code below handles current_compressed_memory being None if all engines fail or list is empty.
 
-
         # Handle cases where the pipeline might be empty or all sub-engines failed to produce output
         if current_compressed_memory is None:
-            final_text_output = original_input_text_str if previous_compression_result is None else previous_compression_result.text
+            final_text_output = (
+                original_input_text_str
+                if previous_compression_result is None
+                else previous_compression_result.text
+            )
             current_compressed_memory = CompressedMemory(
                 text=final_text_output,
-                metadata={"notes": "Pipeline resulted in no output or was effectively empty."}
+                metadata={
+                    "notes": "Pipeline resulted in no output or was effectively empty."
+                },
             )
 
         # Now, check if the PipelineEngine itself should produce a trace
-        if not self.config.enable_trace: # self.config is EngineConfig from BaseCompressionEngine
-            logging.debug(f"PipelineEngine '{self.id}': Tracing disabled for the pipeline itself. Skipping overall trace generation.")
+        if (
+            not self.config.enable_trace
+        ):  # self.config is EngineConfig from BaseCompressionEngine
+            logging.debug(
+                f"PipelineEngine '{self.id}': Tracing disabled for the pipeline itself. Skipping overall trace generation."
+            )
             return CompressedMemory(
                 text=current_compressed_memory.text,
-                trace=None, # No trace for the pipeline itself
+                trace=None,  # No trace for the pipeline itself
                 engine_id=self.id,
-                engine_config=self.config.model_dump(mode='json'), # PipelineEngine's own config
-                metadata=current_compressed_memory.metadata
+                engine_config=self.config.model_dump(
+                    mode="json"
+                ),  # PipelineEngine's own config
+                metadata=current_compressed_memory.metadata,
             )
 
         # Proceed with creating the pipeline's trace
-        logging.debug(f"PipelineEngine '{self.id}': Generating overall pipeline trace. Number of sub-traces collected: {len(accumulated_traces)}")
+        logging.debug(
+            f"PipelineEngine '{self.id}': Generating overall pipeline trace. Number of sub-traces collected: {len(accumulated_traces)}"
+        )
         pipeline_strategy_params = {"budget": budget, **kwargs}
         # Use self.pipeline_structure_config for tracing the structure
-        if hasattr(self, 'pipeline_structure_config') and self.pipeline_structure_config.engines:
+        if (
+            hasattr(self, "pipeline_structure_config")
+            and self.pipeline_structure_config.engines
+        ):
             pipeline_strategy_params["engines"] = [
-                asdict(engine_conf) for engine_conf in self.pipeline_structure_config.engines
+                asdict(engine_conf)
+                for engine_conf in self.pipeline_structure_config.engines
             ]
-        else: # Fallback if instantiated with list of engines and structure wasn't fully parsable
+        else:  # Fallback if instantiated with list of engines and structure wasn't fully parsable
             pipeline_strategy_params["engines"] = [eng.id for eng in self.engines]
-
 
         pipeline_trace = CompressionTrace(
             engine_name=self.id,
             strategy_params=pipeline_strategy_params,
             input_summary={"original_length": len(original_input_text_str)},
-            steps=[asdict(trace) for trace in accumulated_traces], # accumulated_traces contains traces from sub-engines that had tracing enabled
+            steps=[
+                asdict(trace) for trace in accumulated_traces
+            ],  # accumulated_traces contains traces from sub-engines that had tracing enabled
             output_summary={"compressed_length": len(current_compressed_memory.text)},
             final_compressed_object_preview=current_compressed_memory.text[:50],
         )
@@ -203,7 +258,9 @@ class PipelineEngine(BaseCompressionEngine):
         return CompressedMemory(
             text=current_compressed_memory.text,
             engine_id=self.id,
-            engine_config=self.config.model_dump(mode='json'), # PipelineEngine's own EngineConfig
+            engine_config=self.config.model_dump(
+                mode="json"
+            ),  # PipelineEngine's own EngineConfig
             trace=pipeline_trace,
             metadata=current_compressed_memory.metadata,
         )

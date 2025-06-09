@@ -61,17 +61,19 @@ class StopwordPrunerEngine(BaseCompressionEngine):
         Trace generation is controlled by `self.config.enable_trace`.
         If False, `CompressedMemory.trace` will be None.
         """
-        import logging # Added
-        logging.debug(f"StopwordPrunerEngine: Compressing text, budget: {budget}")
-        start_time = time.monotonic() # Start timing early
+        import logging  # Added
 
-        input_text_content = ( # Use a distinct variable for the initial text
+        budget = llm_token_budget
+        logging.debug(f"StopwordPrunerEngine: Compressing text, budget: {budget}")
+        start_time = time.monotonic()  # Start timing early
+
+        input_text_content = (  # Use a distinct variable for the initial text
             text_or_chunks
             if isinstance(text_or_chunks, str)
             else " ".join(text_or_chunks)
         )
 
-        cfg = self.config or {}
+        cfg = self.config.model_dump(mode="python") if self.config else {}
         preserve_order = cfg.get("preserve_order", True)
         min_len = cfg.get("min_word_length", 1)
         remove_fillers = cfg.get("remove_fillers", True)
@@ -96,11 +98,12 @@ class StopwordPrunerEngine(BaseCompressionEngine):
         prev_token_lower: str | None = None
 
         if use_spacy:
-            doc = nlp(input_text_content) # Use input_text_content
+            doc = nlp(input_text_content)  # Use input_text_content
             sentences = doc.sents
         else:
             sentences = [
-                type("Span", (), {"text": s})() for s in simple_sentences(input_text_content) # Use input_text_content
+                type("Span", (), {"text": s})()
+                for s in simple_sentences(input_text_content)  # Use input_text_content
             ]
 
         for sent in sentences:
@@ -160,17 +163,15 @@ class StopwordPrunerEngine(BaseCompressionEngine):
         # Save the text after stopword pruning but before budget truncation
         text_after_pruning = compressed_text
 
-        if budget is not None: # budget was llm_token_budget
-            compressed_text = truncate_text(
-                active_tokenizer, compressed_text, budget
-            )
+        if budget is not None:  # budget was llm_token_budget
+            compressed_text = truncate_text(active_tokenizer, compressed_text, budget)
 
         if not self.config.enable_trace:
             return CompressedMemory(
                 text=compressed_text,
                 trace=None,
                 engine_id=self.id,
-                engine_config=self.config.model_dump(mode='json') # Use model_dump for config
+                engine_config=self.config,
             )
 
         # Proceed with trace generation
@@ -178,14 +179,15 @@ class StopwordPrunerEngine(BaseCompressionEngine):
 
         trace = CompressionTrace(
             engine_name=self.id,
-            strategy_params={"budget": budget, "language": language, "preserve_order": preserve_order,
-                             "min_word_length": min_len, "remove_fillers": remove_fillers,
-                             "remove_duplicates": remove_duplicates},
-            input_summary={"input_length": len(input_text_content), "input_tokens": orig_tokens},
+            strategy_params={"llm_token_budget": budget},
+            input_summary={
+                "input_length": len(input_text_content),
+                "input_tokens": orig_tokens,
+            },
             output_summary={
                 "final_length": len(compressed_text),
                 "final_tokens": final_tokens,
-                "length_after_pruning": len(text_after_pruning)
+                "length_after_pruning": len(text_after_pruning),
             },
             final_compressed_object_preview=compressed_text[:50],
         )
@@ -202,14 +204,18 @@ class StopwordPrunerEngine(BaseCompressionEngine):
             {"removed": removed_counts["short"]},
         )
         trace.add_step(
-            "remove_duplicates", # This step refers to adjacent duplicate tokens
+            "remove_duplicates",  # This step refers to adjacent duplicate tokens
             {"removed": removed_counts["duplicates"]},
         )
         if budget is not None:
-             trace.add_step(
+            trace.add_step(
                 "truncate_to_budget",
-                {"budget": budget, "length_before_truncation": len(text_after_pruning), "length_after_truncation": len(compressed_text)}
-             )
+                {
+                    "budget": budget,
+                    "length_before_truncation": len(text_after_pruning),
+                    "length_after_truncation": len(compressed_text),
+                },
+            )
 
         trace.processing_ms = (time.monotonic() - start_time) * 1000
 
@@ -217,7 +223,7 @@ class StopwordPrunerEngine(BaseCompressionEngine):
             text=compressed_text,
             trace=trace,
             engine_id=self.id,
-            engine_config=self.config.model_dump(mode='json') # Use model_dump for config
+            engine_config=self.config,
         )
 
 
