@@ -25,6 +25,11 @@ from compact_memory.engines import (
     CompressedMemory,
     CompressionTrace,
 )  # Dataclasses for return types
+from compact_memory.engines.pipeline_engine import (  # Added
+    PipelineConfig,
+    EngineConfig,
+    PipelineEngine,
+)
 # PrototypeEngine was removed
 
 
@@ -62,6 +67,11 @@ def compress_command(  # Renamed from compress
         "--engine",
         "-e",
         help="Specify the compression engine. Overrides the global default.",
+    ),
+    pipeline_config_str: Optional[str] = typer.Option(  # Added
+        None,
+        "--pipeline-config",
+        help="JSON string defining the pipeline configuration when --engine is 'pipeline'.",
     ),
     output_file: Optional[Path] = typer.Option(
         None,
@@ -120,6 +130,22 @@ def compress_command(  # Renamed from compress
     ),
 ) -> None:
     """Compress text or files using a one-shot engine."""
+    # Validation for pipeline_config_str (using engine_arg before it's finalized for default)
+    if engine_arg == PipelineEngine.id and not pipeline_config_str:
+        typer.secho(
+            "Error: --pipeline-config is required when --engine is 'pipeline'.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    if engine_arg != PipelineEngine.id and pipeline_config_str:
+        typer.secho(
+            "Error: --pipeline-config can only be used when --engine is 'pipeline'.",
+            fg=typer.colors.RED,
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
     final_engine_id = (
         engine_arg if engine_arg is not None else ctx.obj.get("default_engine_id")
     )
@@ -266,6 +292,7 @@ def compress_command(  # Renamed from compress
                 verbose_stats,
                 tokenizer_func,
                 ctx,  # Pass context
+                pipeline_config_str=pipeline_config_str,  # Added
             )
         elif file is not None:
             _compress_file_to_memory(
@@ -276,6 +303,7 @@ def compress_command(  # Renamed from compress
                 verbose_stats,
                 tokenizer_func,
                 ctx,  # Pass context
+                pipeline_config_str=pipeline_config_str,  # Added
             )
         elif dir_path is not None:  # This was dir in the original, renamed to dir_path
             _compress_directory_to_memory(
@@ -288,6 +316,7 @@ def compress_command(  # Renamed from compress
                 verbose_stats,
                 tokenizer_func,
                 ctx,  # Pass context
+                pipeline_config_str=pipeline_config_str,  # Added
             )
 
         # Persist changes to the engine store
@@ -318,6 +347,7 @@ def compress_command(  # Renamed from compress
                 tokenizer_func,
                 json_output,
                 ctx,  # Pass context
+                pipeline_config_str=pipeline_config_str,  # Added
             )
         elif file is not None:
             _compress_file_to_file_or_stdout(
@@ -330,6 +360,7 @@ def compress_command(  # Renamed from compress
                 tokenizer_func,
                 json_output,
                 ctx,  # Pass context
+                pipeline_config_str=pipeline_config_str,  # Added
             )
         elif dir_path is not None:  # This was dir in the original
             _compress_directory_to_files(
@@ -342,6 +373,7 @@ def compress_command(  # Renamed from compress
                 verbose_stats,
                 tokenizer_func,
                 ctx,  # Pass context
+                pipeline_config_str=pipeline_config_str,  # Added
             )
 
 
@@ -349,9 +381,61 @@ def compress_command(  # Renamed from compress
 
 
 def _get_one_shot_compression_engine(
-    engine_id: str, ctx: typer.Context
+    engine_id: str, ctx: typer.Context, pipeline_config_str: Optional[str] = None
 ) -> BaseCompressionEngine:
     """Helper to get and instantiate a one-shot compression engine."""
+    if engine_id == PipelineEngine.id:
+        if not pipeline_config_str:
+            # This case should ideally be caught by the validation in compress_command,
+            # but it's good to have a safeguard here.
+            typer.secho(
+                "Error: --pipeline-config is required when using the pipeline engine.",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        try:
+            pipeline_config_json = json.loads(pipeline_config_str)
+            if not isinstance(pipeline_config_json, list):
+                typer.secho(
+                    "Error: Pipeline config JSON must be a list of engine configurations.",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+            engine_configs = [
+                EngineConfig(**config) for config in pipeline_config_json
+            ]
+            pipeline_config_obj = PipelineConfig(engine_configs=engine_configs) # Renamed to avoid conflict
+            # Regarding llm_provider for PipelineEngine:
+            # Assuming PipelineEngine itself does not directly take an llm_provider,
+            # but its constituent engines might. The EngineConfig would need to handle
+            # passing necessary llm parameters to those, or those engines would
+            # fetch providers themselves using context if they are context-aware.
+            # For now, PipelineEngine is instantiated directly with its config.
+            return PipelineEngine(config=pipeline_config_obj)
+        except json.JSONDecodeError as e:
+            typer.secho(
+                f"Error decoding pipeline config JSON: {e}",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        except TypeError as e: # More specific for EngineConfig(**config) issues
+            typer.secho(
+                f"Error in pipeline engine configuration structure: {e}. Ensure each engine config has valid parameters.",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=1)
+        except Exception as e: # Catch-all for other instantiation errors
+            typer.secho(
+                f"Error creating pipeline engine from config: {e}",
+                fg=typer.colors.RED,
+                err=True,
+            )
+            raise typer.Exit(code=1)
+
     try:
         EngineCls = get_compression_engine(engine_id)
         info = get_engine_metadata(engine_id)
@@ -406,10 +490,17 @@ def _get_one_shot_compression_engine(
 
 
 def _compress_text_core(
-    text_content: str, engine_id: str, budget: int, tokenizer: Any, ctx: typer.Context
+    text_content: str,
+    engine_id: str,
+    budget: int,
+    tokenizer: Any,
+    ctx: typer.Context,
+    pipeline_config_str: Optional[str] = None,  # Added
 ) -> tuple[CompressedMemory, Optional[CompressionTrace], float]:
     """Core logic to compress text, returns compressed memory, trace, and time."""
-    engine = _get_one_shot_compression_engine(engine_id, ctx)  # Pass context
+    engine = _get_one_shot_compression_engine(
+        engine_id, ctx, pipeline_config_str
+    )  # Pass pipeline_config_str
     start_time = time.time()
     # engine.compress now returns a single CompressedMemory object
     compressed_mem: CompressedMemory = engine.compress(text_content, budget, tokenizer=tokenizer)
@@ -524,9 +615,10 @@ def _compress_text_to_file_or_stdout(
     tokenizer: Any,
     json_output: bool,
     ctx: typer.Context,  # Added context
+    pipeline_config_str: Optional[str] = None,  # Added
 ) -> None:
     compressed_mem, trace_obj, elapsed_ms = _compress_text_core(
-        text_content, engine_id, budget, tokenizer, ctx  # Pass context
+        text_content, engine_id, budget, tokenizer, ctx, pipeline_config_str  # Pass pipeline_config_str
     )
     _output_results(
         "stdin/text arg",
@@ -551,6 +643,7 @@ def _compress_file_to_file_or_stdout(
     tokenizer: Any,
     json_output: bool,
     ctx: typer.Context,  # Added context
+    pipeline_config_str: Optional[str] = None,  # Added
 ) -> None:
     try:
         text_content = file_path.read_text()
@@ -566,7 +659,7 @@ def _compress_file_to_file_or_stdout(
     # For this refactor, if no -o, it goes to stdout unless json_output.
 
     compressed_mem, trace_obj, elapsed_ms = _compress_text_core(
-        text_content, engine_id, budget, tokenizer, ctx  # Pass context
+        text_content, engine_id, budget, tokenizer, ctx, pipeline_config_str  # Pass pipeline_config_str
     )
     _output_results(
         f"file: {file_path.name}",
@@ -591,6 +684,7 @@ def _compress_directory_to_files(
     verbose_stats: bool,
     tokenizer: Any,
     ctx: typer.Context,  # Added context
+    pipeline_config_str: Optional[str] = None,  # Added
 ) -> None:
     files_to_process = sorted(list(
         dir_path_obj.rglob(pattern) if recursive else dir_path_obj.glob(pattern)
@@ -636,7 +730,7 @@ def _compress_directory_to_files(
     typer.echo(f"Compressing combined content...")
 
     compressed_mem, trace_obj, elapsed_ms = _compress_text_core(
-        full_text_content, engine_id, budget, tokenizer, ctx
+        full_text_content, engine_id, budget, tokenizer, ctx, pipeline_config_str  # Pass pipeline_config_str
     )
 
     # Determine output path
@@ -682,10 +776,16 @@ def _compress_text_to_memory(
     verbose_stats: bool,
     tokenizer: Any,
     ctx: typer.Context,  # Added context
+    pipeline_config_str: Optional[str] = None,  # Added
     source_document_id: Optional[str] = "text_input",  # Default ID
 ) -> None:
     compressed_mem, _, elapsed_ms = _compress_text_core(
-        text_to_compress, one_shot_engine_id, budget, tokenizer, ctx  # Pass context
+        text_to_compress,
+        one_shot_engine_id,
+        budget,
+        tokenizer,
+        ctx,
+        pipeline_config_str=pipeline_config_str,  # Pass pipeline_config_str
     )
 
     # Ingest into the main engine instance
@@ -719,6 +819,7 @@ def _compress_file_to_memory(
     verbose_stats: bool,
     tokenizer: Any,
     ctx: typer.Context,  # Added context
+    pipeline_config_str: Optional[str] = None,  # Added
 ) -> None:
     try:
         text_content = file_path_obj.read_text()
@@ -738,6 +839,7 @@ def _compress_file_to_memory(
         verbose_stats,
         tokenizer,
         ctx,  # Pass context
+        pipeline_config_str=pipeline_config_str,  # Pass pipeline_config_str
         source_document_id=str(file_path_obj.name),
     )
 
@@ -752,6 +854,7 @@ def _compress_directory_to_memory(
     verbose_stats: bool,
     tokenizer: Any,
     ctx: typer.Context,  # Added context
+    pipeline_config_str: Optional[str] = None,  # Added
 ) -> None:
     files_to_process = list(
         dir_path_obj.rglob(pattern) if recursive else dir_path_obj.glob(pattern)
@@ -775,6 +878,7 @@ def _compress_directory_to_memory(
             verbose_stats,
             tokenizer,
             ctx,  # Pass context
+            pipeline_config_str=pipeline_config_str,  # Pass pipeline_config_str
         )
         processed_count += 1
 

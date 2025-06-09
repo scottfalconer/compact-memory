@@ -64,6 +64,13 @@ When you need to compress all text files within a directory (and optionally its 
     ```
     *(Expected output: `project_docs/compressed_output.txt`)*
 
+### Advanced Usage: Chaining Engines with `PipelineEngine`
+
+For more complex compression scenarios, you can chain multiple compression engines together using the `PipelineEngine`. This allows the output of one engine to become the input for the next, enabling multi-stage processing. This is configured via the `--pipeline-config` option when using `--engine pipeline` with the `compact-memory compress` command.
+
+This powerful feature lets you combine different strategies, for example, first pruning irrelevant content with one engine and then summarizing the result with another.
+
+See the [Compression Engines documentation](COMPRESSION_ENGINES.md#g-pipeline-engine-pipeline) or the [CLI Reference](cli_reference.md#using-the-pipelineengine---engine-pipeline) for detailed examples and configuration instructions.
 
 ### Using Compressed Output in an LLM Prompt
 

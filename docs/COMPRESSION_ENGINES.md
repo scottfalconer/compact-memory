@@ -70,6 +70,34 @@ Compression is not necessarily about achieving the highest possible data compres
 *   **Cons:** Complex to implement. Knowledge extraction can be error-prone.
 *   **Use Cases:** Building comprehensive knowledge bases, semantic search, advanced reasoning.
 
+### g. Pipeline Engine (`pipeline`)
+
+The `PipelineEngine` is a meta-engine that allows you to chain multiple compression engines together. Each engine in the pipeline processes the output of the previous one. This enables the creation of sophisticated, multi-stage compression strategies by combining the strengths of different individual engines.
+
+**CLI Usage:**
+
+To use the `PipelineEngine` from the CLI, specify `--engine pipeline` and provide the pipeline configuration as a JSON string to the `--pipeline-config` option.
+
+**Example:**
+
+This example first prunes stopwords from the input text and then truncates the result to a maximum of 50 tokens.
+
+```bash
+compact-memory compress --engine pipeline \
+  --pipeline-config '{"engines": [
+    {"engine_name": "StopwordPrunerEngine", "engine_params": {"lang": "english"}},
+    {"engine_name": "SimpleTruncateEngine", "engine_params": {"max_tokens": 50}}
+  ]}' \
+  --file input.txt --budget 50 --output output.txt
+```
+
+The JSON structure for `--pipeline-config` is:
+`{"engines": [{"engine_name": "engine_id", "engine_params": {...}}, ...]}`
+
+Each `engine_id` must be a registered compression engine, and `engine_params` are the parameters specific to that engine.
+
+Refer to the [CLI Reference](cli_reference.md#using-the-pipelineengine---engine-pipeline) for more details on configuration and further examples.
+
 ## 3. Key Considerations for Choosing/Designing a Compression Engine
 
 *   **Information Fidelity:** How much of the original, important information is preserved?

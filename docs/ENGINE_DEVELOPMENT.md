@@ -216,6 +216,7 @@ Rigorous testing is crucial when developing new engines.
 1.  **Unit Tests:**
     *   Write standard Python unit tests for your engine's core logic. Test edge cases, different input types, and budget handling.
     *   Mock external dependencies like LLM calls if necessary.
+    *   **Testing Engine Interactions:** You can also test the interaction of multiple engines in a sequence using the built-in `PipelineEngine` directly from the CLI. This is done by specifying `--engine pipeline` and providing a JSON configuration via the `--pipeline-config` option to the `compact-memory compress` command. See the [CLI Reference](cli_reference.md#using-the-pipelineengine---engine-pipeline) for usage details. This can be helpful to see how your engine behaves when it receives input from another engine or when its output is passed to another.
 
 
 ## Registering Your Engine
