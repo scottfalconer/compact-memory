@@ -3,8 +3,8 @@ from __future__ import annotations
 """Simple no-op compression engine."""
 
 import time
-import logging # Moved import logging to top
-from typing import Any, List, Optional, Union # Added Union for text_or_chunks
+import logging  # Moved import logging to top
+from typing import Any, List, Optional, Union  # Added Union for text_or_chunks
 
 from compact_memory.token_utils import truncate_text
 
@@ -15,6 +15,7 @@ from .registry import register_compression_engine
 
 try:  # pragma: no cover - optional dependency
     import tiktoken
+
     _DEFAULT_TOKENIZER: Optional[tiktoken.Encoding] = tiktoken.get_encoding("gpt2")
 except Exception:  # pragma: no cover - optional dependency
     _DEFAULT_TOKENIZER = None
@@ -27,7 +28,7 @@ class NoCompressionEngine(BaseCompressionEngine):
 
     def compress(
         self,
-        text_or_chunks: Union[str, List[str]], # Used Union explicitly
+        text_or_chunks: Union[str, List[str]],  # Used Union explicitly
         budget: int | None,
         *,
         tokenizer: Any = None,
@@ -45,8 +46,12 @@ class NoCompressionEngine(BaseCompressionEngine):
         logging.debug(f"NoCompressionEngine: Processing text, budget: {budget}")
         # Ensure tokenizer is not None for truncate_text if budget is not None
         active_tokenizer: Any = tokenizer or _DEFAULT_TOKENIZER
-        if active_tokenizer is None and budget is not None: # If no tokenizer and budget is set, truncation might behave unexpectedly or fail
-             active_tokenizer = lambda t, **_: t.split() # Fallback to simple split for truncate_text's tokenizer requirement
+        if (
+            active_tokenizer is None and budget is not None
+        ):  # If no tokenizer and budget is set, truncation might behave unexpectedly or fail
+            active_tokenizer = (
+                lambda t, **_: t.split()
+            )  # Fallback to simple split for truncate_text's tokenizer requirement
 
         start_time = time.monotonic()
 
@@ -66,21 +71,21 @@ class NoCompressionEngine(BaseCompressionEngine):
                 text=final_text,
                 trace=None,
                 engine_id=self.id,
-                engine_config=self.config.model_dump(mode='json')
+                engine_config=self.config.model_dump(mode="json"),
             )
 
         # Proceed with trace generation
         trace = CompressionTrace(
             engine_name=self.id,
-            strategy_params={"budget": budget}, # Use renamed budget
-            input_summary={"input_length": len(input_text_content)}, # Original length
-            output_summary={"output_length": len(final_text)}, # Final length
+            strategy_params={"llm_token_budget": budget},
+            input_summary={"input_length": len(input_text_content)},  # Original length
+            output_summary={"output_length": len(final_text)},  # Final length
             final_compressed_object_preview=final_text[:50],
         )
         trace.add_step(
             "truncate_content" if budget is not None else "no_op",
             {
-                "budget": budget, # Use renamed budget
+                "llm_token_budget": budget,
                 "result_length": len(final_text),
             },
         )
@@ -90,7 +95,7 @@ class NoCompressionEngine(BaseCompressionEngine):
             text=final_text,
             trace=trace,
             engine_id=self.id,
-            engine_config=self.config.model_dump(mode='json')
+            engine_config=self.config.model_dump(mode="json"),
         )
 
 

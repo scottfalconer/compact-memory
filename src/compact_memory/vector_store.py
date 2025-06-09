@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Dict, Type, Optional # Added Optional
+from typing import List, Tuple, Dict, Type, Optional  # Added Optional
 import os
 import json
-import logging # Added
+import logging  # Added
 import numpy as np
 import faiss
 from datetime import datetime, timezone
 
 from .models import BeliefPrototype, RawMemory
-from .exceptions import VectorStoreError, IndexRebuildError # Added
+from .exceptions import VectorStoreError, IndexRebuildError  # Added
 
 
 class VectorStore(ABC):
@@ -56,7 +56,9 @@ class VectorStore(ABC):
         """Retrieve texts for a given list of prototype IDs."""
 
     @abstractmethod
-    def add_texts_with_ids_and_vectors(self, data: List[Tuple[str, str, np.ndarray]]) -> None:
+    def add_texts_with_ids_and_vectors(
+        self, data: List[Tuple[str, str, np.ndarray]]
+    ) -> None:
         """
         Add multiple entries, each consisting of an ID, text, and its vector.
         The text is primarily for association and retrieval via get_texts_by_ids.
@@ -87,9 +89,11 @@ class InMemoryVectorStore(VectorStore):
         self.embedding_dim: int = embedding_dim
         self.normalized: bool = normalized
         self.meta: Dict[str, object] = {}
-        self.path: Optional[str] = None # Typed self.path
+        self.path: Optional[str] = None  # Typed self.path
         self.prototypes: List[BeliefPrototype] = []
-        self.proto_vectors: np.ndarray = np.zeros((0, embedding_dim), dtype=np.float32) # Typed more generally
+        self.proto_vectors: np.ndarray = np.zeros(
+            (0, embedding_dim), dtype=np.float32
+        )  # Typed more generally
         self.memories: List[RawMemory] = []
         self.index: Dict[str, int] = {}
         self.faiss_index: faiss.Index | None = None
@@ -148,7 +152,9 @@ class InMemoryVectorStore(VectorStore):
         if self.faiss_index is None or self._index_dirty:
             self._build_faiss_index()
 
-        if self.faiss_index is None: # Check if faiss_index is still None after build attempt (e.g. if no prototypes)
+        if (
+            self.faiss_index is None
+        ):  # Check if faiss_index is still None after build attempt (e.g. if no prototypes)
             return []
 
         query = vec.astype(np.float32).reshape(1, -1)
@@ -169,13 +175,17 @@ class InMemoryVectorStore(VectorStore):
     def get_texts_by_ids(self, ids: List[str]) -> Dict[str, str]:
         texts_map: Dict[str, str] = {}
         # Create a temporary lookup for faster access if many IDs are requested
-        memory_lookup: Dict[str, str] = {mem.memory_id: mem.raw_text for mem in self.memories}
+        memory_lookup: Dict[str, str] = {
+            mem.memory_id: mem.raw_text for mem in self.memories
+        }
         for memory_id in ids:
             if memory_id in memory_lookup:
                 texts_map[memory_id] = memory_lookup[memory_id]
         return texts_map
 
-    def add_texts_with_ids_and_vectors(self, data: List[Tuple[str, str, np.ndarray]]) -> None:
+    def add_texts_with_ids_and_vectors(
+        self, data: List[Tuple[str, str, np.ndarray]]
+    ) -> None:
         for entry_id, text, vector_np in data:
             # Assuming entry_id is used as prototype_id and memory_id
             # The BeliefPrototype might need more fields if they are used (e.g. created_at)
@@ -184,19 +194,24 @@ class InMemoryVectorStore(VectorStore):
 
             # Calculate hash for RawMemory, assuming text is the primary content for hashing
             # This part might need alignment with how BaseCompressionEngine calculates hashes if consistency is key
-            from compact_memory.utils import calculate_sha256 # Changed to absolute import
+            from compact_memory.utils import (
+                calculate_sha256,
+            )  # Changed to absolute import
+
             text_hash = calculate_sha256(text)
 
             raw_memory = RawMemory(
                 memory_id=entry_id,
                 raw_text_hash=text_hash,
                 raw_text=text,
-                embedding=vector_np.tolist() # Storing vector in RawMemory, consistent with current model
+                embedding=vector_np.tolist(),  # Storing vector in RawMemory, consistent with current model
             )
 
-            self.add_prototype(proto, vector_np) # add_prototype handles setting vector_row_index
+            self.add_prototype(
+                proto, vector_np
+            )  # add_prototype handles setting vector_row_index
             self.add_memory(raw_memory)
-        self._index_dirty = True # Ensure Faiss index is rebuilt if data was added
+        self._index_dirty = True  # Ensure Faiss index is rebuilt if data was added
 
     def save(self, path: str) -> None:
         """
@@ -219,7 +234,9 @@ class InMemoryVectorStore(VectorStore):
             json.dump(memories_to_save, fh)
 
         prototypes_to_save = [p.model_dump(mode="json") for p in self.prototypes]
-        with open(os.path.join(path, "prototypes_meta.json"), "w", encoding="utf-8") as fh:
+        with open(
+            os.path.join(path, "prototypes_meta.json"), "w", encoding="utf-8"
+        ) as fh:
             json.dump(prototypes_to_save, fh)
         logging.debug(f"InMemoryVectorStore state saved to {path}")
 
@@ -243,7 +260,9 @@ class InMemoryVectorStore(VectorStore):
             memories_data = json.load(fh)
         self.memories = [RawMemory(**mem_data) for mem_data in memories_data]
 
-        with open(os.path.join(path, "prototypes_meta.json"), "r", encoding="utf-8") as fh:
+        with open(
+            os.path.join(path, "prototypes_meta.json"), "r", encoding="utf-8"
+        ) as fh:
             prototypes_data = json.load(fh)
         self.prototypes = [BeliefPrototype(**p_data) for p_data in prototypes_data]
 
@@ -289,26 +308,35 @@ class PersistentFaissVectorStore(InMemoryVectorStore):
         actual_path = path or self.path
         if actual_path is None:
             raise ValueError("path must be provided for persistence")
-        self.path = actual_path # Ensure self.path is updated if path was provided
+        self.path = actual_path  # Ensure self.path is updated if path was provided
         # TRY block should start here to encompass all operations
         try:
             os.makedirs(actual_path, exist_ok=True)
-            with open(os.path.join(actual_path, "prototypes.json"), "w", encoding="utf-8") as fh:
+            with open(
+                os.path.join(actual_path, "prototypes.json"), "w", encoding="utf-8"
+            ) as fh:
                 json.dump([p.model_dump(mode="json") for p in self.prototypes], fh)
             np.save(os.path.join(actual_path, "vectors.npy"), self.proto_vectors)
-            with open(os.path.join(actual_path, "memories.json"), "w", encoding="utf-8") as fh:
+            with open(
+                os.path.join(actual_path, "memories.json"), "w", encoding="utf-8"
+            ) as fh:
                 json.dump([m.model_dump(mode="json") for m in self.memories], fh)
 
             if self.faiss_index is None or self._index_dirty:
                 self._build_faiss_index()
 
             if self.faiss_index is not None:
-                faiss.write_index(self.faiss_index, os.path.join(actual_path, "index.faiss"))
+                faiss.write_index(
+                    self.faiss_index, os.path.join(actual_path, "index.faiss")
+                )
             logging.info(f"PersistentFaissVectorStore saved to {actual_path}")
         except Exception as e:
-            logging.error(f"Failed to save PersistentFaissVectorStore to {actual_path}: {e}")
-            raise VectorStoreError(f"Failed to save PersistentFaissVectorStore to {actual_path}: {e}") from e
-
+            logging.error(
+                f"Failed to save PersistentFaissVectorStore to {actual_path}: {e}"
+            )
+            raise VectorStoreError(
+                f"Failed to save PersistentFaissVectorStore to {actual_path}: {e}"
+            ) from e
 
     def load(self, path: str | None = None) -> None:
         """
@@ -329,15 +357,19 @@ class PersistentFaissVectorStore(InMemoryVectorStore):
         actual_path = path or self.path
         if actual_path is None:
             raise ValueError("path must be provided for loading")
-        self.path = actual_path # Ensure self.path is updated
+        self.path = actual_path  # Ensure self.path is updated
         # TRY block should start here
         try:
-            with open(os.path.join(actual_path, "prototypes.json"), "r", encoding="utf-8") as fh:
+            with open(
+                os.path.join(actual_path, "prototypes.json"), "r", encoding="utf-8"
+            ) as fh:
                 proto_data = json.load(fh)
             self.prototypes = [BeliefPrototype(**p) for p in proto_data]
             self.index = {p.prototype_id: i for i, p in enumerate(self.prototypes)}
             self.proto_vectors = np.load(os.path.join(actual_path, "vectors.npy"))
-            with open(os.path.join(actual_path, "memories.json"), "r", encoding="utf-8") as fh:
+            with open(
+                os.path.join(actual_path, "memories.json"), "r", encoding="utf-8"
+            ) as fh:
                 mem_data = json.load(fh)
             self.memories = [RawMemory(**m) for m in mem_data]
 
@@ -346,15 +378,25 @@ class PersistentFaissVectorStore(InMemoryVectorStore):
                 self.faiss_index = faiss.read_index(index_file_path)
                 self._index_dirty = False
             else:
-                logging.warning(f"FAISS index file not found at {index_file_path}. Will attempt to rebuild.")
+                logging.warning(
+                    f"FAISS index file not found at {index_file_path}. Will attempt to rebuild."
+                )
                 self._build_faiss_index()
             logging.info(f"PersistentFaissVectorStore loaded from {actual_path}")
         except FileNotFoundError as e:
-            logging.error(f"Required file not found during PersistentFaissVectorStore load from {actual_path}: {e}")
-            raise VectorStoreError(f"File not found during load from {actual_path}: {e}") from e
+            logging.error(
+                f"Required file not found during PersistentFaissVectorStore load from {actual_path}: {e}"
+            )
+            raise VectorStoreError(
+                f"File not found during load from {actual_path}: {e}"
+            ) from e
         except Exception as e:
-            logging.error(f"Failed to load PersistentFaissVectorStore from {actual_path}: {e}")
-            raise VectorStoreError(f"Failed to load PersistentFaissVectorStore from {actual_path}: {e}") from e
+            logging.error(
+                f"Failed to load PersistentFaissVectorStore from {actual_path}: {e}"
+            )
+            raise VectorStoreError(
+                f"Failed to load PersistentFaissVectorStore from {actual_path}: {e}"
+            ) from e
 
     def rebuild_index(self) -> None:
         """
@@ -363,33 +405,48 @@ class PersistentFaissVectorStore(InMemoryVectorStore):
         Raises:
             IndexRebuildError: If persisting the rebuilt index fails.
         """
-        logging.info(f"PersistentFaissVectorStore: Rebuilding FAISS index for path {self.path or 'in-memory'}.")
-        self._build_faiss_index() # Rebuilds in-memory FAISS index
+        logging.info(
+            f"PersistentFaissVectorStore: Rebuilding FAISS index for path {self.path or 'in-memory'}."
+        )
+        self._build_faiss_index()  # Rebuilds in-memory FAISS index
         logging.debug(f"PersistentFaissVectorStore: In-memory FAISS index rebuilt.")
         if self.path and self.faiss_index is not None:
             try:
                 index_file_path = os.path.join(self.path, "index.faiss")
                 faiss.write_index(self.faiss_index, index_file_path)
-                logging.info(f"PersistentFaissVectorStore: Rebuilt FAISS index persisted to {index_file_path}")
+                logging.info(
+                    f"PersistentFaissVectorStore: Rebuilt FAISS index persisted to {index_file_path}"
+                )
             except Exception as e:
-                logging.error(f"Failed to persist rebuilt FAISS index to {self.path}: {e}")
-                raise IndexRebuildError(f"Failed to persist rebuilt FAISS index to {self.path}: {e}") from e
+                logging.error(
+                    f"Failed to persist rebuilt FAISS index to {self.path}: {e}"
+                )
+                raise IndexRebuildError(
+                    f"Failed to persist rebuilt FAISS index to {self.path}: {e}"
+                ) from e
         elif self.path and self.faiss_index is None and len(self.prototypes) == 0:
             # If there are no prototypes, the index is None. If a path exists, try to remove the old index file.
             index_file_path = os.path.join(self.path, "index.faiss")
             if os.path.exists(index_file_path):
                 try:
                     os.remove(index_file_path)
-                    logging.info(f"PersistentFaissVectorStore: Removed stale FAISS index file as store is empty: {index_file_path}")
+                    logging.info(
+                        f"PersistentFaissVectorStore: Removed stale FAISS index file as store is empty: {index_file_path}"
+                    )
                 except Exception as e:
-                    logging.warning(f"PersistentFaissVectorStore: Failed to remove stale FAISS index file {index_file_path}: {e}")
+                    logging.warning(
+                        f"PersistentFaissVectorStore: Failed to remove stale FAISS index file {index_file_path}: {e}"
+                    )
         elif not self.path:
-            logging.debug("PersistentFaissVectorStore: No path configured, rebuilt index not persisted externally.")
+            logging.debug(
+                "PersistentFaissVectorStore: No path configured, rebuilt index not persisted externally."
+            )
 
 
 _VECTOR_STORE_REGISTRY: Dict[str, Type[VectorStore]] = {
     "in_memory": InMemoryVectorStore,
     "faiss_persistent": PersistentFaissVectorStore,
+    "faiss_memory": PersistentFaissVectorStore,
 }
 
 
@@ -403,7 +460,7 @@ def create_vector_store(store_type: str, **kwargs) -> VectorStore:
 
     # If the store type is 'in_memory', do not pass 'path' argument, even if it's in kwargs.
     if store_type == "in_memory":
-        kwargs.pop("path", None) # Remove path if it exists, do nothing if not
+        kwargs.pop("path", None)  # Remove path if it exists, do nothing if not
 
     return cls(**kwargs)
 
