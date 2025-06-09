@@ -1,7 +1,7 @@
 # Explainable Compression and Trace Visualization
 
 Compact Memory aims to make compression engines transparent and debuggable. A
-`CompressionTrace` records the internal decisions of a engine so that
+`CompressionTrace` records the internal decisions of an engine so that
 experiments can be analysed after the fact. The following guidelines describe how
 to produce informative traces and inspect them.
 

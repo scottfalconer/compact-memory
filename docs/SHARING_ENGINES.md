@@ -1,6 +1,6 @@
 # Sharing and Discovering Compression Engines
 
-Compact Memory's plugin system enables developers to create, package, and share their custom compression engines, and for users to easily discover and integrate them. This document outlines the plugin architecture, how to package a engine, and how to use shared engines.
+Compact Memory's plugin system enables developers to create, package, and share their custom compression engines, and for users to easily discover and integrate them. This document outlines the plugin architecture, how to package an engine, and how to use shared engines.
 
 ## Plugin Architecture
 
@@ -139,7 +139,7 @@ This will check for required files, fields in the manifest, and basic loadabilit
     This command will show the engine ID, display name, version, and source, which helps verify if your shared engine is correctly loaded.
 
 4.  **Using Shared Engines:**
-    Once a engine is installed and discoverable, you can use it just like a built-in one by referencing its `engine_id`:
+    Once an engine is installed and discoverable, you can use it just like a built-in one by referencing its `engine_id`:
     *   **CLI:**
         ```bash
         compact-memory compress --file input.txt --engine <shared_engine_id> --budget <value>
