@@ -9,7 +9,7 @@ from compact_memory.engines.registry import register_compression_engine, availab
 if DummyTruncEngine.id not in available_engines():
     register_compression_engine(DummyTruncEngine.id, DummyTruncEngine)
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 def test_compress_text_input_stdout():
