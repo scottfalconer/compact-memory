@@ -235,10 +235,75 @@ class NltkSentenceChunker(Chunker):
         return chunks
 
 
+class SemanticChunker(Chunker):
+    """Chunk text by paragraphs with token-aware grouping."""
+
+    id = "semantic"
+
+    def __init__(self, max_tokens: int = 512) -> None:
+        self.max_tokens = max_tokens
+        try:
+            self.tokenizer = tiktoken.get_encoding("gpt2")
+        except Exception:  # pragma: no cover - offline fallback
+            self.tokenizer = None
+
+    def config(self) -> Dict[str, int | str]:
+        return {"id": self.id, "max_tokens": self.max_tokens}
+
+    def _paragraphs(self, text: str) -> List[str]:
+        paragraphs: List[str] = []
+        current: List[str] = []
+        for line in text.splitlines():
+            if line.strip():
+                current.append(line.strip())
+            else:
+                if current:
+                    paragraphs.append(" ".join(current))
+                    current = []
+        if current:
+            paragraphs.append(" ".join(current))
+        return [p for p in paragraphs if p]
+
+    def chunk(self, text: str) -> List[str]:
+        paragraphs = self._paragraphs(text)
+        if not paragraphs:
+            return []
+        chunks: List[str] = []
+        current: List[str] = []
+        current_tokens = 0
+        for para in paragraphs:
+            tokens = self.tokenizer.encode(para) if self.tokenizer else para.split()
+            num_tokens = len(tokens)
+            if num_tokens > self.max_tokens:
+                if current:
+                    chunks.append("\n\n".join(current))
+                    current = []
+                    current_tokens = 0
+                for i in range(0, num_tokens, self.max_tokens):
+                    sub = tokens[i : i + self.max_tokens]
+                    if self.tokenizer:
+                        chunks.append(self.tokenizer.decode(sub))
+                    else:
+                        chunks.append(" ".join(sub))
+                continue
+            if current_tokens + num_tokens <= self.max_tokens:
+                current.append(para)
+                current_tokens += num_tokens
+            else:
+                if current:
+                    chunks.append("\n\n".join(current))
+                current = [para]
+                current_tokens = num_tokens
+        if current:
+            chunks.append("\n\n".join(current))
+        return chunks
+
+
 register_chunker(SentenceWindowChunker.id, SentenceWindowChunker)
 register_chunker(FixedSizeChunker.id, FixedSizeChunker)
 register_chunker(AgenticChunker.id, AgenticChunker)
 register_chunker(NltkSentenceChunker.id, NltkSentenceChunker)
+register_chunker(SemanticChunker.id, SemanticChunker)
 
 
 __all__ = [
@@ -247,6 +312,7 @@ __all__ = [
     "FixedSizeChunker",
     "AgenticChunker",
     "NltkSentenceChunker",
+    "SemanticChunker",
     "register_chunker",
     "_CHUNKER_REGISTRY",
 ]

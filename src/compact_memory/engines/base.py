@@ -196,7 +196,7 @@ class BaseCompressionEngine:
             final_compressed_object_preview=truncated[:50],
         )
         trace.add_step(
-            "truncate_content",
+            "truncate",
             {
                 "budget": budget,
                 "original_length": len(text),
