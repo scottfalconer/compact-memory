@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import List, Union, Any, Optional
 
 from compact_memory.token_utils import tokenize_text
+import time
 
 try:  # pragma: no cover - optional dependency
     import tiktoken
@@ -54,6 +55,8 @@ class FirstLastEngine(BaseCompressionEngine):
             tokenize_fn = _DEFAULT_TOKENIZER or (lambda t: t.split())
         tokens = tokenize_text(tokenize_fn, text)
 
+        start = time.monotonic()
+
         if llm_token_budget is None:
             kept_tokens = tokens
         elif llm_token_budget <= 0:
@@ -75,19 +78,20 @@ class FirstLastEngine(BaseCompressionEngine):
             engine_name=self.id,
             strategy_params={"llm_token_budget": llm_token_budget},
             input_summary={"input_length": len(text), "input_tokens": len(tokens)},
-            steps=[
-                {
-                    "type": "first_last",
-                    "kept_first_tokens": len(kept_tokens[: len(kept_tokens) // 2]),
-                    "kept_last_tokens": len(kept_tokens[len(kept_tokens) // 2 :]),
-                }
-            ],
             output_summary={
                 "final_length": len(kept),
                 "final_tokens": len(kept_tokens),
             },
             final_compressed_object_preview=kept[:50],
         )
+        trace.add_step(
+            "first_last",
+            {
+                "kept_first_tokens": len(kept_tokens[: len(kept_tokens) // 2]),
+                "kept_last_tokens": len(kept_tokens[len(kept_tokens) // 2 :]),
+            },
+        )
+        trace.processing_ms = (time.monotonic() - start) * 1000
         compressed.trace = trace
         compressed.engine_id = self.id
         compressed.engine_config = self.config

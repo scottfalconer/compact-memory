@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, List, Optional
 
 from compact_memory.token_utils import truncate_text
+import time
 
 # Import directly from base to avoid triggering package-level side effects
 from .base import BaseCompressionEngine, CompressedMemory, CompressionTrace
@@ -33,6 +34,7 @@ class NoCompressionEngine(BaseCompressionEngine):
         **kwargs: Any,
     ) -> CompressedMemory:
         tokenizer = tokenizer or _DEFAULT_TOKENIZER or (lambda t, **_: t.split())
+        start = time.monotonic()
         if isinstance(text_or_chunks, list):
             text = "\n".join(text_or_chunks)
         else:
@@ -45,7 +47,16 @@ class NoCompressionEngine(BaseCompressionEngine):
             strategy_params={"llm_token_budget": llm_token_budget},
             input_summary={"input_length": len(text)},
             output_summary={"output_length": len(text)},
+            final_compressed_object_preview=text[:50],
         )
+        trace.add_step(
+            "truncate_content" if llm_token_budget is not None else "no_op",
+            {
+                "budget": llm_token_budget,
+                "result_length": len(text),
+            },
+        )
+        trace.processing_ms = (time.monotonic() - start) * 1000
         compressed.trace = trace
         compressed.engine_id = self.id
         compressed.engine_config = self.config
