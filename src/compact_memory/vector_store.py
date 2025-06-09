@@ -192,6 +192,11 @@ def create_vector_store(store_type: str, **kwargs) -> VectorStore:
         known = ", ".join(sorted(_VECTOR_STORE_REGISTRY))
         raise ValueError(f"Unknown vector store '{store_type}'. Known types: {known}")
     cls = _VECTOR_STORE_REGISTRY[store_type]
+
+    # If the store type is 'in_memory', do not pass 'path' argument, even if it's in kwargs.
+    if store_type == "in_memory":
+        kwargs.pop("path", None) # Remove path if it exists, do nothing if not
+
     return cls(**kwargs)
 
 
