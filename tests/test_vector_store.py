@@ -1,7 +1,10 @@
 import numpy as np
 
 from compact_memory.models import BeliefPrototype
-from compact_memory.vector_store import InMemoryVectorStore
+from compact_memory.vector_store import (
+    InMemoryVectorStore,
+    PersistentFaissVectorStore,
+)
 import pytest
 
 
@@ -73,3 +76,36 @@ def test_add_memory_records_entry():
     )
     store.add_memory(memory)
     assert store.memories == [memory]
+
+
+def test_persistent_faiss_store_save_load(tmp_path):
+    store = PersistentFaissVectorStore(embedding_dim=2, path=tmp_path)
+    proto = BeliefPrototype(prototype_id="p1", vector_row_index=0)
+    vec = np.array([1.0, 0.0], dtype=np.float32)
+    store.add_prototype(proto, vec)
+    from compact_memory.models import RawMemory
+
+    store.add_memory(
+        RawMemory(memory_id="m1", raw_text_hash="h", raw_text="t", embedding=[1.0, 0.0])
+    )
+    store.save(tmp_path)
+
+    other = PersistentFaissVectorStore(embedding_dim=2, path=tmp_path)
+    other.load(tmp_path)
+    result = other.find_nearest(vec, k=1)
+    assert result[0][0] == "p1"
+    assert len(other.memories) == 1
+
+
+def test_persistent_store_consistent_with_memory_store(tmp_path):
+    mem_store = InMemoryVectorStore(embedding_dim=2)
+    pers_store = PersistentFaissVectorStore(embedding_dim=2, path=tmp_path)
+    proto = BeliefPrototype(prototype_id="p1", vector_row_index=0)
+    vec = np.array([0.0, 1.0], dtype=np.float32)
+    mem_store.add_prototype(proto, vec)
+    pers_store.add_prototype(proto, vec)
+
+    query = np.array([0.0, 1.0], dtype=np.float32)
+    res_mem = mem_store.find_nearest(query, k=1)
+    res_pers = pers_store.find_nearest(query, k=1)
+    assert res_mem == res_pers

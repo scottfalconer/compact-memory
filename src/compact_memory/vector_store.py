@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Type
+import os
+import json
 
 import numpy as np
 import faiss
@@ -37,12 +39,12 @@ class VectorStore(ABC):
         """Add a memory entry to the store."""
 
     @abstractmethod
-    def save(self) -> None:
-        """Persist the store (optional for in-memory stores)."""
+    def save(self, path: str) -> None:
+        """Persist the store to ``path`` (optional for in-memory stores)."""
 
     @abstractmethod
-    def load(self) -> None:
-        """Load the store from persistence if applicable."""
+    def load(self, path: str) -> None:
+        """Load the store from ``path`` if applicable."""
 
 
 class InMemoryVectorStore(VectorStore):
@@ -123,8 +125,79 @@ class InMemoryVectorStore(VectorStore):
     def add_memory(self, memory: RawMemory) -> None:
         self.memories.append(memory)
 
-    def save(self) -> None:  # pragma: no cover - nothing to persist
+    def save(self, path: str) -> None:  # pragma: no cover - nothing to persist
         pass
 
-    def load(self) -> None:  # pragma: no cover - nothing to load
+    def load(self, path: str) -> None:  # pragma: no cover - nothing to load
         pass
+
+
+class PersistentFaissVectorStore(InMemoryVectorStore):
+    """FAISS-based store that persists data to disk."""
+
+    def __init__(
+        self, embedding_dim: int, normalized: bool = True, path: str | None = None
+    ) -> None:
+        super().__init__(embedding_dim, normalized)
+        self.path = path
+
+    def save(self, path: str | None = None) -> None:
+        path = path or self.path
+        if path is None:
+            raise ValueError("path must be provided for persistence")
+        self.path = path
+        os.makedirs(path, exist_ok=True)
+        with open(os.path.join(path, "prototypes.json"), "w", encoding="utf-8") as fh:
+            json.dump([p.model_dump(mode="json") for p in self.prototypes], fh)
+        np.save(os.path.join(path, "vectors.npy"), self.proto_vectors)
+        with open(os.path.join(path, "memories.json"), "w", encoding="utf-8") as fh:
+            json.dump([m.model_dump(mode="json") for m in self.memories], fh)
+        if self.faiss_index is None or self._index_dirty:
+            self._build_faiss_index()
+
+        if self.faiss_index is not None:
+            faiss.write_index(self.faiss_index, os.path.join(path, "index.faiss"))
+
+    def load(self, path: str | None = None) -> None:
+        path = path or self.path
+        if path is None:
+            raise ValueError("path must be provided for loading")
+        self.path = path
+        with open(os.path.join(path, "prototypes.json"), "r", encoding="utf-8") as fh:
+            proto_data = json.load(fh)
+        self.prototypes = [BeliefPrototype(**p) for p in proto_data]
+        self.index = {p.prototype_id: i for i, p in enumerate(self.prototypes)}
+        self.proto_vectors = np.load(os.path.join(path, "vectors.npy"))
+        with open(os.path.join(path, "memories.json"), "r", encoding="utf-8") as fh:
+            mem_data = json.load(fh)
+        self.memories = [RawMemory(**m) for m in mem_data]
+        index_path = os.path.join(path, "index.faiss")
+        if os.path.exists(index_path):
+            self.faiss_index = faiss.read_index(index_path)
+            self._index_dirty = False
+        else:
+            self._build_faiss_index()
+
+
+_VECTOR_STORE_REGISTRY: Dict[str, Type[VectorStore]] = {
+    "in_memory": InMemoryVectorStore,
+    "faiss_persistent": PersistentFaissVectorStore,
+}
+
+
+def create_vector_store(store_type: str, **kwargs) -> VectorStore:
+    """Instantiate a :class:`VectorStore` from ``store_type``."""
+
+    if store_type not in _VECTOR_STORE_REGISTRY:
+        known = ", ".join(sorted(_VECTOR_STORE_REGISTRY))
+        raise ValueError(f"Unknown vector store '{store_type}'. Known types: {known}")
+    cls = _VECTOR_STORE_REGISTRY[store_type]
+    return cls(**kwargs)
+
+
+__all__ = [
+    "VectorStore",
+    "InMemoryVectorStore",
+    "PersistentFaissVectorStore",
+    "create_vector_store",
+]
