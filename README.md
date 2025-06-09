@@ -255,12 +255,13 @@ Key benefits include:
 
 This project requires **Python 3.11+**.
 
-1.  **Install Dependencies:** Install the lightweight requirements listed in
-   `requirements.txt`:
+1.  **Install Dependencies:** Install Compact Memory in editable mode so
+   changes to the source are picked up automatically. This will also
+   install required dependencies:
    ```bash
-   pip install -r requirements.txt
+   pip install -e .
    ```
-   The CLI also relies on the `platformdirs` package for determining
+   The CLI relies on the `platformdirs` package for determining
    user-specific plugin paths. It is included in the project's
    dependencies but can be installed manually if needed:
    ```bash
@@ -420,9 +421,9 @@ compact-memory dev list-engines
 
 ### Running Tests
 To ensure Compact Memory is functioning correctly, especially after making changes or setting up the environment:
-Install development dependencies (if not already done during setup):
+Install test dependencies (if not already done during setup):
 ```bash
-pip install -r requirements.txt  # Ensure test dependencies are included
+pip install -e .[test]
 pytest
 ```
 

@@ -7,15 +7,22 @@ from compact_memory.engines import (
     BaseCompressionEngine,
     CompressedMemory,
     CompressionTrace,
-    load_engine      # Added
+    load_engine,  # Added
 )
+
 # PrototypeEngine was removed
 
 
 class DummyTruncEngine(BaseCompressionEngine):
     id = "dummy_trunc"
 
-    def compress(self, text_or_chunks, llm_token_budget, previous_compression_result=None, **kwargs): # Added previous_compression_result and matched full signature
+    def compress(
+        self,
+        text_or_chunks,
+        llm_token_budget,
+        previous_compression_result=None,
+        **kwargs,
+    ):  # Added previous_compression_result and matched full signature
         text = (
             text_or_chunks
             if isinstance(text_or_chunks, str)
@@ -39,7 +46,7 @@ class DummyTruncEngine(BaseCompressionEngine):
             text=truncated,
             trace=trace,
             engine_id=self.id,
-            engine_config=getattr(self, 'config', None) # Mimic base engine
+            engine_config=getattr(self, "config", None),  # Mimic base engine
         )
 
 
@@ -50,12 +57,15 @@ def _env(tmp_path: Path) -> dict[str, str]:
     # Ensure this matches the expected env var name used by the application's config loader
     return {
         "COMPACT_MEMORY_PATH": str(tmp_path),
-        "COMPACT_MEMORY_DEFAULT_ENGINE_ID": "none", # Add defaults used by some tests
-        "COMPACT_MEMORY_DEFAULT_MODEL_ID": "tiny-gpt2", # Add defaults used by some tests
+        "COMPACT_MEMORY_DEFAULT_ENGINE_ID": "none",  # Add defaults used by some tests
+        "COMPACT_MEMORY_DEFAULT_MODEL_ID": "tiny-gpt2",  # Add defaults used by some tests
     }
 
 
-runner = CliRunner(mix_stderr=False)
+try:
+    runner = CliRunner(mix_stderr=False)
+except TypeError:
+    runner = CliRunner()
 
 
 def test_compress_text_option(tmp_path: Path):
@@ -427,12 +437,14 @@ def test_compress_override_default_strategy(tmp_path: Path):
     assert result.exit_code == 0
     assert result.stdout.strip() == "abcdef"
 
+
 # Tests related to PrototypeEngine were removed:
 # - test_compress_to_memory_with_prototype_engine
 # - test_compress_to_memory_one_shot_trunc_then_prototype
 
 
 # --- Tests for PipelineEngine ---
+
 
 def test_cli_compress_pipeline_engine_valid(tmp_path: Path):
     """Test valid PipelineEngine usage with a simple pipeline."""
@@ -450,13 +462,21 @@ def test_cli_compress_pipeline_engine_valid(tmp_path: Path):
     # Output: "one two nine ten"
     expected_output = "one two nine ten"
 
-    result = runner.invoke(app, [
-        "compress",
-        "--engine", "pipeline",
-        "--pipeline-config", pipeline_config_json,
-        "--text", text_to_compress,
-        "--budget", "10",  # Overall budget for the compress command
-    ], env=_env(tmp_path))
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "--engine",
+            "pipeline",
+            "--pipeline-config",
+            pipeline_config_json,
+            "--text",
+            text_to_compress,
+            "--budget",
+            "10",  # Overall budget for the compress command
+        ],
+        env=_env(tmp_path),
+    )
 
     assert result.exit_code == 0, f"CLI Error: {result.stderr}"
     assert result.stdout.strip() == expected_output
@@ -475,7 +495,6 @@ def test_cli_compress_pipeline_engine_valid(tmp_path: Path):
     # Actual output of StopwordPrunerEngine can be sensitive to its exact stopword list.
     # FirstLastEngine will then take 1 from start, 1 from end of that.
     # For "example sentence common words", FirstLast(1,1) -> "example words"
-    expected_output_2 = "example sentence common words" # Output of StopwordPrunerEngine
     # Then FirstLastEngine takes first 1 and last 1.
     # This is a bit hard to predict exactly without running StopwordPruner,
     # so let's test if the command runs and produces *some* output.
@@ -484,32 +503,48 @@ def test_cli_compress_pipeline_engine_valid(tmp_path: Path):
     # If StopwordPrunerEngine is not available or fails, this test might be brittle.
     # Let's simplify expected output for robustness, assuming "example" and "words" survive.
 
-    result_2 = runner.invoke(app, [
-        "compress",
-        "--engine", "pipeline",
-        "--pipeline-config", pipeline_config_json_2,
-        "--text", text_to_compress_2,
-        "--budget", "5",
-    ], env=_env(tmp_path))
+    result_2 = runner.invoke(
+        app,
+        [
+            "compress",
+            "--engine",
+            "pipeline",
+            "--pipeline-config",
+            pipeline_config_json_2,
+            "--text",
+            text_to_compress_2,
+            "--budget",
+            "5",
+        ],
+        env=_env(tmp_path),
+    )
 
     assert result_2.exit_code == 0, f"CLI Error: {result_2.stderr}"
     # Check for some expected keywords that should remain after stopword pruning
     assert "example" in result_2.stdout
     assert "words" in result_2.stdout
-    assert "this" not in result_2.stdout # "this" is a common stopword
+    assert "this" not in result_2.stdout  # "this" is a common stopword
 
 
 def test_cli_compress_pipeline_engine_invalid_json(tmp_path: Path):
     """Test PipelineEngine with invalid JSON in --pipeline-config."""
     invalid_json = '{"engines": [Oops this is not valid JSON}'
 
-    result = runner.invoke(app, [
-        "compress",
-        "--engine", "pipeline",
-        "--pipeline-config", invalid_json,
-        "--text", "some text",
-        "--budget", "10",
-    ], env=_env(tmp_path))
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "--engine",
+            "pipeline",
+            "--pipeline-config",
+            invalid_json,
+            "--text",
+            "some text",
+            "--budget",
+            "10",
+        ],
+        env=_env(tmp_path),
+    )
 
     assert result.exit_code != 0
     assert "Error decoding pipeline config JSON" in result.stderr
@@ -517,16 +552,26 @@ def test_cli_compress_pipeline_engine_invalid_json(tmp_path: Path):
 
 def test_cli_compress_pipeline_engine_missing_config(tmp_path: Path):
     """Test PipelineEngine usage when --pipeline-config is missing."""
-    result = runner.invoke(app, [
-        "compress",
-        "--engine", "pipeline",
-        # --pipeline-config is missing
-        "--text", "some text",
-        "--budget", "10",
-    ], env=_env(tmp_path))
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "--engine",
+            "pipeline",
+            # --pipeline-config is missing
+            "--text",
+            "some text",
+            "--budget",
+            "10",
+        ],
+        env=_env(tmp_path),
+    )
 
     assert result.exit_code != 0
-    assert "Error: --pipeline-config is required when --engine is 'pipeline'." in result.stderr
+    assert (
+        "Error: --pipeline-config is required when --engine is 'pipeline'."
+        in result.stderr
+    )
 
 
 def test_cli_compress_pipeline_config_without_pipeline_engine(tmp_path: Path):
@@ -536,16 +581,27 @@ def test_cli_compress_pipeline_config_without_pipeline_engine(tmp_path: Path):
       "engines": [{"engine_name": "NoCompressionEngine", "engine_params": {}}]
     }
     """
-    result = runner.invoke(app, [
-        "compress",
-        "--engine", "none", # Not 'pipeline'
-        "--pipeline-config", pipeline_config_json,
-        "--text", "some text",
-        "--budget", "10",
-    ], env=_env(tmp_path))
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "--engine",
+            "none",  # Not 'pipeline'
+            "--pipeline-config",
+            pipeline_config_json,
+            "--text",
+            "some text",
+            "--budget",
+            "10",
+        ],
+        env=_env(tmp_path),
+    )
 
     assert result.exit_code != 0
-    assert "Error: --pipeline-config can only be used when --engine is 'pipeline'." in result.stderr
+    assert (
+        "Error: --pipeline-config can only be used when --engine is 'pipeline'."
+        in result.stderr
+    )
 
 
 def test_cli_compress_pipeline_engine_unknown_sub_engine(tmp_path: Path):
@@ -557,53 +613,93 @@ def test_cli_compress_pipeline_engine_unknown_sub_engine(tmp_path: Path):
       ]
     }
     """
-    result = runner.invoke(app, [
-        "compress",
-        "--engine", "pipeline",
-        "--pipeline-config", pipeline_config_json,
-        "--text", "some text",
-        "--budget", "10",
-    ], env=_env(tmp_path))
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "--engine",
+            "pipeline",
+            "--pipeline-config",
+            pipeline_config_json,
+            "--text",
+            "some text",
+            "--budget",
+            "10",
+        ],
+        env=_env(tmp_path),
+    )
 
     assert result.exit_code != 0
     # The error message comes from the registry inside _get_one_shot_compression_engine
-    assert "Unknown one-shot compression engine 'ThisEngineDoesNotExist'" in result.stderr
+    assert (
+        "Unknown one-shot compression engine 'ThisEngineDoesNotExist'" in result.stderr
+    )
 
 
 def test_cli_compress_pipeline_engine_invalid_config_structure(tmp_path: Path):
     """Test PipelineEngine with a structurally invalid (but valid JSON) config."""
     # Valid JSON, but not the expected structure (e.g., 'engines' key missing)
     invalid_structure_json = '{"not_engines_key": []}'
-    result = runner.invoke(app, [
-        "compress",
-        "--engine", "pipeline",
-        "--pipeline-config", invalid_structure_json,
-        "--text", "some text",
-        "--budget", "10",
-    ], env=_env(tmp_path))
+    result = runner.invoke(
+        app,
+        [
+            "compress",
+            "--engine",
+            "pipeline",
+            "--pipeline-config",
+            invalid_structure_json,
+            "--text",
+            "some text",
+            "--budget",
+            "10",
+        ],
+        env=_env(tmp_path),
+    )
     assert result.exit_code != 0
-    assert "Error creating pipeline engine from config" in result.stderr # General error
+    assert (
+        "Error creating pipeline engine from config" in result.stderr
+    )  # General error
 
     # Valid JSON, 'engines' is not a list
     invalid_structure_json_2 = '{"engines": {"engine_name": "NoCompressionEngine"}}'
-    result_2 = runner.invoke(app, [
-        "compress",
-        "--engine", "pipeline",
-        "--pipeline-config", invalid_structure_json_2,
-        "--text", "some text",
-        "--budget", "10",
-    ], env=_env(tmp_path))
+    result_2 = runner.invoke(
+        app,
+        [
+            "compress",
+            "--engine",
+            "pipeline",
+            "--pipeline-config",
+            invalid_structure_json_2,
+            "--text",
+            "some text",
+            "--budget",
+            "10",
+        ],
+        env=_env(tmp_path),
+    )
     assert result_2.exit_code != 0
-    assert "Pipeline config JSON must be a list" in result_2.stderr.lower() # Specific error from validation
+    assert (
+        "Pipeline config JSON must be a list" in result_2.stderr.lower()
+    )  # Specific error from validation
 
     # Valid JSON, list items are not dicts
     invalid_structure_json_3 = '{"engines": ["NoCompressionEngine"]}'
-    result_3 = runner.invoke(app, [
-        "compress",
-        "--engine", "pipeline",
-        "--pipeline-config", invalid_structure_json_3,
-        "--text", "some text",
-        "--budget", "10",
-    ], env=_env(tmp_path))
+    result_3 = runner.invoke(
+        app,
+        [
+            "compress",
+            "--engine",
+            "pipeline",
+            "--pipeline-config",
+            invalid_structure_json_3,
+            "--text",
+            "some text",
+            "--budget",
+            "10",
+        ],
+        env=_env(tmp_path),
+    )
     assert result_3.exit_code != 0
-    assert "Error in pipeline engine configuration structure" in result_3.stderr # Error from EngineConfig creation
+    assert (
+        "Error in pipeline engine configuration structure" in result_3.stderr
+    )  # Error from EngineConfig creation

@@ -16,7 +16,10 @@ from compact_memory.engines.registry import (
 #     id = "dummy_cli_test_eng"
 # register_compression_engine(DummyTestCliEngine.id, DummyTestCliEngine)
 
-runner = CliRunner(mix_stderr=False)
+try:
+    runner = CliRunner(mix_stderr=False)
+except TypeError:
+    runner = CliRunner()
 
 
 def _env(tmp_path: Path) -> dict[str, str]:
@@ -219,9 +222,13 @@ def test_dev_evaluate_engines_pipeline_engine(tmp_path: Path, patch_embedding_mo
     # Assuming default embedding models are used if not specified,
     # and that the test environment can handle them (e.g. mocked or tiny models).
     # This part might need adjustment if default models cause issues or if the structure is different.
-    if output_json["pipeline"]["embedding_similarity"]: # It might be empty if no models run
-        for model_name, scores in output_json["pipeline"]["embedding_similarity"].items():
+    if output_json["pipeline"][
+        "embedding_similarity"
+    ]:  # It might be empty if no models run
+        for model_name, scores in output_json["pipeline"][
+            "embedding_similarity"
+        ].items():
             assert "similarity" in scores, f"Similarity score missing for {model_name}"
-            assert abs(scores["similarity"] - 1.0) < 1e-6, ( # Allow slightly larger tolerance for embeddings
-                f"Embedding similarity for {model_name} was not 1.0: {scores['similarity']}"
-            )
+            assert (
+                abs(scores["similarity"] - 1.0) < 1e-6
+            ), f"Embedding similarity for {model_name} was not 1.0: {scores['similarity']}"  # Allow slightly larger tolerance for embeddings
