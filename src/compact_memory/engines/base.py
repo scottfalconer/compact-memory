@@ -20,8 +20,8 @@ import time
 import sys  # For printing warnings
 from pathlib import Path  # Added import
 import importlib
-import warnings
 import logging  # Added for logging
+import cloudpickle
 
 import numpy as np
 from pydantic import BaseModel  # For isinstance check in load
@@ -205,9 +205,11 @@ class BaseCompressionEngine:
             f"BaseCompressionEngine '{self.id}' initialized with config: {self.config}"
         )
 
-        # Initialize embedding_fn and preprocess_fn to None or default before attempting to load/set them
+        # Initialize embedding_fn and preprocess_fn to defaults and flags for serialization
         self.embedding_fn: Callable[[str | Sequence[str]], np.ndarray] = embed_text
         self.preprocess_fn: Optional[Callable[[str], str]] = None
+        self._pickle_embedding_fn = False
+        self._pickle_preprocess_fn = False
 
         # Load embedding_fn from path if provided in config
         if self.config.embedding_fn_path:
@@ -220,15 +222,10 @@ class BaseCompressionEngine:
                     f"Could not load embedding_fn from path '{self.config.embedding_fn_path}': {e}. "
                     f"Using default embed_text."
                 )
-                # Optionally, raise ConfigurationError here if strict loading is required
-                # For now, warning + fallback is kept.
-                # raise ConfigurationError(f"Failed to load embedding_fn: {self.config.embedding_fn_path}") from e
-                self.embedding_fn = embed_text  # Fallback to default
-        elif (
-            embedding_fn is not None
-        ):  # Programmatically provided, not from config path
+                self.embedding_fn = embed_text
+        elif embedding_fn is not None:
             self.embedding_fn = embedding_fn
-            if embedding_fn is not embed_text:  # Not the default
+            if embedding_fn is not embed_text:
                 try:
                     module_name = getattr(embedding_fn, "__module__", None)
                     func_name = getattr(embedding_fn, "__name__", None)
@@ -240,19 +237,9 @@ class BaseCompressionEngine:
                     ):
                         self.config.embedding_fn_path = f"{module_name}.{func_name}"
                     else:
-                        warnings.warn(
-                            "Provided embedding_fn is not easily importable (e.g., a lambda or locally defined function) "
-                            "and cannot be serialized by path. It will not be saved with the engine.",
-                            UserWarning,
-                        )
-                except (
-                    Exception
-                ) as e:  # Catch any other unexpected errors during inspection
-                    warnings.warn(
-                        f"Could not determine import path for the provided embedding_fn: {e}. "
-                        "It will not be saved with the engine.",
-                        UserWarning,
-                    )
+                        self._pickle_embedding_fn = True
+                except Exception:
+                    self._pickle_embedding_fn = True
 
         # Load preprocess_fn from path if provided in config
         if self.config.preprocess_fn_path:
@@ -265,10 +252,8 @@ class BaseCompressionEngine:
                     f"Could not load preprocess_fn from path '{self.config.preprocess_fn_path}': {e}. "
                     f"No preprocess_fn will be used."
                 )
-                # Optionally, raise ConfigurationError
-                # raise ConfigurationError(f"Failed to load preprocess_fn: {self.config.preprocess_fn_path}") from e
-                self.preprocess_fn = None  # Fallback to None
-        elif preprocess_fn is not None:  # Programmatically provided
+                self.preprocess_fn = None
+        elif preprocess_fn is not None:
             self.preprocess_fn = preprocess_fn
             try:
                 module_name = getattr(preprocess_fn, "__module__", None)
@@ -281,19 +266,9 @@ class BaseCompressionEngine:
                 ):
                     self.config.preprocess_fn_path = f"{module_name}.{func_name}"
                 else:
-                    warnings.warn(
-                        "Provided preprocess_fn is not easily importable (e.g., a lambda or locally defined function) "
-                        "and cannot be serialized by path. It will not be saved with the engine.",
-                        UserWarning,
-                    )
-            except (
-                Exception
-            ) as e:  # Catch any other unexpected errors during inspection
-                warnings.warn(
-                    f"Could not determine import path for the provided preprocess_fn: {e}. "
-                    "It will not be saved with the engine.",
-                    UserWarning,
-                )
+                    self._pickle_preprocess_fn = True
+            except Exception:
+                self._pickle_preprocess_fn = True
 
         if self.config.embedding_dim is None:
             # If embedding_fn was loaded from path, it might not be embed_text, so we check its identity.
@@ -627,6 +602,13 @@ class BaseCompressionEngine:
                 json.dump(manifest, fh, indent=2)
             logging.debug(f"Saved engine_manifest.json to {p / 'engine_manifest.json'}")
 
+            if self._pickle_embedding_fn:
+                with open(p / "embedding_fn.pkl", "wb") as fh:
+                    cloudpickle.dump(self.embedding_fn, fh)
+            if self._pickle_preprocess_fn and self.preprocess_fn is not None:
+                with open(p / "preprocess_fn.pkl", "wb") as fh:
+                    cloudpickle.dump(self.preprocess_fn, fh)
+
             self.vector_store.save(str(p / "vector_store_data"))
             if hasattr(self.vector_store, "proto_vectors"):
                 np.save(p / "embeddings.npy", self.vector_store.proto_vectors)
@@ -713,6 +695,10 @@ class BaseCompressionEngine:
         # --- BEGIN MODIFICATION: Re-initialize functions based on loaded config ---
         # Default assignments, in case paths are not found or lead to errors
 
+        # Paths for serialized callables if module paths are not available
+        embed_pickle_path = p / "embedding_fn.pkl"
+        preprocess_pickle_path = p / "preprocess_fn.pkl"
+
         # Load embedding_fn from path if provided in the newly loaded config
         if self.config.embedding_fn_path:
             try:
@@ -726,8 +712,11 @@ class BaseCompressionEngine:
                 raise EngineLoadError(
                     f"Failed to load embedding_fn from path '{self.config.embedding_fn_path}': {e}"
                 ) from e
-        # Removed fallback to current_embedding_fn for paths, if path is specified, it must load or fail.
-        # else: self.embedding_fn = embed_text # This is already default from __init__
+        elif embed_pickle_path.exists():
+            with open(embed_pickle_path, "rb") as fh:
+                self.embedding_fn = cloudpickle.load(fh)
+                self._pickle_embedding_fn = True
+        # else: self.embedding_fn remains default from __init__
 
         # Load preprocess_fn from path if provided in the newly loaded config
         if self.config.preprocess_fn_path:
@@ -742,7 +731,11 @@ class BaseCompressionEngine:
                 raise EngineLoadError(
                     f"Failed to load preprocess_fn from path '{self.config.preprocess_fn_path}': {e}"
                 ) from e
-        # else: self.preprocess_fn = None # This is already default from __init__
+        elif preprocess_pickle_path.exists():
+            with open(preprocess_pickle_path, "rb") as fh:
+                self.preprocess_fn = cloudpickle.load(fh)
+                self._pickle_preprocess_fn = True
+        # else: self.preprocess_fn remains default from __init__
 
         # Re-check signature for the potentially updated embedding_fn
         sig = inspect.signature(self.embedding_fn)
