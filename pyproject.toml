@@ -20,6 +20,7 @@ dependencies = [
     "pyyaml",
     "typer>=0.16.0",
     "portalocker",
+    "cloudpickle",
     "rich>=13.6",
     "platformdirs",
     "nltk",
