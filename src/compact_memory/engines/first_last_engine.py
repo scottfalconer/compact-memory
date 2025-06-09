@@ -46,7 +46,12 @@ class FirstLastEngine(BaseCompressionEngine):
         )
 
         decode_tokenizer = tokenizer or _DEFAULT_TOKENIZER
-        tokenize_fn = _DEFAULT_TOKENIZER or (lambda t: t.split())
+        if tokenizer and (
+            hasattr(tokenizer, "encode") or hasattr(tokenizer, "tokenize")
+        ):
+            tokenize_fn = tokenizer
+        else:
+            tokenize_fn = _DEFAULT_TOKENIZER or (lambda t: t.split())
         tokens = tokenize_text(tokenize_fn, text)
 
         if llm_token_budget is None:

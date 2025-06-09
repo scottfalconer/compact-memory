@@ -5,6 +5,18 @@ from __future__ import annotations
 from typing import Any, List
 
 
+class SimpleTokenizer:
+    """Fallback tokenizer that splits text on whitespace."""
+
+    def encode(self, text: str) -> List[str]:
+        """Return a list of tokens from ``text``."""
+        return text.split()
+
+    def decode(self, tokens: List[Any]) -> str:
+        """Join ``tokens`` into a string."""
+        return " ".join(str(t) for t in tokens)
+
+
 def tokenize_text(tokenizer: Any, text: str) -> List[int]:
     """Return a flat list of token ids for ``text`` using ``tokenizer``."""
     if hasattr(tokenizer, "tokenize"):
@@ -54,4 +66,4 @@ def truncate_text(tokenizer: Any, text: str, max_tokens: int) -> str:
     return " ".join(text.split()[:max_tokens])
 
 
-__all__ = ["tokenize_text", "token_count", "truncate_text"]
+__all__ = ["SimpleTokenizer", "tokenize_text", "token_count", "truncate_text"]
