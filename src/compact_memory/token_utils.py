@@ -66,4 +66,32 @@ def truncate_text(tokenizer: Any, text: str, max_tokens: int) -> str:
     return " ".join(text.split()[:max_tokens])
 
 
-__all__ = ["SimpleTokenizer", "tokenize_text", "token_count", "truncate_text"]
+def split_by_tokens(tokenizer: Any, text: str, max_tokens: int) -> List[str]:
+    """Split ``text`` into chunks of at most ``max_tokens`` tokens."""
+    tokens = tokenize_text(tokenizer, text)
+    if len(tokens) <= max_tokens:
+        return [text]
+
+    parts: List[str] = []
+    for i in range(0, len(tokens), max_tokens):
+        chunk = tokens[i : i + max_tokens]
+        if hasattr(tokenizer, "decode"):
+            try:
+                parts.append(tokenizer.decode(chunk, skip_special_tokens=True))
+                continue
+            except Exception:
+                pass
+        if all(isinstance(t, str) for t in chunk):
+            parts.append(" ".join(chunk))
+        else:
+            parts.append(" ".join(text.split()[i : i + max_tokens]))
+    return parts
+
+
+__all__ = [
+    "SimpleTokenizer",
+    "tokenize_text",
+    "token_count",
+    "truncate_text",
+    "split_by_tokens",
+]

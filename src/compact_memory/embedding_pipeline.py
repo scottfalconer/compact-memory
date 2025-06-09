@@ -3,7 +3,18 @@ from __future__ import annotations
 import functools
 import hashlib
 import contextlib
-from typing import List, Sequence, Callable, Optional, Any, Iterator # Changed ContextManager to Iterator
+from typing import (
+    List,
+    Sequence,
+    Callable,
+    Optional,
+    Any,
+    Iterator,
+)  # Changed ContextManager to Iterator
+
+import warnings
+
+from . import token_utils
 
 import tiktoken
 
@@ -33,6 +44,7 @@ SentenceTransformer = None  # type: ignore
 
 # EmbeddingDimensionMismatchError moved to compact_memory.exceptions
 
+
 class MockEncoder:
     """Deterministic mock encoder used in tests."""
 
@@ -50,7 +62,7 @@ class MockEncoder:
         return arr
 
 
-_MODEL: Optional[Any] = None # Changed SentenceTransformer | None to Optional[Any]
+_MODEL: Optional[Any] = None  # Changed SentenceTransformer | None to Optional[Any]
 _MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 _DEVICE = "cpu"
 _BATCH_SIZE = 32
@@ -61,7 +73,7 @@ _OPENAI_EMBED_DIMS = {
 }
 
 
-def _load_model(model_name: str, device: str) -> Any: # Changed return type
+def _load_model(model_name: str, device: str) -> Any:  # Changed return type
     global _MODEL, _MODEL_NAME, _DEVICE, SentenceTransformer, torch
     if SentenceTransformer is None:
         try:
@@ -114,7 +126,7 @@ def unload_model() -> None:
 @contextlib.contextmanager
 def loaded_embedding_model(
     model_name: str = _MODEL_NAME, device: str = _DEVICE
-) -> Iterator[Any]: # Changed return type to Iterator[Any]
+) -> Iterator[Any]:  # Changed return type to Iterator[Any]
     """Context manager that loads and unloads the embedding model."""
     model: Optional[Any] = _load_model(model_name, device)
     try:
@@ -171,11 +183,46 @@ def embed_text(
                 return np.zeros(dim, dtype=np.float32)
             model: Optional[Any] = _load_model(model_name, device)
             if model and hasattr(model, "get_sentence_embedding_dimension"):
-                return np.zeros(model.get_sentence_embedding_dimension(), dtype=np.float32)
+                return np.zeros(
+                    model.get_sentence_embedding_dimension(), dtype=np.float32
+                )
             # Fallback if model or method is not available, though get_embedding_dim might be better
             return np.zeros(get_embedding_dim(model_name, device), dtype=np.float32)
         if preprocess_fn is not None:
             text = preprocess_fn(text)
+
+        tokenizer = None
+        max_len = None
+        try:
+            if model_name.startswith("openai/"):
+                base = model_name.split("/", 1)[1]
+                tokenizer = tiktoken.encoding_for_model(base)
+                max_len = getattr(tokenizer, "model_max_length", 8191)
+            else:
+                try:
+                    from transformers import AutoTokenizer
+                except Exception:  # pragma: no cover - transformers optional
+                    from .local_llm import AutoTokenizer
+
+                tokenizer = AutoTokenizer.from_pretrained(model_name)
+                max_len = getattr(tokenizer, "model_max_length", None)
+        except Exception:
+            tokenizer = None
+
+        if tokenizer is not None and isinstance(max_len, int) and max_len > 0:
+            try:
+                tokens = token_utils.token_count(tokenizer, text)
+            except Exception:
+                tokens = len(text.split())
+            if tokens > max_len:
+                warnings.warn(
+                    f"Input exceeds model_max_length for {model_name}; embedding in segments",
+                    RuntimeWarning,
+                )
+                parts = token_utils.split_by_tokens(tokenizer, text, max_len)
+                vecs = [_embed_cached(p, model_name, device, batch_size) for p in parts]
+                return np.stack(vecs).mean(axis=0)
+
         return _embed_cached(text, model_name, device, batch_size)
 
     texts = list(text)
@@ -184,12 +231,52 @@ def embed_text(
             base = model_name.split("/", 1)[1]
             dim = _OPENAI_EMBED_DIMS.get(base, 1536)
             return np.zeros((0, dim), dtype=np.float32)
-            model: Optional[Any] = _load_model(model_name, device)
-            if model and hasattr(model, "get_sentence_embedding_dimension"):
-                return np.zeros((0, model.get_sentence_embedding_dimension()), dtype=np.float32)
-            return np.zeros((0, get_embedding_dim(model_name, device)), dtype=np.float32)
+        model: Optional[Any] = _load_model(model_name, device)
+        if model and hasattr(model, "get_sentence_embedding_dimension"):
+            return np.zeros(
+                (0, model.get_sentence_embedding_dimension()), dtype=np.float32
+            )
+        return np.zeros((0, get_embedding_dim(model_name, device)), dtype=np.float32)
     if preprocess_fn is not None:
         texts = [preprocess_fn(t) for t in texts]
+
+    tokenizer = None
+    max_len = None
+    try:
+        if model_name.startswith("openai/"):
+            base = model_name.split("/", 1)[1]
+            tokenizer = tiktoken.encoding_for_model(base)
+            max_len = getattr(tokenizer, "model_max_length", 8191)
+        else:
+            try:
+                from transformers import AutoTokenizer
+            except Exception:  # pragma: no cover - transformers optional
+                from .local_llm import AutoTokenizer
+
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            max_len = getattr(tokenizer, "model_max_length", None)
+    except Exception:
+        tokenizer = None
+
+    if tokenizer is not None and isinstance(max_len, int) and max_len > 0:
+        processed: List[np.ndarray] = []
+        for t in texts:
+            try:
+                tokens = token_utils.token_count(tokenizer, t)
+            except Exception:
+                tokens = len(t.split())
+            if tokens > max_len:
+                warnings.warn(
+                    f"Input exceeds model_max_length for {model_name}; embedding in segments",
+                    RuntimeWarning,
+                )
+                parts = token_utils.split_by_tokens(tokenizer, t, max_len)
+                vecs = [_embed_cached(p, model_name, device, batch_size) for p in parts]
+                processed.append(np.stack(vecs).mean(axis=0))
+            else:
+                processed.append(_embed_cached(t, model_name, device, batch_size))
+        return np.stack(processed)
+
     vecs = [_embed_cached(t, model_name, device, batch_size) for t in texts]
     return np.stack(vecs)
 
@@ -201,19 +288,27 @@ def get_embedding_dim(model_name: str = _MODEL_NAME, device: str = _DEVICE) -> i
         base = model_name.split("/", 1)[1]
         return _OPENAI_EMBED_DIMS.get(base, 1536)
 
-    loaded_model_obj: Optional[Any] = _load_model(model_name, device) # Renamed 'model' to 'loaded_model_obj'
-    if loaded_model_obj: # Ensure loaded_model_obj is not None
-        get_dim_func = getattr(loaded_model_obj, "get_sentence_embedding_dimension", None)
+    loaded_model_obj: Optional[Any] = _load_model(
+        model_name, device
+    )  # Renamed 'model' to 'loaded_model_obj'
+    if loaded_model_obj:  # Ensure loaded_model_obj is not None
+        get_dim_func = getattr(
+            loaded_model_obj, "get_sentence_embedding_dimension", None
+        )
         if callable(get_dim_func):
             return int(get_dim_func())
         dim_attr = getattr(loaded_model_obj, "dim", None)
         if isinstance(dim_attr, int):
             return dim_attr
     # Fallback or raise error if loaded_model_obj is None or attributes are missing
-    raise AttributeError(f"Could not determine embedding dimension for model {model_name}. Model object: {loaded_model_obj}")
+    raise AttributeError(
+        f"Could not determine embedding dimension for model {model_name}. Model object: {loaded_model_obj}"
+    )
 
 
-def register_embedding(name: str, encoder_callable: Callable) -> None: # Added Callable type hint
+def register_embedding(
+    name: str, encoder_callable: Callable
+) -> None:  # Added Callable type hint
     """Allow plugins to register alternative embedding functions."""
     globals()[name] = encoder_callable
 
