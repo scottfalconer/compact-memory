@@ -94,7 +94,8 @@ class FirstLastEngine(BaseCompressionEngine):
         trace.processing_ms = (time.monotonic() - start) * 1000
         compressed.trace = trace
         compressed.engine_id = self.id
-        compressed.engine_config = self.config
+        # Dump the Pydantic model to a dict for CompressedMemory's engine_config field
+        compressed.engine_config = self.config.model_dump(mode='json')
         return compressed
 
 
