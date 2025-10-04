@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 import logging  # Moved import logging to top
+from math import ceil
 from typing import List, Union, Any, Optional
 
 from compact_memory.token_utils import tokenize_text
@@ -67,8 +68,12 @@ class FirstLastEngine(BaseCompressionEngine):
         elif budget <= 0:
             kept_tokens = []
         else:
-            half = max(budget // 2, 0)
-            kept_tokens = tokens[:half] + tokens[-half:]
+            token_count = len(tokens)
+            first_count = min(ceil(budget / 2), token_count)
+            last_count = max(min(budget - first_count, token_count), 0)
+            kept_tokens = list(tokens[:first_count])
+            if last_count:
+                kept_tokens += tokens[-last_count:]
 
         # Ensure decode_tokenizer is not None and has decode method
         if decode_tokenizer is not None and hasattr(decode_tokenizer, "decode"):
